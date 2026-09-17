@@ -211,6 +211,10 @@ function decompor(txt) {
   const fim = rua.match(/^(.*\D)\s+(?:n[º°o.]*\s*)?(\d{1,5})[a-z]?$/i);
   if (fim) { rua = fim[1].trim(); numero = fim[2]; }
   else if (resto.length && /^(?:n[º°o.]*\s*)?\d{1,5}[a-z]?\b/i.test(resto[0])) { numero = resto[0].match(/\d{1,5}/)[0]; resto = resto.slice(1); }
+  else {
+    const meio = rua.match(/^((?:\S+\s+){1,7}?\S*[a-zà-ÿ])\s+(?:n[º°o.]*\s*)?(\d{1,5})[a-z]?(?:\s+(.*))?$/i);
+    if (meio) { rua = meio[1].trim(); numero = meio[2]; if (meio[3]) resto = [meio[3].trim(), ...resto]; }
+  }
   rua = rua.replace(/\s+n[º°o.]*$/i, '').trim();
   return {rua, numero, cep, resto};
 }
@@ -282,6 +286,14 @@ async function geoOSM(txt) {
   const d = decompor(txt);
   const cep = d.cep ? await cepComCoordenada(d.cep) : null;
   const logradouro = (cep && cep.logradouro) || d.rua;
+  if (cep && cep.logradouro) {
+    const alvo = normal(txt), rua = normal(cep.logradouro);
+    const i = alvo.indexOf(rua);
+    if (i >= 0) {
+      const m = alvo.slice(i + rua.length).match(/^[\s,]*(?:n[º°o.]*\s*)?(\d{1,5})\b/);
+      if (m) d.numero = m[1];
+    }
+  }
   const cands = [];
   const validar = lista => {
     for (const c of lista) {
@@ -667,8 +679,8 @@ function telaEnderecos() {
     <textarea id="lista" placeholder="18 Avenida Dulce Diniz 920, Condomínio Luzia Residence, CEP 49048430&#10;..."></textarea>
     <div class="linha">
       <button class="btn pri" data-acao="adicionar">Adicionar em ${esc(a.nome)}</button>
-      <label class="btn" style="margin:0;color:var(--tx)">📷 Ler print(s)
-        <input type="file" accept="image/*" id="print" multiple hidden>
+      <label class="btn" style="margin:0;color:var(--tx)">📷 Ler print ou PDF
+        <input type="file" accept="image/*,application/pdf,.pdf" id="print" multiple hidden>
       </label>
     </div>
     <div class="info" style="margin-top:8px">Pode mandar vários prints de uma vez (rolando a lista). Endereços repetidos são ignorados. O número do app na frente (ex.: <b>18</b> Avenida…) aparece no pino.</div>
@@ -871,6 +883,71 @@ function telaRota() {
 
 /* ---------- Ações ---------- */
 
+const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.8.69/build/';
+async function carregarPdfJs() {
+  if (!window.pdfjsLib) {
+    const mod = await import(PDFJS + 'pdf.min.mjs');
+    mod.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.mjs';
+    window.pdfjsLib = mod;
+  }
+  return window.pdfjsLib;
+}
+
+function textoDaPagina(itens) {
+  const porLinha = new Map();
+  for (const it of itens) {
+    if (!it.str || !it.str.trim()) continue;
+    const y = Math.round(it.transform[5] / 4);
+    if (!porLinha.has(y)) porLinha.set(y, []);
+    porLinha.get(y).push({x: it.transform[4], s: it.str});
+  }
+  return [...porLinha.entries()].sort((a, b) => b[0] - a[0])
+    .map(([, its]) => its.sort((a, b) => a.x - b.x).map(i => i.s).join(' ').replace(/\s+/g, ' ').trim())
+    .join('\n');
+}
+
+async function paginaComoImagem(pagina) {
+  const viewport = pagina.getViewport({scale: 2});
+  const cv = document.createElement('canvas');
+  cv.width = viewport.width; cv.height = viewport.height;
+  const cx = cv.getContext('2d');
+  cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+  await pagina.render({canvasContext: cx, viewport}).promise;
+  return new Promise(r => cv.toBlob(r, 'image/png'));
+}
+
+async function lerPdf(file) {
+  const lib = await carregarPdfJs();
+  const doc = await lib.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise;
+  const linhas = [], imagens = [];
+  for (let n = 1; n <= doc.numPages; n++) {
+    status(`Lendo o PDF… página ${n} de ${doc.numPages}`);
+    const pagina = await doc.getPage(n);
+    const texto = textoDaPagina((await pagina.getTextContent()).items);
+    if (texto.replace(/\s/g, '').length > 20) linhas.push(...extrairEnderecos(texto));
+    else imagens.push(await paginaComoImagem(pagina));
+  }
+  return {linhas, imagens};
+}
+
+async function lerArquivos(files) {
+  const imagens = [], linhas = [];
+  for (const f of files) {
+    if ((f.type || '').includes('pdf') || /\.pdf$/i.test(f.name || '')) {
+      const r = await lerPdf(f);
+      linhas.push(...r.linhas);
+      imagens.push(...r.imagens);
+    } else imagens.push(f);
+  }
+  if (imagens.length) linhas.push(...await lerImagens(imagens));
+  const unicos = new Map();
+  for (const l of linhas) {
+    const k = chaveEndereco(l), antigo = unicos.get(k);
+    if (!antigo || l.length > antigo.length) unicos.set(k, l);
+  }
+  return [...unicos.values()];
+}
+
 async function prepararImagem(file) {
   try {
     const bmp = await createImageBitmap(file);
@@ -969,7 +1046,7 @@ async function processarCompartilhado() {
   history.replaceState(null, '', location.pathname);
   if (!files.length && !texto.trim()) return;
   try {
-    const linhas = files.length ? await lerImagens(files) : [];
+    const linhas = files.length ? await lerArquivos(files) : [];
     if (texto.trim()) {
       const doTexto = extrairEnderecos(texto);
       linhas.push(...(doTexto.length ? doTexto : texto.split('\n').map(l => l.trim()).filter(Boolean)));
@@ -989,7 +1066,7 @@ async function processarCompartilhado() {
 async function lerPrints(files) {
   status('Carregando leitor de texto (a primeira vez demora)…');
   try {
-    const unicos = await lerImagens(files);
+    const unicos = await lerArquivos(files);
     const ta = $('#lista');
     ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + unicos.join('\n');
     status(unicos.length
