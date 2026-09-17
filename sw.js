@@ -1,4 +1,5 @@
 const VERSAO = 'rota-v1';
+const BIBLIOTECAS = 'bibliotecas-v1';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -13,7 +14,18 @@ self.addEventListener('fetch', e => {
     e.respondWith(receber(e.request));
     return;
   }
-  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  if (e.request.method !== 'GET') return;
+  if (url.origin !== location.origin) {
+    if (!/^https:\/\/(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|tessdata\.projectnaptha\.com)$/.test(url.origin)) return;
+    e.respondWith(
+      caches.match(e.request).then(guardado => guardado || fetch(e.request).then(r => {
+        const copia = r.clone();
+        caches.open(BIBLIOTECAS).then(c => c.put(e.request, copia));
+        return r;
+      }))
+    );
+    return;
+  }
   e.respondWith(
     fetch(e.request)
       .then(r => { const copia = r.clone(); caches.open(VERSAO).then(c => c.put(e.request, copia)); return r; })
