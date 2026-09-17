@@ -63,7 +63,7 @@ textarea{min-height:140px;resize:vertical}
 .cands button{display:block;width:100%;text-align:left;border:1px solid var(--bd);background:#f9fafb;border-radius:8px;padding:8px;margin-top:6px;font:inherit;font-size:14px}
 details{margin-top:14px}
 summary{font-weight:600;cursor:pointer}
-#status{position:fixed;left:12px;right:12px;bottom:12px;background:#111827;color:#fff;border-radius:12px;padding:12px 14px;font-size:14px;display:none;z-index:1000}
+#status{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));background:#111827;color:#fff;border-radius:12px;padding:12px 14px;font-size:14px;display:none;z-index:1000}
 #status.on{display:block}
 .pino{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:grid;place-items:center}
 .pino.duvida{border:3px solid #dc2626}
@@ -94,6 +94,8 @@ summary{font-weight:600;cursor:pointer}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 const CHAVE = 'rota-entregas-v2';
+const BACKUP = 'rota-entregas-backup';
+const SERVICO_PADRAO = 180;
 const CORES = [['Verde','#16a34a','🟢'],['Amarelo','#ca8a04','🟡'],['Roxo','#9333ea','🟣'],['Azul','#2563eb','🔵'],['Laranja','#ea580c','🟠'],['Rosa','#db2777','🩷']];
 const ROTULO = {exato:'Número encontrado', bom:'Prédio encontrado', rua:'Rua encontrada (chega perto)', ruim:'Impreciso — confira o pino', nao:'Não encontrado', manual:'Ajustado por você', pendente:'Ainda não buscado'};
 const CORP = {exato:'#16a34a', bom:'#16a34a', rua:'#0891b2', ruim:'#dc2626', nao:'#dc2626', manual:'#7c3aed', pendente:'#6b7280'};
@@ -125,6 +127,14 @@ function carregar() {
   return vazio();
 }
 function salvar() { try { localStorage.setItem(CHAVE, JSON.stringify(S)); } catch (e) {} }
+
+function backupRecente() {
+  try {
+    const b = JSON.parse(localStorage.getItem(BACKUP));
+    if (b && b.estado && Date.now() - b.quando < 600000 && (b.estado.paradas || []).length) return b;
+  } catch (e) {}
+  return null;
+}
 const parada = id => S.paradas.find(p => p.id === id);
 const area = id => S.areas.find(a => a.id === id) || S.areas[0];
 const emoji = cor => (CORES.find(c => c[1] === cor) || [,,'⚪'])[2];
@@ -231,6 +241,21 @@ function decompor(txt) {
 
 /* ---------- Geocodificação ---------- */
 
+function comTempo(ms) {
+  try { return {signal: AbortSignal.timeout(ms)}; } catch (e) { return {}; }
+}
+
+async function buscarJson(url, ms = 15000) {
+  let r;
+  try {
+    r = await fetch(url, comTempo(ms));
+  } catch (e) {
+    throw new Error(e && (e.name === 'TimeoutError' || e.name === 'AbortError') ? 'sem resposta em ' + Math.round(ms / 1000) + 's (internet fraca)' : 'sem conexão');
+  }
+  if (!r.ok) throw new Error('o serviço respondeu ' + r.status);
+  return r.json();
+}
+
 const filas = {};
 async function espacado(chave, ms) {
   const espera = ms - (Date.now() - (filas[chave] || 0));
@@ -243,9 +268,7 @@ async function nominatim(params) {
   const u = new URL('https://nominatim.openstreetmap.org/search');
   const base = {format:'jsonv2', addressdetails:1, limit:5, countrycodes:'br', 'accept-language':'pt-BR'};
   Object.entries({...base, ...params}).forEach(([k, v]) => u.searchParams.set(k, v));
-  const r = await fetch(u);
-  if (!r.ok) throw new Error('Serviço de mapas respondeu ' + r.status);
-  return (await r.json()).map(candidatoOSM);
+  return (await buscarJson(u)).map(candidatoOSM);
 }
 
 function candidatoOSM(r) {
@@ -273,14 +296,11 @@ function mesmaRua(procurada, achada) {
 
 async function cepComCoordenada(cep) {
   try {
-    const r = await fetch(`https://cep.awesomeapi.com.br/json/${cep}`);
-    if (r.ok) {
-      const j = await r.json();
-      if (j && j.lat && j.lng) return {logradouro: j.address || '', bairro: j.district || '', cidade: j.city || '', uf: j.state || '', lat: +j.lat, lng: +j.lng};
-    }
+    const j = await buscarJson(`https://cep.awesomeapi.com.br/json/${cep}`, 8000);
+    if (j && j.lat && j.lng) return {logradouro: j.address || '', bairro: j.district || '', cidade: j.city || '', uf: j.state || '', lat: +j.lat, lng: +j.lng};
   } catch (e) {}
   try {
-    const v = await (await fetch(`https://viacep.com.br/ws/${cep}/json/`)).json();
+    const v = await buscarJson(`https://viacep.com.br/ws/${cep}/json/`, 8000);
     if (v && !v.erro) return {logradouro: v.logradouro || '', bairro: v.bairro || '', cidade: v.localidade, uf: v.uf, lat: null, lng: null};
   } catch (e) {}
   return null;
@@ -342,7 +362,7 @@ async function geoGoogle(txt) {
   u.searchParams.set('language', 'pt-BR');
   u.searchParams.set('components', 'country:BR');
   u.searchParams.set('key', S.googleKey);
-  const j = await (await fetch(u)).json();
+  const j = await buscarJson(u);
   if (j.status === 'ZERO_RESULTS') return [];
   if (j.status !== 'OK') throw new Error('Google: ' + j.status + (j.error_message ? ' — ' + j.error_message : ''));
   return j.results.map(r => {
@@ -406,7 +426,7 @@ function haversine(a, b) {
 
 async function osrm(caminho) {
   await espacado('osrm', 1100);
-  return (await fetch('https://router.project-osrm.org/' + caminho)).json();
+  return buscarJson('https://router.project-osrm.org/' + caminho, 20000);
 }
 
 const coordStr = pts => pts.map(p => p.lng.toFixed(6) + ',' + p.lat.toFixed(6)).join(';');
@@ -449,12 +469,12 @@ function otimizar(n, D, fixo) {
   let melhorou = true;
   while (melhorou && Date.now() < limite) {
     melhorou = false;
-    for (let i = ini; i < n - 1; i++) for (let k = i + 1; k < n; k++) {
+    for (let i = ini; i < n - 1 && Date.now() < limite; i++) for (let k = i + 1; k < n; k++) {
       const q = p.slice(0, i).concat(p.slice(i, k + 1).reverse(), p.slice(k + 1));
       const cq = custo(q, D);
       if (cq < c - 1e-6) { p = q; c = cq; melhorou = true; }
     }
-    for (let i = ini; i < n; i++) for (let j = ini; j < n; j++) {
+    for (let i = ini; i < n && Date.now() < limite; i++) for (let j = ini; j < n; j++) {
       if (i === j) continue;
       const q = p.slice();
       const [x] = q.splice(i, 1);
@@ -495,7 +515,7 @@ async function montarRota() {
   ocupado = true;
   try {
     let pos = S.inicio;
-    const rota = {areas: [], dur: 0, dist: 0, mlDur: 0, mlDist: 0, mlOk: true, porRuas: true, quando: Date.now()};
+    const rota = {areas: [], dur: 0, dist: 0, mlDur: 0, mlDist: 0, porRuas: true, quando: Date.now()};
     S.pernas = {};
     for (const a of ordenarAreas(S.inicio)) {
       status(`Calculando área ${a.nome}…`);
@@ -649,12 +669,17 @@ const fmtKm = m => m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' :
 
 /* ---------- Telas ---------- */
 
+let rolagem = {enderecos: 0, conferir: 0, rota: 0};
 function render() {
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.aba === aba));
   const c = $('#conteudo');
+  const anterior = c.dataset.aba;
+  if (anterior) rolagem[anterior] = c.scrollTop;
   if (aba === 'enderecos') c.innerHTML = telaEnderecos();
   if (aba === 'conferir') c.innerHTML = telaConferir();
   if (aba === 'rota') c.innerHTML = telaRota();
+  c.dataset.aba = aba;
+  c.scrollTop = Math.min(rolagem[aba] || 0, Math.max(0, c.scrollHeight - c.clientHeight));
 }
 
 function chipArea(a, acao, on) {
@@ -695,9 +720,11 @@ function telaEnderecos() {
     </div>
     <div class="info" style="margin-top:8px">Pode mandar vários prints de uma vez (rolando a lista). Endereços repetidos são ignorados. O número do app na frente (ex.: <b>18</b> Avenida…) aparece no pino.</div>
     ${S.paradas.length ? `<div class="linha"><button class="btn" data-acao="limpar">🗑 Nova rota do dia (apaga tudo)</button></div>` : ''}
+    ${backupRecente() ? `<div class="aviso">Você apagou uma rota há pouco. <button class="btn peq pri" data-acao="desfazerLimpar">↺ Desfazer</button></div>` : ''}
     <details>
       <summary>Precisão extra com Google (opcional)</summary>
       <div class="info" style="margin-top:6px">Sem chave, a busca usa o OpenStreetMap, que às vezes acha só a rua. Com uma chave da Geocoding API do Google o número costuma vir certo (cota grátis mensal; pede cartão para criar).</div>
+      <div class="aviso"><b>Cuidado:</b> a chave fica dentro desta página, no seu celular, e a API do Google <b>não</b> permite travar a chave por site — só por IP de servidor. Quem abrir esta página com a chave configurada pode copiá-la e gastar na sua conta. Use só no seu aparelho, ponha um <b>limite de gastos</b> no painel do Google e não configure a chave em celular de outra pessoa.</div>
       <label for="gkey">Chave da API do Google</label>
       <input type="password" id="gkey" value="${esc(S.googleKey)}" placeholder="AIza…" autocomplete="off">
       <div class="linha"><button class="btn" data-acao="salvarChave">Salvar chave</button></div>
@@ -775,6 +802,44 @@ function configInicio() {
     <div class="linha"><button class="btn pri" data-acao="montar">🧭 Montar melhor sequência</button></div>`;
 }
 
+function ritmoPorParada() {
+  const feitas = S.paradas.filter(p => p.entregue && p.entregueEm).sort((a, b) => a.entregueEm - b.entregueEm);
+  const amostras = [];
+  for (let i = 1; i < feitas.length; i++) {
+    const intervalo = (feitas[i].entregueEm - feitas[i - 1].entregueEm) / 1000;
+    const dirigindo = (S.pernas[feitas[i].id] || {}).dur || 0;
+    const servico = intervalo - dirigindo;
+    if (servico > 20 && servico < 1800) amostras.push(servico);
+  }
+  if (amostras.length < 3) return {segundos: SERVICO_PADRAO, medido: false};
+  amostras.sort((a, b) => a - b);
+  return {segundos: amostras[Math.floor(amostras.length / 2)], medido: true};
+}
+
+function previsoes() {
+  if (!S.rota) return null;
+  const ritmo = ritmoPorParada();
+  let t = Date.now();
+  const porArea = {};
+  for (const ra of S.rota.areas) {
+    const pendentes = ra.ordem.map(parada).filter(p => p && !p.entregue);
+    if (!pendentes.length) { porArea[ra.id] = null; continue; }
+    const chegada = t + ((S.pernas[pendentes[0].id] || {}).dur || 0) * 1000;
+    for (const p of pendentes) t += (((S.pernas[p.id] || {}).dur || 0) + ritmo.segundos) * 1000;
+    const a = area(ra.id);
+    let estoura = false;
+    if (a.prazo) {
+      const [h, m] = a.prazo.split(':').map(Number);
+      const limite = new Date(); limite.setHours(h, m, 0, 0);
+      estoura = t > limite.getTime();
+    }
+    porArea[ra.id] = {chegada, fim: t, estoura};
+  }
+  return {porArea, ritmo};
+}
+
+const hhmm = ms => new Date(ms).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+
 function mesmoEndereco(ids) {
   const chaves = new Set(ids.map(id => chaveEndereco(parada(id).texto).split('|').slice(0, 2).join('|')));
   return ids.length > 1 && chaves.size === 1 && !/^\|*$/.test([...chaves][0]);
@@ -804,6 +869,26 @@ function linhaParada(p, comWaze) {
     </div>`;
 }
 
+function avisoPrazo(prev, a, detalhado) {
+  const p = prev && prev.porArea[a.id];
+  if (!p) return '';
+  const ritmo = prev.ritmo.medido ? `${Math.round(prev.ritmo.segundos / 60)} min por parada, seu ritmo de hoje` : `${Math.round(prev.ritmo.segundos / 60)} min por parada, estimado`;
+  if (p.estoura) {
+    return `<div class="aviso" style="background:#fee2e2;border-color:#fca5a5"><b>⚠ Você não fecha esta área no prazo.</b><br>
+      Previsão de terminar: <b>${hhmm(p.fim)}</b>, e o prazo é <b>${esc(a.prazo)}</b>. (${ritmo})</div>`;
+  }
+  return detalhado
+    ? `<div class="info">Previsão de terminar a área: <b>${hhmm(p.fim)}</b>${a.prazo ? ` · prazo ${esc(a.prazo)} ✓` : ''} (${ritmo})</div>`
+    : '';
+}
+
+function resumoPrazo(prev, a) {
+  const p = prev && prev.porArea[a.id];
+  if (!p) return '';
+  const cor = p.estoura ? 'var(--bad)' : 'var(--mut)';
+  return `<span class="info" style="color:${cor}">${p.estoura ? '⚠ ' : '~'}${hhmm(p.fim)}</span>`;
+}
+
 function telaRota() {
   if (!S.rota) {
     const semLocal = S.paradas.filter(p => p.lat == null && !p.entregue).length;
@@ -814,6 +899,7 @@ function telaRota() {
   const foraDaRota = S.paradas.filter(p => !p.entregue && p.lat != null && !naRota.has(p.id)).length;
   const semLocal = S.paradas.filter(p => !p.entregue && p.lat == null).length;
 
+  const prev = previsoes();
   let agora = null;
   for (const ra of R.areas) {
     for (const b of blocos(ra.ordem)) if (b.some(id => !parada(id).entregue)) { agora = {ra, b}; break; }
@@ -832,6 +918,7 @@ function telaRota() {
       <div class="proxima" style="border-color:${a.cor}">
         <div class="info" style="display:flex;gap:6px;align-items:center;--c:${a.cor}"><span class="dot"></span>
           Área <b>${esc(a.nome)}</b>${a.prazo ? ' · até ' + esc(a.prazo) : ''} · ${todasArea.filter(p => p.entregue).length}/${todasArea.length} entregues</div>
+        ${avisoPrazo(prev, a, true)}
         <div class="grande">${pend.length > 1 ? `${pend.length} entregas ${mesmoEndereco(agora.b) ? 'no mesmo endereço' : 'aqui perto'}` : 'Próxima entrega'}</div>
         <div class="achado">📍 ${esc(alvo.exibido || alvo.texto)}</div>
         <div class="linha">
@@ -847,7 +934,7 @@ function telaRota() {
   }
 
   html += `<div class="info">Total estimado: <b>${fmtKm(R.dist)}</b>, cerca de <b>${fmtMin(R.dur)}</b> dirigindo (sem contar as paradas)${R.porRuas ? '' : ', aproximado'}.</div>`;
-  if (R.mlOk && R.mlDist > 0) {
+  if (R.mlDist > 0) {
     const economia = R.mlDist - R.dist;
     html += `<div class="info" style="margin-top:4px">Na ordem da lista do app: ${fmtKm(R.mlDist)}, ${fmtMin(R.mlDur)}. ${economia > 200
       ? `<b style="color:var(--ok)">Esta rota economiza ${fmtKm(economia)}.</b>`
@@ -866,7 +953,7 @@ function telaRota() {
       <div class="area-cab" style="--c:${a.cor}">
         <span class="dot"></span>
         <span class="txt">${i + 1}. ${esc(a.nome)}${a.prazo ? ' · até ' + esc(a.prazo) : ''}</span>
-        <span class="info">${feitas}/${ps.length}</span>
+        <span class="info">${feitas}/${ps.length}</span>${resumoPrazo(prev, a)}
         <button class="btn peq" data-acao="areaSobe" data-id="${a.id}" ${i === 0 ? 'disabled' : ''} aria-label="Subir área">▲</button>
         <button class="btn peq" data-acao="areaDesce" data-id="${a.id}" ${i === R.areas.length - 1 ? 'disabled' : ''} aria-label="Descer área">▼</button>
       </div>`;
@@ -1185,11 +1272,22 @@ document.addEventListener('click', async e => {
     }
     case 'limpar':
       if (confirm('Apagar todas as áreas, paradas e a rota?')) {
-        const {cidade, googleKey, inicio} = S;
-        S = Object.assign(vazio(), {cidade, googleKey, inicio});
+        try { localStorage.setItem(BACKUP, JSON.stringify({quando: Date.now(), estado: S})); } catch (e) {}
+        const {cidade, googleKey, inicio, tamTrecho} = S;
+        S = Object.assign(vazio(), {cidade, googleKey, inicio, tamTrecho});
         salvar(); render(); desenharMapa();
+        status('Tudo apagado. Dá para desfazer nos próximos 10 minutos.', 6000);
       }
       break;
+    case 'desfazerLimpar': {
+      const b = backupRecente();
+      if (!b) { status('O prazo para desfazer passou.', 3000); return; }
+      S = Object.assign(vazio(), b.estado);
+      localStorage.removeItem(BACKUP);
+      salvar(); render(); desenharMapa(true);
+      status('Rota restaurada.', 3000);
+      break;
+    }
     case 'salvarChave':
       S.googleKey = $('#gkey').value.trim(); salvar();
       status(S.googleKey ? 'Chave salva. Use "Editar" para buscar de novo os imprecisos.' : 'Chave removida.', 3500);
@@ -1241,8 +1339,8 @@ document.addEventListener('click', async e => {
     case 'areasAuto': S.areasManual = false; await montarRota(); break;
     case 'areaSobe': await moverArea(id, -1); break;
     case 'areaDesce': await moverArea(id, 1); break;
-    case 'entregue': p.entregue = true; salvar(); render(); desenharMapa(); break;
-    case 'desfazer': p.entregue = false; salvar(); render(); desenharMapa(); break;
+    case 'entregue': p.entregue = true; p.entregueEm = Date.now(); salvar(); render(); desenharMapa(); break;
+    case 'desfazer': p.entregue = false; p.entregueEm = null; salvar(); render(); desenharMapa(); break;
     case 'copiar': await copiarRota(); break;
   }
 });

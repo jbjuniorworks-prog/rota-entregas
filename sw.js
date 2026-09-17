@@ -6,7 +6,11 @@ self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSAO).then(c => c.addAll(['./', './index.html', './manifest.webmanifest'])));
 });
 
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('activate', e => e.waitUntil((async () => {
+  const manter = [VERSAO, BIBLIOTECAS, 'compartilhado'];
+  for (const nome of await caches.keys()) if (!manter.includes(nome)) await caches.delete(nome);
+  await self.clients.claim();
+})()));
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
@@ -35,6 +39,7 @@ self.addEventListener('fetch', e => {
 
 async function receber(req) {
   const dados = await req.formData();
+  await caches.delete('compartilhado');
   const cache = await caches.open('compartilhado');
   let i = 0;
   for (const f of dados.getAll('imagens')) {
