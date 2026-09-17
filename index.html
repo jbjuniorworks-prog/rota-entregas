@@ -161,7 +161,17 @@ function analisarLinha(linha) {
 
 function chaveEndereco(linha) {
   const d = decompor(analisarLinha(linha).texto);
-  return [normal(d.rua).replace(TIPOS_RUA, ''), d.numero || '', d.cep || ''].join('|');
+  return [normal(d.rua).replace(TIPOS_RUA, ''), d.numero || '', d.cep || '', complementoChave(d.resto)].join('|');
+}
+
+function complementoChave(resto) {
+  const txt = normal((resto || []).join(' '));
+  const partes = [];
+  for (const re of [/\bap(?:to|artamento)?\.?\s*(\w{1,6})/, /\bbl(?:oco|c)?\.?\s*(\w{1,4})/, /\bcasa\s*(\w{1,4})/, /\b(?:sala|loja|lote|lt)\.?\s*(\w{1,4})/, /\bqu?a?d?r?a?\.?\s*(\d{1,4})/]) {
+    const m = txt.match(re);
+    if (m) partes.push(m[0].replace(/\s+/g, ''));
+  }
+  return partes.join('+');
 }
 
 function pareceEndereco(texto) {
@@ -765,6 +775,11 @@ function configInicio() {
     <div class="linha"><button class="btn pri" data-acao="montar">🧭 Montar melhor sequência</button></div>`;
 }
 
+function mesmoEndereco(ids) {
+  const chaves = new Set(ids.map(id => chaveEndereco(parada(id).texto).split('|').slice(0, 2).join('|')));
+  return ids.length > 1 && chaves.size === 1 && !/^\|*$/.test([...chaves][0]);
+}
+
 function meta(p) {
   const partes = [];
   if (p.ml) partes.push(`no app: #${p.ml}`);
@@ -817,7 +832,7 @@ function telaRota() {
       <div class="proxima" style="border-color:${a.cor}">
         <div class="info" style="display:flex;gap:6px;align-items:center;--c:${a.cor}"><span class="dot"></span>
           Área <b>${esc(a.nome)}</b>${a.prazo ? ' · até ' + esc(a.prazo) : ''} · ${todasArea.filter(p => p.entregue).length}/${todasArea.length} entregues</div>
-        <div class="grande">${pend.length > 1 ? `${pend.length} entregas aqui perto` : 'Próxima entrega'}</div>
+        <div class="grande">${pend.length > 1 ? `${pend.length} entregas ${mesmoEndereco(agora.b) ? 'no mesmo endereço' : 'aqui perto'}` : 'Próxima entrega'}</div>
         <div class="achado">📍 ${esc(alvo.exibido || alvo.texto)}</div>
         <div class="linha">
           <a class="btn waze" href="${linkWaze(alvo)}" target="_blank" rel="noopener">Waze</a>
@@ -870,7 +885,7 @@ function telaRota() {
       html += `
         <div class="item">
           <div class="bloco-cab">
-            <span style="flex:1">Parada ${k + 1}${b.length > 1 ? ` · ${b.length} entregas perto` : ''}${perna && perna.dur ? ` · 🚗 ${fmtMin(perna.dur)}` : ''}</span>
+            <span style="flex:1">Parada ${k + 1}${b.length > 1 ? ` · ${b.length} entregas ${mesmoEndereco(b) ? 'no mesmo endereço' : 'perto'}` : ''}${perna && perna.dur ? ` · 🚗 ${fmtMin(perna.dur)}` : ''}</span>
             ${pend.length ? `<a class="btn peq waze" href="${linkWaze(pend[0])}" target="_blank" rel="noopener">Waze</a>` : '✓'}
           </div>
           ${bp.map(p => linhaParada(p, false)).join('')}
@@ -1015,15 +1030,16 @@ async function lerImagens(files) {
 
 function adicionarLinhas(linhas) {
   const existentes = new Set(S.paradas.map(x => chaveEndereco(x.texto)));
-  const numeros = new Set(S.paradas.filter(x => x.ml).map(x => x.ml));
+  const porNumero = new Map(S.paradas.filter(x => x.ml).map(x => [x.ml, chaveEndereco(x.texto).split('|').slice(0, 2).join('|')]));
   let novas = 0, repetidas = 0;
   for (const l of linhas) {
     const {ml, texto, unidades, comercial} = analisarLinha(l);
     if (!texto) continue;
     const chave = chaveEndereco(texto);
-    if (existentes.has(chave) || (ml && numeros.has(ml))) { repetidas++; continue; }
+    const semComplemento = chave.split('|').slice(0, 2).join('|');
+    if (existentes.has(chave) || (ml && porNumero.get(ml) === semComplemento)) { repetidas++; continue; }
     existentes.add(chave);
-    if (ml) numeros.add(ml);
+    if (ml) porNumero.set(ml, semComplemento);
     S.paradas.push({id: novoId(), area: S.areaAtual, ml, texto, unidades, comercial, lat: null, lng: null, exibido: '', precisao: 'pendente', candidatos: [], entregue: false});
     novas++;
   }
