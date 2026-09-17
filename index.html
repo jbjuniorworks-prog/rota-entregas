@@ -159,6 +159,20 @@ function analisarLinha(linha) {
   return {ml, texto, unidades, comercial};
 }
 
+function chaveEndereco(linha) {
+  const d = decompor(analisarLinha(linha).texto);
+  return [normal(d.rua).replace(TIPOS_RUA, ''), d.numero || '', d.cep || ''].join('|');
+}
+
+function pareceEndereco(texto) {
+  if (/[=?@*<>~^{}\\]/.test(texto)) return false;
+  const semTipo = texto.replace(RUA, '').trim();
+  const primeira = (semTipo.split(/[\s,]+/)[0] || '');
+  if (!/^[a-zà-ÿ]{3,}$|^[a-zà-ÿ]{3,}/i.test(primeira) && !/^\d+º?$/.test(primeira)) return false;
+  const letras = (texto.match(/[a-zà-ÿ]/gi) || []).length;
+  return letras >= 8 && letras / texto.length > 0.45;
+}
+
 function extrairEnderecos(bruto) {
   const linhas = bruto.split('\n').map(limparRuido).filter(Boolean);
   const out = [];
@@ -183,7 +197,7 @@ function extrairEnderecos(bruto) {
     numeroSolto = mn && !TEM_CEP.test(l) ? mn[1] : null;
   }
   return out
-    .filter(e => /\s\d{1,5}\b/.test(e.texto) || TEM_CEP.test(e.texto))
+    .filter(e => (/\s\d{1,5}\b/.test(e.texto) || TEM_CEP.test(e.texto)) && pareceEndereco(e.texto))
     .map(e => (e.ml ? e.ml + ' ' : '') + e.texto + (e.unidades ? ` · ${e.unidades} unid` : '') + (e.comercial ? ' · comercial' : ''));
 }
 
@@ -857,6 +871,30 @@ function telaRota() {
 
 /* ---------- Ações ---------- */
 
+async function prepararImagem(file) {
+  try {
+    const bmp = await createImageBitmap(file);
+    const escala = Math.min(3, Math.max(1, 1700 / bmp.width));
+    const w = Math.round(bmp.width * escala), h = Math.round(bmp.height * escala);
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const cx = cv.getContext('2d', {willReadFrequently: true});
+    cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+    cx.drawImage(bmp, 0, 0, w, h);
+    bmp.close && bmp.close();
+    const img = cx.getImageData(0, 0, w, h), d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      const v = g <= 105 ? 0 : g >= 195 ? 255 : (g - 105) * 255 / 90;
+      d[i] = d[i + 1] = d[i + 2] = v;
+    }
+    cx.putImageData(img, 0, 0);
+    return await new Promise(r => cv.toBlob(b => r(b || file), 'image/png'));
+  } catch (e) {
+    return file;
+  }
+}
+
 async function lerImagens(files) {
   if (!window.Tesseract) {
     await new Promise((ok, erro) => {
@@ -868,24 +906,46 @@ async function lerImagens(files) {
   }
   const worker = await Tesseract.createWorker('por');
   const achados = [];
-  for (let i = 0; i < files.length; i++) {
-    status(`Lendo print ${i + 1} de ${files.length}…`);
-    const {data} = await worker.recognize(files[i]);
-    achados.push(...extrairEnderecos(data.text));
+  try {
+    for (let i = 0; i < files.length; i++) {
+      const rotulo = files.length > 1 ? ` (print ${i + 1} de ${files.length})` : '';
+      status(`Preparando a imagem…${rotulo}`);
+      const tratada = await prepararImagem(files[i]);
+      const tentativas = [
+        {imagem: tratada, psm: '4', nome: 'colunas'},
+        {imagem: tratada, psm: '6', nome: 'bloco'},
+        {imagem: files[i], psm: '3', nome: 'original'},
+      ];
+      const doPrint = new Map();
+      for (const t of tentativas) {
+        status(`Lendo os endereços…${rotulo}`);
+        await worker.setParameters({tessedit_pageseg_mode: t.psm, preserve_interword_spaces: '1'});
+        const {data} = await worker.recognize(t.imagem);
+        for (const e of extrairEnderecos(data.text)) {
+          const k = chaveEndereco(e);
+          const antigo = doPrint.get(k);
+          if (!antigo || e.length > antigo.length) doPrint.set(k, e);
+        }
+        if (t !== tentativas[0] && doPrint.size) break;
+      }
+      achados.push(...doPrint.values());
+    }
+  } finally {
+    await worker.terminate();
   }
-  await worker.terminate();
   return [...new Set(achados)];
 }
 
 function adicionarLinhas(linhas) {
-  const existentes = new Set(S.paradas.map(x => normal(x.texto)));
+  const existentes = new Set(S.paradas.map(x => chaveEndereco(x.texto)));
   const numeros = new Set(S.paradas.filter(x => x.ml).map(x => x.ml));
   let novas = 0, repetidas = 0;
   for (const l of linhas) {
     const {ml, texto, unidades, comercial} = analisarLinha(l);
     if (!texto) continue;
-    if (existentes.has(normal(texto)) || (ml && numeros.has(ml))) { repetidas++; continue; }
-    existentes.add(normal(texto));
+    const chave = chaveEndereco(texto);
+    if (existentes.has(chave) || (ml && numeros.has(ml))) { repetidas++; continue; }
+    existentes.add(chave);
     if (ml) numeros.add(ml);
     S.paradas.push({id: novoId(), area: S.areaAtual, ml, texto, unidades, comercial, lat: null, lng: null, exibido: '', precisao: 'pendente', candidatos: [], entregue: false});
     novas++;
@@ -914,7 +974,7 @@ async function processarCompartilhado() {
       const doTexto = extrairEnderecos(texto);
       linhas.push(...(doTexto.length ? doTexto : texto.split('\n').map(l => l.trim()).filter(Boolean)));
     }
-    if (!linhas.length) { aba = 'enderecos'; render(); status('Não achei endereços no que foi compartilhado. Tente um print com o endereço visível.', 6000); return; }
+    if (!linhas.length) { aba = 'enderecos'; render(); status('Não achei endereços. Compartilhe o print da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000); return; }
     const {novas, repetidas} = adicionarLinhas(linhas);
     status(`${novas} parada(s) nova(s)${repetidas ? `, ${repetidas} já existia(m)` : ''}. Buscando no mapa…`);
     aba = 'conferir'; render();
@@ -934,7 +994,7 @@ async function lerPrints(files) {
     ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + unicos.join('\n');
     status(unicos.length
       ? `${unicos.length} endereço(s) lido(s). Confira o texto e toque em "Adicionar".`
-      : 'Não achei endereços na imagem. Tente um print com o endereço visível.', 6000);
+      : 'Não achei endereços. Use o print da LISTA de paradas (o botão de lista no app), onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
   } catch (e) {
     status('Não consegui ler a imagem: ' + e.message, 5000);
   }
