@@ -1,0 +1,1119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d4ed8">
+<title>Rota de Entregas</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone-192.png">
+<link rel="apple-touch-icon" href="icone-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--tx:#111827;--mut:#6b7280;--bd:#e5e7eb;--pri:#1d4ed8;--ok:#16a34a;--bad:#dc2626}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+#app{display:flex;flex-direction:column;height:100%}
+.mapwrap{position:relative;flex:none}
+#map{height:36vh;background:#dde3ea}
+#app.mapa-grande #map{height:70vh}
+#btnMapa{position:absolute;right:10px;top:10px;z-index:500}
+#painel{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--card)}
+nav{display:flex;border-bottom:1px solid var(--bd)}
+nav button{flex:1;border:0;background:none;padding:12px 4px;font-size:15px;font-weight:600;color:var(--mut);border-bottom:3px solid transparent}
+nav button.on{color:var(--pri);border-color:var(--pri)}
+#conteudo{flex:1;overflow:auto;padding:14px 14px 90px}
+h2{font-size:17px;margin:4px 0 10px}
+label{display:block;font-size:14px;color:var(--mut);margin:10px 0 4px}
+input[type=text],input[type=password],input[type=time],textarea,select{width:100%;font:inherit;padding:10px;border:1px solid var(--bd);border-radius:10px;background:#fff;color:var(--tx)}
+textarea{min-height:140px;resize:vertical}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:12px 14px;font:inherit;font-weight:600;background:#e5e7eb;color:var(--tx);text-decoration:none;cursor:pointer}
+.btn.pri{background:var(--pri);color:#fff}
+.btn.ok{background:var(--ok);color:#fff}
+.btn.waze{background:#33ccff;color:#06283d}
+.btn.peq{padding:8px 10px;font-size:14px}
+.btn:disabled{opacity:.45}
+.linha{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.linha .btn{flex:1 1 auto}
+.item{border:1px solid var(--bd);border-radius:12px;padding:10px;margin:8px 0;background:#fff}
+.item.sel{outline:3px solid var(--pri)}
+.topo{display:flex;gap:10px;align-items:flex-start}
+.badge{flex:none;min-width:34px;height:30px;padding:0 6px;border-radius:15px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px}
+.txt{flex:1;min-width:0;word-break:break-word}
+.orig{font-weight:600}
+.achado{font-size:13px;color:var(--mut)}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;color:#fff;margin-top:4px}
+.aviso{background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:10px;font-size:14px;margin:10px 0}
+.info{font-size:14px;color:var(--mut)}
+.proxima{background:#f8fafc;border:3px solid var(--pri);border-radius:14px;padding:12px;margin-bottom:12px}
+.grande{font-size:19px;font-weight:700;margin:4px 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--bd);background:#fff;border-radius:99px;padding:8px 12px;font:inherit;font-size:14px;font-weight:600;color:var(--tx)}
+.chip.on{border-color:var(--c,var(--pri));background:color-mix(in srgb,var(--c,var(--pri)) 12%,#fff)}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--c);display:inline-block;flex:none}
+.cor{width:38px;height:38px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--bd);background:var(--c)}
+.cor.on{box-shadow:0 0 0 3px var(--tx)}
+.area-cab{display:flex;align-items:center;gap:8px;margin:18px 0 6px;font-size:16px}
+.area-cab .txt{font-weight:700}
+.parada{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--bd)}
+.parada:first-of-type{border-top:0}
+.parada.feito .txt{text-decoration:line-through;color:var(--mut)}
+.parada.feito .badge{background:#9ca3af!important}
+.bloco-cab{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mut);margin-bottom:4px}
+.cands button{display:block;width:100%;text-align:left;border:1px solid var(--bd);background:#f9fafb;border-radius:8px;padding:8px;margin-top:6px;font:inherit;font-size:14px}
+details{margin-top:14px}
+summary{font-weight:600;cursor:pointer}
+#status{position:fixed;left:12px;right:12px;bottom:12px;background:#111827;color:#fff;border-radius:12px;padding:12px 14px;font-size:14px;display:none;z-index:1000}
+#status.on{display:block}
+.pino{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:grid;place-items:center}
+.pino.duvida{border:3px solid #dc2626}
+.pino span{transform:rotate(45deg);color:#fff;font-weight:700;font-size:11px}
+@media (min-width:900px){
+  #app{flex-direction:row-reverse}
+  .mapwrap{flex:1}
+  #map,#app.mapa-grande #map{height:100%}
+  #painel{flex:none;width:440px;border-right:1px solid var(--bd)}
+  #btnMapa{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="mapwrap"><div id="map"></div><button id="btnMapa" class="btn peq">⤢ Mapa</button></div>
+  <div id="painel">
+    <nav>
+      <button data-aba="enderecos">1. Endereços</button>
+      <button data-aba="conferir">2. Conferir</button>
+      <button data-aba="rota">3. Rota</button>
+    </nav>
+    <div id="conteudo"></div>
+  </div>
+</div>
+<div id="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const CHAVE = 'rota-entregas-v2';
+const CORES = [['Verde','#16a34a','🟢'],['Amarelo','#ca8a04','🟡'],['Roxo','#9333ea','🟣'],['Azul','#2563eb','🔵'],['Laranja','#ea580c','🟠'],['Rosa','#db2777','🩷']];
+const ROTULO = {exato:'Número encontrado', bom:'Prédio encontrado', rua:'Rua encontrada (chega perto)', ruim:'Impreciso — confira o pino', nao:'Não encontrado', manual:'Ajustado por você', pendente:'Ainda não buscado'};
+const CORP = {exato:'#16a34a', bom:'#16a34a', rua:'#0891b2', ruim:'#dc2626', nao:'#dc2626', manual:'#7c3aed', pendente:'#6b7280'};
+const RANK = {exato:0, manual:0, bom:1, rua:2, ruim:3, nao:4, pendente:5};
+const DUVIDA = new Set(['ruim', 'nao']);
+const RAIO_BLOCO = 300;
+const RUA = /^(rua|r\.|avenida|av\.?|travessa|tv\.?|trav\.?|pra[çc]a|p[çc]\.|alameda|al\.|rodovia|rod\.|estrada|estr?\.|via|largo|beco|viela|passagem|conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
+const COMPLEMENTO = /^(condom[ií]nio|cond\.|edif[ií]cio|ed\.|apto?\.?|apartamento|bloco|bl\.|casa|lote|sala|loja|fundos|bairro|cep\b|pr[oó]ximo|perto|ao lado|em frente|refer[eê]ncia)/i;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dorme = ms => new Promise(r => setTimeout(r, ms));
+const normal = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+const novoId = () => Math.random().toString(36).slice(2, 10);
+
+let S = carregar();
+let aba = S.paradas.length ? (S.rota ? 'rota' : 'conferir') : 'enderecos';
+let selecionada = null, posicionando = null, ocupado = false, soDuvidas = false;
+
+function vazio() {
+  const id = novoId();
+  return {cidade:'', googleKey:'', tamTrecho:9, inicio:null, voltar:false, areas:[{id, nome:'Verde', cor:'#16a34a', prazo:''}], areaAtual:id, areasManual:false, paradas:[], rota:null, pernas:{}};
+}
+function carregar() {
+  try {
+    const s = JSON.parse(localStorage.getItem(CHAVE));
+    if (s && Array.isArray(s.paradas) && Array.isArray(s.areas) && s.areas.length) return Object.assign(vazio(), s);
+  } catch (e) {}
+  return vazio();
+}
+function salvar() { try { localStorage.setItem(CHAVE, JSON.stringify(S)); } catch (e) {} }
+const parada = id => S.paradas.find(p => p.id === id);
+const area = id => S.areas.find(a => a.id === id) || S.areas[0];
+const emoji = cor => (CORES.find(c => c[1] === cor) || [,,'⚪'])[2];
+const pendentesDa = id => S.paradas.filter(p => p.area === id && !p.entregue && p.lat != null);
+
+function status(msg, ms) {
+  const el = $('#status');
+  if (!msg) { el.classList.remove('on'); return; }
+  el.textContent = msg; el.classList.add('on');
+  if (ms) setTimeout(() => { if (el.textContent === msg) el.classList.remove('on'); }, ms);
+}
+
+/* ---------- Leitura de texto ---------- */
+
+const limparRuido = l => l.replace(/[|©®✔✓]/g, ' ').replace(/\s+/g, ' ').trim().replace(/(\d)\s+[^\s\d,]{1,2}$/, '$1');
+const TEM_CEP = /\b\d{5}-?\d{3}\b/;
+const RUA_EM = new RegExp('^(.{0,6}?)\\s*(' + RUA.source.slice(1) + '.*)$', 'i');
+const RUA_COMPLEMENTO = /^(conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
+
+function analisarLinha(linha) {
+  let texto = limparRuido(linha), ml = null, unidades = null, comercial = false;
+  const mu = texto.match(/\s·\s*(\d+)\s*unid/i);
+  if (mu) unidades = +mu[1];
+  if (/\s·\s*comercial\b/i.test(texto)) comercial = true;
+  texto = texto.replace(/\s·\s.*$/, '').trim().replace(/(\d)\s+[^\s\d,]{1,2}$/, '$1').replace(/(\d)\s+[^\s\d,]{1,2}(?=,)/, '$1');
+  const m = (texto + ' ').match(RUA_EM);
+  if (m && m[1]) {
+    const d = m[1].match(/\d{1,3}/);
+    if (d) ml = d[0];
+    texto = m[2].trim();
+  }
+  return {ml, texto, unidades, comercial};
+}
+
+function extrairEnderecos(bruto) {
+  const linhas = bruto.split('\n').map(limparRuido).filter(Boolean);
+  const out = [];
+  let numeroSolto = null, aberto = null;
+  for (const l of linhas) {
+    const {ml, texto} = analisarLinha(l);
+    const complementoDoAnterior = aberto && !TEM_CEP.test(aberto.texto) && /\d/.test(aberto.texto) && RUA_COMPLEMENTO.test(texto + ' ');
+    if (RUA.test(texto + ' ') && !complementoDoAnterior) {
+      aberto = {ml: ml || numeroSolto, texto};
+      out.push(aberto);
+      numeroSolto = null;
+      continue;
+    }
+    const ultimo = out[out.length - 1];
+    if (ultimo && /hor[aá]rio\s+comercial/i.test(l)) { ultimo.comercial = true; aberto = null; continue; }
+    const mu = l.match(/entrega\s+(\d+)\s+unidade/i);
+    if (ultimo && mu) { ultimo.unidades = +mu[1]; aberto = null; continue; }
+    if (aberto && !/\d/.test(aberto.texto) && /^\d{1,5}\b/.test(l)) { aberto.texto += ' ' + l; continue; }
+    if (aberto && !TEM_CEP.test(aberto.texto) && (COMPLEMENTO.test(l) || TEM_CEP.test(l))) { aberto.texto += ', ' + l; continue; }
+    aberto = null;
+    const mn = l.match(/^[#(]?(\d{1,3})(?:[).:\]\-]|\s|$)/);
+    numeroSolto = mn && !TEM_CEP.test(l) ? mn[1] : null;
+  }
+  return out
+    .filter(e => /\s\d{1,5}\b/.test(e.texto) || TEM_CEP.test(e.texto))
+    .map(e => (e.ml ? e.ml + ' ' : '') + e.texto + (e.unidades ? ` · ${e.unidades} unid` : '') + (e.comercial ? ' · comercial' : ''));
+}
+
+function decompor(txt) {
+  const mc = txt.match(/\b(\d{5})-?(\d{3})\b/);
+  const cep = mc ? mc[1] + mc[2] : null;
+  let limpo = mc ? txt.replace(mc[0], ' ') : txt;
+  limpo = limpo.replace(/\bCEP\b:?/ig, ' ');
+  const seg = limpo.split(',').map(s => s.trim()).filter(Boolean);
+  let rua = seg[0] || '', numero = null, resto = seg.slice(1);
+  const fim = rua.match(/^(.*\D)\s+(?:n[º°o.]*\s*)?(\d{1,5})[a-z]?$/i);
+  if (fim) { rua = fim[1].trim(); numero = fim[2]; }
+  else if (resto.length && /^(?:n[º°o.]*\s*)?\d{1,5}[a-z]?\b/i.test(resto[0])) { numero = resto[0].match(/\d{1,5}/)[0]; resto = resto.slice(1); }
+  rua = rua.replace(/\s+n[º°o.]*$/i, '').trim();
+  return {rua, numero, cep, resto};
+}
+
+/* ---------- Geocodificação ---------- */
+
+const filas = {};
+async function espacado(chave, ms) {
+  const espera = ms - (Date.now() - (filas[chave] || 0));
+  filas[chave] = Date.now() + Math.max(0, espera);
+  if (espera > 0) await dorme(espera);
+}
+
+async function nominatim(params) {
+  await espacado('nominatim', 1100);
+  const u = new URL('https://nominatim.openstreetmap.org/search');
+  const base = {format:'jsonv2', addressdetails:1, limit:5, countrycodes:'br', 'accept-language':'pt-BR'};
+  Object.entries({...base, ...params}).forEach(([k, v]) => u.searchParams.set(k, v));
+  const r = await fetch(u);
+  if (!r.ok) throw new Error('Serviço de mapas respondeu ' + r.status);
+  return (await r.json()).map(candidatoOSM);
+}
+
+function candidatoOSM(r) {
+  const a = r.address || {};
+  let precisao = 'ruim';
+  if (a.house_number) precisao = 'exato';
+  else if (r.category === 'building' || r.type === 'house') precisao = 'bom';
+  else if (r.category === 'highway' || r.addresstype === 'road') precisao = 'rua';
+  const rua = [a.road, a.house_number].filter(Boolean).join(', ');
+  const bairro = a.suburb || a.neighbourhood || a.quarter || a.city_district || '';
+  const cidade = a.city || a.town || a.village || a.municipality || '';
+  return {lat: +r.lat, lng: +r.lon, exibido: [rua, bairro, cidade].filter(Boolean).join(' — ') || r.display_name, precisao, rua: a.road || (r.category === 'highway' ? r.name : ''), fonte: 'OpenStreetMap'};
+}
+
+const TIPOS_RUA = /^(rua|r|avenida|av|travessa|tv|trav|praca|pc|alameda|al|rodovia|rod|estrada|est|via|largo|beco|viela|passagem)\b\.?\s*/;
+const PALAVRAS_VAZIAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'doutor', 'dr', 'professor', 'prof', 'presidente', 'pres', 'governador', 'gov', 'ministro', 'min', 'senador', 'sen', 'deputado', 'dep', 'coronel', 'cel', 'general', 'gen', 'padre', 'pe', 'sao', 'santa', 'santo']);
+function palavrasRua(nome) {
+  return normal(nome).replace(TIPOS_RUA, '').replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(w => w.length > 1 && !PALAVRAS_VAZIAS.has(w));
+}
+function mesmaRua(procurada, achada) {
+  const a = palavrasRua(procurada), b = new Set(palavrasRua(achada));
+  if (!a.length || !b.size) return false;
+  return a.filter(w => b.has(w)).length / a.length >= 0.6;
+}
+
+async function cepComCoordenada(cep) {
+  try {
+    const r = await fetch(`https://cep.awesomeapi.com.br/json/${cep}`);
+    if (r.ok) {
+      const j = await r.json();
+      if (j && j.lat && j.lng) return {logradouro: j.address || '', bairro: j.district || '', cidade: j.city || '', uf: j.state || '', lat: +j.lat, lng: +j.lng};
+    }
+  } catch (e) {}
+  try {
+    const v = await (await fetch(`https://viacep.com.br/ws/${cep}/json/`)).json();
+    if (v && !v.erro) return {logradouro: v.logradouro || '', bairro: v.bairro || '', cidade: v.localidade, uf: v.uf, lat: null, lng: null};
+  } catch (e) {}
+  return null;
+}
+
+function comCidade(txt) {
+  if (!S.cidade) return txt;
+  const nome = normal(S.cidade.split(/[,\-\/]/)[0]);
+  return nome && normal(txt).includes(nome) ? txt : txt + ', ' + S.cidade;
+}
+
+async function geoOSM(txt) {
+  const d = decompor(txt);
+  const cep = d.cep ? await cepComCoordenada(d.cep) : null;
+  const logradouro = (cep && cep.logradouro) || d.rua;
+  const cands = [];
+  const validar = lista => {
+    for (const c of lista) {
+      const nomeOk = c.rua && mesmaRua(logradouro, c.rua);
+      const pertoDoCep = !cep || cep.lat == null || haversine(c, cep) < 2500;
+      if (!nomeOk || !pertoDoCep) c.precisao = 'ruim';
+      cands.push(c);
+    }
+  };
+  const bom = () => cands.some(c => ['exato', 'bom'].includes(c.precisao));
+  const naRua = () => cands.some(c => ['exato', 'bom', 'rua'].includes(c.precisao));
+
+  if (cep && logradouro) {
+    const base = {city: cep.cidade, state: cep.uf, country: 'Brasil'};
+    if (d.numero) validar(await nominatim({...base, street: d.numero + ' ' + logradouro}));
+    if (!bom() && cep.lat != null) {
+      cands.push({lat: cep.lat, lng: cep.lng, exibido: [logradouro, d.numero].filter(Boolean).join(', ') + ' — ' + [cep.bairro, cep.cidade].filter(Boolean).join(' — ') + ' (pelo CEP)', precisao: 'rua', rua: logradouro, fonte: 'CEP'});
+    }
+    if (!naRua()) validar(await nominatim({...base, street: logradouro}));
+  }
+  if (!naRua() && logradouro) {
+    const q = [logradouro, d.numero].filter(Boolean).join(' ');
+    validar(await nominatim({q: cep ? `${q}, ${cep.cidade}, ${cep.uf}` : comCidade(q)}));
+    if (!naRua() && d.numero) validar(await nominatim({q: cep ? `${logradouro}, ${cep.cidade}, ${cep.uf}` : comCidade(logradouro)}));
+  }
+  if (!cands.length && cep && cep.bairro) {
+    cands.push(...(await nominatim({q: `${cep.bairro}, ${cep.cidade}, ${cep.uf}`})).map(c => ({...c, precisao: 'ruim'})));
+  }
+  return cands;
+}
+
+async function geoGoogle(txt) {
+  const u = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+  u.searchParams.set('address', comCidade(txt));
+  u.searchParams.set('region', 'br');
+  u.searchParams.set('language', 'pt-BR');
+  u.searchParams.set('components', 'country:BR');
+  u.searchParams.set('key', S.googleKey);
+  const j = await (await fetch(u)).json();
+  if (j.status === 'ZERO_RESULTS') return [];
+  if (j.status !== 'OK') throw new Error('Google: ' + j.status + (j.error_message ? ' — ' + j.error_message : ''));
+  return j.results.map(r => {
+    const t = r.geometry.location_type;
+    let precisao = t === 'ROOFTOP' ? 'exato' : t === 'RANGE_INTERPOLATED' ? 'bom' : (r.types || []).includes('route') ? 'rua' : 'ruim';
+    if (r.partial_match && precisao === 'exato') precisao = 'bom';
+    return {lat: r.geometry.location.lat, lng: r.geometry.location.lng, exibido: r.formatted_address, precisao, fonte: 'Google'};
+  });
+}
+
+async function geocodificar(txt) {
+  let cands = S.googleKey ? await geoGoogle(txt) : await geoOSM(txt);
+  const vistos = new Set();
+  cands = cands.filter(c => {
+    const k = c.lat.toFixed(5) + ',' + c.lng.toFixed(5);
+    if (vistos.has(k)) return false;
+    vistos.add(k); return true;
+  });
+  cands.sort((a, b) => RANK[a.precisao] - RANK[b.precisao]);
+  return cands.slice(0, 6);
+}
+
+async function buscarParada(p) {
+  try {
+    const cands = await geocodificar(p.texto);
+    p.candidatos = cands;
+    if (cands.length) Object.assign(p, {lat: cands[0].lat, lng: cands[0].lng, exibido: cands[0].exibido, precisao: cands[0].precisao});
+    else Object.assign(p, {lat: null, lng: null, exibido: '', precisao: 'nao'});
+  } catch (e) {
+    p.precisao = 'pendente';
+    throw e;
+  }
+}
+
+async function buscarPendentes() {
+  if (ocupado) return;
+  const alvo = S.paradas.filter(p => p.precisao === 'pendente');
+  if (!alvo.length) return;
+  ocupado = true;
+  let erro = null;
+  for (let i = 0; i < alvo.length; i++) {
+    status(`Buscando endereços… ${i + 1} de ${alvo.length}`);
+    try { await buscarParada(alvo[i]); } catch (e) { erro = e; }
+    salvar(); desenharMapa(); if (aba === 'conferir') render();
+  }
+  ocupado = false;
+  status(erro ? 'Alguns falharam (' + erro.message + '). Toque em "Buscar pendentes".' : 'Pronto! Confira os vermelhos, se houver.', 4000);
+  render(); desenharMapa(true);
+}
+
+function invalidarRota() { S.rota = null; S.pernas = {}; salvar(); }
+
+/* ---------- Otimização ---------- */
+
+function haversine(a, b) {
+  const R = 6371000, r = x => x * Math.PI / 180;
+  const dLat = r(b.lat - a.lat), dLng = r(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+async function osrm(caminho) {
+  await espacado('osrm', 1100);
+  return (await fetch('https://router.project-osrm.org/' + caminho)).json();
+}
+
+const coordStr = pts => pts.map(p => p.lng.toFixed(6) + ',' + p.lat.toFixed(6)).join(';');
+
+async function matriz(pts) {
+  if (pts.length > 1 && pts.length <= 100) {
+    try {
+      const j = await osrm(`table/v1/driving/${coordStr(pts)}?annotations=duration,distance`);
+      if (j.code === 'Ok') {
+        const fix = m => m.map(l => l.map(v => v == null ? 1e9 : v));
+        return {dur: fix(j.durations), dist: fix(j.distances), porRuas: true};
+      }
+    } catch (e) {}
+  }
+  const dist = pts.map(a => pts.map(b => haversine(a, b) * 1.35));
+  return {dur: dist.map(l => l.map(m => m / 7)), dist, porRuas: pts.length <= 1};
+}
+
+function custo(p, D) {
+  let c = 0;
+  for (let i = 1; i < p.length; i++) c += D[p[i - 1]][p[i]];
+  return c;
+}
+
+function otimizar(n, D, fixo) {
+  const inicios = fixo ? [0] : [...Array(n).keys()];
+  let p = null, c = Infinity;
+  for (const s of inicios) {
+    const q = [s], usado = new Set([s]);
+    while (q.length < n) {
+      const u = q[q.length - 1];
+      let b = -1, bd = Infinity;
+      for (let v = 0; v < n; v++) if (!usado.has(v) && D[u][v] < bd) { bd = D[u][v]; b = v; }
+      q.push(b); usado.add(b);
+    }
+    const cq = custo(q, D);
+    if (cq < c) { c = cq; p = q; }
+  }
+  const ini = fixo ? 1 : 0, limite = Date.now() + 3000;
+  let melhorou = true;
+  while (melhorou && Date.now() < limite) {
+    melhorou = false;
+    for (let i = ini; i < n - 1; i++) for (let k = i + 1; k < n; k++) {
+      const q = p.slice(0, i).concat(p.slice(i, k + 1).reverse(), p.slice(k + 1));
+      const cq = custo(q, D);
+      if (cq < c - 1e-6) { p = q; c = cq; melhorou = true; }
+    }
+    for (let i = ini; i < n; i++) for (let j = ini; j < n; j++) {
+      if (i === j) continue;
+      const q = p.slice();
+      const [x] = q.splice(i, 1);
+      q.splice(j, 0, x);
+      const cq = custo(q, D);
+      if (cq < c - 1e-6) { p = q; c = cq; melhorou = true; }
+    }
+  }
+  return p;
+}
+
+function centro(areaId) {
+  const ps = pendentesDa(areaId);
+  return {lat: ps.reduce((s, p) => s + p.lat, 0) / ps.length, lng: ps.reduce((s, p) => s + p.lng, 0) / ps.length};
+}
+
+function ordenarAreas(pos) {
+  const comPend = S.areas.filter(a => pendentesDa(a.id).length);
+  if (S.areasManual) return comPend;
+  const resto = [...comPend], out = [];
+  let aqui = pos;
+  while (resto.length) {
+    const prazos = resto.map(a => a.prazo).filter(Boolean).sort();
+    const cands = prazos.length ? resto.filter(a => a.prazo === prazos[0]) : resto;
+    let escolhida = cands[0];
+    if (aqui) for (const a of cands) if (haversine(aqui, centro(a.id)) < haversine(aqui, centro(escolhida.id))) escolhida = a;
+    out.push(escolhida);
+    resto.splice(resto.indexOf(escolhida), 1);
+    aqui = centro(escolhida.id);
+  }
+  S.areas = out.concat(S.areas.filter(a => !out.includes(a)));
+  return out;
+}
+
+async function montarRota() {
+  if (ocupado) return;
+  if (!S.paradas.some(p => !p.entregue && p.lat != null)) { status('Nenhuma parada com local encontrado.', 3000); return; }
+  ocupado = true;
+  try {
+    let pos = S.inicio;
+    const rota = {areas: [], dur: 0, dist: 0, mlDur: 0, mlDist: 0, mlOk: true, porRuas: true, quando: Date.now()};
+    S.pernas = {};
+    for (const a of ordenarAreas(S.inicio)) {
+      status(`Calculando área ${a.nome}…`);
+      const alvos = pendentesDa(a.id);
+      const pts = (pos ? [pos] : []).concat(alvos);
+      const M = await matriz(pts);
+      if (!M.porRuas) rota.porRuas = false;
+      const p = pts.length === 1 ? [0] : otimizar(pts.length, M.dur, !!pos);
+      const ordem = p.filter(i => !(pos && i === 0)).map(i => pts[i].id);
+      {
+        const off = pos ? 1 : 0;
+        const todosComNumero = alvos.every(x => x.ml);
+        const chave = i => todosComNumero ? +pts[i].ml : S.paradas.indexOf(pts[i]);
+        const seqML = alvos.map((x, i) => i + off).sort((i, j) => chave(i) - chave(j));
+        if (pos) seqML.unshift(0);
+        rota.mlDur += custo(seqML, M.dur); rota.mlDist += custo(seqML, M.dist);
+      }
+      let dur = 0, dist = 0;
+      for (let k = 1; k < p.length; k++) {
+        const perna = {dur: M.dur[p[k - 1]][p[k]], dist: M.dist[p[k - 1]][p[k]]};
+        S.pernas[pts[p[k]].id] = perna;
+        dur += perna.dur; dist += perna.dist;
+      }
+      let linha = null;
+      const seq = p.map(i => pts[i]);
+      if (M.porRuas && seq.length >= 2) {
+        try {
+          const j = await osrm(`route/v1/driving/${coordStr(seq)}?overview=simplified&geometries=geojson`);
+          if (j.code === 'Ok') linha = j.routes[0].geometry.coordinates.map(([lng, lat]) => [+lat.toFixed(5), +lng.toFixed(5)]);
+        } catch (e) {}
+      }
+      rota.areas.push({id: a.id, ordem, dur, dist, linha});
+      rota.dur += dur; rota.dist += dist;
+      pos = parada(ordem[ordem.length - 1]);
+    }
+    if (S.voltar && S.inicio && pos && pos !== S.inicio) {
+      const M = await matriz([pos, S.inicio]);
+      rota.dur += M.dur[0][1]; rota.dist += M.dist[0][1];
+    }
+    S.rota = rota;
+    salvar();
+    status(rota.porRuas ? 'Rota pronta!' : 'Rota pronta (sem acesso às ruas: usei distância aproximada).', 3500);
+  } catch (e) {
+    status('Erro ao montar rota: ' + e.message, 5000);
+  }
+  ocupado = false;
+  aba = 'rota'; render(); desenharMapa(true);
+}
+
+function blocos(ordem) {
+  const out = [];
+  for (const id of ordem) {
+    const p = parada(id);
+    if (!p || p.lat == null) continue;
+    const b = out[out.length - 1];
+    if (b && haversine(parada(b[0]), p) <= RAIO_BLOCO) b.push(id);
+    else out.push([id]);
+  }
+  return out;
+}
+
+/* ---------- Mapa ---------- */
+
+const mapa = L.map('map').setView([-15.8, -47.9], 4);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(mapa);
+const camada = L.layerGroup().addTo(mapa);
+let marcadores = {};
+
+function rotuloDe(p) {
+  if (S.rota) {
+    const i = S.rota.areas.flatMap(a => a.ordem).indexOf(p.id);
+    if (i >= 0) return String(i + 1);
+  }
+  if (p.ml) return '#' + p.ml;
+  return String(S.paradas.indexOf(p) + 1);
+}
+
+function icone(texto, cor, apagado, duvida) {
+  return L.divIcon({
+    className: '', iconSize: [30, 30], iconAnchor: [15, 30],
+    html: `<div class="pino ${duvida ? 'duvida' : ''}" style="background:${cor};opacity:${apagado ? .4 : 1}"><span>${esc(texto)}</span></div>`
+  });
+}
+
+function desenharMapa(enquadrar) {
+  camada.clearLayers(); marcadores = {};
+  const limites = [];
+  if (S.inicio) {
+    L.marker([S.inicio.lat, S.inicio.lng], {icon: icone('S', '#111827')}).bindPopup('Saída: ' + esc(S.inicio.exibido)).addTo(camada);
+    limites.push([S.inicio.lat, S.inicio.lng]);
+  }
+  if (S.rota) for (const ra of S.rota.areas) if (ra.linha) L.polyline(ra.linha, {color: area(ra.id).cor, weight: 4, opacity: .75}).addTo(camada);
+  for (const p of S.paradas) {
+    if (p.lat == null) continue;
+    const a = area(p.area);
+    const m = L.marker([p.lat, p.lng], {icon: icone(p.entregue ? '✓' : rotuloDe(p), a.cor, p.entregue, DUVIDA.has(p.precisao)), draggable: true});
+    m.bindPopup(`<b>${esc(rotuloDe(p))} · ${esc(p.texto)}</b><br><small>${esc(p.exibido)}</small><br><small>Arraste o pino para corrigir.</small>`);
+    m.on('dragend', () => {
+      const ll = m.getLatLng();
+      Object.assign(p, {lat: ll.lat, lng: ll.lng, precisao: 'manual', exibido: 'Posição marcada no mapa'});
+      invalidarRota(); render(); desenharMapa();
+      status('Local corrigido. Monte a rota de novo.', 2500);
+    });
+    m.on('click', () => { selecionada = p.id; render(); document.querySelector(`[data-item="${p.id}"]`)?.scrollIntoView({behavior: 'smooth', block: 'center'}); });
+    m.addTo(camada);
+    marcadores[p.id] = m;
+    if (!p.entregue) limites.push([p.lat, p.lng]);
+  }
+  if (enquadrar && limites.length) mapa.fitBounds(limites, {padding: [30, 30], maxZoom: 16});
+}
+
+mapa.on('click', e => {
+  if (!posicionando) return;
+  const p = parada(posicionando);
+  posicionando = null;
+  if (!p) return;
+  Object.assign(p, {lat: e.latlng.lat, lng: e.latlng.lng, precisao: 'manual', exibido: 'Posição marcada no mapa'});
+  invalidarRota(); render(); desenharMapa();
+  status('Local definido.', 2000);
+});
+
+function focar(id) {
+  const p = parada(id);
+  if (!p || p.lat == null) return;
+  selecionada = id;
+  mapa.setView([p.lat, p.lng], 17);
+  marcadores[id]?.openPopup();
+  if (window.innerWidth < 900) window.scrollTo(0, 0);
+}
+
+const linkWaze = p => `https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`;
+const linkMaps = p => `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=driving`;
+function linkMapsVarios(ps) {
+  const destino = ps[ps.length - 1];
+  const meio = ps.slice(0, -1).map(p => `${p.lat},${p.lng}`).join('|');
+  return `https://www.google.com/maps/dir/?api=1&destination=${destino.lat},${destino.lng}${meio ? '&waypoints=' + encodeURIComponent(meio) : ''}&travelmode=driving`;
+}
+
+function trechos(ra) {
+  const tam = Math.max(1, +S.tamTrecho || 9);
+  const pontos = blocos(ra.ordem)
+    .map(b => ({ids: b, alvo: b.map(parada).find(p => !p.entregue)}))
+    .filter(x => x.alvo);
+  const out = [];
+  for (let i = 0; i < pontos.length; i += tam) out.push(pontos.slice(i, i + tam));
+  return out;
+}
+
+const fmtMin = s => s >= 3600 ? `${Math.floor(s / 3600)}h${String(Math.round(s % 3600 / 60)).padStart(2, '0')}` : `${Math.max(1, Math.round(s / 60))} min`;
+const fmtKm = m => m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(m) + ' m';
+
+/* ---------- Telas ---------- */
+
+function render() {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.aba === aba));
+  const c = $('#conteudo');
+  if (aba === 'enderecos') c.innerHTML = telaEnderecos();
+  if (aba === 'conferir') c.innerHTML = telaConferir();
+  if (aba === 'rota') c.innerHTML = telaRota();
+}
+
+function chipArea(a, acao, on) {
+  const n = S.paradas.filter(p => p.area === a.id).length;
+  return `<button class="chip ${on ? 'on' : ''}" style="--c:${a.cor}" data-acao="${acao}" data-id="${a.id}">
+    <span class="dot"></span>${esc(a.nome)}${a.prazo ? ' · até ' + esc(a.prazo) : ''} <small>(${n})</small></button>`;
+}
+
+function telaEnderecos() {
+  const a = area(S.areaAtual);
+  return `
+    <h2>Adicionar endereços por área</h2>
+    <div class="info">Faça uma área (cor do app) por vez: escolha a cor abaixo, tire print da lista dessa área e adicione.</div>
+    <label for="cidade">Cidade padrão</label>
+    <input type="text" id="cidade" placeholder="Ex.: Aracaju, SE" value="${esc(S.cidade)}">
+    <label>Área</label>
+    <div class="chips">
+      ${S.areas.map(x => chipArea(x, 'areaSel', x.id === a.id)).join('')}
+      <button class="chip" data-acao="areaNova">+ Nova área</button>
+    </div>
+    <div class="item" style="margin-top:10px">
+      <div class="linha" style="margin-top:0">
+        ${CORES.map(([nome, cor]) => `<button class="cor ${a.cor === cor ? 'on' : ''}" style="--c:${cor}" title="${nome}" aria-label="${nome}" data-acao="areaCor" data-cor="${cor}" data-nome="${nome}"></button>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:2"><label for="aNome">Nome</label><input type="text" id="aNome" value="${esc(a.nome)}"></div>
+        <div style="flex:1"><label for="aPrazo">Entregar até</label><input type="time" id="aPrazo" value="${esc(a.prazo)}"></div>
+      </div>
+      ${S.areas.length > 1 ? `<div class="linha"><button class="btn peq" data-acao="areaRemover">Apagar esta área</button></div>` : ''}
+    </div>
+    <label for="lista">Endereços da área ${esc(a.nome)} (um por linha)</label>
+    <textarea id="lista" placeholder="18 Avenida Dulce Diniz 920, Condomínio Luzia Residence, CEP 49048430&#10;..."></textarea>
+    <div class="linha">
+      <button class="btn pri" data-acao="adicionar">Adicionar em ${esc(a.nome)}</button>
+      <label class="btn" style="margin:0;color:var(--tx)">📷 Ler print(s)
+        <input type="file" accept="image/*" id="print" multiple hidden>
+      </label>
+    </div>
+    <div class="info" style="margin-top:8px">Pode mandar vários prints de uma vez (rolando a lista). Endereços repetidos são ignorados. O número do app na frente (ex.: <b>18</b> Avenida…) aparece no pino.</div>
+    ${S.paradas.length ? `<div class="linha"><button class="btn" data-acao="limpar">🗑 Nova rota do dia (apaga tudo)</button></div>` : ''}
+    <details>
+      <summary>Precisão extra com Google (opcional)</summary>
+      <div class="info" style="margin-top:6px">Sem chave, a busca usa o OpenStreetMap, que às vezes acha só a rua. Com uma chave da Geocoding API do Google o número costuma vir certo (cota grátis mensal; pede cartão para criar).</div>
+      <label for="gkey">Chave da API do Google</label>
+      <input type="password" id="gkey" value="${esc(S.googleKey)}" placeholder="AIza…" autocomplete="off">
+      <div class="linha"><button class="btn" data-acao="salvarChave">Salvar chave</button></div>
+    </details>`;
+}
+
+function telaConferir() {
+  if (!S.paradas.length) return `<div class="info">Nenhum endereço ainda. Vá em <b>1. Endereços</b>.</div>`;
+  const conta = ks => S.paradas.filter(p => ks.includes(p.precisao)).length;
+  const duvidas = conta(['ruim', 'nao']), pend = conta(['pendente']);
+  let html = `
+    <h2>Conferir locais</h2>
+    <div class="info">✅ ${conta(['exato', 'bom', 'manual'])} no número · 🛣️ ${conta(['rua'])} na rua certa · ❗ ${duvidas} para conferir${pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
+    ${duvidas ? `<div class="aviso">Os de borda vermelha podem estar longe do lugar. Toque em <b>Ver</b> e arraste o pino, ou use <b>Marcar no mapa</b> (olhando a posição no app do ML).</div>` : ''}
+    <div class="linha">
+      ${pend ? `<button class="btn pri" data-acao="buscarPendentes">Buscar ${pend} pendente(s)</button>` : ''}
+      <button class="btn" data-acao="soDuvidas">${soDuvidas ? 'Mostrar todos' : 'Só os duvidosos'}</button>
+      <button class="btn ${pend ? '' : 'pri'}" data-acao="irRota">Ir para a rota →</button>
+    </div>`;
+  for (const a of S.areas) {
+    const ps = S.paradas.filter(p => p.area === a.id && (!soDuvidas || DUVIDA.has(p.precisao) || p.precisao === 'pendente'));
+    if (!ps.length) continue;
+    html += `<div class="area-cab" style="--c:${a.cor}"><span class="dot"></span><span class="txt">${esc(a.nome)}</span><span class="info">${ps.length}</span></div>`;
+    html += ps.map(itemConferir).join('');
+  }
+  return html;
+}
+
+function itemConferir(p) {
+  const sel = selecionada === p.id;
+  const a = area(p.area);
+  const cands = sel && p.candidatos && p.candidatos.length > 1 ? `
+    <div class="cands"><div class="info" style="margin-top:8px">Outras opções encontradas:</div>
+      ${p.candidatos.map((c, k) => `<button data-acao="escolher" data-id="${p.id}" data-k="${k}">
+        <span class="tag" style="background:${CORP[c.precisao]}">${ROTULO[c.precisao]}</span><br>${esc(c.exibido)}</button>`).join('')}
+    </div>` : '';
+  return `
+    <div class="item ${sel ? 'sel' : ''}" data-item="${p.id}">
+      <div class="topo">
+        <div class="badge" style="background:${a.cor}">${esc(rotuloDe(p))}</div>
+        <div class="txt">
+          <div class="orig">${esc(p.texto)}</div>${meta(p)}
+          ${p.exibido ? `<div class="achado">📍 ${esc(p.exibido)}</div>` : ''}
+          <span class="tag" style="background:${CORP[p.precisao]}">${ROTULO[p.precisao]}</span>
+        </div>
+      </div>
+      <div class="linha">
+        ${p.lat != null ? `<button class="btn peq" data-acao="ver" data-id="${p.id}">Ver</button>` : ''}
+        <button class="btn peq" data-acao="posicionar" data-id="${p.id}">${posicionando === p.id ? 'Toque no mapa…' : 'Marcar no mapa'}</button>
+        <button class="btn peq" data-acao="editar" data-id="${p.id}">Editar</button>
+        <button class="btn peq" data-acao="remover" data-id="${p.id}">Remover</button>
+      </div>
+      ${sel ? `<label>Área</label><select data-muda-area="${p.id}">${S.areas.map(x => `<option value="${x.id}" ${x.id === p.area ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select>` : ''}
+      ${cands}
+    </div>`;
+}
+
+function configInicio() {
+  return `
+    <h2>Ponto de saída</h2>
+    <div class="info">${S.inicio ? '📍 ' + esc(S.inicio.exibido) : 'Sem ponto de saída: a rota começa pela parada mais conveniente.'}</div>
+    <div class="linha">
+      <button class="btn" data-acao="gps">📡 Onde estou agora</button>
+      <button class="btn" data-acao="inicioEndereco">Digitar endereço</button>
+      ${S.inicio ? '<button class="btn" data-acao="semInicio">Tirar</button>' : ''}
+    </div>
+    <label style="display:flex;gap:8px;align-items:center;color:var(--tx)">
+      <input type="checkbox" id="voltar" ${S.voltar ? 'checked' : ''} ${S.inicio ? '' : 'disabled'} style="width:20px;height:20px">
+      Voltar ao ponto de saída no final
+    </label>
+    <label for="tamTrecho">Paradas por trecho no Google Maps</label>
+    <input type="text" inputmode="numeric" id="tamTrecho" value="${esc(S.tamTrecho)}" style="max-width:90px">
+    <div class="info">Se o Maps cortar pontos, diminua este número. Entregas bem próximas contam como 1 ponto.</div>
+    <div class="info" style="margin-top:8px">As áreas com horário (“entregar até”) vão primeiro; entre elas, a mais perto.</div>
+    <div class="linha"><button class="btn pri" data-acao="montar">🧭 Montar melhor sequência</button></div>`;
+}
+
+function meta(p) {
+  const partes = [];
+  if (p.ml) partes.push(`no app: #${p.ml}`);
+  if (p.unidades) partes.push(`📦 ${p.unidades} unid.`);
+  if (p.comercial) partes.push('🏪 horário comercial');
+  return partes.length ? `<div class="achado">${partes.join(' · ')}</div>` : '';
+}
+
+function linhaParada(p, comWaze) {
+  const a = area(p.area);
+  return `
+    <div class="parada ${p.entregue ? 'feito' : ''}" data-item="${p.id}">
+      <div class="badge" style="background:${a.cor}">${esc(rotuloDe(p))}</div>
+      <div class="txt" data-acao="ver" data-id="${p.id}">
+        <div>${esc(p.texto)}</div>${meta(p)}
+        ${DUVIDA.has(p.precisao) ? `<span class="tag" style="background:${CORP[p.precisao]}">${ROTULO[p.precisao]}</span>` : ''}
+      </div>
+      ${comWaze && !p.entregue ? `<a class="btn peq waze" href="${linkWaze(p)}" target="_blank" rel="noopener" aria-label="Waze">🧭</a>` : ''}
+      ${p.entregue
+        ? `<button class="btn peq" data-acao="desfazer" data-id="${p.id}">↺</button>`
+        : `<button class="btn peq ok" data-acao="entregue" data-id="${p.id}" aria-label="Entregue">✓</button>`}
+    </div>`;
+}
+
+function telaRota() {
+  if (!S.rota) {
+    const semLocal = S.paradas.filter(p => p.lat == null && !p.entregue).length;
+    return configInicio() + (semLocal ? `<div class="aviso">${semLocal} parada(s) sem local ficarão fora da rota. Corrija em <b>2. Conferir</b>.</div>` : '');
+  }
+  const R = S.rota;
+  const naRota = new Set(R.areas.flatMap(a => a.ordem));
+  const foraDaRota = S.paradas.filter(p => !p.entregue && p.lat != null && !naRota.has(p.id)).length;
+  const semLocal = S.paradas.filter(p => !p.entregue && p.lat == null).length;
+
+  let agora = null;
+  for (const ra of R.areas) {
+    for (const b of blocos(ra.ordem)) if (b.some(id => !parada(id).entregue)) { agora = {ra, b}; break; }
+    if (agora) break;
+  }
+
+  let html = '';
+  if (agora) {
+    const a = area(agora.ra.id);
+    const todasArea = agora.ra.ordem.map(parada).filter(Boolean);
+    const pend = agora.b.map(parada).filter(p => !p.entregue);
+    const alvo = pend[0];
+    const trechoAtual = trechos(agora.ra)[0] || [];
+    const entregasTrecho = trechoAtual.reduce((n, x) => n + x.ids.filter(i => !parada(i).entregue).length, 0);
+    html += `
+      <div class="proxima" style="border-color:${a.cor}">
+        <div class="info" style="display:flex;gap:6px;align-items:center;--c:${a.cor}"><span class="dot"></span>
+          Área <b>${esc(a.nome)}</b>${a.prazo ? ' · até ' + esc(a.prazo) : ''} · ${todasArea.filter(p => p.entregue).length}/${todasArea.length} entregues</div>
+        <div class="grande">${pend.length > 1 ? `${pend.length} entregas aqui perto` : 'Próxima entrega'}</div>
+        <div class="achado">📍 ${esc(alvo.exibido || alvo.texto)}</div>
+        <div class="linha">
+          <a class="btn waze" href="${linkWaze(alvo)}" target="_blank" rel="noopener">Waze</a>
+          <a class="btn pri" href="${linkMaps(alvo)}" target="_blank" rel="noopener">Google Maps</a>
+        </div>
+        ${trechoAtual.length > 1 ? `<div class="linha"><a class="btn pri" href="${linkMapsVarios(trechoAtual.map(x => x.alvo))}" target="_blank" rel="noopener">🗺️ Maps com os próximos ${trechoAtual.length} pontos (${entregasTrecho} entregas)</a></div>` : ''}
+        <div style="margin-top:8px">${agora.b.map(parada).map(p => linhaParada(p, pend.length > 1)).join('')}</div>
+        ${pend.length > 1 ? `<div class="info" style="margin-top:6px">Chegando, use o mapa do app do ML para achar a porta de cada uma.</div>` : ''}
+      </div>`;
+  } else {
+    html += `<div class="proxima"><div class="grande">🎉 Todas as entregas da rota foram feitas!</div></div>`;
+  }
+
+  html += `<div class="info">Total estimado: <b>${fmtKm(R.dist)}</b>, cerca de <b>${fmtMin(R.dur)}</b> dirigindo (sem contar as paradas)${R.porRuas ? '' : ', aproximado'}.</div>`;
+  if (R.mlOk && R.mlDist > 0) {
+    const economia = R.mlDist - R.dist;
+    html += `<div class="info" style="margin-top:4px">Na ordem da lista do app: ${fmtKm(R.mlDist)}, ${fmtMin(R.mlDur)}. ${economia > 200
+      ? `<b style="color:var(--ok)">Esta rota economiza ${fmtKm(economia)}.</b>`
+      : 'A ordem do ML já estava boa.'}</div>`;
+  }
+  if (semLocal) html += `<div class="aviso">${semLocal} parada(s) não encontrada(s) ficaram fora da rota. Corrija em <b>2. Conferir</b>.</div>`;
+  if (foraDaRota) html += `<div class="aviso">${foraDaRota} parada(s) nova(s) ou corrigida(s) fora da rota. <button class="btn peq pri" data-acao="montar">Refazer rota</button></div>`;
+  html += `<div class="linha"><button class="btn" data-acao="copiar">📋 Copiar rota (WhatsApp)</button>
+    ${S.areasManual ? '<button class="btn" data-acao="areasAuto">Ordem automática das áreas</button>' : ''}</div>`;
+
+  R.areas.forEach((ra, i) => {
+    const a = area(ra.id);
+    const ps = ra.ordem.map(parada).filter(Boolean);
+    const feitas = ps.filter(p => p.entregue).length;
+    html += `
+      <div class="area-cab" style="--c:${a.cor}">
+        <span class="dot"></span>
+        <span class="txt">${i + 1}. ${esc(a.nome)}${a.prazo ? ' · até ' + esc(a.prazo) : ''}</span>
+        <span class="info">${feitas}/${ps.length}</span>
+        <button class="btn peq" data-acao="areaSobe" data-id="${a.id}" ${i === 0 ? 'disabled' : ''} aria-label="Subir área">▲</button>
+        <button class="btn peq" data-acao="areaDesce" data-id="${a.id}" ${i === R.areas.length - 1 ? 'disabled' : ''} aria-label="Descer área">▼</button>
+      </div>`;
+    if (feitas === ps.length) { html += `<div class="info">✓ Área concluída.</div>`; return; }
+    html += `<div class="info">${fmtKm(ra.dist)} · ${fmtMin(ra.dur)}</div>`;
+    const ts = trechos(ra);
+    let n = 0;
+    html += `<div class="linha">${ts.map((t, k) => {
+      const ini = n + 1; n += t.length;
+      return `<a class="btn peq pri" href="${linkMapsVarios(t.map(x => x.alvo))}" target="_blank" rel="noopener">Maps trecho ${k + 1} (pontos ${ini}–${n})</a>`;
+    }).join('')}</div>`;
+    blocos(ra.ordem).forEach((b, k) => {
+      const bp = b.map(parada);
+      const pend = bp.filter(p => !p.entregue);
+      const perna = S.pernas[b[0]];
+      html += `
+        <div class="item">
+          <div class="bloco-cab">
+            <span style="flex:1">Parada ${k + 1}${b.length > 1 ? ` · ${b.length} entregas perto` : ''}${perna && perna.dur ? ` · 🚗 ${fmtMin(perna.dur)}` : ''}</span>
+            ${pend.length ? `<a class="btn peq waze" href="${linkWaze(pend[0])}" target="_blank" rel="noopener">Waze</a>` : '✓'}
+          </div>
+          ${bp.map(p => linhaParada(p, false)).join('')}
+        </div>`;
+    });
+  });
+  html += `<details><summary>Ponto de saída / refazer rota</summary>${configInicio()}</details>`;
+  return html;
+}
+
+/* ---------- Ações ---------- */
+
+async function lerImagens(files) {
+  if (!window.Tesseract) {
+    await new Promise((ok, erro) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      s.onload = ok; s.onerror = () => erro(new Error('sem internet para o leitor'));
+      document.head.appendChild(s);
+    });
+  }
+  const worker = await Tesseract.createWorker('por');
+  const achados = [];
+  for (let i = 0; i < files.length; i++) {
+    status(`Lendo print ${i + 1} de ${files.length}…`);
+    const {data} = await worker.recognize(files[i]);
+    achados.push(...extrairEnderecos(data.text));
+  }
+  await worker.terminate();
+  return [...new Set(achados)];
+}
+
+function adicionarLinhas(linhas) {
+  const existentes = new Set(S.paradas.map(x => normal(x.texto)));
+  const numeros = new Set(S.paradas.filter(x => x.ml).map(x => x.ml));
+  let novas = 0, repetidas = 0;
+  for (const l of linhas) {
+    const {ml, texto, unidades, comercial} = analisarLinha(l);
+    if (!texto) continue;
+    if (existentes.has(normal(texto)) || (ml && numeros.has(ml))) { repetidas++; continue; }
+    existentes.add(normal(texto));
+    if (ml) numeros.add(ml);
+    S.paradas.push({id: novoId(), area: S.areaAtual, ml, texto, unidades, comercial, lat: null, lng: null, exibido: '', precisao: 'pendente', candidatos: [], entregue: false});
+    novas++;
+  }
+  if (novas) invalidarRota();
+  salvar();
+  return {novas, repetidas};
+}
+
+async function processarCompartilhado() {
+  let files = [], texto = '';
+  try {
+    const cache = await caches.open('compartilhado');
+    for (const req of await cache.keys()) {
+      const r = await cache.match(req);
+      if (req.url.endsWith('/texto')) texto += await r.text();
+      else files.push(await r.blob());
+      await cache.delete(req);
+    }
+  } catch (e) {}
+  history.replaceState(null, '', location.pathname);
+  if (!files.length && !texto.trim()) return;
+  try {
+    const linhas = files.length ? await lerImagens(files) : [];
+    if (texto.trim()) {
+      const doTexto = extrairEnderecos(texto);
+      linhas.push(...(doTexto.length ? doTexto : texto.split('\n').map(l => l.trim()).filter(Boolean)));
+    }
+    if (!linhas.length) { aba = 'enderecos'; render(); status('Não achei endereços no que foi compartilhado. Tente um print com o endereço visível.', 6000); return; }
+    const {novas, repetidas} = adicionarLinhas(linhas);
+    status(`${novas} parada(s) nova(s)${repetidas ? `, ${repetidas} já existia(m)` : ''}. Buscando no mapa…`);
+    aba = 'conferir'; render();
+    await buscarPendentes();
+    if (!S.inicio) { try { await gps(); } catch (e) {} }
+    await montarRota();
+  } catch (e) {
+    status('Não consegui processar: ' + e.message, 6000);
+  }
+}
+
+async function lerPrints(files) {
+  status('Carregando leitor de texto (a primeira vez demora)…');
+  try {
+    const unicos = await lerImagens(files);
+    const ta = $('#lista');
+    ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + unicos.join('\n');
+    status(unicos.length
+      ? `${unicos.length} endereço(s) lido(s). Confira o texto e toque em "Adicionar".`
+      : 'Não achei endereços na imagem. Tente um print com o endereço visível.', 6000);
+  } catch (e) {
+    status('Não consegui ler a imagem: ' + e.message, 5000);
+  }
+}
+
+function gps() {
+  return new Promise((ok, falha) => {
+    if (!navigator.geolocation) { status('Este navegador não dá acesso ao GPS.', 3000); falha(new Error('sem GPS')); return; }
+    status('Pegando sua localização…');
+    navigator.geolocation.getCurrentPosition(pos => {
+      S.inicio = {id: 'inicio', lat: pos.coords.latitude, lng: pos.coords.longitude, exibido: `Minha localização (±${Math.round(pos.coords.accuracy)} m)`};
+      invalidarRota(); render(); desenharMapa(true);
+      status('Localização definida.', 2000);
+      ok();
+    }, e => {
+      status('Não consegui o GPS: ' + (e.code === 1 ? 'permissão negada. Libere a localização para este site.' : e.message), 5000);
+      falha(e);
+    }, {enableHighAccuracy: true, timeout: 20000});
+  });
+}
+
+async function copiarRota() {
+  let texto = '';
+  for (const ra of S.rota.areas) {
+    const a = area(ra.id);
+    const ps = ra.ordem.map(parada).filter(p => p && !p.entregue);
+    if (!ps.length) continue;
+    texto += `${emoji(a.cor)} *${a.nome}*${a.prazo ? ' (até ' + a.prazo + ')' : ''}\n`;
+    texto += ps.map((p, i) => `${i + 1}. ${p.ml ? '#' + p.ml + ' ' : ''}${p.texto}\n${linkWaze(p)}`).join('\n') + '\n\n';
+  }
+  try {
+    await navigator.clipboard.writeText(texto.trim());
+    status('Rota copiada! Cole no WhatsApp.', 3000);
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = texto; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); status('Rota copiada!', 2500); } catch (e2) { status('Não consegui copiar.', 3000); }
+    ta.remove();
+  }
+}
+
+async function moverArea(id, delta) {
+  const ordem = S.rota.areas.map(ra => ra.id);
+  const i = ordem.indexOf(id), j = i + delta;
+  if (i < 0 || j < 0 || j >= ordem.length) return;
+  [ordem[i], ordem[j]] = [ordem[j], ordem[i]];
+  S.areas = ordem.map(area).concat(S.areas.filter(a => !ordem.includes(a.id)));
+  S.areasManual = true;
+  await montarRota();
+}
+
+document.addEventListener('click', async e => {
+  const nav = e.target.closest('nav button');
+  if (nav) { aba = nav.dataset.aba; posicionando = null; render(); return; }
+  const b = e.target.closest('[data-acao]');
+  if (!b || b.disabled) return;
+  const id = b.dataset.id, p = id ? parada(id) : null;
+  switch (b.dataset.acao) {
+    case 'areaSel': S.areaAtual = id; salvar(); render(); break;
+    case 'areaNova': {
+      const usadas = new Set(S.areas.map(a => a.cor));
+      const [nome, cor] = CORES.find(c => !usadas.has(c[1])) || CORES[S.areas.length % CORES.length];
+      const nova = {id: novoId(), nome, cor, prazo: ''};
+      S.areas.push(nova); S.areaAtual = nova.id; salvar(); render();
+      break;
+    }
+    case 'areaCor': {
+      const a = area(S.areaAtual);
+      const nomePadrao = CORES.some(c => c[0] === a.nome);
+      a.cor = b.dataset.cor;
+      if (nomePadrao) a.nome = b.dataset.nome;
+      salvar(); render(); desenharMapa();
+      break;
+    }
+    case 'areaRemover': {
+      const a = area(S.areaAtual);
+      const n = S.paradas.filter(x => x.area === a.id).length;
+      if (!confirm(`Apagar a área ${a.nome}${n ? ` e as ${n} parada(s) dela` : ''}?`)) return;
+      S.paradas = S.paradas.filter(x => x.area !== a.id);
+      S.areas = S.areas.filter(x => x.id !== a.id);
+      S.areaAtual = S.areas[0].id;
+      invalidarRota(); render(); desenharMapa();
+      break;
+    }
+    case 'adicionar': {
+      S.cidade = $('#cidade').value.trim();
+      const linhas = $('#lista').value.split('\n').map(l => l.trim()).filter(Boolean);
+      if (!linhas.length) { status('Cole pelo menos um endereço.', 2500); return; }
+      const {novas, repetidas} = adicionarLinhas(linhas);
+      $('#lista').value = '';
+      status(`${novas} adicionada(s)${repetidas ? `, ${repetidas} repetida(s) ignorada(s)` : ''}.`, 2500);
+      aba = 'conferir'; render();
+      await buscarPendentes();
+      break;
+    }
+    case 'limpar':
+      if (confirm('Apagar todas as áreas, paradas e a rota?')) {
+        const {cidade, googleKey, inicio} = S;
+        S = Object.assign(vazio(), {cidade, googleKey, inicio});
+        salvar(); render(); desenharMapa();
+      }
+      break;
+    case 'salvarChave':
+      S.googleKey = $('#gkey').value.trim(); salvar();
+      status(S.googleKey ? 'Chave salva. Use "Editar" para buscar de novo os imprecisos.' : 'Chave removida.', 3500);
+      break;
+    case 'buscarPendentes': await buscarPendentes(); break;
+    case 'soDuvidas': soDuvidas = !soDuvidas; render(); break;
+    case 'irRota': aba = 'rota'; render(); break;
+    case 'ver': focar(id); render(); break;
+    case 'posicionar':
+      posicionando = posicionando === id ? null : id; render();
+      if (posicionando) { status('Toque no mapa, no local da entrega.', 4000); if (window.innerWidth < 900) window.scrollTo(0, 0); }
+      break;
+    case 'editar': {
+      const novo = prompt('Corrija o endereço:', p.texto);
+      if (novo == null || !novo.trim()) return;
+      p.texto = novo.trim(); p.precisao = 'pendente';
+      invalidarRota(); render();
+      status('Buscando…');
+      try { await buscarParada(p); status('Pronto.', 1500); } catch (err) { status('Falhou: ' + err.message, 4000); }
+      salvar(); selecionada = id; render(); desenharMapa(); focar(id);
+      break;
+    }
+    case 'remover':
+      if (!confirm('Remover esta parada?')) return;
+      S.paradas = S.paradas.filter(x => x.id !== id);
+      invalidarRota(); render(); desenharMapa();
+      break;
+    case 'escolher': {
+      const c = p.candidatos[+b.dataset.k];
+      Object.assign(p, {lat: c.lat, lng: c.lng, exibido: c.exibido, precisao: c.precisao});
+      invalidarRota(); render(); desenharMapa(); focar(id);
+      break;
+    }
+    case 'gps': gps(); break;
+    case 'inicioEndereco': {
+      const t = prompt('Endereço de saída (ex.: ponto de coleta):', (S.inicio && S.inicio.texto) || '');
+      if (!t || !t.trim()) return;
+      status('Buscando…');
+      try {
+        const c = (await geocodificar(t.trim()))[0];
+        if (!c) { status('Endereço de saída não encontrado.', 3000); return; }
+        S.inicio = {id: 'inicio', texto: t.trim(), lat: c.lat, lng: c.lng, exibido: c.exibido};
+        invalidarRota(); render(); desenharMapa(true); status('Saída definida.', 2000);
+      } catch (err) { status('Falhou: ' + err.message, 4000); }
+      break;
+    }
+    case 'semInicio': S.inicio = null; S.voltar = false; invalidarRota(); render(); desenharMapa(); break;
+    case 'montar': await montarRota(); break;
+    case 'areasAuto': S.areasManual = false; await montarRota(); break;
+    case 'areaSobe': await moverArea(id, -1); break;
+    case 'areaDesce': await moverArea(id, 1); break;
+    case 'entregue': p.entregue = true; salvar(); render(); desenharMapa(); break;
+    case 'desfazer': p.entregue = false; salvar(); render(); desenharMapa(); break;
+    case 'copiar': await copiarRota(); break;
+  }
+});
+
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'voltar') { S.voltar = t.checked; invalidarRota(); render(); desenharMapa(); }
+  if (t.id === 'cidade') { S.cidade = t.value.trim(); salvar(); }
+  if (t.id === 'tamTrecho') { S.tamTrecho = Math.min(25, Math.max(1, parseInt(t.value, 10) || 9)); salvar(); render(); }
+  if (t.id === 'aNome') { area(S.areaAtual).nome = t.value.trim() || 'Área'; salvar(); render(); }
+  if (t.id === 'aPrazo') { area(S.areaAtual).prazo = t.value; invalidarRota(); render(); }
+  if (t.id === 'print' && t.files.length) lerPrints([...t.files]);
+  if (t.dataset.mudaArea) { parada(t.dataset.mudaArea).area = t.value; invalidarRota(); render(); desenharMapa(); }
+});
+
+$('#btnMapa').addEventListener('click', () => {
+  $('#app').classList.toggle('mapa-grande');
+  setTimeout(() => mapa.invalidateSize(), 50);
+});
+
+render();
+desenharMapa(true);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (new URLSearchParams(location.search).has('compartilhado')) processarCompartilhado();
+</script>
+</body>
+</html>
