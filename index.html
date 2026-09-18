@@ -97,10 +97,10 @@ const CHAVE = 'rota-entregas-v2';
 const BACKUP = 'rota-entregas-backup';
 const SERVICO_PADRAO = 180;
 const CORES = [['Verde','#16a34a','🟢'],['Amarelo','#ca8a04','🟡'],['Roxo','#9333ea','🟣'],['Azul','#2563eb','🔵'],['Laranja','#ea580c','🟠'],['Rosa','#db2777','🩷']];
-const ROTULO = {exato:'Número encontrado', planilha:'Posição da planilha', bom:'Prédio encontrado', rua:'Rua encontrada (chega perto)', ruim:'Impreciso — confira o pino', nao:'Não encontrado', manual:'Ajustado por você', pendente:'Ainda não buscado'};
-const CORP = {exato:'#16a34a', planilha:'#16a34a', bom:'#16a34a', rua:'#0891b2', ruim:'#dc2626', nao:'#dc2626', manual:'#7c3aed', pendente:'#6b7280'};
-const RANK = {exato:0, planilha:0, manual:0, bom:1, rua:2, ruim:3, nao:4, pendente:5};
-const DUVIDA = new Set(['ruim', 'nao']);
+const ROTULO = {exato:'Número encontrado', planilha:'Posição da planilha', longe:'Planilha pôs longe das outras — confira o pino', bom:'Prédio encontrado', rua:'Rua encontrada (chega perto)', ruim:'Impreciso — confira o pino', nao:'Não encontrado', manual:'Ajustado por você', pendente:'Ainda não buscado'};
+const CORP = {exato:'#16a34a', planilha:'#16a34a', longe:'#dc2626', bom:'#16a34a', rua:'#0891b2', ruim:'#dc2626', nao:'#dc2626', manual:'#7c3aed', pendente:'#6b7280'};
+const RANK = {exato:0, planilha:0, manual:0, bom:1, rua:2, longe:3, ruim:3, nao:4, pendente:5};
+const DUVIDA = new Set(['ruim', 'nao', 'longe']);
 const RAIO_BLOCO = 10;
 const RUA = /^(rua|r\.|avenida|av\.?|travessa|tv\.?|trav\.?|pra[çc]a|p[çc]\.|alameda|al\.|rodovia|rod\.|estrada|estr?\.|via|largo|beco|viela|passagem|conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
 const COMPLEMENTO = /^(condom[ií]nio|cond\.|edif[ií]cio|ed\.|apto?\.?|apartamento|bloco|bl\.|casa|lote|sala|loja|fundos|bairro|cep\b|pr[oó]ximo|perto|ao lado|em frente|refer[eê]ncia)/i;
@@ -768,11 +768,11 @@ function telaEnderecos() {
 function telaConferir() {
   if (!S.paradas.length) return `<div class="info">Nenhum endereço ainda. Vá em <b>1. Endereços</b>.</div>`;
   const conta = ks => S.paradas.filter(p => ks.includes(p.precisao)).length;
-  const duvidas = conta(['ruim', 'nao']), pend = conta(['pendente']);
+  const duvidas = conta([...DUVIDA]), pend = conta(['pendente']);
   let html = `
     <h2>Conferir locais</h2>
     <div class="info">✅ ${conta(['exato', 'bom', 'manual', 'planilha'])} no número · 🛣️ ${conta(['rua'])} na rua certa · ❗ ${duvidas} para conferir${pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
-    ${duvidas ? `<div class="aviso">Os de borda vermelha podem estar longe do lugar. Toque em <b>Ver</b> e arraste o pino, ou use <b>Marcar no mapa</b> (olhando a posição no app do ML).</div>` : ''}
+    ${duvidas ? `<div class="aviso">Os de borda vermelha podem estar longe do lugar. Toque em <b>Ver</b> e arraste o pino, ou use <b>Marcar no mapa</b> (olhando a posição no app de entregas).</div>` : ''}
     <div class="linha">
       ${pend ? `<button class="btn pri" data-acao="buscarPendentes">Buscar ${pend} pendente(s)</button>` : ''}
       <button class="btn" data-acao="soDuvidas">${soDuvidas ? 'Mostrar todos' : 'Só os duvidosos'}</button>
@@ -970,7 +970,7 @@ function telaRota() {
         </div>
         ${trechoAtual.length > 1 ? `<div class="linha"><a class="btn pri" href="${linkMapsVarios(trechoAtual.map(x => x.alvo))}" target="_blank" rel="noopener">🗺️ Maps com os próximos ${trechoAtual.filter(x => x.ids.length).length} pontos (${entregasTrecho} entregas)${trechoAtual.some(x => !x.ids.length) ? ' + 🏁' : ''}</a></div>` : ''}
         <div style="margin-top:8px">${agora.b.map(parada).map(p => linhaParada(p, pend.length > 1)).join('')}</div>
-        ${pend.length > 1 ? `<div class="info" style="margin-top:6px">Chegando, use o mapa do app do ML para achar a porta de cada uma.</div>` : ''}
+        ${pend.length > 1 ? `<div class="info" style="margin-top:6px">Chegando, use o mapa do app de entregas para achar a porta de cada uma.</div>` : ''}
       </div>`;
   } else {
     html += `<div class="proxima"><div class="grande">🎉 Todas as entregas da rota foram feitas!</div></div>`;
@@ -1150,13 +1150,29 @@ function adicionarDaPlanilha(itens) {
     if (!temCoord) semPosicao++;
   }
   if (!S.cidade) { const c = itens.find(i => i.cidade); if (c) S.cidade = c.cidade; }
+  const longe = marcarIsoladas();
   if (novas || juntas) invalidarRota();
   salvar();
-  return {novas, juntas, repetidas, semPosicao};
+  return {novas, juntas, repetidas, semPosicao, longe};
+}
+
+const ISOLADA = 5000;
+function marcarIsoladas() {
+  const com = S.paradas.filter(p => p.lat != null);
+  if (com.length < 3) return 0;
+  let n = 0;
+  for (const p of com) {
+    if (p.precisao !== 'planilha' && p.precisao !== 'longe') continue;
+    const vizinho = Math.min(...com.filter(q => q !== p).map(q => haversine(p, q)));
+    p.precisao = vizinho > ISOLADA ? 'longe' : 'planilha';
+    if (p.precisao === 'longe') n++;
+  }
+  return n;
 }
 
 function resumoPlanilha(r) {
   return `${r.novas} parada(s) da planilha${r.juntas ? `, ${r.juntas} pacote(s) somado(s) a um mesmo endereço` : ''}${r.repetidas ? `, ${r.repetidas} já existia(m)` : ''}.`
+    + (r.longe ? ` ⚠️ ${r.longe} com posição longe das outras entregas: confira o pino antes de sair.` : '')
     + (r.semPosicao ? ` ${r.semPosicao} sem posição, buscando no mapa…` : '');
 }
 
@@ -1317,7 +1333,7 @@ async function lerPrints(files) {
       S.cidade = $('#cidade').value.trim() || S.cidade;
       const r = await importarPlanilhas(planilhas);
       if (outros.length) r.novas += adicionarLinhas(await lerArquivos(outros)).novas;
-      status(resumoPlanilha(r), 5000);
+      status(resumoPlanilha(r), r.longe ? 12000 : 5000);
       aba = 'conferir'; render(); desenharMapa(true);
       await buscarPendentes();
     } catch (e) {
