@@ -97,9 +97,9 @@ const CHAVE = 'rota-entregas-v2';
 const BACKUP = 'rota-entregas-backup';
 const SERVICO_PADRAO = 180;
 const CORES = [['Verde','#16a34a','🟢'],['Amarelo','#ca8a04','🟡'],['Roxo','#9333ea','🟣'],['Azul','#2563eb','🔵'],['Laranja','#ea580c','🟠'],['Rosa','#db2777','🩷']];
-const ROTULO = {exato:'Número encontrado', planilha:'Posição da planilha', longe:'Planilha pôs longe das outras — confira o pino', bom:'Prédio encontrado', rua:'Rua encontrada (chega perto)', ruim:'Impreciso — confira o pino', nao:'Não encontrado', manual:'Ajustado por você', pendente:'Ainda não buscado'};
-const CORP = {exato:'#16a34a', planilha:'#16a34a', longe:'#dc2626', bom:'#16a34a', rua:'#0891b2', ruim:'#dc2626', nao:'#dc2626', manual:'#7c3aed', pendente:'#6b7280'};
-const RANK = {exato:0, planilha:0, manual:0, bom:1, rua:2, longe:3, ruim:3, nao:4, pendente:5};
+const ROTULO = {exato:'Número encontrado', planilha:'Posição da planilha', lembrado:'Corrigida por você antes', longe:'Planilha pôs longe das outras — confira o pino', bom:'Prédio encontrado', rua:'Rua encontrada (chega perto)', ruim:'Impreciso — confira o pino', nao:'Não encontrado', manual:'Ajustado por você', pendente:'Ainda não buscado'};
+const CORP = {exato:'#16a34a', planilha:'#16a34a', lembrado:'#7c3aed', longe:'#dc2626', bom:'#16a34a', rua:'#0891b2', ruim:'#dc2626', nao:'#dc2626', manual:'#7c3aed', pendente:'#6b7280'};
+const RANK = {exato:0, planilha:0, lembrado:0, manual:0, bom:1, rua:2, longe:3, ruim:3, nao:4, pendente:5};
 const DUVIDA = new Set(['ruim', 'nao', 'longe']);
 const RAIO_BLOCO = 10;
 const RUA = /^(rua|r\.|avenida|av\.?|travessa|tv\.?|trav\.?|pra[çc]a|p[çc]\.|alameda|al\.|rodovia|rod\.|estrada|estr?\.|via|largo|beco|viela|passagem|conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
@@ -396,7 +396,40 @@ async function geocodificar(txt) {
   return cands.slice(0, 6);
 }
 
+const MEMORIA = 'rota-entregas-posicoes';
+function lerMemoria() {
+  try { return JSON.parse(localStorage.getItem(MEMORIA)) || {}; } catch (e) { return {}; }
+}
+function gravarMemoria(m) {
+  try { localStorage.setItem(MEMORIA, JSON.stringify(m)); return true; } catch (e) { return false; }
+}
+
+function chaveLugar(texto) {
+  const d = decompor(analisarLinha(texto).texto);
+  if (!d.numero) return null;
+  if (d.cep && !/000$/.test(d.cep)) return d.cep + '|' + d.numero;
+  const rua = palavrasRua(d.rua).join(' ');
+  return rua ? rua + '|' + d.numero : null;
+}
+
+function lembrarPosicao(p) {
+  const k = chaveLugar(p.texto);
+  if (!k || p.lat == null) return false;
+  const m = lerMemoria();
+  m[k] = {lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6), quando: Date.now()};
+  return gravarMemoria(m);
+}
+
+function aplicarMemoria(p) {
+  const k = chaveLugar(p.texto), r = k && lerMemoria()[k];
+  if (!r) return false;
+  const dia = new Date(r.quando).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+  Object.assign(p, {lat: r.lat, lng: r.lng, precisao: 'lembrado', exibido: `Posição que você corrigiu em ${dia}`});
+  return true;
+}
+
 async function buscarParada(p) {
+  if (aplicarMemoria(p)) return;
   try {
     const cands = await geocodificar(p.texto);
     p.candidatos = cands;
@@ -640,8 +673,9 @@ function desenharMapa(enquadrar) {
     m.on('dragend', () => {
       const ll = m.getLatLng();
       Object.assign(p, {lat: ll.lat, lng: ll.lng, precisao: 'manual', exibido: 'Posição marcada no mapa'});
+      const guardou = lembrarPosicao(p);
       invalidarRota(); render(); desenharMapa();
-      status('Local corrigido. Monte a rota de novo.', 2500);
+      status('Local corrigido' + (guardou ? ' e guardado para as próximas rotas' : '') + '. Monte a rota de novo.', 3000);
     });
     m.on('click', () => { selecionada = p.id; render(); document.querySelector(`[data-item="${p.id}"]`)?.scrollIntoView({behavior: 'smooth', block: 'center'}); });
     m.addTo(camada);
@@ -664,8 +698,9 @@ mapa.on('click', e => {
   posicionando = null;
   if (!p) return;
   Object.assign(p, {lat: e.latlng.lat, lng: e.latlng.lng, precisao: 'manual', exibido: 'Posição marcada no mapa'});
+  const guardou = lembrarPosicao(p);
   invalidarRota(); render(); desenharMapa();
-  status('Local definido.', 2000);
+  status('Local definido' + (guardou ? ' e guardado para as próximas rotas.' : '.'), 3000);
 });
 
 function focar(id) {
@@ -753,8 +788,13 @@ function telaEnderecos() {
       </label>
     </div>
     <div class="info" style="margin-top:8px">Pode mandar vários prints de uma vez (rolando a lista). Endereços repetidos são ignorados. O número do app na frente (ex.: <b>18</b> Avenida…) aparece no pino.</div>
-    ${S.paradas.length ? `<div class="linha"><button class="btn" data-acao="limpar">🗑 Nova rota do dia (apaga tudo)</button></div>` : ''}
+    ${botaoResetar()}
     ${backupRecente() ? `<div class="aviso">Você apagou uma rota há pouco. <button class="btn peq pri" data-acao="desfazerLimpar">↺ Desfazer</button></div>` : ''}
+    ${(n => n ? `<details>
+      <summary>Posições que você corrigiu (${n})</summary>
+      <div class="info" style="margin-top:6px">Quando você arrasta um pino ou marca no mapa, o local fica guardado neste celular. Se o endereço cair de novo numa rota, ele já vem no lugar certo, em roxo. Para trocar, é só corrigir de novo.</div>
+      <div class="linha"><button class="btn" data-acao="esquecerPosicoes">Esquecer todas</button></div>
+    </details>` : '')(Object.keys(lerMemoria()).length)}
     <details>
       <summary>Precisão extra com Google (opcional)</summary>
       <div class="info" style="margin-top:6px">Sem chave, a busca usa o OpenStreetMap, que às vezes acha só a rua. Com uma chave da Geocoding API do Google o número costuma vir certo (cota grátis mensal; pede cartão para criar).</div>
@@ -771,7 +811,7 @@ function telaConferir() {
   const duvidas = conta([...DUVIDA]), pend = conta(['pendente']);
   let html = `
     <h2>Conferir locais</h2>
-    <div class="info">✅ ${conta(['exato', 'bom', 'manual', 'planilha'])} no número · 🛣️ ${conta(['rua'])} na rua certa · ❗ ${duvidas} para conferir${pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
+    <div class="info">✅ ${conta(['exato', 'bom', 'manual', 'planilha', 'lembrado'])} no número · 🛣️ ${conta(['rua'])} na rua certa · ❗ ${duvidas} para conferir${pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
     ${duvidas ? `<div class="aviso">Os de borda vermelha podem estar longe do lugar. Toque em <b>Ver</b> e arraste o pino, ou use <b>Marcar no mapa</b> (olhando a posição no app de entregas).</div>` : ''}
     <div class="linha">
       ${pend ? `<button class="btn pri" data-acao="buscarPendentes">Buscar ${pend} pendente(s)</button>` : ''}
@@ -935,7 +975,7 @@ function resumoPrazo(prev, a) {
 function telaRota() {
   if (!S.rota) {
     const semLocal = S.paradas.filter(p => p.lat == null && !p.entregue).length;
-    return configInicio() + (semLocal ? `<div class="aviso">${semLocal} parada(s) sem local ficarão fora da rota. Corrija em <b>2. Conferir</b>.</div>` : '');
+    return configInicio() + (semLocal ? `<div class="aviso">${semLocal} parada(s) sem local ficarão fora da rota. Corrija em <b>2. Conferir</b>.</div>` : '') + botaoResetar();
   }
   const R = S.rota;
   const naRota = new Set(R.areas.flatMap(a => a.ordem));
@@ -1023,7 +1063,11 @@ function telaRota() {
     });
   });
   html += `<details><summary>Ponto de saída / refazer rota</summary>${configInicio()}</details>`;
-  return html;
+  return html + botaoResetar();
+}
+
+function botaoResetar() {
+  return S.paradas.length ? `<div class="linha" style="margin-top:16px"><button class="btn" data-acao="limpar">🔄 Resetar rota (começar do zero)</button></div>` : '';
 }
 
 /* ---------- Ações ---------- */
@@ -1135,7 +1179,7 @@ async function lerPlanilha(f) {
 function adicionarDaPlanilha(itens) {
   const existentes = new Set(S.paradas.map(x => chaveEndereco(x.texto)));
   const desta = new Map();
-  let novas = 0, juntas = 0, repetidas = 0, semPosicao = 0;
+  let novas = 0, juntas = 0, repetidas = 0, semPosicao = 0, lembradas = 0;
   for (const it of itens) {
     const chave = chaveEndereco(it.texto);
     if (desta.has(chave)) { const p = desta.get(chave); p.unidades = (p.unidades || 1) + 1; juntas++; continue; }
@@ -1144,16 +1188,18 @@ function adicionarDaPlanilha(itens) {
     const p = {id: novoId(), area: S.areaAtual, ml: it.ml, texto: it.texto, unidades: null, comercial: false,
       lat: temCoord ? it.lat : null, lng: temCoord ? it.lng : null, exibido: temCoord ? 'Posição da planilha' : '',
       precisao: temCoord ? 'planilha' : 'pendente', candidatos: [], entregue: false};
+    const lembrada = aplicarMemoria(p);
     S.paradas.push(p);
     desta.set(chave, p);
     novas++;
-    if (!temCoord) semPosicao++;
+    if (lembrada) lembradas++;
+    else if (!temCoord) semPosicao++;
   }
   if (!S.cidade) { const c = itens.find(i => i.cidade); if (c) S.cidade = c.cidade; }
   const longe = marcarIsoladas();
   if (novas || juntas) invalidarRota();
   salvar();
-  return {novas, juntas, repetidas, semPosicao, longe};
+  return {novas, juntas, repetidas, semPosicao, longe, lembradas};
 }
 
 const ISOLADA = 5000;
@@ -1172,6 +1218,7 @@ function marcarIsoladas() {
 
 function resumoPlanilha(r) {
   return `${r.novas} parada(s) da planilha${r.juntas ? `, ${r.juntas} pacote(s) somado(s) a um mesmo endereço` : ''}${r.repetidas ? `, ${r.repetidas} já existia(m)` : ''}.`
+    + (r.lembradas ? ` 📌 ${r.lembradas} com a posição que você já tinha corrigido.` : '')
     + (r.longe ? ` ⚠️ ${r.longe} com posição longe das outras entregas: confira o pino antes de sair.` : '')
     + (r.semPosicao ? ` ${r.semPosicao} sem posição, buscando no mapa…` : '');
 }
@@ -1445,12 +1492,13 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'limpar':
-      if (confirm('Apagar todas as áreas, paradas e a rota?')) {
+      if (confirm('Quer resetar mesmo?\n\nTodas as paradas e a rota de hoje serão apagadas, para você carregar a planilha, o PDF ou os prints de novo. As posições que você corrigiu continuam guardadas.')) {
         try { localStorage.setItem(BACKUP, JSON.stringify({quando: Date.now(), estado: S})); } catch (e) {}
         const {cidade, googleKey, inicio, tamTrecho} = S;
         S = Object.assign(vazio(), {cidade, googleKey, inicio, tamTrecho});
+        aba = 'enderecos'; posicionando = null;
         salvar(); render(); desenharMapa();
-        status('Tudo apagado. Dá para desfazer nos próximos 10 minutos.', 6000);
+        status('Rota resetada. Carregue a planilha, o PDF ou os prints. Dá para desfazer nos próximos 10 minutos.', 7000);
       }
       break;
     case 'desfazerLimpar': {
@@ -1492,9 +1540,14 @@ document.addEventListener('click', async e => {
     case 'escolher': {
       const c = p.candidatos[+b.dataset.k];
       Object.assign(p, {lat: c.lat, lng: c.lng, exibido: c.exibido, precisao: c.precisao});
+      lembrarPosicao(p);
       invalidarRota(); render(); desenharMapa(); focar(id);
       break;
     }
+    case 'esquecerPosicoes':
+      if (!confirm('Esquecer todas as posições que você corrigiu? As paradas de hoje continuam como estão.')) return;
+      gravarMemoria({}); render(); status('Posições esquecidas.', 2500);
+      break;
     case 'gps': gps(); break;
     case 'inicioEndereco': {
       const t = prompt('Endereço de saída (ex.: ponto de coleta):', (S.inicio && S.inicio.texto) || '');
