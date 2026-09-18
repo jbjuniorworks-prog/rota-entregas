@@ -451,17 +451,19 @@ function custo(p, D) {
   return c;
 }
 
-function otimizar(n, D, fixo) {
-  const inicios = fixo ? [0] : [...Array(n).keys()];
+function otimizar(n, D, fixo, fimFixo) {
+  const ult = fimFixo ? n - 1 : -1, livres = fimFixo ? n - 1 : n;
+  const inicios = fixo ? [0] : [...Array(livres).keys()];
   let p = null, c = Infinity;
   for (const s of inicios) {
-    const q = [s], usado = new Set([s]);
-    while (q.length < n) {
+    const q = [s], usado = new Set([s, ult]);
+    while (q.length < livres) {
       const u = q[q.length - 1];
       let b = -1, bd = Infinity;
       for (let v = 0; v < n; v++) if (!usado.has(v) && D[u][v] < bd) { bd = D[u][v]; b = v; }
       q.push(b); usado.add(b);
     }
+    if (fimFixo) q.push(ult);
     const cq = custo(q, D);
     if (cq < c) { c = cq; p = q; }
   }
@@ -469,12 +471,12 @@ function otimizar(n, D, fixo) {
   let melhorou = true;
   while (melhorou && Date.now() < limite) {
     melhorou = false;
-    for (let i = ini; i < n - 1 && Date.now() < limite; i++) for (let k = i + 1; k < n; k++) {
+    for (let i = ini; i < livres - 1 && Date.now() < limite; i++) for (let k = i + 1; k < livres; k++) {
       const q = p.slice(0, i).concat(p.slice(i, k + 1).reverse(), p.slice(k + 1));
       const cq = custo(q, D);
       if (cq < c - 1e-6) { p = q; c = cq; melhorou = true; }
     }
-    for (let i = ini; i < n && Date.now() < limite; i++) for (let j = ini; j < n; j++) {
+    for (let i = ini; i < livres && Date.now() < limite; i++) for (let j = ini; j < livres; j++) {
       if (i === j) continue;
       const q = p.slice();
       const [x] = q.splice(i, 1);
@@ -517,25 +519,29 @@ async function montarRota() {
     let pos = S.inicio;
     const rota = {areas: [], dur: 0, dist: 0, mlDur: 0, mlDist: 0, porRuas: true, quando: Date.now()};
     S.pernas = {};
-    for (const a of ordenarAreas(S.inicio)) {
+    const areas = ordenarAreas(S.inicio);
+    for (const a of areas) {
       status(`Calculando área ${a.nome}…`);
       const alvos = pendentesDa(a.id);
-      const pts = (pos ? [pos] : []).concat(alvos);
+      const fim = a === areas[areas.length - 1] && S.fim ? S.fim : null;
+      const pts = (pos ? [pos] : []).concat(alvos, fim ? [fim] : []);
       const M = await matriz(pts);
       if (!M.porRuas) rota.porRuas = false;
-      const p = pts.length === 1 ? [0] : otimizar(pts.length, M.dur, !!pos);
-      const ordem = p.filter(i => !(pos && i === 0)).map(i => pts[i].id);
+      const p = pts.length === 1 ? [0] : otimizar(pts.length, M.dur, !!pos, !!fim);
+      const ordem = p.filter(i => !(pos && i === 0) && !(fim && i === pts.length - 1)).map(i => pts[i].id);
       {
         const off = pos ? 1 : 0;
         const todosComNumero = alvos.every(x => x.ml);
         const chave = i => todosComNumero ? +pts[i].ml : S.paradas.indexOf(pts[i]);
         const seqML = alvos.map((x, i) => i + off).sort((i, j) => chave(i) - chave(j));
         if (pos) seqML.unshift(0);
+        if (fim) seqML.push(pts.length - 1);
         rota.mlDur += custo(seqML, M.dur); rota.mlDist += custo(seqML, M.dist);
       }
       let dur = 0, dist = 0;
       for (let k = 1; k < p.length; k++) {
         const perna = {dur: M.dur[p[k - 1]][p[k]], dist: M.dist[p[k - 1]][p[k]]};
+        if (fim && p[k] === pts.length - 1) { rota.dur += perna.dur; rota.dist += perna.dist; rota.fim = perna; continue; }
         S.pernas[pts[p[k]].id] = perna;
         dur += perna.dur; dist += perna.dist;
       }
@@ -551,7 +557,7 @@ async function montarRota() {
       rota.dur += dur; rota.dist += dist;
       pos = parada(ordem[ordem.length - 1]);
     }
-    if (S.voltar && S.inicio && pos && pos !== S.inicio) {
+    if (!S.fim && S.voltar && S.inicio && pos && pos !== S.inicio) {
       const M = await matriz([pos, S.inicio]);
       rota.dur += M.dur[0][1]; rota.dist += M.dist[0][1];
     }
@@ -607,6 +613,10 @@ function desenharMapa(enquadrar) {
     L.marker([S.inicio.lat, S.inicio.lng], {icon: icone('S', '#111827')}).bindPopup('Saída: ' + esc(S.inicio.exibido)).addTo(camada);
     limites.push([S.inicio.lat, S.inicio.lng]);
   }
+  if (S.fim) {
+    L.marker([S.fim.lat, S.fim.lng], {icon: icone('F', '#111827')}).bindPopup('Terminar perto de: ' + esc(S.fim.exibido)).addTo(camada);
+    limites.push([S.fim.lat, S.fim.lng]);
+  }
   if (S.rota) for (const ra of S.rota.areas) if (ra.linha) L.polyline(ra.linha, {color: area(ra.id).cor, weight: 4, opacity: .75}).addTo(camada);
   for (const p of S.paradas) {
     if (p.lat == null) continue;
@@ -629,6 +639,13 @@ function desenharMapa(enquadrar) {
 
 mapa.on('click', e => {
   if (!posicionando) return;
+  if (posicionando === 'fim') {
+    posicionando = null;
+    S.fim = {id: 'fim', lat: e.latlng.lat, lng: e.latlng.lng, exibido: 'Local marcado no mapa'};
+    invalidarRota(); render(); desenharMapa();
+    status('Ponto final definido. Toque em "Montar melhor sequência".', 3000);
+    return;
+  }
   const p = parada(posicionando);
   posicionando = null;
   if (!p) return;
@@ -661,6 +678,9 @@ function trechos(ra) {
     .filter(x => x.alvo);
   const out = [];
   for (let i = 0; i < pontos.length; i += tam) out.push(pontos.slice(i, i + tam));
+  const ultimaArea = S.rota && S.rota.areas[S.rota.areas.length - 1] === ra;
+  const ultimo = out[out.length - 1];
+  if (S.fim && ultimaArea && ultimo && ultimo.length < tam) ultimo.push({ids: [], alvo: S.fim});
   return out;
 }
 
@@ -792,9 +812,16 @@ function configInicio() {
       ${S.inicio ? '<button class="btn" data-acao="semInicio">Tirar</button>' : ''}
     </div>
     <label style="display:flex;gap:8px;align-items:center;color:var(--tx)">
-      <input type="checkbox" id="voltar" ${S.voltar ? 'checked' : ''} ${S.inicio ? '' : 'disabled'} style="width:20px;height:20px">
+      <input type="checkbox" id="voltar" ${S.voltar && !S.fim ? 'checked' : ''} ${S.inicio && !S.fim ? '' : 'disabled'} style="width:20px;height:20px">
       Voltar ao ponto de saída no final
     </label>
+    <h2>Terminar perto de</h2>
+    <div class="info">${S.fim ? '🏁 ' + esc(S.fim.exibido) + '. A última entrega fica o mais perto possível daqui.' : 'Sem ponto final: a rota termina onde for mais curto.'}</div>
+    <div class="linha">
+      <button class="btn" data-acao="fimEndereco">Digitar lugar</button>
+      <button class="btn" data-acao="fimMapa">${posicionando === 'fim' ? 'Toque no mapa…' : 'Marcar no mapa'}</button>
+      ${S.fim ? '<button class="btn" data-acao="semFim">Tirar</button>' : ''}
+    </div>
     <label for="tamTrecho">Paradas por trecho no Google Maps</label>
     <input type="text" inputmode="numeric" id="tamTrecho" value="${esc(S.tamTrecho)}" style="max-width:90px">
     <div class="info">Se o Maps cortar pontos, diminua este número. Entregas bem próximas contam como 1 ponto.</div>
@@ -925,7 +952,7 @@ function telaRota() {
           <a class="btn waze" href="${linkWaze(alvo)}" target="_blank" rel="noopener">Waze</a>
           <a class="btn pri" href="${linkMaps(alvo)}" target="_blank" rel="noopener">Google Maps</a>
         </div>
-        ${trechoAtual.length > 1 ? `<div class="linha"><a class="btn pri" href="${linkMapsVarios(trechoAtual.map(x => x.alvo))}" target="_blank" rel="noopener">🗺️ Maps com os próximos ${trechoAtual.length} pontos (${entregasTrecho} entregas)</a></div>` : ''}
+        ${trechoAtual.length > 1 ? `<div class="linha"><a class="btn pri" href="${linkMapsVarios(trechoAtual.map(x => x.alvo))}" target="_blank" rel="noopener">🗺️ Maps com os próximos ${trechoAtual.filter(x => x.ids.length).length} pontos (${entregasTrecho} entregas)${trechoAtual.some(x => !x.ids.length) ? ' + 🏁' : ''}</a></div>` : ''}
         <div style="margin-top:8px">${agora.b.map(parada).map(p => linhaParada(p, pend.length > 1)).join('')}</div>
         ${pend.length > 1 ? `<div class="info" style="margin-top:6px">Chegando, use o mapa do app do ML para achar a porta de cada uma.</div>` : ''}
       </div>`;
@@ -962,7 +989,7 @@ function telaRota() {
     const ts = trechos(ra);
     let n = 0;
     html += `<div class="linha">${ts.map((t, k) => {
-      const ini = n + 1; n += t.length;
+      const ini = n + 1; n += t.filter(x => x.ids.length).length;
       return `<a class="btn peq pri" href="${linkMapsVarios(t.map(x => x.alvo))}" target="_blank" rel="noopener">Maps trecho ${k + 1} (pontos ${ini}–${n})</a>`;
     }).join('')}</div>`;
     blocos(ra.ordem).forEach((b, k) => {
@@ -1389,8 +1416,8 @@ document.addEventListener('click', async e => {
     case 'limpar':
       if (confirm('Apagar todas as áreas, paradas e a rota?')) {
         try { localStorage.setItem(BACKUP, JSON.stringify({quando: Date.now(), estado: S})); } catch (e) {}
-        const {cidade, googleKey, inicio, tamTrecho} = S;
-        S = Object.assign(vazio(), {cidade, googleKey, inicio, tamTrecho});
+        const {cidade, googleKey, inicio, fim, tamTrecho} = S;
+        S = Object.assign(vazio(), {cidade, googleKey, inicio, fim, tamTrecho});
         salvar(); render(); desenharMapa();
         status('Tudo apagado. Dá para desfazer nos próximos 10 minutos.', 6000);
       }
@@ -1451,6 +1478,23 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'semInicio': S.inicio = null; S.voltar = false; invalidarRota(); render(); desenharMapa(); break;
+    case 'fimEndereco': {
+      const t = prompt('Onde você quer terminar? (ex.: Ponto Novo, ou um endereço)', (S.fim && S.fim.texto) || '');
+      if (!t || !t.trim()) return;
+      status('Buscando…');
+      try {
+        const c = (await geocodificar(t.trim()))[0];
+        if (!c) { status('Lugar não encontrado. Tente "Marcar no mapa".', 3000); return; }
+        S.fim = {id: 'fim', texto: t.trim(), lat: c.lat, lng: c.lng, exibido: c.exibido};
+        invalidarRota(); render(); desenharMapa(true); status('Ponto final definido. Confira o F no mapa.', 3000);
+      } catch (err) { status('Falhou: ' + err.message, 4000); }
+      break;
+    }
+    case 'fimMapa':
+      posicionando = posicionando === 'fim' ? null : 'fim'; render();
+      if (posicionando) { status('Toque no mapa, onde você quer terminar.', 4000); if (window.innerWidth < 900) window.scrollTo(0, 0); }
+      break;
+    case 'semFim': S.fim = null; invalidarRota(); render(); desenharMapa(); break;
     case 'montar': await montarRota(); break;
     case 'areasAuto': S.areasManual = false; await montarRota(); break;
     case 'areaSobe': await moverArea(id, -1); break;
