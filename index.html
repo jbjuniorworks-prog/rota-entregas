@@ -140,6 +140,17 @@ const area = id => S.areas.find(a => a.id === id) || S.areas[0];
 const emoji = cor => (CORES.find(c => c[1] === cor) || [,,'⚪'])[2];
 const pendentesDa = id => S.paradas.filter(p => p.area === id && !p.entregue && p.lat != null);
 
+const PERTO_A_PE = 300;
+function avisarProximaPerto(feita) {
+  if (!S.rota || feita.lat == null) return;
+  const proxima = S.rota.areas.flatMap(a => a.ordem).map(parada).find(x => x && !x.entregue && x.lat != null);
+  if (!proxima) return;
+  const d = haversine(feita, proxima);
+  if (d <= RAIO_BLOCO || d > PERTO_A_PE) return;
+  status(`📍 Próxima a ~${Math.round(d / 10) * 10 || 10} m: ${proxima.texto.split(',').slice(0, 2).join(',')}. Dá para ir a pé.`, 7000);
+  try { navigator.vibrate && navigator.vibrate(200); } catch (e) {}
+}
+
 function status(msg, ms) {
   const el = $('#status');
   if (!msg) { el.classList.remove('on'); return; }
@@ -1503,7 +1514,7 @@ document.addEventListener('click', async e => {
     case 'areasAuto': S.areasManual = false; await montarRota(); break;
     case 'areaSobe': await moverArea(id, -1); break;
     case 'areaDesce': await moverArea(id, 1); break;
-    case 'entregue': p.entregue = true; p.entregueEm = Date.now(); salvar(); render(); desenharMapa(); break;
+    case 'entregue': p.entregue = true; p.entregueEm = Date.now(); salvar(); render(); desenharMapa(); avisarProximaPerto(p); break;
     case 'desfazer': p.entregue = false; p.entregueEm = null; salvar(); render(); desenharMapa(); break;
     case 'copiar': await copiarRota(); break;
   }
