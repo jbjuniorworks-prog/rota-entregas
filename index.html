@@ -1416,8 +1416,8 @@ document.addEventListener('click', async e => {
     case 'limpar':
       if (confirm('Apagar todas as áreas, paradas e a rota?')) {
         try { localStorage.setItem(BACKUP, JSON.stringify({quando: Date.now(), estado: S})); } catch (e) {}
-        const {cidade, googleKey, inicio, fim, tamTrecho} = S;
-        S = Object.assign(vazio(), {cidade, googleKey, inicio, fim, tamTrecho});
+        const {cidade, googleKey, inicio, tamTrecho} = S;
+        S = Object.assign(vazio(), {cidade, googleKey, inicio, tamTrecho});
         salvar(); render(); desenharMapa();
         status('Tudo apagado. Dá para desfazer nos próximos 10 minutos.', 6000);
       }
