@@ -514,6 +514,9 @@ function ordenarAreas(pos) {
 async function montarRota() {
   if (ocupado) return;
   if (!S.paradas.some(p => !p.entregue && p.lat != null)) { status('Nenhuma parada com local encontrado.', 3000); return; }
+  if (!S.inicio || !S.inicio.texto) {
+    try { await gps(); } catch (e) { S.inicio = null; }
+  }
   ocupado = true;
   try {
     let pos = S.inicio;
@@ -805,11 +808,13 @@ function itemConferir(p) {
 function configInicio() {
   return `
     <h2>Ponto de saída</h2>
-    <div class="info">${S.inicio ? '📍 ' + esc(S.inicio.exibido) : 'Sem ponto de saída: a rota começa pela parada mais conveniente.'}</div>
+    <div class="info">${S.inicio && S.inicio.texto
+      ? '📍 ' + esc(S.inicio.exibido) + '. Saindo deste endereço, não do GPS.'
+      : '📡 Sua localização. É pega na hora de montar a rota' + (S.inicio ? ` (última: ${esc(S.inicio.exibido)})` : '') + '.'}</div>
     <div class="linha">
       <button class="btn" data-acao="gps">📡 Onde estou agora</button>
-      <button class="btn" data-acao="inicioEndereco">Digitar endereço</button>
-      ${S.inicio ? '<button class="btn" data-acao="semInicio">Tirar</button>' : ''}
+      <button class="btn" data-acao="inicioEndereco">Sair de outro endereço</button>
+      ${S.inicio && S.inicio.texto ? '<button class="btn" data-acao="semInicio">Usar o GPS</button>' : ''}
     </div>
     <label style="display:flex;gap:8px;align-items:center;color:var(--tx)">
       <input type="checkbox" id="voltar" ${S.voltar && !S.fim ? 'checked' : ''} ${S.inicio && !S.fim ? '' : 'disabled'} style="width:20px;height:20px">
@@ -1287,7 +1292,6 @@ async function processarCompartilhado() {
     status(daPlanilha ? resumoPlanilha(daPlanilha) : `${novas} parada(s) nova(s)${repetidas ? `, ${repetidas} já existia(m)` : ''}. Buscando no mapa…`);
     aba = 'conferir'; render();
     await buscarPendentes();
-    if (!S.inicio) { try { await gps(); } catch (e) {} }
     await montarRota();
   } catch (e) {
     status('Não consegui processar: ' + e.message, 6000);
