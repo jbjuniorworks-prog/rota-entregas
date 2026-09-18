@@ -97,9 +97,9 @@ const CHAVE = 'rota-entregas-v2';
 const BACKUP = 'rota-entregas-backup';
 const SERVICO_PADRAO = 180;
 const CORES = [['Verde','#16a34a','🟢'],['Amarelo','#ca8a04','🟡'],['Roxo','#9333ea','🟣'],['Azul','#2563eb','🔵'],['Laranja','#ea580c','🟠'],['Rosa','#db2777','🩷']];
-const ROTULO = {exato:'Número encontrado', bom:'Prédio encontrado', rua:'Rua encontrada (chega perto)', ruim:'Impreciso — confira o pino', nao:'Não encontrado', manual:'Ajustado por você', pendente:'Ainda não buscado'};
-const CORP = {exato:'#16a34a', bom:'#16a34a', rua:'#0891b2', ruim:'#dc2626', nao:'#dc2626', manual:'#7c3aed', pendente:'#6b7280'};
-const RANK = {exato:0, manual:0, bom:1, rua:2, ruim:3, nao:4, pendente:5};
+const ROTULO = {exato:'Número encontrado', planilha:'Posição da planilha', bom:'Prédio encontrado', rua:'Rua encontrada (chega perto)', ruim:'Impreciso — confira o pino', nao:'Não encontrado', manual:'Ajustado por você', pendente:'Ainda não buscado'};
+const CORP = {exato:'#16a34a', planilha:'#16a34a', bom:'#16a34a', rua:'#0891b2', ruim:'#dc2626', nao:'#dc2626', manual:'#7c3aed', pendente:'#6b7280'};
+const RANK = {exato:0, planilha:0, manual:0, bom:1, rua:2, ruim:3, nao:4, pendente:5};
 const DUVIDA = new Set(['ruim', 'nao']);
 const RAIO_BLOCO = 300;
 const RUA = /^(rua|r\.|avenida|av\.?|travessa|tv\.?|trav\.?|pra[çc]a|p[çc]\.|alameda|al\.|rodovia|rod\.|estrada|estr?\.|via|largo|beco|viela|passagem|conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
@@ -714,8 +714,8 @@ function telaEnderecos() {
     <textarea id="lista" placeholder="18 Avenida Dulce Diniz 920, Condomínio Luzia Residence, CEP 49048430&#10;..."></textarea>
     <div class="linha">
       <button class="btn pri" data-acao="adicionar">Adicionar em ${esc(a.nome)}</button>
-      <label class="btn" style="margin:0;color:var(--tx)">📷 Ler print ou PDF
-        <input type="file" accept="image/*,application/pdf,.pdf" id="print" multiple hidden>
+      <label class="btn" style="margin:0;color:var(--tx)">📷 Ler print, PDF ou planilha
+        <input type="file" accept="image/*,application/pdf,.pdf,.xlsx,.xls,.ods,.csv,.txt" id="print" multiple hidden>
       </label>
     </div>
     <div class="info" style="margin-top:8px">Pode mandar vários prints de uma vez (rolando a lista). Endereços repetidos são ignorados. O número do app na frente (ex.: <b>18</b> Avenida…) aparece no pino.</div>
@@ -737,7 +737,7 @@ function telaConferir() {
   const duvidas = conta(['ruim', 'nao']), pend = conta(['pendente']);
   let html = `
     <h2>Conferir locais</h2>
-    <div class="info">✅ ${conta(['exato', 'bom', 'manual'])} no número · 🛣️ ${conta(['rua'])} na rua certa · ❗ ${duvidas} para conferir${pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
+    <div class="info">✅ ${conta(['exato', 'bom', 'manual', 'planilha'])} no número · 🛣️ ${conta(['rua'])} na rua certa · ❗ ${duvidas} para conferir${pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
     ${duvidas ? `<div class="aviso">Os de borda vermelha podem estar longe do lugar. Toque em <b>Ver</b> e arraste o pino, ou use <b>Marcar no mapa</b> (olhando a posição no app do ML).</div>` : ''}
     <div class="linha">
       ${pend ? `<button class="btn pri" data-acao="buscarPendentes">Buscar ${pend} pendente(s)</button>` : ''}
@@ -1032,6 +1032,103 @@ async function lerPdf(file) {
   return {linhas, imagens};
 }
 
+const SHEETJS = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+async function carregarSheetJs() {
+  if (!window.XLSX) {
+    await new Promise((ok, erro) => {
+      const s = document.createElement('script');
+      s.src = SHEETJS;
+      s.onload = ok; s.onerror = () => erro(new Error('sem internet para o leitor de planilha'));
+      document.head.appendChild(s);
+    });
+  }
+  return window.XLSX;
+}
+
+async function ehPlanilha(f) {
+  const tipo = f.type || '';
+  if (/\.(xlsx|xls|ods|csv)$/i.test(f.name || '') || /sheet|excel|csv/i.test(tipo)) return true;
+  if (tipo.startsWith('image/') || tipo.includes('pdf')) return false;
+  const b = new Uint8Array(await f.slice(0, 4).arrayBuffer());
+  return b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04;
+}
+
+const COLUNAS = {
+  endereco: /endere[cç]o|address|logradouro/i,
+  bairro: /bairro|neighbou?rhood|district/i,
+  cidade: /^(cidade|city|munic)/i,
+  cep: /\bcep\b|zip|postal/i,
+  lat: /^lat/i,
+  lng: /^(lng|lon)/i,
+  ordem: /^(sequence|sequ[eê]ncia|seq|ordem)$/i,
+};
+
+const numeroDe = v => typeof v === 'number' ? v : parseFloat(String(v ?? '').trim().replace(',', '.'));
+
+async function lerPlanilha(f) {
+  const XLSX = await carregarSheetJs();
+  const wb = XLSX.read(new Uint8Array(await f.arrayBuffer()), {type: 'array'});
+  const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: '', raw: true});
+  const iCab = linhas.slice(0, 10).findIndex(l => l.some(c => COLUNAS.endereco.test(String(c))));
+  if (iCab < 0) throw new Error('não achei a coluna de endereço');
+  const cab = linhas[iCab].map(c => String(c).trim());
+  const col = Object.fromEntries(Object.entries(COLUNAS).map(([k, re]) => [k, cab.findIndex(c => re.test(c))]));
+  const campo = (l, k) => col[k] < 0 ? '' : String(l[col[k]] ?? '').trim();
+  const itens = [];
+  for (const l of linhas.slice(iCab + 1)) {
+    let texto = campo(l, 'endereco');
+    if (!texto) continue;
+    const bairro = campo(l, 'bairro'), cep = campo(l, 'cep').replace(/\D/g, '');
+    if (bairro && !normal(texto).includes(normal(bairro))) texto += ', ' + bairro;
+    if (cep.length === 8 && !texto.replace(/\D/g, '').includes(cep)) texto += `, CEP ${cep.slice(0, 5)}-${cep.slice(5)}`;
+    const lat = numeroDe(l[col.lat]), lng = numeroDe(l[col.lng]);
+    const temCoord = col.lat >= 0 && col.lng >= 0 && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && lat && lng;
+    const ordem = campo(l, 'ordem');
+    itens.push({texto, lat: temCoord ? lat : null, lng: temCoord ? lng : null, ml: /^\d{1,4}$/.test(ordem) ? ordem : null, cidade: campo(l, 'cidade')});
+  }
+  return itens;
+}
+
+function adicionarDaPlanilha(itens) {
+  const existentes = new Set(S.paradas.map(x => chaveEndereco(x.texto)));
+  const desta = new Map();
+  let novas = 0, juntas = 0, repetidas = 0, semPosicao = 0;
+  for (const it of itens) {
+    const chave = chaveEndereco(it.texto);
+    if (desta.has(chave)) { const p = desta.get(chave); p.unidades = (p.unidades || 1) + 1; juntas++; continue; }
+    if (existentes.has(chave)) { repetidas++; continue; }
+    const temCoord = it.lat != null;
+    const p = {id: novoId(), area: S.areaAtual, ml: it.ml, texto: it.texto, unidades: null, comercial: false,
+      lat: temCoord ? it.lat : null, lng: temCoord ? it.lng : null, exibido: temCoord ? 'Posição da planilha' : '',
+      precisao: temCoord ? 'planilha' : 'pendente', candidatos: [], entregue: false};
+    S.paradas.push(p);
+    desta.set(chave, p);
+    novas++;
+    if (!temCoord) semPosicao++;
+  }
+  if (!S.cidade) { const c = itens.find(i => i.cidade); if (c) S.cidade = c.cidade; }
+  if (novas || juntas) invalidarRota();
+  salvar();
+  return {novas, juntas, repetidas, semPosicao};
+}
+
+function resumoPlanilha(r) {
+  return `${r.novas} parada(s) da planilha${r.juntas ? `, ${r.juntas} pacote(s) somado(s) a um mesmo endereço` : ''}${r.repetidas ? `, ${r.repetidas} já existia(m)` : ''}.`
+    + (r.semPosicao ? ` ${r.semPosicao} sem posição, buscando no mapa…` : '');
+}
+
+async function separarPlanilhas(files) {
+  const planilhas = [], outros = [];
+  for (const f of files) (await ehPlanilha(f) ? planilhas : outros).push(f);
+  return {planilhas, outros};
+}
+
+async function importarPlanilhas(files) {
+  const itens = [];
+  for (const f of files) itens.push(...await lerPlanilha(f));
+  return adicionarDaPlanilha(itens);
+}
+
 async function lerArquivos(files) {
   const imagens = [], linhas = [];
   for (const f of files) {
@@ -1039,6 +1136,8 @@ async function lerArquivos(files) {
       const r = await lerPdf(f);
       linhas.push(...r.linhas);
       imagens.push(...r.imagens);
+    } else if ((f.type || '').startsWith('text/') || /\.txt$/i.test(f.name || '')) {
+      linhas.push(...extrairEnderecos(await f.text()));
     } else imagens.push(f);
   }
   if (imagens.length) linhas.push(...await lerImagens(imagens));
@@ -1149,14 +1248,16 @@ async function processarCompartilhado() {
   history.replaceState(null, '', location.pathname);
   if (!files.length && !texto.trim()) return;
   try {
-    const linhas = files.length ? await lerArquivos(files) : [];
+    const {planilhas, outros} = await separarPlanilhas(files);
+    const daPlanilha = planilhas.length ? await importarPlanilhas(planilhas) : null;
+    const linhas = outros.length ? await lerArquivos(outros) : [];
     if (texto.trim()) {
       const doTexto = extrairEnderecos(texto);
       linhas.push(...(doTexto.length ? doTexto : texto.split('\n').map(l => l.trim()).filter(Boolean)));
     }
-    if (!linhas.length) { aba = 'enderecos'; render(); status('Não achei endereços. Compartilhe o print da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000); return; }
+    if (!linhas.length && !(daPlanilha && daPlanilha.novas + daPlanilha.juntas)) { aba = 'enderecos'; render(); status('Não achei endereços. Compartilhe a planilha da rota ou o print da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000); return; }
     const {novas, repetidas} = adicionarLinhas(linhas);
-    status(`${novas} parada(s) nova(s)${repetidas ? `, ${repetidas} já existia(m)` : ''}. Buscando no mapa…`);
+    status(daPlanilha ? resumoPlanilha(daPlanilha) : `${novas} parada(s) nova(s)${repetidas ? `, ${repetidas} já existia(m)` : ''}. Buscando no mapa…`);
     aba = 'conferir'; render();
     await buscarPendentes();
     if (!S.inicio) { try { await gps(); } catch (e) {} }
@@ -1167,6 +1268,21 @@ async function processarCompartilhado() {
 }
 
 async function lerPrints(files) {
+  const {planilhas, outros} = await separarPlanilhas(files);
+  if (planilhas.length) {
+    status('Lendo a planilha…');
+    try {
+      S.cidade = $('#cidade').value.trim() || S.cidade;
+      const r = await importarPlanilhas(planilhas);
+      if (outros.length) r.novas += adicionarLinhas(await lerArquivos(outros)).novas;
+      status(resumoPlanilha(r), 5000);
+      aba = 'conferir'; render(); desenharMapa(true);
+      await buscarPendentes();
+    } catch (e) {
+      status('Não consegui ler a planilha: ' + e.message, 6000);
+    }
+    return;
+  }
   status('Carregando leitor de texto (a primeira vez demora)…');
   try {
     const unicos = await lerArquivos(files);
