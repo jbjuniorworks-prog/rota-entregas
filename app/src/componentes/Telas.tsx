@@ -107,11 +107,11 @@ export function TelaEnderecos() {
     <textarea id="lista" placeholder={'18 Avenida Dulce Diniz 920, Condomínio Luzia Residence, CEP 49048430\n...'} value={lista} onChange={ev => setLista(ev.target.value)} />
     <div className="linha">
       <button className="btn pri" onClick={async () => { if (await A.adicionarTexto(lista)) setLista(''); }}>Adicionar em {a.nome}</button>
-      <label className="btn" style={{margin: 0, color: 'var(--tx)'}}>📷 Ler print, PDF ou planilha
-        <input type="file" accept="image/*,application/pdf,.pdf,.xlsx,.xls,.ods,.csv,.txt" id="print" multiple hidden onChange={ev => { abrir(ev.target.files); ev.target.value = ''; }} />
+      <label className="btn" style={{margin: 0, color: 'var(--tx)'}}>📷 Ler print, vídeo, PDF ou planilha
+        <input type="file" accept="image/*,video/*,application/pdf,.pdf,.xlsx,.xls,.ods,.csv,.txt" id="print" multiple hidden onChange={ev => { abrir(ev.target.files); ev.target.value = ''; }} />
       </label>
     </div>
-    <div className="info" style={{marginTop: 8}}>Pode mandar vários prints de uma vez (rolando a lista). Endereços repetidos são ignorados. O número do app na frente (ex.: <b>18</b> Avenida…) aparece no pino.</div>
+    <div className="info" style={{marginTop: 8}}>Pode mandar vários prints de uma vez, ou <b>gravar a tela</b> rolando a lista devagar do começo ao fim e mandar o vídeo. Endereços repetidos são ignorados. O número do app na frente (ex.: <b>18</b> Avenida…) aparece no pino.</div>
     <BotaoResetar />
     {backupRecente(guarda) && <div className="aviso">Você apagou uma rota há pouco. <button className="btn peq pri" onClick={A.desfazerReset}>↺ Desfazer</button></div>}
     {lembradas > 0 && <details>

@@ -126,7 +126,21 @@ export function extrairEnderecos(bruto: string): string[] {
   }
   return out
     .filter(e => (/\s\d{1,5}\b/.test(e.texto) || TEM_CEP.test(e.texto)) && pareceEndereco(e.texto))
-    .map(e => (e.ml ? e.ml + ' ' : '') + e.texto + (e.unidades ? ` · ${e.unidades} unid` : '') + (e.comercial ? ' · comercial' : ''));
+    .map(e => (e.ml ? e.ml + ' ' : '') + e.texto.replace(/\s[O0](?=\s)/g, '') + (e.unidades ? ` · ${e.unidades} unid` : '') + (e.comercial ? ' · comercial' : ''));
+}
+
+export function juntarQuadros(quadros: string[][]): string[] {
+  const vistos = new Map<string, {e: string; n: number}>();
+  for (const q of quadros) {
+    for (const e of new Set(q)) {
+      const k = chaveEndereco(e), v = vistos.get(k);
+      if (!v) vistos.set(k, {e, n: 1});
+      else { v.n++; if (e.length > v.e.length) v.e = e; }
+    }
+  }
+  const itens = [...vistos.values()].map(v => ({...v, d: decompor(analisarLinha(v.e).texto)}));
+  return itens.filter(x => !itens.some(y => y !== x && x.d.numero && y.d.numero && y.n >= x.n
+    && y.d.numero.length > x.d.numero.length && y.d.numero.startsWith(x.d.numero) && normal(y.d.rua) === normal(x.d.rua))).map(x => x.e);
 }
 
 export function juntarLeituras(leituras: string[], apoio: string[] = []): string[] {

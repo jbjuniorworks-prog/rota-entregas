@@ -216,8 +216,8 @@ export async function lerPrints(files: File[], textoAtual: string): Promise<stri
   try {
     const unicos = await lerArquivos(files, m => status(m));
     status(unicos.length
-      ? `${unicos.length} endereço(s) lido(s). Confira o texto e toque em "Adicionar".`
-      : 'Não achei endereços. Use o print da LISTA de paradas (o botão de lista no app), onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
+      ? `${unicos.length} endereço(s) lido(s). Confira o texto e toque em "Adicionar".${unicos.avisos.map(a => ' ⚠️ ' + a).join('')}`
+      : 'Não achei endereços. Use o print ou a gravação da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
     return (textoAtual.trim() ? textoAtual.trim() + '\n' : '') + unicos.join('\n');
   } catch (err) {
     status('Não consegui ler a imagem: ' + (err as Error).message, 5000);
@@ -242,7 +242,7 @@ async function processarCompartilhado() {
   try {
     const {planilhas, outros} = await separarPlanilhas(files);
     const daPlanilha = planilhas.length ? await importarPlanilhas(planilhas) : null;
-    const linhas = outros.length ? await lerArquivos(outros, m => status(m)) : [];
+    const linhas: string[] = outros.length ? await lerArquivos(outros, m => status(m)) : [];
     if (texto.trim()) {
       const doTexto = extrairEnderecos(texto);
       linhas.push(...(doTexto.length ? doTexto : texto.split('\n').map(l => l.trim()).filter(Boolean)));

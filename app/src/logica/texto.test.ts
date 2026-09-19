@@ -1,4 +1,4 @@
-import {analisarLinha, chaveEndereco, chaveLugar, decompor, extrairEnderecos, juntarLeituras, mesmaRua, mesmoEndereco, normal, ruaCompleta} from './texto';
+import {analisarLinha, chaveEndereco, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, normal, ruaCompleta} from './texto';
 
 describe('decompor', () => {
   it.each([
@@ -128,6 +128,18 @@ describe('extrairEnderecos (texto de print ou PDF)', () => {
     const apoio = ['Avenida Conselheiro Sicrano 2151', 'Rua Beltrano Fontesl) 190', 'Rua Fulana Barbosa 8'];
     expect(juntarLeituras(principais, apoio)).toEqual(['5 Avenida Conselheiro Sicrano 2151, CEP 49000200', 'Rua Beltrano Fontes 190']);
     expect(juntarLeituras([], apoio)).toEqual(apoio);
+  });
+  it('entre quadros do vídeo: junta o mesmo endereço e descarta o número cortado na borda', () => {
+    expect(juntarQuadros([
+      ['Avenida Santos Teste 230', 'Avenida Santos Teste 2'],
+      ['Avenida Santos Teste 230', '12 Rua Beltrano Fontes 200'],
+      ['Rua Beltrano Fontes 200', 'Rua Dois 125'],
+      ['Rua Dois 12'],
+      ['Rua Dois 12'],
+    ])).toEqual(['Avenida Santos Teste 230', '12 Rua Beltrano Fontes 200', 'Rua Dois 125', 'Rua Dois 12']);
+  });
+  it('o círculo do ✓ lido como "O" no meio do endereço sai', () => {
+    expect(extrairEnderecos('Rua Beltrano Martins\nO Fontes 200\nAvenida Santos Teste O\n230')).toEqual(['Rua Beltrano Martins Fontes 200', 'Avenida Santos Teste 230']);
   });
   it('horário da janela de entrega não vira número da parada', () => {
     expect(extrairEnderecos('13:30h a 17:40h\nAvenida das Mangueiras 3580')).toEqual(['Avenida das Mangueiras 3580']);

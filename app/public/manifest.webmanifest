@@ -18,7 +18,7 @@
       "title": "title",
       "text": "text",
       "url": "url",
-      "files": [{"name": "imagens", "accept": ["image/*", "application/pdf", ".pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel", "text/csv", "text/plain", ".xlsx", ".xls", ".csv", ".txt"]}]
+      "files": [{"name": "imagens", "accept": ["image/*", "video/*", "application/pdf", ".pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel", "text/csv", "text/plain", ".xlsx", ".xls", ".csv", ".txt"]}]
     }
   }
 }
