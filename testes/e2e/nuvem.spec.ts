@@ -1,5 +1,5 @@
 import {readFileSync, existsSync} from 'node:fs';
-import {test, expect, abrir, carregar, montar, ordem, linhaDe, ROTA_A} from './apoio';
+import {test, expect, carregar, montar, ordem, linhaDe, ROTA_A} from './apoio';
 
 const env = existsSync('.env')
   ? Object.fromEntries(readFileSync('.env', 'utf8').split(/\r?\n/).filter(l => /^\w+=/.test(l)).map(l => l.split(/=(.*)/s).slice(0, 2)))
@@ -24,6 +24,7 @@ async function apagarMotoristaDeTeste() {
 }
 
 test.describe('nuvem @nuvem', () => {
+  test.use({papel: null});
   test.skip(!URL || !SERVICO, 'precisa do .env com SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY');
   let uid = '';
 
@@ -36,8 +37,7 @@ test.describe('nuvem @nuvem', () => {
   test.afterAll(apagarMotoristaDeTeste);
 
   test('rota, entregas e correção chegam ao banco, e o motorista não passa das regras', async ({page}) => {
-    await abrir(page);
-    await page.getByText('Entrar na conta').click();
+    await page.goto('./');
     await page.getByLabel('E-mail').fill(EMAIL);
     await page.getByLabel('Senha').fill(SENHA);
     await page.getByRole('button', {name: 'Entrar', exact: true}).click();

@@ -1,14 +1,75 @@
-import {test as base, expect, type Page, type Locator} from '@playwright/test';
+import {test as base, expect, type BrowserContext, type Page, type Locator} from '@playwright/test';
 
 export const ROTA_A = 'testes/planilhas/rota-a.txt';
 export const ROTA_B = 'testes/planilhas/rota-b.xlsx';
 
-export const test = base.extend<{erros: string[]}>({
+export interface NuvemFalsa {
+  papel: 'motorista' | 'admin' | null;
+  tabelas: Record<string, Record<string, unknown>[]>;
+  rpc: Record<string, unknown[]>;
+  pedidos: {metodo: string; caminho: string; busca: string; corpo: unknown}[];
+}
+
+const EU = {id: '00000000-0000-4000-8000-000000000001', nome: 'Você Teste'};
+
+function base64url(o: unknown) {
+  return Buffer.from(JSON.stringify(o)).toString('base64url');
+}
+
+function sessaoFalsa() {
+  const expira = Math.floor(Date.now() / 1000) + 30 * 86400;
+  const user = {id: EU.id, email: 'teste@exemplo.com', aud: 'authenticated', role: 'authenticated', app_metadata: {provider: 'email'}, user_metadata: {nome: EU.nome}, created_at: new Date().toISOString()};
+  const token = [base64url({alg: 'HS256', typ: 'JWT'}), base64url({sub: EU.id, role: 'authenticated', aud: 'authenticated', exp: expira}), 'assinatura'].join('.');
+  return {access_token: token, refresh_token: 'renovar', token_type: 'bearer', expires_in: 30 * 86400, expires_at: expira, user};
+}
+
+function filtrar(linhas: Record<string, unknown>[], busca: URLSearchParams) {
+  let saida = linhas;
+  for (const [campo, valor] of busca) {
+    if (valor.startsWith('eq.')) saida = saida.filter(l => String(l[campo]) === valor.slice(3));
+    if (valor.startsWith('in.(')) {
+      const ok = new Set(valor.slice(4, -1).split(',').map(v => v.replace(/^"|"$/g, '')));
+      saida = saida.filter(l => ok.has(String(l[campo])));
+    }
+  }
+  return saida;
+}
+
+export async function ligarNuvemFalsa(context: BrowserContext, nuvem: NuvemFalsa) {
+  if (!nuvem.papel) return;
+  const eu = {...EU, papel: nuvem.papel, ativo: true};
+  await context.addInitScript(s => { if (!localStorage.getItem('rota-entregas-auth')) localStorage.setItem('rota-entregas-auth', s); }, JSON.stringify(sessaoFalsa()));
+  await context.route('**://hkclzmlcfiksaqqspqsy.supabase.co/**', async r => {
+    const u = new URL(r.request().url()), metodo = r.request().method();
+    const caminho = u.pathname.replace(/^\/(rest|auth)\/v1\//, '');
+    const cors = {'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*'};
+    if (metodo === 'OPTIONS') return r.fulfill({status: 204, headers: cors});
+    const json = (corpo: unknown, status = 200) => r.fulfill({status, contentType: 'application/json', headers: cors, body: JSON.stringify(corpo)});
+    let corpo: unknown = null;
+    try { corpo = r.request().postDataJSON(); } catch { corpo = r.request().postData(); }
+    nuvem.pedidos.push({metodo, caminho, busca: u.search, corpo});
+    if (caminho === 'user') return json(sessaoFalsa().user);
+    if (caminho === 'token') return json(sessaoFalsa());
+    if (caminho === 'logout') return r.fulfill({status: 204, headers: cors});
+    if (caminho.startsWith('rpc/')) return json(nuvem.rpc[caminho.slice(4)] || []);
+    if (metodo === 'DELETE') return json([{id: 1}]);
+    if (metodo !== 'GET') return json([], metodo === 'POST' ? 201 : 200);
+    if (caminho === 'perfis' && u.searchParams.get('id') === 'eq.' + EU.id) {
+      return r.request().headers()['accept']?.includes('vnd.pgrst.object') ? json(eu) : json([eu]);
+    }
+    return json(filtrar(caminho === 'perfis' ? [eu, ...(nuvem.tabelas.perfis || [])] : nuvem.tabelas[caminho] || [], u.searchParams));
+  });
+}
+
+export const test = base.extend<{erros: string[]; nuvem: NuvemFalsa; papel: 'motorista' | 'admin' | null}>({
+  papel: ['motorista', {option: true}],
   erros: async ({}, use) => { await use([]); },
-  page: async ({page, context, erros}, use) => {
+  nuvem: async ({papel}, use) => { await use({papel, tabelas: {}, rpc: {}, pedidos: []}); },
+  page: async ({page, context, erros, nuvem}, use) => {
     for (const servico of ['router.project-osrm.org', 'nominatim.openstreetmap.org', 'tile.openstreetmap.org', 'cep.awesomeapi.com.br', 'viacep.com.br']) {
       await context.route(`**://${servico}/**`, r => r.abort());
     }
+    await ligarNuvemFalsa(context, nuvem);
     page.on('pageerror', e => erros.push(String(e)));
     await use(page);
     expect(erros, 'erros de JavaScript na página').toEqual([]);

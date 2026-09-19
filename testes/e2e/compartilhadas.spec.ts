@@ -6,7 +6,7 @@ const env = existsSync('.env')
   ? Object.fromEntries(readFileSync('.env', 'utf8').split(/\r?\n/).filter(l => /^\w+=/.test(l)).map(l => l.split(/=(.*)/s).slice(0, 2)))
   : {};
 const URL = env.SUPABASE_URL, SERVICO = env.SUPABASE_SERVICE_ROLE_KEY;
-const MOTORISTAS = ['a', 'b', 'c'].map(x => ({email: `juniorpiks+compartilha-${x}@hotmail.com`, senha: 'Teste-' + Math.random().toString(36).slice(2) + '-9Z', nome: 'Teste ' + x.toUpperCase(), id: ''}));
+const MOTORISTAS = ['a', 'b', 'c', 'adm'].map(x => ({email: `juniorpiks+compartilha-${x}@hotmail.com`, senha: 'Teste-' + Math.random().toString(36).slice(2) + '-9Z', nome: 'Teste ' + x.toUpperCase(), id: ''}));
 const RUA_D = 'Rua D, 49, Perto do Vale';
 const PONTO = [-10.9605, -37.0455] as const;
 
@@ -31,7 +31,6 @@ async function comoMotorista(browser: Browser, m: typeof MOTORISTAS[number]): Pr
   const page = await ctx.newPage();
   page.on('dialog', d => d.accept());
   await page.goto('./');
-  await page.getByText('Entrar na conta').click();
   await page.getByLabel('E-mail').fill(m.email);
   await page.getByLabel('Senha').fill(m.senha);
   await page.getByRole('button', {name: 'Entrar', exact: true}).click();
@@ -50,6 +49,7 @@ test.describe('correções compartilhadas @nuvem', () => {
       expect(r.status).toBe(200);
       m.id = r.corpo.id;
     }
+    expect((await api(`/rest/v1/perfis?id=eq.${MOTORISTAS[3].id}`, {method: 'PATCH', body: JSON.stringify({papel: 'admin'})})).status).toBe(200);
   });
   test.afterAll(limpar);
 
@@ -89,5 +89,32 @@ test.describe('correções compartilhadas @nuvem', () => {
     await expect.poll(async () => (await correcoesDe(A.id)).length, {timeout: 30_000}).toBe(1);
     await aba(a, '1. Endereços');
     await expect(a.getByText('✓ tudo salvo')).toBeVisible();
+  });
+
+  test('o administrador vê as marcações, confirma a de um, apaga a de outro e desativa um motorista', async ({browser}) => {
+    const [A, B, C, ADM] = MOTORISTAS;
+    expect(await correcoesDe(A.id)).toHaveLength(1);
+    expect(await correcoesDe(B.id)).toHaveLength(1);
+    const adm = await comoMotorista(browser, ADM);
+    await adm.getByRole('button', {name: '⚙️ Admin'}).click();
+    const lugar = adm.locator('[data-lugar]').filter({has: adm.locator('[data-marcacao="Teste A"]')});
+    await expect(lugar).toHaveCount(1);
+    await expect(lugar).toContainText('Rua D');
+    await expect(lugar).toContainText('Confirmada');
+
+    await lugar.locator('[data-marcacao="Teste B"]').getByRole('button', {name: 'Apagar'}).click();
+    await expect(aviso(adm)).toContainText('Marcação apagada.');
+    expect(await correcoesDe(B.id)).toHaveLength(0);
+    await expect(lugar).toContainText('Sugestão');
+
+    await lugar.locator('[data-marcacao="Teste A"]').getByRole('button', {name: 'Confirmar'}).click();
+    await expect(aviso(adm)).toContainText('Posição confirmada');
+    const [marcadaPorA] = await correcoesDe(A.id);
+    expect(await correcoesDe(ADM.id)).toEqual([{...marcadaPorA}]);
+    await expect(lugar).toContainText('Confirmada');
+
+    await adm.locator(`[data-motorista="${C.nome}"]`).getByRole('button', {name: 'Desativar'}).click();
+    await expect(aviso(adm)).toContainText('desativado(a)');
+    expect((await api(`/rest/v1/perfis?id=eq.${C.id}&select=ativo`)).corpo[0].ativo).toBe(false);
   });
 });

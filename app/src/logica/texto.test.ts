@@ -64,7 +64,16 @@ describe('extrairEnderecos (texto de print ou PDF)', () => {
   it('junta a linha do número do app e o complemento', () => {
     expect(extrairEnderecos('18\nAvenida Dulce Diniz 920\nCondomínio Luzia Residence\nCEP 49048430')).toEqual(['18 Avenida Dulce Diniz 920, Condomínio Luzia Residence, CEP 49048430']);
   });
-  it.todo('não descarta "Rua B", "Rua D" nem logradouro abreviado "R " (limitação conhecida)');
+  it('não descarta rua de uma letra nem logradouro abreviado "R "', () => {
+    expect(extrairEnderecos('Rua B, 120\nBairro Santa Maria')).toEqual(['Rua B, 120, Bairro Santa Maria']);
+    expect(extrairEnderecos('7\nRua D 49\nCEP 49044-190')).toEqual(['7 Rua D 49, CEP 49044-190']);
+    expect(extrairEnderecos('R Laranjeiras 100')).toEqual(['R Laranjeiras 100']);
+    expect(extrairEnderecos('12 R. Itabaiana, 45')).toEqual(['12 R. Itabaiana, 45']);
+  });
+  it('continua ignorando ruído que começa parecido com rua', () => {
+    expect(extrairEnderecos('R$ 12,00\nBR 101 km 5\nR 12\nRua x\nRua B')).toEqual([]);
+    expect(analisarLinha('BR 101, 200')).toMatchObject({ml: null, texto: 'BR 101, 200'});
+  });
 });
 
 describe('comparação de ruas', () => {

@@ -33,6 +33,7 @@ export function Mapa() {
   const marcadores = useRef<Record<string, L.Marker>>({});
   const enquadrado = useRef(0);
   const focado = useRef(0);
+  const marcado = useRef(0);
 
   useEffect(() => {
     const m = L.map(div.current!).setView([-15.8, -47.9], 4);
@@ -71,6 +72,14 @@ export function Mapa() {
       mk.addTo(c);
       marcadores.current[p.id] = mk;
       if (!p.entregue) limites.push([p.lat, p.lng]);
+    }
+    if (ui.aba === 'admin' && ui.marcas) {
+      const pts = ui.marcas.pontos;
+      for (const x of pts) L.marker([x.lat, x.lng], {icon: icone(x.rotulo, x.cor), zIndexOffset: 1000}).bindPopup(esc(x.texto)).addTo(c);
+      if (ui.marcas.vez !== marcado.current && pts.length) {
+        marcado.current = ui.marcas.vez;
+        m.fitBounds(pts.map(x => [x.lat, x.lng] as [number, number]), {padding: [40, 40], maxZoom: 17});
+      }
     }
     if (ui.enquadrar !== enquadrado.current && limites.length) {
       enquadrado.current = ui.enquadrar;

@@ -3,8 +3,10 @@ import {useEffect, useRef} from 'react';
 import './estilo.css';
 import * as A from './acoes';
 import {Mapa} from './componentes/Mapa';
-import {TelaConferir, TelaEnderecos, TelaRota} from './componentes/Telas';
+import {TelaAdmin} from './componentes/Admin';
+import {TelaConferir, TelaEnderecos, TelaEntrar, TelaRota} from './componentes/Telas';
 import {useLoja, type Aba} from './loja';
+import {nuvem} from './servicos/nuvem';
 
 const ABAS: [Aba, string][] = [['enderecos', '1. Endereços'], ['conferir', '2. Conferir'], ['rota', '3. Rota']];
 
@@ -15,12 +17,19 @@ function App() {
   const abaAnterior = useRef(ui.aba);
   useEffect(() => { A.iniciar(); }, []);
   useEffect(() => {
-    const c = conteudo.current!;
+    const c = conteudo.current;
+    if (!c) return;
     if (abaAnterior.current !== ui.aba) {
       c.scrollTop = rolagem.current[ui.aba] || 0;
       abaAnterior.current = ui.aba;
     }
   }, [ui.aba]);
+  const pf = nuvem.perfil;
+  if ((!nuvem.sessao && !nuvem.lembrada) || (nuvem.sessao && pf && !pf.ativo)) return <>
+    <TelaEntrar />
+    <div id="status" className={ui.aviso ? 'on' : ''}>{ui.aviso}</div>
+  </>;
+  const abas: [Aba, string][] = pf?.papel === 'admin' ? [...ABAS, ['admin', '⚙️ Admin']] : ABAS;
   return <>
     <div id="app" className={ui.mapaGrande ? 'mapa-grande' : ''}>
       <div className="mapwrap">
@@ -28,11 +37,12 @@ function App() {
         <button id="btnMapa" className="btn peq" onClick={() => A.mudar(() => { ui.mapaGrande = !ui.mapaGrande; })}>⤢ Mapa</button>
       </div>
       <div id="painel">
-        <nav>{ABAS.map(([id, nome]) => <button key={id} className={ui.aba === id ? 'on' : ''} onClick={() => A.irPara(id)}>{nome}</button>)}</nav>
+        <nav>{abas.map(([id, nome]) => <button key={id} className={ui.aba === id ? 'on' : ''} onClick={() => A.irPara(id)}>{nome}</button>)}</nav>
         <div id="conteudo" ref={conteudo} onScroll={ev => { rolagem.current[ui.aba] = (ev.target as HTMLDivElement).scrollTop; }}>
           {ui.aba === 'enderecos' && <TelaEnderecos />}
           {ui.aba === 'conferir' && <TelaConferir />}
           {ui.aba === 'rota' && <TelaRota />}
+          {ui.aba === 'admin' && <TelaAdmin />}
         </div>
       </div>
     </div>

@@ -1,14 +1,29 @@
 # Rota de Entregas
 
-Ferramenta pessoal para ordenar as paradas de uma rota de entregas.
+App (PWA) que os entregadores usam para ordenar as paradas do dia.
 
-Lê os endereços de prints da lista de paradas, localiza cada um no mapa,
-agrupa as entregas próximas e calcula a sequência mais curta pelas ruas.
-Abre cada parada no Waze ou no Google Maps, em trechos que respeitam o
-limite de pontos do Maps.
-
+Lê a planilha da rota (Shopee, inclusive a que vem como .txt), prints ou PDF
+da lista de paradas, localiza cada endereço, agrupa as entregas próximas e
+calcula a sequência mais curta pelas ruas. Abre cada parada no Waze ou no
+Google Maps, em trechos que respeitam o limite de pontos do Maps.
 Instalável no Android: ao compartilhar prints com o app, a rota é montada
 automaticamente.
 
-Os dados ficam apenas no navegador de quem usa. Nada é enviado a servidores
-além das consultas de endereço (OpenStreetMap, ViaCEP/AwesomeAPI) e de rota (OSRM).
+Só entra quem tem conta (criada pelo administrador). As rotas, as entregas e
+as correções de pino vão para o Supabase; a correção de um motorista vira
+sugestão para os outros, e com 2 motoristas no mesmo ponto (ou o admin) vale
+para todos. Consultas de endereço vão ao OpenStreetMap/ViaCEP e de rota ao OSRM.
+
+## Código
+
+- `app/`: Vite + React + TypeScript. Lógica pura em `app/src/logica` (com testes).
+- `supabase/`: estrutura do banco, rodada em ordem no SQL Editor.
+- `ferramentas/motoristas.mjs`: criar conta, trocar senha, desativar
+  (`npm run motoristas -- listar | criar email Nome | senha email | desativar email | ativar email`).
+  Precisa do `.env` com `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`, fora do git.
+
+## Testes e publicação
+
+- `npm run tipos`, `npm run test:unidade`, `npm test` (e2e sobre o build, com a nuvem simulada).
+- `npm run test:nuvem`: contra o banco de verdade (cria e apaga usuários de teste).
+- Cada push na `main` roda os testes no GitHub Actions e, se passarem, publica no GitHub Pages.

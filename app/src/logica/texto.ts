@@ -1,10 +1,10 @@
 export const normal = (s: unknown): string =>
   String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
-export const RUA = /^(rua|r\.|avenida|av\.?|travessa|tv\.?|trav\.?|pra[çc]a|p[çc]\.|alameda|al\.|rodovia|rod\.|estrada|estr?\.|via|largo|beco|viela|passagem|conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
+export const RUA = /^(rua|r\.?|avenida|av\.?|travessa|tv\.?|trav\.?|pra[çc]a|p[çc]\.|alameda|al\.|rodovia|rod\.|estrada|estr?\.|via|largo|beco|viela|passagem|conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
 const COMPLEMENTO = /^(condom[ií]nio|cond\.|edif[ií]cio|ed\.|apto?\.?|apartamento|bloco|bl\.|casa|lote|sala|loja|fundos|bairro|cep\b|pr[oó]ximo|perto|ao lado|em frente|refer[eê]ncia)/i;
 export const TEM_CEP = /\b\d{5}-?\d{3}\b/;
-const RUA_EM = new RegExp('^(.{0,6}?)\\s*(' + RUA.source.slice(1) + '.*)$', 'i');
+const RUA_EM = new RegExp('^(.{0,6}?)\\s*(?<![a-zà-ÿ])(' + RUA.source.slice(1) + '.*)$', 'i');
 const RUA_COMPLEMENTO = /^(conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
 export const TIPOS_RUA = /^(rua|r|avenida|av|travessa|tv|trav|praca|pc|alameda|al|rodovia|rod|estrada|est|via|largo|beco|viela|passagem)\b\.?\s*/;
 const PALAVRAS_VAZIAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'doutor', 'dr', 'professor', 'prof', 'presidente', 'pres', 'governador', 'gov', 'ministro', 'min', 'senador', 'sen', 'deputado', 'dep', 'coronel', 'cel', 'general', 'gen', 'padre', 'pe', 'sao', 'santa', 'santo']);
@@ -84,8 +84,9 @@ export function pareceEndereco(texto: string): boolean {
   if (/[=?@*<>~^{}\\]/.test(texto)) return false;
   const semTipo = texto.replace(RUA, '').trim();
   const primeira = semTipo.split(/[\s,]+/)[0] || '';
-  if (!/^[a-zà-ÿ]{3,}$|^[a-zà-ÿ]{3,}/i.test(primeira) && !/^\d+º?$/.test(primeira)) return false;
   const letras = (texto.match(/[a-zà-ÿ]/gi) || []).length;
+  if (RUA.test(texto + ' ') && /^[A-Z]\d?$/.test(primeira)) return letras >= 3 && letras / texto.length > 0.25;
+  if (!/^[a-zà-ÿ]{3,}$|^[a-zà-ÿ]{3,}/i.test(primeira) && !/^\d+º?$/.test(primeira)) return false;
   return letras >= 8 && letras / texto.length > 0.45;
 }
 

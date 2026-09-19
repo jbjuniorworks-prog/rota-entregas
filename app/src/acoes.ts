@@ -48,8 +48,9 @@ export async function entrar(email: string, senha: string) {
 }
 
 export async function sair() {
-  if (!confirm('Sair da conta? O que ainda não foi enviado fica guardado neste celular.')) return;
+  if (!confirm('Sair da conta? Para usar o app de novo, vai precisar do e-mail e da senha. O que ainda não foi enviado fica guardado neste celular.')) return;
   await sairDaNuvem();
+  if (ui.aba === 'admin') ui.aba = 'enderecos';
   loja.mudou(false);
 }
 

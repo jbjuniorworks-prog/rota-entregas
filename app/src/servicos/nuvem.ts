@@ -6,6 +6,7 @@ const SUPA_URL = 'https://hkclzmlcfiksaqqspqsy.supabase.co';
 const SUPA_CHAVE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrY2x6bWxjZmlrc2FxcXNwcXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NzcyNDgsImV4cCI6MjEwNTM1MzI0OH0.dPbu04slxXdKtzbfJtbMcxsUAnIoIxHg0eKAVX4K_h8';
 
 export interface Perfil {
+  id: string;
   nome: string;
   papel: 'motorista' | 'admin';
   ativo: boolean;
@@ -20,11 +21,13 @@ export const nuvem = {
   get sessao() { return sessao; },
   get perfil() { return perfil; },
   get semServidor() { return semServidor; },
+  get cliente() { return supa; },
+  get lembrada() { try { return !!localStorage.getItem(CHAVES.sessao); } catch { return false; } },
 };
 
 async function carregarPerfil() {
   if (!supa || !sessao) return;
-  const {data} = await supa.from('perfis').select('nome, papel, ativo').eq('id', sessao.user.id).maybeSingle();
+  const {data} = await supa.from('perfis').select('id, nome, papel, ativo').eq('id', sessao.user.id).maybeSingle();
   perfil = (data as Perfil) || null;
 }
 
