@@ -1,0 +1,426 @@
+import {criarFila, operacoesDaPlanilha} from './logica/fila';
+import {marcarIsoladas, proximaAPe} from './logica/geo';
+import {backupRecente, CHAVES, estadoVazio, resetarDia} from './logica/guarda';
+import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from './logica/importar';
+import {avisoGuardou, criarMemoria} from './logica/memoria';
+import {montarRota as calcularRota} from './logica/montagem';
+import {CORES} from './logica/rotulos';
+import {extrairEnderecos} from './logica/texto';
+import type {Parada} from './logica/tipos';
+import {guarda, loja, status} from './loja';
+import {lerArquivos, lerPlanilhas, separarPlanilhas} from './servicos/arquivos';
+import {geocodificar} from './servicos/geocodificacao';
+import {clienteNuvem, entrar as entrarNaNuvem, iniciarNuvem, sair as sairDaNuvem} from './servicos/nuvem';
+import {linhaDaRota, matriz} from './servicos/ruas';
+import {linkWaze} from './logica/otimizacao';
+
+const e = () => loja.e;
+const ui = loja.ui;
+
+export const fila = criarFila(guarda);
+export const memoria = criarMemoria(guarda, () => e().cidade, (chave, lat, lng) => {
+  fila.enfileirar({tipo: 'correcao', chave, lat, lng});
+  enviarFila();
+});
+
+export async function enviarFila() {
+  await fila.enviar(clienteNuvem());
+  loja.mudou(false);
+}
+
+export async function iniciar() {
+  await iniciarNuvem();
+  loja.mudou(false);
+  enviarFila();
+  window.addEventListener('online', enviarFila);
+  setInterval(enviarFila, 60000);
+  if (new URLSearchParams(location.search).has('compartilhado')) processarCompartilhado();
+}
+
+export async function entrar(email: string, senha: string) {
+  status('Entrando…');
+  const msg = await entrarNaNuvem(email, senha);
+  loja.mudou(false);
+  status(msg, 5000);
+  enviarFila();
+}
+
+export async function sair() {
+  if (!confirm('Sair da conta? O que ainda não foi enviado fica guardado neste celular.')) return;
+  await sairDaNuvem();
+  loja.mudou(false);
+}
+
+export function invalidarRota() {
+  marcarIsoladas(e().paradas);
+  e().rota = null;
+  e().pernas = {};
+}
+
+export function irPara(aba: typeof ui.aba) {
+  ui.aba = aba;
+  ui.posicionando = null;
+  loja.mudou(false);
+}
+
+export async function buscarParada(p: Parada) {
+  if (memoria.aplicar(p)) return;
+  try {
+    const cands = await geocodificar(p.texto, {cidade: e().cidade, googleKey: e().googleKey});
+    p.candidatos = cands;
+    if (cands.length) Object.assign(p, {lat: cands[0].lat, lng: cands[0].lng, exibido: cands[0].exibido, precisao: cands[0].precisao});
+    else Object.assign(p, {lat: null, lng: null, exibido: '', precisao: 'nao'});
+  } catch (err) {
+    p.precisao = 'pendente';
+    throw err;
+  }
+}
+
+export async function buscarPendentes() {
+  if (ui.ocupado) return;
+  const alvo = e().paradas.filter(p => p.precisao === 'pendente');
+  if (!alvo.length) return;
+  ui.ocupado = true;
+  let erro: Error | null = null;
+  for (let i = 0; i < alvo.length; i++) {
+    status(`Buscando endereços… ${i + 1} de ${alvo.length}`);
+    try { await buscarParada(alvo[i]); } catch (err) { erro = err as Error; }
+    loja.mudou();
+  }
+  ui.ocupado = false;
+  const longe = marcarIsoladas(e().paradas);
+  ui.enquadrar++;
+  loja.mudou();
+  status(erro ? 'Alguns falharam (' + erro.message + '). Toque em "Buscar pendentes".'
+    : longe ? `Pronto! ⚠️ ${longe} parada(s) longe das outras entregas: confira o pino.` : 'Pronto! Confira os vermelhos, se houver.', longe ? 8000 : 4000);
+}
+
+export function gps(): Promise<void> {
+  return new Promise((ok, falha) => {
+    if (!navigator.geolocation) { status('Este navegador não dá acesso ao GPS.', 3000); falha(new Error('sem GPS')); return; }
+    status('Pegando sua localização…');
+    navigator.geolocation.getCurrentPosition(pos => {
+      e().inicio = {id: 'inicio', lat: pos.coords.latitude, lng: pos.coords.longitude, exibido: `Minha localização (±${Math.round(pos.coords.accuracy)} m)`};
+      invalidarRota();
+      ui.enquadrar++;
+      loja.mudou();
+      status('Localização definida.', 2000);
+      ok();
+    }, err => {
+      status('Não consegui o GPS: ' + (err.code === 1 ? 'permissão negada. Libere a localização para este site.' : err.message), 5000);
+      falha(err);
+    }, {enableHighAccuracy: true, timeout: 20000});
+  });
+}
+
+export async function montarRota() {
+  if (ui.ocupado) return;
+  if (!e().paradas.some(p => !p.entregue && p.lat != null)) { status('Nenhuma parada com local encontrado.', 3000); return; }
+  ui.ocupado = true;
+  try {
+    if (!e().inicio || !e().inicio!.texto) {
+      try { await gps(); } catch { e().inicio = null; }
+    }
+    const rota = await calcularRota(e(), {matriz, linha: linhaDaRota}, m => status(m));
+    status(rota.porRuas ? 'Rota pronta!' : 'Rota pronta (sem acesso às ruas: usei distância aproximada).', 3500);
+  } catch (err) {
+    status('Erro ao montar rota: ' + (err as Error).message, 5000);
+  }
+  ui.ocupado = false;
+  ui.aba = 'rota';
+  ui.enquadrar++;
+  loja.mudou();
+}
+
+async function importarPlanilhas(files: Blob[]) {
+  const itens = await lerPlanilhas(files);
+  const {resumo, rotaDe} = adicionarDaPlanilha(e(), itens, p => memoria.aplicar(p));
+  fila.enfileirar(...operacoesDaPlanilha(itens, rotaDe, e().cidade));
+  enviarFila();
+  return resumo;
+}
+
+export async function lerPrints(files: File[], textoAtual: string): Promise<string | null> {
+  const {planilhas, outros} = await separarPlanilhas(files);
+  if (planilhas.length) {
+    status('Lendo a planilha…');
+    try {
+      const r = await importarPlanilhas(planilhas);
+      if (outros.length) r.novas += adicionarLinhas(e(), await lerArquivos(outros, m => status(m))).novas;
+      ui.aba = 'conferir';
+      ui.enquadrar++;
+      loja.mudou();
+      status(resumoPlanilha(r), r.longe ? 12000 : 5000);
+      await buscarPendentes();
+    } catch (err) {
+      status('Não consegui ler a planilha: ' + (err as Error).message, 6000);
+    }
+    return null;
+  }
+  status('Carregando leitor de texto (a primeira vez demora)…');
+  try {
+    const unicos = await lerArquivos(files, m => status(m));
+    status(unicos.length
+      ? `${unicos.length} endereço(s) lido(s). Confira o texto e toque em "Adicionar".`
+      : 'Não achei endereços. Use o print da LISTA de paradas (o botão de lista no app), onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
+    return (textoAtual.trim() ? textoAtual.trim() + '\n' : '') + unicos.join('\n');
+  } catch (err) {
+    status('Não consegui ler a imagem: ' + (err as Error).message, 5000);
+    return null;
+  }
+}
+
+async function processarCompartilhado() {
+  const files: Blob[] = [];
+  let texto = '';
+  try {
+    const cache = await caches.open('compartilhado');
+    for (const req of await cache.keys()) {
+      const r = (await cache.match(req))!;
+      if (req.url.endsWith('/texto')) texto += await r.text();
+      else files.push(await r.blob());
+      await cache.delete(req);
+    }
+  } catch {}
+  history.replaceState(null, '', location.pathname);
+  if (!files.length && !texto.trim()) return;
+  try {
+    const {planilhas, outros} = await separarPlanilhas(files);
+    const daPlanilha = planilhas.length ? await importarPlanilhas(planilhas) : null;
+    const linhas = outros.length ? await lerArquivos(outros, m => status(m)) : [];
+    if (texto.trim()) {
+      const doTexto = extrairEnderecos(texto);
+      linhas.push(...(doTexto.length ? doTexto : texto.split('\n').map(l => l.trim()).filter(Boolean)));
+    }
+    if (!linhas.length && !(daPlanilha && daPlanilha.novas + daPlanilha.juntas)) {
+      irPara('enderecos');
+      status('Não achei endereços. Compartilhe a planilha da rota ou o print da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
+      return;
+    }
+    const {novas, repetidas} = adicionarLinhas(e(), linhas);
+    status(daPlanilha ? resumoPlanilha(daPlanilha) : `${novas} parada(s) nova(s)${repetidas ? `, ${repetidas} já existia(m)` : ''}. Buscando no mapa…`);
+    irPara('conferir');
+    await buscarPendentes();
+    await montarRota();
+  } catch (err) {
+    status('Não consegui processar: ' + (err as Error).message, 6000);
+  }
+}
+
+export async function adicionarTexto(texto: string) {
+  const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!linhas.length) { status('Cole pelo menos um endereço.', 2500); return false; }
+  const {novas, repetidas} = adicionarLinhas(e(), linhas);
+  ui.aba = 'conferir';
+  loja.mudou();
+  status(`${novas} adicionada(s)${repetidas ? `, ${repetidas} repetida(s) ignorada(s)` : ''}.`, 2500);
+  await buscarPendentes();
+  return true;
+}
+
+export function marcarEntregue(p: Parada, entregue: boolean) {
+  p.entregue = entregue;
+  p.entregueEm = entregue ? Date.now() : null;
+  loja.mudou();
+  if (entregue && e().rota) {
+    const proxima = e().rota!.areas.flatMap(a => a.ordem).map(loja.parada).find(x => x && !x.entregue && x.lat != null);
+    const d = proximaAPe(p, proxima);
+    if (d && proxima) {
+      status(`📍 Próxima a ~${d} m: ${proxima.texto.split(',').slice(0, 2).join(',')}. Dá para ir a pé.`, 7000);
+      try { navigator.vibrate?.(200); } catch {}
+    }
+  }
+  if (p.rota && p.pacotes && p.pacotes.length) {
+    fila.enfileirar({tipo: 'entregue', rota: p.rota, tns: p.pacotes, quando: entregue ? new Date(p.entregueEm!).toISOString() : null});
+    enviarFila();
+  }
+}
+
+export function posicionar(alvo: string) {
+  ui.posicionando = ui.posicionando === alvo ? null : alvo;
+  loja.mudou(false);
+  if (ui.posicionando) {
+    status(alvo === 'fim' ? 'Toque no mapa, onde você quer terminar.' : 'Toque no mapa, no local da entrega.', 4000);
+    if (window.innerWidth < 900) window.scrollTo(0, 0);
+  }
+}
+
+export function tocouNoMapa(lat: number, lng: number) {
+  const alvo = ui.posicionando;
+  if (!alvo) return;
+  ui.posicionando = null;
+  if (alvo === 'fim') {
+    e().fim = {id: 'fim', lat, lng, exibido: 'Local marcado no mapa'};
+    invalidarRota();
+    loja.mudou();
+    status('Ponto final definido. Toque em "Montar melhor sequência".', 3000);
+    return;
+  }
+  const p = loja.parada(alvo);
+  if (!p) return;
+  corrigirPosicao(p, lat, lng, 'Local definido');
+}
+
+export function corrigirPosicao(p: Parada, lat: number, lng: number, prefixo = 'Local corrigido') {
+  Object.assign(p, {lat, lng, precisao: 'manual', exibido: 'Posição marcada no mapa'});
+  const guardou = memoria.lembrar(p);
+  invalidarRota();
+  loja.mudou();
+  status(prefixo + avisoGuardou(guardou) + (prefixo === 'Local corrigido' ? ' Monte a rota de novo.' : ''), 4000);
+}
+
+export function focar(id: string) {
+  ui.selecionada = id;
+  ui.focar = {id, vez: (ui.focar?.vez || 0) + 1};
+  if (window.innerWidth < 900) window.scrollTo(0, 0);
+  loja.mudou(false);
+}
+
+export function escolherCandidato(p: Parada, k: number) {
+  const c = p.candidatos[k];
+  Object.assign(p, {lat: c.lat, lng: c.lng, exibido: c.exibido, precisao: c.precisao});
+  if (!memoria.lembrar(p)) status('Local escolhido' + avisoGuardou(false), 4000);
+  invalidarRota();
+  loja.mudou();
+  focar(p.id);
+}
+
+export async function editar(p: Parada) {
+  const novo = prompt('Corrija o endereço:', p.texto);
+  if (novo == null || !novo.trim()) return;
+  p.texto = novo.trim();
+  p.precisao = 'pendente';
+  invalidarRota();
+  loja.mudou();
+  status('Buscando…');
+  try { await buscarParada(p); status('Pronto.', 1500); } catch (err) { status('Falhou: ' + (err as Error).message, 4000); }
+  loja.mudou();
+  focar(p.id);
+}
+
+export function remover(p: Parada) {
+  if (!confirm('Remover esta parada?')) return;
+  e().paradas = e().paradas.filter(x => x.id !== p.id);
+  invalidarRota();
+  loja.mudou();
+}
+
+export function resetar() {
+  if (!confirm('Quer resetar mesmo?\n\nTodas as paradas e a rota de hoje serão apagadas, para você carregar a planilha, o PDF ou os prints de novo. As posições que você corrigiu continuam guardadas.')) return;
+  ui.aba = 'enderecos';
+  ui.posicionando = null;
+  loja.trocarEstado(resetarDia(guarda, e()));
+  status('Rota resetada. Carregue a planilha, o PDF ou os prints. Dá para desfazer nos próximos 10 minutos.', 7000);
+}
+
+export function desfazerReset() {
+  const b = backupRecente(guarda);
+  if (!b) { status('O prazo para desfazer passou.', 3000); return; }
+  localStorage.removeItem(CHAVES.backup);
+  ui.enquadrar++;
+  loja.trocarEstado(Object.assign(estadoVazio(), b.estado));
+  status('Rota restaurada.', 3000);
+}
+
+export function esquecerPosicoes() {
+  if (!confirm('Esquecer todas as posições que você corrigiu? As paradas de hoje continuam como estão.')) return;
+  memoria.esquecer();
+  loja.mudou(false);
+  status('Posições esquecidas.', 2500);
+}
+
+async function localPorTexto(pergunta: string, atual: string | undefined, naoAchou: string) {
+  const t = prompt(pergunta, atual || '');
+  if (!t || !t.trim()) return null;
+  status('Buscando…');
+  try {
+    const c = (await geocodificar(t.trim(), {cidade: e().cidade, googleKey: e().googleKey}))[0];
+    if (!c) { status(naoAchou, 3000); return null; }
+    return {texto: t.trim(), lat: c.lat, lng: c.lng, exibido: c.exibido};
+  } catch (err) {
+    status('Falhou: ' + (err as Error).message, 4000);
+    return null;
+  }
+}
+
+export async function saidaPorEndereco() {
+  const l = await localPorTexto('Endereço de saída (ex.: ponto de coleta):', e().inicio?.texto, 'Endereço de saída não encontrado.');
+  if (!l) return;
+  e().inicio = {id: 'inicio', ...l};
+  invalidarRota();
+  ui.enquadrar++;
+  loja.mudou();
+  status('Saída definida.', 2000);
+}
+
+export async function fimPorEndereco() {
+  const l = await localPorTexto('Onde você quer terminar? (ex.: Ponto Novo, ou um endereço)', e().fim?.texto, 'Lugar não encontrado. Tente "Marcar no mapa".');
+  if (!l) return;
+  e().fim = {id: 'fim', ...l};
+  invalidarRota();
+  ui.enquadrar++;
+  loja.mudou();
+  status('Ponto final definido. Confira o F no mapa.', 3000);
+}
+
+export function mudar(f: () => void, refazer = false) {
+  f();
+  if (refazer) invalidarRota();
+  loja.mudou();
+}
+
+export function novaArea() {
+  const usadas = new Set(e().areas.map(a => a.cor));
+  const [nome, cor] = CORES.find(c => !usadas.has(c[1])) || CORES[e().areas.length % CORES.length];
+  const nova = {id: novoId(), nome, cor, prazo: ''};
+  e().areas.push(nova);
+  e().areaAtual = nova.id;
+  loja.mudou();
+}
+
+export function corDaArea(cor: string, nome: string) {
+  const a = loja.area(e().areaAtual);
+  const nomePadrao = CORES.some(c => c[0] === a.nome);
+  a.cor = cor;
+  if (nomePadrao) a.nome = nome;
+  loja.mudou();
+}
+
+export function removerArea() {
+  const a = loja.area(e().areaAtual);
+  const n = e().paradas.filter(x => x.area === a.id).length;
+  if (!confirm(`Apagar a área ${a.nome}${n ? ` e as ${n} parada(s) dela` : ''}?`)) return;
+  e().paradas = e().paradas.filter(x => x.area !== a.id);
+  e().areas = e().areas.filter(x => x.id !== a.id);
+  e().areaAtual = e().areas[0].id;
+  invalidarRota();
+  loja.mudou();
+}
+
+export async function moverArea(id: string, delta: number) {
+  const ordem = e().rota!.areas.map(ra => ra.id);
+  const i = ordem.indexOf(id), j = i + delta;
+  if (i < 0 || j < 0 || j >= ordem.length) return;
+  [ordem[i], ordem[j]] = [ordem[j], ordem[i]];
+  e().areas = ordem.map(loja.area).concat(e().areas.filter(a => !ordem.includes(a.id)));
+  e().areasManual = true;
+  await montarRota();
+}
+
+export async function copiarRota() {
+  let texto = '';
+  for (const ra of e().rota!.areas) {
+    const a = loja.area(ra.id);
+    const ps = ra.ordem.map(loja.parada).filter((p): p is Parada => !!p && !p.entregue);
+    if (!ps.length) continue;
+    const emoji = (CORES.find(c => c[1] === a.cor) || ['', '', '⚪'])[2];
+    texto += `${emoji} *${a.nome}*${a.prazo ? ' (até ' + a.prazo + ')' : ''}\n`;
+    texto += ps.map((p, i) => `${i + 1}. ${p.ml ? '#' + p.ml + ' ' : ''}${p.texto}\n${linkWaze(p as any)}`).join('\n') + '\n\n';
+  }
+  try {
+    await navigator.clipboard.writeText(texto.trim());
+    status('Rota copiada! Cole no WhatsApp.', 3000);
+  } catch {
+    status('Não consegui copiar.', 3000);
+  }
+}

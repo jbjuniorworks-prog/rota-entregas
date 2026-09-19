@@ -1,0 +1,57 @@
+import {useSyncExternalStore} from 'react';
+import {carregarEstado, guardaEm, salvarEstado} from './logica/guarda';
+import type {Estado, Parada} from './logica/tipos';
+
+export type Aba = 'enderecos' | 'conferir' | 'rota';
+
+export interface Ui {
+  aba: Aba;
+  posicionando: string | null;
+  selecionada: string | null;
+  soDuvidas: boolean;
+  ocupado: boolean;
+  mapaGrande: boolean;
+  aviso: string;
+  enquadrar: number;
+  focar: {id: string; vez: number} | null;
+}
+
+export const guarda = guardaEm(localStorage);
+let estado = carregarEstado(guarda);
+const ui: Ui = {
+  aba: estado.paradas.length ? (estado.rota ? 'rota' : 'conferir') : 'enderecos',
+  posicionando: null, selecionada: null, soDuvidas: false, ocupado: false, mapaGrande: false, aviso: '', enquadrar: 1, focar: null,
+};
+
+let versao = 0;
+const ouvintes = new Set<() => void>();
+const avisar = () => { versao++; ouvintes.forEach(f => f()); };
+
+export const loja = {
+  get e(): Estado { return estado; },
+  ui,
+  mudou(salvar = true) {
+    if (salvar) salvarEstado(guarda, estado);
+    avisar();
+  },
+  trocarEstado(novo: Estado) {
+    estado = novo;
+    salvarEstado(guarda, estado);
+    avisar();
+  },
+  parada: (id: string): Parada | undefined => estado.paradas.find(p => p.id === id),
+  area: (id: string) => estado.areas.find(a => a.id === id) || estado.areas[0],
+};
+
+let temporizador: ReturnType<typeof setTimeout> | undefined;
+export function status(msg: string, ms?: number) {
+  ui.aviso = msg;
+  clearTimeout(temporizador);
+  if (msg && ms) temporizador = setTimeout(() => { if (ui.aviso === msg) { ui.aviso = ''; avisar(); } }, ms);
+  avisar();
+}
+
+export function useLoja() {
+  useSyncExternalStore(f => { ouvintes.add(f); return () => ouvintes.delete(f); }, () => versao);
+  return {e: estado, ui};
+}
