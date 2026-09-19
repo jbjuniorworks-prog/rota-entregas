@@ -17,7 +17,7 @@ export const test = base.extend<{erros: string[]}>({
 export {expect};
 
 export async function abrir(page: Page) {
-  await page.goto('/');
+  await page.goto('./');
   await expect(page.getByRole('button', {name: '1. Endereços'})).toBeVisible();
 }
 
