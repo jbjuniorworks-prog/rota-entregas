@@ -69,7 +69,7 @@ describe('memória de posições', () => {
     mem.lembrar(p);
     expect(f.pendentes()).toBe(2);
     mem.restaurar(foto);
-    expect(f.retirarCorrecao(foto.chave)).toBe(true);
+    expect(f.desfazerCorrecao(foto.chave, 2, 2)).toBe('retirada');
     expect(f.pendentes()).toBe(1);
     const q = {texto: 'Rua D, 49, CEP 49000-199'} as any;
     mem.aplicar(q);
@@ -161,6 +161,8 @@ describe('fila da nuvem', () => {
       async inserirPacotes(id, ps) { chamadas.push('pacotes ' + ps.length); },
       async marcarEntregue(id, tns, q) { chamadas.push(`entregue ${tns.join(',')} ${q ? 'sim' : 'não'}`); },
       async inserirCorrecao(k) { if (falhas.recusar) throw new ErroNuvem(falhas.recusar, false); chamadas.push('correcao ' + k); },
+      async apagarCorrecao(k, lat) { chamadas.push(`apagar ${k} ${lat}`); },
+      async posicoes() { return []; },
     };
     return {c, chamadas};
   }
@@ -204,5 +206,22 @@ describe('fila da nuvem', () => {
     f.enfileirar(...ops);
     await f.enviar(null);
     expect(f.pendentes()).toBe(1);
+  });
+});
+
+describe('desfazer correção já enviada', () => {
+  it('se a correção já saiu da fila, o desfazer vira um pedido para apagar na nuvem', async () => {
+    const g = guardaNaMemoria(), f = criarFila(g), chamadas: string[] = [];
+    const c = {
+      rotaExistente: async () => null, criarRota: async () => {}, inserirPacotes: async () => {}, marcarEntregue: async () => {},
+      inserirCorrecao: async (k: string) => { chamadas.push('correcao ' + k); },
+      apagarCorrecao: async (k: string, lat: number) => { chamadas.push(`apagar ${k} ${lat}`); },
+      posicoes: async () => [],
+    };
+    f.enfileirar({tipo: 'correcao', chave: 'k|1', lat: -11.5, lng: -37.5});
+    await f.enviar(c);
+    expect(f.desfazerCorrecao('k|1', -11.5, -37.5)).toBe('apagar');
+    await f.enviar(c);
+    expect(chamadas).toEqual(['correcao k|1', 'apagar k|1 -11.5']);
   });
 });

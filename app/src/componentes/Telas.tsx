@@ -21,6 +21,13 @@ function Meta({p}: {p: Parada}) {
   return partes.length ? <div className="achado">{partes.join(' · ')}</div> : null;
 }
 
+function Sugestao({p}: {p: Parada}) {
+  if (!p.sugestao) return null;
+  const d = p.sugestao.distancia;
+  return <div className="aviso">💡 Outro motorista marcou este endereço em outro lugar{d != null ? `, a ${fmtKm(d)} daqui` : ''}.{' '}
+    <button className="btn peq pri" onClick={() => A.usarSugestao(p)}>Usar a posição dele</button></div>;
+}
+
 function BotaoResetar() {
   const {e} = useLoja();
   return e.paradas.length ? <div className="linha" style={{marginTop: 16}}><button className="btn" onClick={A.resetar}>🔄 Resetar rota (começar do zero)</button></div> : null;
@@ -122,10 +129,10 @@ export function TelaConferir() {
   const {e, ui} = useLoja();
   if (!e.paradas.length) return <div className="info">Nenhum endereço ainda. Vá em <b>1. Endereços</b>.</div>;
   const conta = (ks: readonly string[]) => e.paradas.filter(p => ks.includes(p.precisao)).length;
-  const duvidas = conta([...DUVIDA]), pend = conta(['pendente']);
+  const duvidas = conta([...DUVIDA]), pend = conta(['pendente']), sugeridas = e.paradas.filter(p => p.sugestao && !p.entregue).length;
   return <>
     <h2>Conferir locais</h2>
-    <div className="info">✅ {conta(NO_NUMERO)} no número · 🛣️ {conta(['rua'])} na rua certa · ❗ {duvidas} para conferir{pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
+    <div className="info">✅ {conta(NO_NUMERO)} no número · 🛣️ {conta(['rua'])} na rua certa · ❗ {duvidas} para conferir{sugeridas ? ` · 💡 ${sugeridas} com sugestão` : ''}{pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
     {duvidas > 0 && <div className="aviso">Os de borda vermelha podem estar longe do lugar. Toque em <b>Ver</b> para olhar no mapa e use <b>Marcar no mapa</b> para corrigir (olhando a posição no app de entregas).</div>}
     <div className="linha">
       {pend > 0 && <button className="btn pri" onClick={() => A.buscarPendentes()}>Buscar {pend} pendente(s)</button>}
@@ -156,6 +163,7 @@ function ItemConferir({p}: {p: Parada}) {
         <Tag p={p} />
       </div>
     </div>
+    <Sugestao p={p} />
     <div className="linha">
       {p.lat != null && <button className="btn peq" onClick={() => A.focar(p.id)}>Ver</button>}
       <button className="btn peq" onClick={() => A.posicionar(p.id)}>{ui.posicionando === p.id ? 'Toque no mapa…' : 'Marcar no mapa'}</button>
@@ -211,6 +219,7 @@ function LinhaParada({p, comWaze}: {p: Parada; comWaze: boolean}) {
     <div className="txt" onClick={() => A.focar(p.id)}>
       <div>{p.texto}</div><Meta p={p} />
       {DUVIDA.has(p.precisao) && <Tag p={p} />}
+      {p.sugestao && !p.entregue && <div className="achado">💡 Outro motorista sugere outro lugar: veja em 2. Conferir</div>}
     </div>
     {comWaze && !p.entregue && <a className="btn peq waze" href={linkWaze(p as Ponto)} target="_blank" rel="noopener" aria-label="Waze">🧭</a>}
     {!p.entregue && !p.adiada && loja.e.rota && <button className="btn peq" aria-label="Deixar para depois" title="Deixar para depois" onClick={() => A.deixarParaDepois(p)}>⏸</button>}

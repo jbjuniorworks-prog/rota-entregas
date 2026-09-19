@@ -6,7 +6,8 @@ import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from './lo
 import {avisoGuardou, criarMemoria} from './logica/memoria';
 import {montarRota as calcularRota} from './logica/montagem';
 import {CORES} from './logica/rotulos';
-import {extrairEnderecos} from './logica/texto';
+import {aplicarCompartilhadas} from './logica/compartilhadas';
+import {chaveLugar, extrairEnderecos} from './logica/texto';
 import type {Parada} from './logica/tipos';
 import {guarda, loja, status} from './loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from './servicos/arquivos';
@@ -42,7 +43,7 @@ export async function entrar(email: string, senha: string) {
   status('Entrando…');
   const msg = await entrarNaNuvem(email, senha);
   loja.mudou(false);
-  status(msg, 5000);
+  status(msg + avisoCompartilhadas(await consultarCompartilhadas()), 8000);
   enviarFila();
 }
 
@@ -94,7 +95,8 @@ export async function buscarPendentes(resumoAntes = '') {
   loja.mudou();
   const resultado = erro ? 'Alguns falharam (' + erro.message + '). Toque em "Buscar pendentes".'
     : longe ? `Pronto! ⚠️ ${longe} parada(s) longe das outras entregas: confira o pino.` : 'Pronto! Confira os vermelhos, se houver.';
-  status(resumoAntes ? `${resumoAntes} Busca dos sem posição: ${resultado}` : resultado, resumoAntes ? 15000 : longe ? 8000 : 4000);
+  const comp = avisoCompartilhadas(await consultarCompartilhadas());
+  status((resumoAntes ? `${resumoAntes} Busca dos sem posição: ${resultado}` : resultado) + comp, resumoAntes || comp ? 15000 : longe ? 8000 : 4000);
 }
 
 export function gps(): Promise<void> {
@@ -140,7 +142,38 @@ async function importarPlanilhas(files: Blob[]) {
   fila.enfileirar(...operacoesDaPlanilha(itens, rotaDe, e().cidade));
   enviarFila();
   resumo.noBairro += await levarAoBairroPeloMapa();
+  const comp = await consultarCompartilhadas();
+  resumo.confirmadas = comp.confirmadas;
+  resumo.sugestoes = comp.sugestoes;
   return resumo;
+}
+
+export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number}> {
+  const zero = {confirmadas: 0, sugestoes: 0};
+  const c = clienteNuvem();
+  if (!c) return zero;
+  const chaveDe = (p: Parada) => chaveLugar(p.texto, p.bairro, e().cidade);
+  const chaves = [...new Set(e().paradas.filter(p => !p.entregue).map(chaveDe).filter((k): k is string => !!k))];
+  if (!chaves.length) return zero;
+  try {
+    const r = aplicarCompartilhadas(e().paradas, await c.posicoes(chaves), chaveDe);
+    if (r.confirmadas) invalidarRota();
+    loja.mudou();
+    return r;
+  } catch {
+    return zero;
+  }
+}
+
+function avisoCompartilhadas(r: {confirmadas: number; sugestoes: number}): string {
+  return (r.confirmadas ? ` 🤝 ${r.confirmadas} com posição confirmada por outros motoristas.` : '')
+    + (r.sugestoes ? ` 💡 ${r.sugestoes} com sugestão de outro motorista: veja em Conferir.` : '');
+}
+
+export function usarSugestao(p: Parada) {
+  const s = p.sugestao;
+  if (!s) return;
+  corrigirPosicao(p, s.lat, s.lng, 'Posição do outro motorista usada');
 }
 
 async function levarAoBairroPeloMapa(): Promise<number> {
@@ -286,8 +319,12 @@ function prepararDesfazer(p: Parada): () => void {
   const antes = {lat: p.lat, lng: p.lng, precisao: p.precisao, precisaoAntes: p.precisaoAntes, exibido: p.exibido};
   const foto = memoria.fotografar(p);
   return () => {
+    if (foto && p.lat != null && p.lng != null) {
+      fila.desfazerCorrecao(foto.chave, +p.lat.toFixed(6), +p.lng.toFixed(6));
+      memoria.restaurar(foto);
+      enviarFila();
+    }
     Object.assign(p, antes);
-    if (foto) { memoria.restaurar(foto); fila.retirarCorrecao(foto.chave); }
     if (p.adiada) marcarIsoladas(e().paradas);
     else invalidarRota();
     loja.mudou();
@@ -297,6 +334,7 @@ function prepararDesfazer(p: Parada): () => void {
 
 export function corrigirPosicao(p: Parada, lat: number, lng: number, prefixo = 'Local corrigido') {
   const desfazer = prepararDesfazer(p);
+  delete p.sugestao;
   Object.assign(p, {lat, lng, precisao: 'manual', exibido: 'Posição marcada no mapa'});
   const guardou = memoria.lembrar(p);
   if (p.adiada) marcarIsoladas(e().paradas);

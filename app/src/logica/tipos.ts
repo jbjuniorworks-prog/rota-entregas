@@ -1,4 +1,4 @@
-export type Precisao = 'exato' | 'planilha' | 'lembrado' | 'manual' | 'bom' | 'rua' | 'longe' | 'bairro' | 'aproximada' | 'numero' | 'ruim' | 'nao' | 'pendente';
+export type Precisao = 'exato' | 'planilha' | 'lembrado' | 'manual' | 'bom' | 'rua' | 'longe' | 'bairro' | 'aproximada' | 'numero' | 'confirmado' | 'ruim' | 'nao' | 'pendente';
 
 export interface Ponto {
   lat: number;
@@ -31,6 +31,7 @@ export interface Parada {
   entregue: boolean;
   entregueEm?: number | null;
   adiada?: boolean;
+  sugestao?: {lat: number; lng: number; distancia: number | null};
 }
 
 export interface Area {

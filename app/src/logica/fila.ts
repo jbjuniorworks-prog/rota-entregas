@@ -1,5 +1,6 @@
 import {CHAVES, type Guarda} from './guarda';
 import type {ItemPlanilha} from './planilha';
+import type {PosicaoCompartilhada} from './compartilhadas';
 import {chaveLugar} from './texto';
 
 export interface PacoteNuvem {
@@ -19,7 +20,8 @@ export interface PacoteNuvem {
 export type Operacao =
   | {tipo: 'rota'; chave: string; at_id: string | null; arquivo: string; pacotes: PacoteNuvem[]}
   | {tipo: 'entregue'; rota: string; tns: string[]; quando: string | null}
-  | {tipo: 'correcao'; chave: string; lat: number; lng: number};
+  | {tipo: 'correcao'; chave: string; lat: number; lng: number}
+  | {tipo: 'desfazerCorrecao'; chave: string; lat: number; lng: number};
 
 export class ErroNuvem extends Error {
   constructor(mensagem: string, readonly deRede: boolean) { super(mensagem); }
@@ -31,6 +33,8 @@ export interface ClienteNuvem {
   inserirPacotes(rotaId: string, pacotes: PacoteNuvem[]): Promise<void>;
   marcarEntregue(rotaId: string, tns: string[], quando: string | null): Promise<void>;
   inserirCorrecao(chave: string, lat: number, lng: number): Promise<void>;
+  apagarCorrecao(chave: string, lat: number, lng: number): Promise<void>;
+  posicoes(chaves: string[]): Promise<PosicaoCompartilhada[]>;
 }
 
 export const FILA_MAX = 3000;
@@ -68,8 +72,10 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
         const id = g.ler<Record<string, string>>(CHAVES.rotasNuvem, {})[op.rota];
         if (!id) return 'descartar';
         await c.marcarEntregue(id, op.tns, op.quando);
-      } else {
+      } else if (op.tipo === 'correcao') {
         await c.inserirCorrecao(op.chave, op.lat, op.lng);
+      } else {
+        await c.apagarCorrecao(op.chave, op.lat, op.lng);
       }
       return 'ok';
     } catch (e) {
@@ -84,13 +90,16 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
     enfileirar(...ops: Operacao[]) {
       g.gravar(CHAVES.fila, [...ler(), ...ops].slice(-FILA_MAX));
     },
-    retirarCorrecao(chave: string): boolean {
+    desfazerCorrecao(chave: string, lat: number, lng: number): 'retirada' | 'apagar' {
       const f = ler();
       const i = f.map(op => op.tipo === 'correcao' && op.chave === chave).lastIndexOf(true);
-      if (i < 0 || (i === 0 && enviando)) return false;
-      f.splice(i, 1);
-      g.gravar(CHAVES.fila, f);
-      return true;
+      if (i >= 0 && !(i === 0 && enviando)) {
+        f.splice(i, 1);
+        g.gravar(CHAVES.fila, f);
+        return 'retirada';
+      }
+      g.gravar(CHAVES.fila, [...f, {tipo: 'desfazerCorrecao', chave, lat, lng}].slice(-FILA_MAX));
+      return 'apagar';
     },
     async enviar(c: ClienteNuvem | null): Promise<void> {
       if (!c || enviando) return;

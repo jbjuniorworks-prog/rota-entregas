@@ -87,5 +87,18 @@ export function clienteNuvem(): ClienteNuvem | null {
       const {error} = await s.from('correcoes').insert({chave_lugar: chave, lat, lng});
       if (error) throw erro(error);
     },
+    async apagarCorrecao(chave, lat, lng) {
+      const {error} = await s.from('correcoes').delete().eq('chave_lugar', chave).eq('lat', lat).eq('lng', lng);
+      if (error) throw erro(error);
+    },
+    async posicoes(chaves) {
+      const saida = [];
+      for (let i = 0; i < chaves.length; i += 400) {
+        const {data, error} = await s.rpc('posicoes', {chaves: chaves.slice(i, i + 400)});
+        if (error) throw erro(error);
+        saida.push(...(data || []));
+      }
+      return saida;
+    },
   };
 }

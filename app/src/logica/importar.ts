@@ -15,6 +15,8 @@ export interface ResumoPlanilha {
   noBairro: number;
   aproximadas: number;
   numeros: number;
+  confirmadas: number;
+  sugestoes: number;
 }
 
 export function adicionarDaPlanilha(
@@ -22,7 +24,7 @@ export function adicionarDaPlanilha(
 ): {resumo: ResumoPlanilha; rotaDe: (it: ItemPlanilha) => string} {
   const existentes = new Set(e.paradas.map(x => chaveEndereco(x.texto)));
   const desta = new Map<string, Parada>();
-  const r: ResumoPlanilha = {novas: 0, juntas: 0, repetidas: 0, semPosicao: 0, longe: 0, lembradas: 0, noBairro: 0, aproximadas: 0, numeros: 0};
+  const r: ResumoPlanilha = {novas: 0, juntas: 0, repetidas: 0, semPosicao: 0, longe: 0, lembradas: 0, noBairro: 0, aproximadas: 0, numeros: 0, confirmadas: 0, sugestoes: 0};
   const rotaDe = (it: ItemPlanilha) => it.at || `${it.arquivo}:${agora}`;
   for (const it of itens) {
     const chave = chaveEndereco(it.texto);
@@ -60,6 +62,8 @@ export function adicionarDaPlanilha(
 export function resumoPlanilha(r: ResumoPlanilha): string {
   return `${r.novas} parada(s) da planilha${r.juntas ? `, ${r.juntas} pacote(s) somado(s) a um mesmo endereço` : ''}${r.repetidas ? `, ${r.repetidas} já existia(m)` : ''}.`
     + (r.lembradas ? ` 📌 ${r.lembradas} com a posição que você já tinha corrigido.` : '')
+    + (r.confirmadas ? ` 🤝 ${r.confirmadas} com posição confirmada por outros motoristas.` : '')
+    + (r.sugestoes ? ` 💡 ${r.sugestoes} com sugestão de outro motorista: veja em Conferir.` : '')
     + (r.longe ? ` ⚠️ ${r.longe} com posição longe das outras entregas: ${r.noBairro === r.longe ? 'levada(s) para o bairro certo, confira no local.' : r.noBairro ? `${r.noBairro} levada(s) para o bairro certo, confira o pino das outras.` : 'confira o pino antes de sair.'}` : '')
     + (r.aproximadas ? ` ⚠️ ${r.aproximadas} com posição aproximada na planilha: confira o pino.` : '')
     + (r.numeros ? ` ⚠️ ${r.numeros} com número que não bate com a posição: confira.` : '')
