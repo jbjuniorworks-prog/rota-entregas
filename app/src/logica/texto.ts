@@ -28,7 +28,7 @@ export function analisarLinha(linha: string): LinhaAnalisada {
   texto = texto.replace(/\s·\s.*$/, '').trim().replace(/(\d)\s+[^\s\d,]{1,2}$/, '$1').replace(/(\d)\s+[^\s\d,]{1,2}(?=,)/, '$1');
   const m = (texto + ' ').match(RUA_EM);
   if (m && m[1]) {
-    const d = m[1].match(/\d{1,3}/);
+    const d = m[1].match(/\d{1,3}(?!.*\d)/);
     if (d) ml = d[0];
     texto = m[2].trim();
   }
@@ -111,18 +111,45 @@ export function extrairEnderecos(bruto: string): string[] {
       continue;
     }
     const ultimo = out[out.length - 1];
+    if (!/\d/.test(l) && l.replace(/[^a-zà-ÿ]/gi, '').length <= 2) continue;
+    const etiqueta = l.match(/EB\s*-\s*(\d{1,3})/i);
     if (ultimo && /hor[aá]rio\s+comercial/i.test(l)) { ultimo.comercial = true; aberto = null; continue; }
     const mu = l.match(/entrega\s+(\d+)\s+unidade/i);
-    if (ultimo && mu) { ultimo.unidades = +mu[1]; aberto = null; continue; }
+    if (ultimo && mu) { ultimo.unidades = +mu[1]; if (etiqueta) ultimo.ml = etiqueta[1]; aberto = null; continue; }
+    if (ultimo && etiqueta && /^.{0,5}EB\s*-/i.test(l)) { ultimo.ml = etiqueta[1]; aberto = null; continue; }
     if (aberto && !/\d/.test(aberto.texto) && /^\d{1,5}\b/.test(l)) { aberto.texto += ' ' + l; continue; }
-    if (aberto && !TEM_CEP.test(aberto.texto) && (COMPLEMENTO.test(l) || TEM_CEP.test(l))) { aberto.texto += ', ' + l; continue; }
+    if (aberto && !/\d/.test(aberto.texto) && !COMPLEMENTO.test(l) && /^[a-zà-ÿ][a-zà-ÿ .'-]*\s\d{1,5}$/i.test(l)) { aberto.texto += ' ' + l; continue; }
+    if (aberto && !TEM_CEP.test(aberto.texto) && (COMPLEMENTO.test(l) || TEM_CEP.test(l) || complementoDoAnterior)) { aberto.texto = aberto.texto.replace(/[\s,]+$/, '') + ', ' + l.replace(/[\s,]+$/, ''); continue; }
     aberto = null;
     const mn = l.match(/^[#(]?(\d{1,3})(?:[).:\]\-]|\s|$)/);
-    numeroSolto = mn && !TEM_CEP.test(l) ? mn[1] : null;
+    numeroSolto = mn && !TEM_CEP.test(l) && !/^\d{1,2}:\d{2}/.test(l) ? mn[1] : null;
   }
   return out
     .filter(e => (/\s\d{1,5}\b/.test(e.texto) || TEM_CEP.test(e.texto)) && pareceEndereco(e.texto))
     .map(e => (e.ml ? e.ml + ' ' : '') + e.texto + (e.unidades ? ` · ${e.unidades} unid` : '') + (e.comercial ? ' · comercial' : ''));
+}
+
+export function juntarLeituras(leituras: string[], apoio: string[] = []): string[] {
+  if (!leituras.length) leituras = apoio;
+  const porChave = new Map<string, string>();
+  for (const e of leituras) {
+    const k = chaveEndereco(e), antigo = porChave.get(k);
+    if (!antigo || e.length > antigo.length) porChave.set(k, e);
+  }
+  const decomposto = (e: string) => ({e, d: decompor(analisarLinha(e).texto)});
+  const itens = [...porChave.values()].map(decomposto);
+  const referencias = [...itens, ...apoio.map(decomposto)];
+  const fora = new Set<number>();
+  itens.forEach((x, i) => {
+    const y = referencias.find((r, j) => j !== i && !fora.has(j) && r.d.numero && x.d.numero && normal(r.d.rua) === normal(x.d.rua)
+      && x.d.numero.length === r.d.numero.length + 1 && x.d.numero.startsWith(r.d.numero));
+    if (!y) return;
+    const j = itens.indexOf(y);
+    if (j >= 0 && y.e.length > x.e.length) { fora.add(i); return; }
+    x.e = x.e.replace(new RegExp(`\\b${x.d.numero}\\b`), y.d.numero!);
+    if (j >= 0) fora.add(j);
+  });
+  return itens.filter((_, i) => !fora.has(i)).map(x => x.e);
 }
 
 export function palavrasRua(nome: string): string[] {

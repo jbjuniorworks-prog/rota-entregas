@@ -1,5 +1,5 @@
 import {ehArquivoZip, itensDaPlanilha, pareceNomeDePlanilha, type ItemPlanilha} from '../logica/planilha';
-import {chaveEndereco, extrairEnderecos} from '../logica/texto';
+import {chaveEndereco, extrairEnderecos, juntarLeituras} from '../logica/texto';
 
 type Arquivo = Blob & {name?: string};
 type Aviso = (msg: string) => void;
@@ -117,18 +117,14 @@ async function lerImagens(files: Blob[], aviso: Aviso): Promise<string[]> {
       aviso(`Preparando a imagem…${rotulo}`);
       const tratada = await prepararImagem(files[i]);
       const tentativas = [{imagem: tratada, psm: '4'}, {imagem: tratada, psm: '6'}, {imagem: files[i], psm: '3'}];
-      const doPrint = new Map<string, string>();
+      const leituras: string[] = [], apoio: string[] = [];
       for (const t of tentativas) {
         aviso(`Lendo os endereços…${rotulo}`);
         await worker.setParameters({tessedit_pageseg_mode: t.psm, preserve_interword_spaces: '1'});
         const {data} = await worker.recognize(t.imagem);
-        for (const e of extrairEnderecos(data.text)) {
-          const k = chaveEndereco(e), antigo = doPrint.get(k);
-          if (!antigo || e.length > antigo.length) doPrint.set(k, e);
-        }
-        if (t !== tentativas[0] && doPrint.size) break;
+        (t.imagem === files[i] ? apoio : leituras).push(...extrairEnderecos(data.text));
       }
-      achados.push(...doPrint.values());
+      achados.push(...juntarLeituras(leituras, apoio));
     }
   } finally {
     await worker.terminate();

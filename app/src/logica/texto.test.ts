@@ -1,4 +1,4 @@
-import {analisarLinha, chaveEndereco, chaveLugar, decompor, extrairEnderecos, mesmaRua, mesmoEndereco, normal, ruaCompleta} from './texto';
+import {analisarLinha, chaveEndereco, chaveLugar, decompor, extrairEnderecos, juntarLeituras, mesmaRua, mesmoEndereco, normal, ruaCompleta} from './texto';
 
 describe('decompor', () => {
   it.each([
@@ -69,6 +69,68 @@ describe('extrairEnderecos (texto de print ou PDF)', () => {
     expect(extrairEnderecos('7\nRua D 49\nCEP 49044-190')).toEqual(['7 Rua D 49, CEP 49044-190']);
     expect(extrairEnderecos('R Laranjeiras 100')).toEqual(['R Laranjeiras 100']);
     expect(extrairEnderecos('12 R. Itabaiana, 45')).toEqual(['12 R. Itabaiana, 45']);
+  });
+  it('lista do Mercado Livre (Envios Extras): rua em 2 linhas, ícone no meio e número pela etiqueta', () => {
+    const ocr = [
+      '13:30h a 17:40h',
+      'L40 | Avenida das Mangueiras 2850',
+      'Ss',
+      'Condomínio Jardim Teste |,',
+      'CEP 49000100',
+      'Entrega 2 unidades | ETIQUETA',
+      '4EB-40...',
+      'v Estou chegando',
+      '1.43 Avenida das Mangueiras 3434',
+      'Condomínio Condominio',
+      'Residencial Padre Teste, CEP',
+      'Entrega 1 unidade | ETIQUETA',
+      'HEB-43...',
+      'Paradas finalizadas v',
+      'E? Avenida Doutor Fulano de',
+      'Tal Souza 160',
+      '[2 Rua Beltrano Martins',
+      'Fontes 200',
+      '= Avenida Conselheiro Sicrano',
+      'Moreira Filho 2151 &',
+      'Condomínio Pátio Teste, CEP 49000200',
+      'Com portaria 24 h.',
+      'Entrega 1 unidade | ETIQUETA',
+      'HAHEB-5 1...',
+      'O = O =',
+      'Início Disponíveis — Agendados Mais',
+    ].join('\n');
+    expect(extrairEnderecos(ocr)).toEqual([
+      '40 Avenida das Mangueiras 2850, Condomínio Jardim Teste, CEP 49000100 · 2 unid',
+      '43 Avenida das Mangueiras 3434, Condomínio Condominio, Residencial Padre Teste, CEP · 1 unid',
+      'Avenida Doutor Fulano de Tal Souza 160',
+      '2 Rua Beltrano Martins Fontes 200',
+      '5 Avenida Conselheiro Sicrano Moreira Filho 2151, Condomínio Pátio Teste, CEP 49000200 · 1 unid',
+    ]);
+  });
+  it('juntando as leituras do mesmo print, o ícone lido como dígito a mais sai do número', () => {
+    expect(juntarLeituras([
+      '5 Avenida Conselheiro Sicrano 21518, Condomínio Pátio Teste, CEP 49000200 · 1 unid',
+      'Avenida Conselheiro Sicrano 2151',
+      '63 Avenida das Mangueiras 3580',
+      'Avenida das Mangueiras 3580',
+      'Rua Um 12',
+      'Rua Dois 125',
+    ])).toEqual([
+      '5 Avenida Conselheiro Sicrano 2151, Condomínio Pátio Teste, CEP 49000200 · 1 unid',
+      '63 Avenida das Mangueiras 3580',
+      'Rua Um 12',
+      'Rua Dois 125',
+    ]);
+    expect(analisarLinha('1.63 Avenida das Mangueiras 3580').ml).toBe('63');
+  });
+  it('a leitura de apoio só corrige número; endereço que só ela viu entra apenas se as outras não acharam nada', () => {
+    const principais = ['5 Avenida Conselheiro Sicrano 21518, CEP 49000200', 'Rua Beltrano Fontes 190'];
+    const apoio = ['Avenida Conselheiro Sicrano 2151', 'Rua Beltrano Fontesl) 190', 'Rua Fulana Barbosa 8'];
+    expect(juntarLeituras(principais, apoio)).toEqual(['5 Avenida Conselheiro Sicrano 2151, CEP 49000200', 'Rua Beltrano Fontes 190']);
+    expect(juntarLeituras([], apoio)).toEqual(apoio);
+  });
+  it('horário da janela de entrega não vira número da parada', () => {
+    expect(extrairEnderecos('13:30h a 17:40h\nAvenida das Mangueiras 3580')).toEqual(['Avenida das Mangueiras 3580']);
   });
   it('continua ignorando ruído que começa parecido com rua', () => {
     expect(extrairEnderecos('R$ 12,00\nBR 101 km 5\nR 12\nRua x\nRua B')).toEqual([]);
