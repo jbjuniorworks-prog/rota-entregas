@@ -47,7 +47,7 @@ function Conta() {
 
 export function TelaEntrar() {
   useLoja();
-  const [email, setEmail] = useState(''), [senha, setSenha] = useState('');
+  const [email, setEmail] = useState(''), [senha, setSenha] = useState(''), [verSenha, setVerSenha] = useState(false);
   const pf = nuvem.perfil;
   if (nuvem.sessao && pf && !pf.ativo) {
     return <div className="entrar">
@@ -62,7 +62,10 @@ export function TelaEntrar() {
     <label htmlFor="loginEmail">E-mail</label>
     <input type="email" id="loginEmail" autoComplete="username" inputMode="email" value={email} onChange={ev => setEmail(ev.target.value)} />
     <label htmlFor="loginSenha">Senha</label>
-    <input type="password" id="loginSenha" autoComplete="current-password" value={senha} onChange={ev => setSenha(ev.target.value)} />
+    <div className="senha">
+      <input type={verSenha ? 'text' : 'password'} id="loginSenha" autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={senha} onChange={ev => setSenha(ev.target.value)} />
+      <button type="button" className="olho" aria-label={verSenha ? 'Esconder senha' : 'Mostrar senha'} aria-pressed={verSenha} onClick={() => setVerSenha(!verSenha)}>{verSenha ? '🙈' : '👁️'}</button>
+    </div>
     <div className="linha"><button className="btn pri" type="submit">Entrar</button></div>
     {nuvem.semServidor && <div className="aviso">Sem conexão com o servidor. Para entrar pela primeira vez, precisa de internet.</div>}
     <div className="info" style={{marginTop: 10}}>Não tem conta? Peça ao responsável.</div>

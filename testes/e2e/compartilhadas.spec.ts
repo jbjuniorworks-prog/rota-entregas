@@ -32,7 +32,7 @@ async function comoMotorista(browser: Browser, m: typeof MOTORISTAS[number]): Pr
   page.on('dialog', d => d.accept());
   await page.goto('./');
   await page.getByLabel('E-mail').fill(m.email);
-  await page.getByLabel('Senha').fill(m.senha);
+  await page.getByLabel('Senha', {exact: true}).fill(m.senha);
   await page.getByRole('button', {name: 'Entrar', exact: true}).click();
   await expect(page.getByText(`Conectado como ${m.nome}`)).toBeVisible();
   return page;

@@ -12,8 +12,15 @@ test.describe('sem conta', () => {
     await expect(page.getByText('Entre com a conta que o responsável criou para você.')).toBeVisible();
     await expect(page.getByRole('button', {name: '1. Endereços'})).toHaveCount(0);
     await page.getByLabel('E-mail').fill('alguem@exemplo.com');
-    await page.getByLabel('Senha').fill('errada');
-    await page.getByLabel('Senha').press('Enter');
+    const senha = page.getByLabel('Senha', {exact: true});
+    await senha.fill('errada');
+    await expect(senha).toHaveAttribute('type', 'password');
+    await page.getByRole('button', {name: 'Mostrar senha'}).click();
+    await expect(senha).toHaveAttribute('type', 'text');
+    await expect(senha).toHaveValue('errada');
+    await page.getByRole('button', {name: 'Esconder senha'}).click();
+    await expect(senha).toHaveAttribute('type', 'password');
+    await senha.press('Enter');
     await expect(aviso(page)).toHaveText('E-mail ou senha errados.');
     await expect(page.getByRole('button', {name: '1. Endereços'})).toHaveCount(0);
   });

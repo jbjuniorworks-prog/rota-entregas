@@ -39,7 +39,7 @@ test.describe('nuvem @nuvem', () => {
   test('rota, entregas e correção chegam ao banco, e o motorista não passa das regras', async ({page}) => {
     await page.goto('./');
     await page.getByLabel('E-mail').fill(EMAIL);
-    await page.getByLabel('Senha').fill(SENHA);
+    await page.getByLabel('Senha', {exact: true}).fill(SENHA);
     await page.getByRole('button', {name: 'Entrar', exact: true}).click();
     await expect(page.getByText('Conectado como Motorista Teste')).toBeVisible();
 
