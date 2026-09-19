@@ -21,7 +21,7 @@ test.describe('com GPS', () => {
 
     await context.setGeolocation(GPS.p5);
     await montar(page);
-    expect((await ordem(page, NOMES))[0]).toBe(P5);
+    await expect.poll(async () => (await ordem(page, NOMES))[0]).toBe(P5);
   });
 
   test('ao marcar entrega com a próxima perto, avisa que dá para ir a pé', async ({page}) => {
