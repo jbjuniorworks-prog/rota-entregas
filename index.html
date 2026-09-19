@@ -25,7 +25,7 @@ nav button.on{color:var(--pri);border-color:var(--pri)}
 #conteudo{flex:1;overflow:auto;padding:14px 14px 90px}
 h2{font-size:17px;margin:4px 0 10px}
 label{display:block;font-size:14px;color:var(--mut);margin:10px 0 4px}
-input[type=text],input[type=password],input[type=time],textarea,select{width:100%;font:inherit;padding:10px;border:1px solid var(--bd);border-radius:10px;background:#fff;color:var(--tx)}
+input[type=text],input[type=email],input[type=password],input[type=time],textarea,select{width:100%;font:inherit;padding:10px;border:1px solid var(--bd);border-radius:10px;background:#fff;color:var(--tx)}
 textarea{min-height:140px;resize:vertical}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:12px 14px;font:inherit;font-weight:600;background:#e5e7eb;color:var(--tx);text-decoration:none;cursor:pointer}
 .btn.pri{background:var(--pri);color:#fff}
@@ -429,6 +429,7 @@ function lembrarPosicao(p) {
   if (!k || p.lat == null) return false;
   const m = lerMemoria();
   m[k] = {lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6), quando: Date.now()};
+  enfileirar({tipo: 'correcao', chave: k, lat: m[k].lat, lng: m[k].lng});
   return gravarMemoria(m);
 }
 
@@ -775,6 +776,7 @@ function chipArea(a, acao, on) {
 function telaEnderecos() {
   const a = area(S.areaAtual);
   return `
+    ${contaHtml()}
     <h2>Adicionar endereços por área</h2>
     <div class="info">Faça uma área (cor do app) por vez: escolha a cor abaixo, tire print da lista dessa área e adicione.</div>
     <label for="cidade">Cidade padrão</label>
@@ -1163,6 +1165,9 @@ const COLUNAS = {
   lat: /^lat/i,
   lng: /^(lng|lon)/i,
   ordem: /^(sequence|sequ[eê]ncia|seq|ordem)$/i,
+  parada: /^(stop|parada)$/i,
+  tn: /spx\s*tn|tracking|rastreio/i,
+  at: /^at\s*id$/i,
 };
 
 const numeroDe = v => typeof v === 'number' ? v : parseFloat(String(v ?? '').trim().replace(',', '.'));
@@ -1186,7 +1191,9 @@ async function lerPlanilha(f) {
     const lat = numeroDe(l[col.lat]), lng = numeroDe(l[col.lng]);
     const temCoord = col.lat >= 0 && col.lng >= 0 && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && lat && lng;
     const ordem = campo(l, 'ordem');
-    itens.push({texto, lat: temCoord ? lat : null, lng: temCoord ? lng : null, ml: /^\d{1,4}$/.test(ordem) ? ordem : null, cidade: campo(l, 'cidade'), bairro});
+    itens.push({texto, lat: temCoord ? lat : null, lng: temCoord ? lng : null, ml: /^\d{1,4}$/.test(ordem) ? ordem : null, cidade: campo(l, 'cidade'), bairro,
+      endereco: campo(l, 'endereco'), cep: cep || null, tn: campo(l, 'tn') || null, at: campo(l, 'at') || null, parada: campo(l, 'parada'),
+      arquivo: f.name || 'planilha', linha: Object.fromEntries(cab.map((h, i) => [h || `coluna ${i + 1}`, l[i] ?? '']))});
   }
   return itens;
 }
@@ -1195,12 +1202,19 @@ function adicionarDaPlanilha(itens) {
   const existentes = new Set(S.paradas.map(x => chaveEndereco(x.texto)));
   const desta = new Map();
   let novas = 0, juntas = 0, repetidas = 0, semPosicao = 0, lembradas = 0;
+  const inicioImport = Date.now(), rotaDe = it => it.at || `${it.arquivo}:${inicioImport}`;
   for (const it of itens) {
     const chave = chaveEndereco(it.texto);
-    if (desta.has(chave)) { const p = desta.get(chave); p.unidades = (p.unidades || 1) + 1; juntas++; continue; }
+    if (desta.has(chave)) {
+      const p = desta.get(chave);
+      p.unidades = (p.unidades || 1) + 1;
+      if (it.tn) p.pacotes.push(it.tn);
+      juntas++;
+      continue;
+    }
     if (existentes.has(chave)) { repetidas++; continue; }
     const temCoord = it.lat != null;
-    const p = {id: novoId(), area: S.areaAtual, ml: it.ml, texto: it.texto, bairro: it.bairro, unidades: null, comercial: false,
+    const p = {id: novoId(), area: S.areaAtual, ml: it.ml, texto: it.texto, bairro: it.bairro, rota: rotaDe(it), pacotes: it.tn ? [it.tn] : [], unidades: null, comercial: false,
       lat: temCoord ? it.lat : null, lng: temCoord ? it.lng : null, exibido: temCoord ? 'Posição da planilha' : '',
       precisao: temCoord ? 'planilha' : 'pendente', candidatos: [], entregue: false};
     const lembrada = aplicarMemoria(p);
@@ -1211,6 +1225,7 @@ function adicionarDaPlanilha(itens) {
     else if (!temCoord) semPosicao++;
   }
   if (!S.cidade) { const c = itens.find(i => i.cidade); if (c) S.cidade = c.cidade; }
+  enfileirarRotas(itens, rotaDe);
   const longe = marcarIsoladas();
   if (novas || juntas) invalidarRota();
   salvar();
@@ -1606,8 +1621,16 @@ document.addEventListener('click', async e => {
     case 'areasAuto': S.areasManual = false; await montarRota(); break;
     case 'areaSobe': await moverArea(id, -1); break;
     case 'areaDesce': await moverArea(id, 1); break;
-    case 'entregue': p.entregue = true; p.entregueEm = Date.now(); salvar(); render(); desenharMapa(); avisarProximaPerto(p); break;
-    case 'desfazer': p.entregue = false; p.entregueEm = null; salvar(); render(); desenharMapa(); break;
+    case 'entregue':
+      p.entregue = true; p.entregueEm = Date.now(); salvar(); render(); desenharMapa(); avisarProximaPerto(p);
+      if (p.rota && p.pacotes && p.pacotes.length) enfileirar({tipo: 'entregue', rota: p.rota, tns: p.pacotes, quando: new Date(p.entregueEm).toISOString()});
+      break;
+    case 'desfazer':
+      p.entregue = false; p.entregueEm = null; salvar(); render(); desenharMapa();
+      if (p.rota && p.pacotes && p.pacotes.length) enfileirar({tipo: 'entregue', rota: p.rota, tns: p.pacotes, quando: null});
+      break;
+    case 'entrar': await entrar($('#loginEmail').value.trim(), $('#loginSenha').value); break;
+    case 'sair': await sair(); break;
     case 'copiar': await copiarRota(); break;
   }
 });
@@ -1628,8 +1651,182 @@ $('#btnMapa').addEventListener('click', () => {
   setTimeout(() => mapa.invalidateSize(), 50);
 });
 
+/* ---------- Nuvem (Supabase) ---------- */
+
+const SUPA_URL = 'https://hkclzmlcfiksaqqspqsy.supabase.co';
+const SUPA_CHAVE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrY2x6bWxjZmlrc2FxcXNwcXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NzcyNDgsImV4cCI6MjEwNTM1MzI0OH0.dPbu04slxXdKtzbfJtbMcxsUAnIoIxHg0eKAVX4K_h8';
+const SUPA_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/+esm';
+const FILA = 'rota-entregas-fila', ROTAS_NUVEM = 'rota-entregas-rotas-nuvem', FILA_MAX = 3000;
+let supa = null, sessao = null, perfil = null, enviando = false, erroNuvem = '';
+
+function lerJson(k, padrao) {
+  try { return JSON.parse(localStorage.getItem(k)) ?? padrao; } catch (e) { return padrao; }
+}
+function gravarJson(k, v) {
+  try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {}
+}
+
+async function iniciarNuvem() {
+  try {
+    const {createClient} = await import(SUPA_LIB);
+    supa = createClient(SUPA_URL, SUPA_CHAVE, {auth: {persistSession: true, autoRefreshToken: true, storageKey: 'rota-entregas-auth'}});
+    sessao = (await supa.auth.getSession()).data.session;
+    supa.auth.onAuthStateChange((evento, s) => { sessao = s; if (!s) perfil = null; });
+    if (sessao) await carregarPerfil();
+    erroNuvem = '';
+  } catch (e) {
+    erroNuvem = 'sem conexão com o servidor';
+  }
+  atualizarConta();
+  enviarFila();
+}
+
+async function carregarPerfil() {
+  const {data} = await supa.from('perfis').select('nome, papel, ativo').eq('id', sessao.user.id).maybeSingle();
+  perfil = data || null;
+}
+
+async function entrar(email, senha) {
+  if (!supa) { status('Sem conexão com o servidor. Tente de novo com internet.', 4000); return; }
+  if (!email || !senha) { status('Preencha o e-mail e a senha.', 3000); return; }
+  status('Entrando…');
+  const {data, error} = await supa.auth.signInWithPassword({email, password: senha});
+  if (error) {
+    status(/invalid/i.test(error.message) ? 'E-mail ou senha errados.' : 'Não consegui entrar: ' + error.message, 5000);
+    return;
+  }
+  sessao = data.session;
+  await carregarPerfil();
+  render();
+  status(perfil && !perfil.ativo ? 'Sua conta está desativada. Fale com o responsável.' : `Olá, ${perfil ? perfil.nome : email}! Suas rotas vão ser salvas.`, 4000);
+  enviarFila();
+}
+
+async function sair() {
+  if (!confirm('Sair da conta? O que ainda não foi enviado fica guardado neste celular.')) return;
+  if (supa) await supa.auth.signOut();
+  sessao = null; perfil = null;
+  render();
+}
+
+function textoFila() {
+  const n = lerJson(FILA, []).length;
+  if (erroNuvem) return '⚠️ ' + erroNuvem + (n ? ` · ${n} para enviar` : '');
+  return n ? `⏳ ${n} para enviar` : '✓ tudo salvo';
+}
+
+function atualizarConta() {
+  const el = document.querySelector('#nuvemFila');
+  if (el) el.textContent = textoFila();
+}
+
+function contaHtml() {
+  if (sessao) {
+    return `<div class="info">☁️ Conectado como <b>${esc(perfil ? perfil.nome : sessao.user.email)}</b>${perfil && perfil.papel === 'admin' ? ' (administrador)' : ''} · <span id="nuvemFila">${esc(textoFila())}</span>
+      <button class="btn peq" data-acao="sair">Sair</button></div>`;
+  }
+  return `<details>
+    <summary>☁️ Entrar na conta (salvar as rotas)</summary>
+    <label for="loginEmail">E-mail</label>
+    <input type="email" id="loginEmail" autocomplete="username" inputmode="email">
+    <label for="loginSenha">Senha</label>
+    <input type="password" id="loginSenha" autocomplete="current-password">
+    <div class="linha"><button class="btn pri" data-acao="entrar">Entrar</button></div>
+    <div class="info">A conta é criada pelo responsável. Sem entrar, o app funciona só neste celular.</div>
+  </details>`;
+}
+
+function enfileirar(op) {
+  const f = lerJson(FILA, []);
+  f.push(op);
+  gravarJson(FILA, f.slice(-FILA_MAX));
+  atualizarConta();
+  enviarFila();
+}
+
+function enfileirarRotas(itens, rotaDe) {
+  const porRota = new Map();
+  for (const it of itens) {
+    const k = rotaDe(it);
+    if (!porRota.has(k)) porRota.set(k, {tipo: 'rota', chave: k, at_id: it.at, arquivo: it.arquivo, pacotes: []});
+    const inteiro = v => /^\d{1,6}$/.test(String(v || '').trim()) ? +v : null;
+    porRota.get(k).pacotes.push({
+      spx_tn: it.tn, sequencia: inteiro(it.ml), parada: inteiro(it.parada), endereco: it.endereco || it.texto,
+      bairro: it.bairro || null, cidade: it.cidade || null, cep: it.cep, lat: it.lat, lng: it.lng,
+      chave_lugar: chaveLugar({texto: it.texto, bairro: it.bairro}), linha: it.linha,
+    });
+  }
+  for (const op of porRota.values()) enfileirar(op);
+}
+
+const erroDeRede = e => !e.code || e.code === 'PGRST301' || /fetch|network|timeout/i.test(e.message || '');
+
+async function enviarRota(op) {
+  const mapa = lerJson(ROTAS_NUVEM, {});
+  let id = mapa[op.chave];
+  if (!id && op.at_id) {
+    const {data, error} = await supa.from('rotas').select('id').eq('at_id', op.at_id).eq('motorista_id', sessao.user.id).maybeSingle();
+    if (error) return error;
+    if (data) id = data.id;
+  }
+  if (!id) {
+    id = crypto.randomUUID();
+    const {error} = await supa.from('rotas').insert({id, at_id: op.at_id, arquivo: op.arquivo});
+    if (error) return error;
+  }
+  mapa[op.chave] = id;
+  gravarJson(ROTAS_NUVEM, mapa);
+  const linhas = op.pacotes.map(x => ({...x, rota_id: id}));
+  for (let i = 0; i < linhas.length; i += 200) {
+    const {error} = await supa.from('pacotes').upsert(linhas.slice(i, i + 200), {onConflict: 'rota_id,spx_tn', ignoreDuplicates: true});
+    if (error) return error;
+  }
+  return null;
+}
+
+async function enviarOp(op) {
+  try {
+    let error = null;
+    if (op.tipo === 'rota') error = await enviarRota(op);
+    else if (op.tipo === 'entregue') {
+      const id = lerJson(ROTAS_NUVEM, {})[op.rota];
+      if (!id) return 'descartar';
+      ({error} = await supa.from('pacotes').update({entregue_em: op.quando}).eq('rota_id', id).in('spx_tn', op.tns));
+    } else if (op.tipo === 'correcao') {
+      ({error} = await supa.from('correcoes').insert({chave_lugar: op.chave, lat: op.lat, lng: op.lng}));
+    }
+    if (!error) return 'ok';
+    if (erroDeRede(error)) return 'rede';
+    erroNuvem = 'o servidor recusou um envio (' + (error.message || error.code) + ')';
+    return 'descartar';
+  } catch (e) {
+    return 'rede';
+  }
+}
+
+async function enviarFila() {
+  if (!supa || !sessao || enviando || !navigator.onLine) return;
+  enviando = true;
+  try {
+    while (lerJson(FILA, []).length) {
+      const r = await enviarOp(lerJson(FILA, [])[0]);
+      if (r === 'rede') break;
+      const f = lerJson(FILA, []);
+      f.shift();
+      gravarJson(FILA, f);
+    }
+  } finally {
+    enviando = false;
+    atualizarConta();
+  }
+}
+
+window.addEventListener('online', enviarFila);
+setInterval(enviarFila, 60000);
+
 render();
 desenharMapa(true);
+iniciarNuvem();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 if (new URLSearchParams(location.search).has('compartilhado')) processarCompartilhado();
 </script>
