@@ -1,0 +1,80 @@
+import {analisarLinha, chaveEndereco, chaveLugar, decompor, extrairEnderecos, mesmaRua, mesmoEndereco, normal, ruaCompleta} from './texto';
+
+describe('decompor', () => {
+  it.each([
+    ['Rua Honduras, 417, América, CEP 49080-320', {rua: 'Rua Honduras', numero: '417', cep: '49080320'}],
+    ['Avenida Dulce Diniz 920, Condomínio Luzia', {rua: 'Avenida Dulce Diniz', numero: '920', cep: null}],
+    ['R Francisco Rabelo leite Neto, N.820, Cond. Brisa marina', {rua: 'R Francisco Rabelo leite Neto', numero: '820', cep: null}],
+    ['Travessa Armando Sales, 15, Loja 01, Ponto Novo, 49097070', {rua: 'Travessa Armando Sales', numero: '15', cep: '49097070'}],
+  ])('%s', (txt, esperado) => {
+    expect(decompor(txt)).toMatchObject(esperado);
+  });
+});
+
+describe('analisarLinha', () => {
+  it('separa o número do app, as unidades e o horário comercial', () => {
+    expect(analisarLinha('18 Avenida Dulce Diniz 920 · 2 unid · comercial')).toEqual({ml: '18', texto: 'Avenida Dulce Diniz 920', unidades: 2, comercial: true});
+  });
+});
+
+describe('chaveEndereco', () => {
+  it('apartamentos diferentes do mesmo prédio são endereços diferentes', () => {
+    expect(chaveEndereco('Rua dos Ipês, 300, Bloco A ap 101')).not.toBe(chaveEndereco('Rua dos Ipês, 300, Bloco B ap 202'));
+  });
+  it('a mesma entrega escrita igual gera a mesma chave', () => {
+    expect(chaveEndereco('Rua Maruim, 94, Centro, CEP 49010-160')).toBe(chaveEndereco('Rua Maruim, 94, Centro, CEP 49010-160'));
+  });
+  it('mesmoEndereco ignora o complemento', () => {
+    expect(mesmoEndereco(['Rua dos Ipês, 300, Bloco A ap 101', 'Rua dos Ipês, 300, Bloco B ap 202'])).toBe(true);
+    expect(mesmoEndereco(['Rua dos Ipês, 300', 'Rua dos Ipês, 302'])).toBe(false);
+  });
+});
+
+describe('chaveLugar (memória de posições)', () => {
+  it('com CEP de rua, usa CEP + número', () => {
+    expect(chaveLugar('Rua D, 100, CEP 49043-861', '', 'Aracaju')).toBe('49043861|100');
+  });
+  it('mesma rua em bairros diferentes não divide a posição', () => {
+    const a = chaveLugar('Rua Bahia, 100', 'Santa Maria', 'Aracaju');
+    const b = chaveLugar('Rua Bahia, 100', 'Dom Luciano', 'Aracaju');
+    expect(a).not.toBeNull();
+    expect(a).not.toBe(b);
+  });
+  it('Rua e Avenida de mesmo nome não colidem, e abreviação vira o nome inteiro', () => {
+    expect(chaveLugar('Avenida Bahia, 100', 'Centro', 'Aracaju')).not.toBe(chaveLugar('Rua Bahia, 100', 'Centro', 'Aracaju'));
+    expect(chaveLugar('R Bahia, 100', 'Centro', 'Aracaju')).toBe(chaveLugar('Rua Bahia, 100', 'Centro', 'Aracaju'));
+    expect(chaveLugar('Rua Dr. Silva, 10', 'Centro', 'Aracaju')).not.toBe(chaveLugar('Rua Silva, 10', 'Centro', 'Aracaju'));
+  });
+  it('rua de uma letra é guardada quando há bairro', () => {
+    expect(chaveLugar('Rua D, 100', 'Santa Maria', 'Aracaju')).toBe('r|rua d|100|santa maria|aracaju');
+  });
+  it('CEP genérico da cidade não serve de chave sozinho', () => {
+    expect(chaveLugar('Rua D, 100, CEP 49000-000', 'Santa Maria', 'Aracaju')).toBe('r|rua d|100|santa maria|aracaju');
+  });
+  it('sem CEP bom e sem bairro, não guarda', () => {
+    expect(chaveLugar('Rua D, 100', '', 'Aracaju')).toBeNull();
+    expect(chaveLugar('Rua Bahia, 100, Centro, Santa Maria', '', 'Aracaju')).toBeNull();
+  });
+  it('sem número, não guarda', () => {
+    expect(chaveLugar('Rua D, Santa Maria', 'Santa Maria', 'Aracaju')).toBeNull();
+  });
+});
+
+describe('extrairEnderecos (texto de print ou PDF)', () => {
+  it('junta a linha do número do app e o complemento', () => {
+    expect(extrairEnderecos('18\nAvenida Dulce Diniz 920\nCondomínio Luzia Residence\nCEP 49048430')).toEqual(['18 Avenida Dulce Diniz 920, Condomínio Luzia Residence, CEP 49048430']);
+  });
+  it.todo('não descarta "Rua B", "Rua D" nem logradouro abreviado "R " (limitação conhecida)');
+});
+
+describe('comparação de ruas', () => {
+  it('ignora tipo, acento e palavras vazias', () => {
+    expect(mesmaRua('Rua Jornalista João Batista de Santana', 'Rua Jornalista João Batista de SantAnna')).toBe(true);
+    expect(mesmaRua('Rua Maruim', 'Rua Laranjeiras')).toBe(false);
+    expect(mesmaRua('Av. Presidente Tancredo Neves', 'Avenida Tancredo Neves')).toBe(true);
+  });
+  it('normal e ruaCompleta', () => {
+    expect(normal('  São   Cristóvão ')).toBe('sao cristovao');
+    expect(ruaCompleta('Av. Beira-Mar')).toBe('avenida beira mar');
+  });
+});

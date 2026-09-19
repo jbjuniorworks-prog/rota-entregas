@@ -6,12 +6,17 @@
     "servir": "http-server . -a 127.0.0.1 -p 8765 -c-1 -s",
     "planilhas": "node testes/gerar-planilhas.mjs",
     "motoristas": "node ferramentas/motoristas.mjs",
+    "test:unidade": "vitest run",
+    "tipos": "tsc -p .",
     "test": "playwright test --grep-invert @nuvem",
     "test:nuvem": "playwright test --grep @nuvem --workers 1"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",
+    "@types/node": "^22.20.4",
     "http-server": "14.1.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7",
     "xlsx": "0.18.5"
   }
 }

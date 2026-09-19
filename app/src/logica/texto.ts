@@ -1,0 +1,150 @@
+export const normal = (s: unknown): string =>
+  String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+export const RUA = /^(rua|r\.|avenida|av\.?|travessa|tv\.?|trav\.?|pra[çc]a|p[çc]\.|alameda|al\.|rodovia|rod\.|estrada|estr?\.|via|largo|beco|viela|passagem|conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
+const COMPLEMENTO = /^(condom[ií]nio|cond\.|edif[ií]cio|ed\.|apto?\.?|apartamento|bloco|bl\.|casa|lote|sala|loja|fundos|bairro|cep\b|pr[oó]ximo|perto|ao lado|em frente|refer[eê]ncia)/i;
+export const TEM_CEP = /\b\d{5}-?\d{3}\b/;
+const RUA_EM = new RegExp('^(.{0,6}?)\\s*(' + RUA.source.slice(1) + '.*)$', 'i');
+const RUA_COMPLEMENTO = /^(conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
+export const TIPOS_RUA = /^(rua|r|avenida|av|travessa|tv|trav|praca|pc|alameda|al|rodovia|rod|estrada|est|via|largo|beco|viela|passagem)\b\.?\s*/;
+const PALAVRAS_VAZIAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'doutor', 'dr', 'professor', 'prof', 'presidente', 'pres', 'governador', 'gov', 'ministro', 'min', 'senador', 'sen', 'deputado', 'dep', 'coronel', 'cel', 'general', 'gen', 'padre', 'pe', 'sao', 'santa', 'santo']);
+const TIPO_VIA: Record<string, string> = {r: 'rua', rua: 'rua', av: 'avenida', avenida: 'avenida', tv: 'travessa', trav: 'travessa', travessa: 'travessa', al: 'alameda', alameda: 'alameda', pc: 'praca', praca: 'praca', rod: 'rodovia', rodovia: 'rodovia', est: 'estrada', estrada: 'estrada'};
+
+export const limparRuido = (l: string): string =>
+  l.replace(/[|©®✔✓]/g, ' ').replace(/\s+/g, ' ').trim().replace(/(\d)\s+[^\s\d,]{1,2}$/, '$1');
+
+export interface LinhaAnalisada {
+  ml: string | null;
+  texto: string;
+  unidades: number | null;
+  comercial: boolean;
+}
+
+export function analisarLinha(linha: string): LinhaAnalisada {
+  let texto = limparRuido(linha), ml: string | null = null, unidades: number | null = null, comercial = false;
+  const mu = texto.match(/\s·\s*(\d+)\s*unid/i);
+  if (mu) unidades = +mu[1];
+  if (/\s·\s*comercial\b/i.test(texto)) comercial = true;
+  texto = texto.replace(/\s·\s.*$/, '').trim().replace(/(\d)\s+[^\s\d,]{1,2}$/, '$1').replace(/(\d)\s+[^\s\d,]{1,2}(?=,)/, '$1');
+  const m = (texto + ' ').match(RUA_EM);
+  if (m && m[1]) {
+    const d = m[1].match(/\d{1,3}/);
+    if (d) ml = d[0];
+    texto = m[2].trim();
+  }
+  return {ml, texto, unidades, comercial};
+}
+
+export interface Decomposto {
+  rua: string;
+  numero: string | null;
+  cep: string | null;
+  resto: string[];
+}
+
+export function decompor(txt: string): Decomposto {
+  const mc = txt.match(/\b(\d{5})-?(\d{3})\b/);
+  const cep = mc ? mc[1] + mc[2] : null;
+  let limpo = mc ? txt.replace(mc[0], ' ') : txt;
+  limpo = limpo.replace(/\bCEP\b:?/ig, ' ');
+  const seg = limpo.split(',').map(s => s.trim()).filter(Boolean);
+  let rua = seg[0] || '', numero: string | null = null, resto = seg.slice(1);
+  const fim = rua.match(/^(.*\D)\s+(?:n[º°o.]*\s*)?(\d{1,5})[a-z]?$/i);
+  if (fim) { rua = fim[1].trim(); numero = fim[2]; }
+  else if (resto.length && /^(?:n[º°o.]*\s*)?\d{1,5}[a-z]?\b/i.test(resto[0])) { numero = resto[0].match(/\d{1,5}/)![0]; resto = resto.slice(1); }
+  else {
+    const meio = rua.match(/^((?:\S+\s+){1,7}?\S*[a-zà-ÿ])\s+(?:n[º°o.]*\s*)?(\d{1,5})[a-z]?(?:\s+(.*))?$/i);
+    if (meio) { rua = meio[1].trim(); numero = meio[2]; if (meio[3]) resto = [meio[3].trim(), ...resto]; }
+  }
+  rua = rua.replace(/\s+n[º°o.]*$/i, '').trim();
+  return {rua, numero, cep, resto};
+}
+
+export function complementoChave(resto: string[]): string {
+  const txt = normal((resto || []).join(' '));
+  const partes: string[] = [];
+  for (const re of [/\bap(?:to|artamento)?\.?\s*(\w{1,6})/, /\bbl(?:oco|c)?\.?\s*(\w{1,4})/, /\bcasa\s*(\w{1,4})/, /\b(?:sala|loja|lote|lt)\.?\s*(\w{1,4})/, /\bqu?a?d?r?a?\.?\s*(\d{1,4})/]) {
+    const m = txt.match(re);
+    if (m) partes.push(m[0].replace(/\s+/g, ''));
+  }
+  return partes.join('+');
+}
+
+export function chaveEndereco(linha: string): string {
+  const d = decompor(analisarLinha(linha).texto);
+  return [normal(d.rua).replace(TIPOS_RUA, ''), d.numero || '', d.cep || '', complementoChave(d.resto)].join('|');
+}
+
+export function mesmoEndereco(textos: string[]): boolean {
+  const chaves = new Set(textos.map(t => chaveEndereco(t).split('|').slice(0, 2).join('|')));
+  return textos.length > 1 && chaves.size === 1 && !/^\|*$/.test([...chaves][0]);
+}
+
+export function pareceEndereco(texto: string): boolean {
+  if (/[=?@*<>~^{}\\]/.test(texto)) return false;
+  const semTipo = texto.replace(RUA, '').trim();
+  const primeira = semTipo.split(/[\s,]+/)[0] || '';
+  if (!/^[a-zà-ÿ]{3,}$|^[a-zà-ÿ]{3,}/i.test(primeira) && !/^\d+º?$/.test(primeira)) return false;
+  const letras = (texto.match(/[a-zà-ÿ]/gi) || []).length;
+  return letras >= 8 && letras / texto.length > 0.45;
+}
+
+interface Aberto {
+  ml: string | null;
+  texto: string;
+  unidades?: number;
+  comercial?: boolean;
+}
+
+export function extrairEnderecos(bruto: string): string[] {
+  const linhas = bruto.split('\n').map(limparRuido).filter(Boolean);
+  const out: Aberto[] = [];
+  let numeroSolto: string | null = null, aberto: Aberto | null = null;
+  for (const l of linhas) {
+    const {ml, texto} = analisarLinha(l);
+    const complementoDoAnterior = aberto && !TEM_CEP.test(aberto.texto) && /\d/.test(aberto.texto) && RUA_COMPLEMENTO.test(texto + ' ');
+    if (RUA.test(texto + ' ') && !complementoDoAnterior) {
+      aberto = {ml: ml || numeroSolto, texto};
+      out.push(aberto);
+      numeroSolto = null;
+      continue;
+    }
+    const ultimo = out[out.length - 1];
+    if (ultimo && /hor[aá]rio\s+comercial/i.test(l)) { ultimo.comercial = true; aberto = null; continue; }
+    const mu = l.match(/entrega\s+(\d+)\s+unidade/i);
+    if (ultimo && mu) { ultimo.unidades = +mu[1]; aberto = null; continue; }
+    if (aberto && !/\d/.test(aberto.texto) && /^\d{1,5}\b/.test(l)) { aberto.texto += ' ' + l; continue; }
+    if (aberto && !TEM_CEP.test(aberto.texto) && (COMPLEMENTO.test(l) || TEM_CEP.test(l))) { aberto.texto += ', ' + l; continue; }
+    aberto = null;
+    const mn = l.match(/^[#(]?(\d{1,3})(?:[).:\]\-]|\s|$)/);
+    numeroSolto = mn && !TEM_CEP.test(l) ? mn[1] : null;
+  }
+  return out
+    .filter(e => (/\s\d{1,5}\b/.test(e.texto) || TEM_CEP.test(e.texto)) && pareceEndereco(e.texto))
+    .map(e => (e.ml ? e.ml + ' ' : '') + e.texto + (e.unidades ? ` · ${e.unidades} unid` : '') + (e.comercial ? ' · comercial' : ''));
+}
+
+export function palavrasRua(nome: string): string[] {
+  return normal(nome).replace(TIPOS_RUA, '').replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(w => w.length > 1 && !PALAVRAS_VAZIAS.has(w));
+}
+
+export function mesmaRua(procurada: string, achada: string): boolean {
+  const a = palavrasRua(procurada), b = new Set(palavrasRua(achada));
+  if (!a.length || !b.size) return false;
+  return a.filter(w => b.has(w)).length / a.length >= 0.6;
+}
+
+export function ruaCompleta(rua: string): string {
+  const w = normal(rua).replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(Boolean);
+  if (w.length && TIPO_VIA[w[0]]) w[0] = TIPO_VIA[w[0]];
+  return w.join(' ');
+}
+
+export function chaveLugar(texto: string, bairro: string | undefined, cidade: string): string | null {
+  const d = decompor(analisarLinha(texto).texto);
+  if (!d.numero) return null;
+  if (d.cep && !/000$/.test(d.cep)) return d.cep + '|' + d.numero;
+  const rua = ruaCompleta(d.rua), b = normal(bairro || '');
+  if (!rua || !b) return null;
+  return ['r', rua, d.numero, b, normal(cidade)].join('|');
+}
