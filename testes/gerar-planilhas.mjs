@@ -27,9 +27,23 @@ const rotaB = [
   [6, 6, 'Rua Leste, 5', 'Bairro Linha', '49000-206', -10.9300, -37.0600],
 ];
 
+const rotaC = [
+  ['-', '-', 'Rua do Robalo Errado, 301, em frente a casa 318', 'Bairro Robalo Teste', '49004-360', -10.92654, -37.073115],
+  [1, 1, 'Rua Norte do Robalo, 331', 'Bairro Robalo Teste', '49004-390', -11.03983, -37.09465],
+  [2, 2, 'Rua Norte do Robalo, 455', 'Bairro Robalo Teste', '49004-390', -11.039879, -37.095616],
+  [3, 3, 'Rua Sul do Robalo, 90', 'Bairro Robalo Teste', '49004-391', -11.041394, -37.094318],
+  [4, 4, 'Rua dos Náufragos Teste, 10', 'Bairro Vizinho Teste', '49005-323', -11.0368361, -37.0999195],
+  [5, 5, 'Rua Arredondada, 280', 'Bairro Vizinho Teste', '49005-324', -11.04, -37.10, 'crua'],
+  [6, 6, 'Avenida Numeração, 7', 'Bairro Vizinho Teste', '49005-325', -11.0380, -37.0990],
+  [7, 7, 'Avenida Numeração, 1928', 'Bairro Vizinho Teste', '49005-325', -11.03801, -37.09901],
+  [8, 8, 'Rua Trocada, 15', 'Bairro Vizinho Teste', '49005-326', -37.0985, -11.0375],
+  [9, 9, 'Rua Fora do Mapa, 20', 'Bairro Vizinho Teste', '49005-327', 48.85, 2.35],
+];
+
 function planilha(at, prefixo, linhas) {
-  const dados = linhas.map(([seq, stop, end, bairro, cep, lat, lng], i) =>
-    [at, seq, stop, `${prefixo}${String(i + 1).padStart(4, '0')}`, end, bairro, 'Cidade Teste', cep, lat, lng]);
+  const realista = (v, crua) => crua ? v : +(v - 0.0000013).toFixed(7);
+  const dados = linhas.map(([seq, stop, end, bairro, cep, lat, lng, crua], i) =>
+    [at, seq, stop, `${prefixo}${String(i + 1).padStart(4, '0')}`, end, bairro, 'Cidade Teste', cep, realista(lat, crua), realista(lng, crua)]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([CAB, ...dados]), 'Sheet1');
   return XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'});
@@ -39,4 +53,5 @@ const pasta = new URL('./planilhas/', import.meta.url);
 mkdirSync(pasta, {recursive: true});
 writeFileSync(new URL('rota-a.txt', pasta), planilha('ATTESTE0001', 'BRTESTA', rotaA));
 writeFileSync(new URL('rota-b.xlsx', pasta), planilha('ATTESTE0002', 'BRTESTB', rotaB));
+writeFileSync(new URL('rota-c.xlsx', pasta), planilha('ATTESTE0003', 'BRTESTC', rotaC));
 console.log('planilhas geradas em testes/planilhas/');

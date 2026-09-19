@@ -24,7 +24,8 @@ jobs:
       - run: npm run tipos
       - run: npm run test:unidade
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:novo
+      - run: npm run build
+      - run: npm test
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
         with:

@@ -3,7 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "servir": "http-server . -a 127.0.0.1 -p 8765 -c-1 -s",
     "planilhas": "node testes/gerar-planilhas.mjs",
     "motoristas": "node ferramentas/motoristas.mjs",
     "test:unidade": "vitest run",
@@ -11,8 +10,7 @@
     "test": "playwright test --grep-invert @nuvem",
     "test:nuvem": "playwright test --grep @nuvem --workers 1",
     "dev": "vite",
-    "build": "vite build",
-    "test:novo": "vite build && playwright test -c playwright.novo.config.ts --grep-invert @nuvem"
+    "build": "vite build"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",

@@ -33,11 +33,12 @@ async function nominatim(params: Record<string, string>): Promise<Candidato[]> {
   return (await buscarJson<any[]>(u)).map(candidatoOSM);
 }
 
+export async function centroDoBairro(bairro: string, cidade: string): Promise<{lat: number; lng: number} | null> {
+  const [c] = await nominatim({q: comCidade(bairro, cidade)});
+  return c ? {lat: c.lat, lng: c.lng} : null;
+}
+
 async function cepComCoordenada(cep: string): Promise<Cep | null> {
-  try {
-    const j = await buscarJson(`https://cep.awesomeapi.com.br/json/${cep}`, 8000);
-    if (j && j.lat && j.lng) return {logradouro: j.address || '', bairro: j.district || '', cidade: j.city || '', uf: j.state || '', lat: +j.lat, lng: +j.lng};
-  } catch {}
   try {
     const v = await buscarJson(`https://viacep.com.br/ws/${cep}/json/`, 8000);
     if (v && !v.erro) return {logradouro: v.logradouro || '', bairro: v.bairro || '', cidade: v.localidade, uf: v.uf, lat: null, lng: null};

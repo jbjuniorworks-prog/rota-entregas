@@ -1,3 +1,5 @@
+import {DA_PLANILHA} from './rotulos';
+import {decompor, normal} from './texto';
 import type {Parada, Ponto} from './tipos';
 
 export const RAIO_BLOCO = 10;
@@ -34,6 +36,42 @@ export function marcarIsoladas(paradas: Parada[]): number {
     n++;
   });
   return n;
+}
+
+export function moverParaOBairro(p: Parada, ponto: Ponto, bairro: string) {
+  const original = {lat: p.lat!, lng: p.lng!, exibido: 'Posição que veio na planilha (longe das outras entregas)', precisao: 'longe' as const, fonte: 'planilha'};
+  p.candidatos = [{lat: ponto.lat, lng: ponto.lng, exibido: `Pelo bairro ${bairro}`, precisao: 'bairro', fonte: 'bairro'}, original];
+  Object.assign(p, {lat: ponto.lat, lng: ponto.lng, precisao: 'bairro', exibido: `Posição pelo bairro ${bairro}: a planilha mandava para longe. Confira no local.`});
+}
+
+export function moverPeloBairro(paradas: Parada[]): Parada[] {
+  const movidas: Parada[] = [];
+  for (const p of paradas) {
+    if (p.precisao !== 'longe' || !p.bairro || !DA_PLANILHA.has(p.precisaoAntes!)) continue;
+    const vizinhos = paradas.filter(q => q !== p && comPosicao(q) && q.precisao !== 'longe' && normal(q.bairro) === normal(p.bairro)) as (Parada & Ponto)[];
+    if (!vizinhos.length) continue;
+    moverParaOBairro(p, {lat: mediana(vizinhos.map(q => q.lat)), lng: mediana(vizinhos.map(q => q.lng))}, p.bairro);
+    movidas.push(p);
+  }
+  return movidas;
+}
+
+export function marcarNumerosIncoerentes(paradas: Parada[]): number {
+  const porRua = new Map<string, {p: Parada & Ponto; n: number}[]>();
+  for (const p of paradas) {
+    if (p.precisao !== 'planilha' || !comPosicao(p)) continue;
+    const d = decompor(p.texto);
+    if (!d.numero) continue;
+    const rua = normal(d.rua);
+    if (!porRua.has(rua)) porRua.set(rua, []);
+    porRua.get(rua)!.push({p, n: +d.numero});
+  }
+  const marcadas = new Set<Parada>();
+  for (const lista of porRua.values()) for (const a of lista) for (const b of lista) {
+    if (Math.abs(a.n - b.n) >= 300 && haversine(a.p, b.p) < 30) { marcadas.add(a.p); marcadas.add(b.p); }
+  }
+  marcadas.forEach(p => { p.precisao = 'numero'; });
+  return marcadas.size;
 }
 
 export function proximaAPe(feita: Parada, proxima: Parada | undefined): number | null {

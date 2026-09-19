@@ -1,5 +1,6 @@
 import {criarFila, operacoesDaPlanilha} from './logica/fila';
-import {marcarIsoladas, proximaAPe} from './logica/geo';
+import {haversine, marcarIsoladas, mediana, moverParaOBairro, proximaAPe} from './logica/geo';
+import {DA_PLANILHA} from './logica/rotulos';
 import {backupRecente, CHAVES, estadoVazio, resetarDia} from './logica/guarda';
 import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from './logica/importar';
 import {avisoGuardou, criarMemoria} from './logica/memoria';
@@ -9,7 +10,7 @@ import {extrairEnderecos} from './logica/texto';
 import type {Parada} from './logica/tipos';
 import {guarda, loja, status} from './loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from './servicos/arquivos';
-import {geocodificar} from './servicos/geocodificacao';
+import {centroDoBairro, geocodificar} from './servicos/geocodificacao';
 import {clienteNuvem, entrar as entrarNaNuvem, iniciarNuvem, sair as sairDaNuvem} from './servicos/nuvem';
 import {linhaDaRota, matriz} from './servicos/ruas';
 import {linkWaze} from './logica/otimizacao';
@@ -76,7 +77,7 @@ export async function buscarParada(p: Parada) {
   }
 }
 
-export async function buscarPendentes() {
+export async function buscarPendentes(resumoAntes = '') {
   if (ui.ocupado) return;
   const alvo = e().paradas.filter(p => p.precisao === 'pendente');
   if (!alvo.length) return;
@@ -91,8 +92,9 @@ export async function buscarPendentes() {
   const longe = marcarIsoladas(e().paradas);
   ui.enquadrar++;
   loja.mudou();
-  status(erro ? 'Alguns falharam (' + erro.message + '). Toque em "Buscar pendentes".'
-    : longe ? `Pronto! ⚠️ ${longe} parada(s) longe das outras entregas: confira o pino.` : 'Pronto! Confira os vermelhos, se houver.', longe ? 8000 : 4000);
+  const resultado = erro ? 'Alguns falharam (' + erro.message + '). Toque em "Buscar pendentes".'
+    : longe ? `Pronto! ⚠️ ${longe} parada(s) longe das outras entregas: confira o pino.` : 'Pronto! Confira os vermelhos, se houver.';
+  status(resumoAntes ? `${resumoAntes} Busca dos sem posição: ${resultado}` : resultado, resumoAntes ? 15000 : longe ? 8000 : 4000);
 }
 
 export function gps(): Promise<void> {
@@ -137,7 +139,25 @@ async function importarPlanilhas(files: Blob[]) {
   const {resumo, rotaDe} = adicionarDaPlanilha(e(), itens, p => memoria.aplicar(p));
   fila.enfileirar(...operacoesDaPlanilha(itens, rotaDe, e().cidade));
   enviarFila();
+  resumo.noBairro += await levarAoBairroPeloMapa();
   return resumo;
+}
+
+async function levarAoBairroPeloMapa(): Promise<number> {
+  const perto = e().paradas.filter(p => p.lat != null && p.lng != null && p.precisao !== 'longe');
+  const sozinhas = e().paradas.filter(p => p.precisao === 'longe' && p.bairro && DA_PLANILHA.has(p.precisaoAntes!));
+  if (!perto.length || !sozinhas.length) return 0;
+  const centro = {lat: mediana(perto.map(p => p.lat!)), lng: mediana(perto.map(p => p.lng!))};
+  let n = 0;
+  for (const p of sozinhas) {
+    status(`Procurando o bairro ${p.bairro} no mapa…`);
+    try {
+      const c = await centroDoBairro(p.bairro!, e().cidade);
+      if (c && haversine(c, centro) < 20000) { moverParaOBairro(p, c, p.bairro!); n++; }
+    } catch {}
+  }
+  if (n) invalidarRota();
+  return n;
 }
 
 export async function lerPrints(files: File[], textoAtual: string): Promise<string | null> {
@@ -150,8 +170,9 @@ export async function lerPrints(files: File[], textoAtual: string): Promise<stri
       ui.aba = 'conferir';
       ui.enquadrar++;
       loja.mudou();
-      status(resumoPlanilha(r), r.longe ? 12000 : 5000);
-      await buscarPendentes();
+      const resumo = resumoPlanilha(r);
+      status(resumo, r.longe ? 12000 : 5000);
+      await buscarPendentes(resumo);
     } catch (err) {
       status('Não consegui ler a planilha: ' + (err as Error).message, 6000);
     }

@@ -128,7 +128,7 @@ export function TelaConferir() {
     <div className="info">✅ {conta(NO_NUMERO)} no número · 🛣️ {conta(['rua'])} na rua certa · ❗ {duvidas} para conferir{pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
     {duvidas > 0 && <div className="aviso">Os de borda vermelha podem estar longe do lugar. Toque em <b>Ver</b> e arraste o pino, ou use <b>Marcar no mapa</b> (olhando a posição no app de entregas).</div>}
     <div className="linha">
-      {pend > 0 && <button className="btn pri" onClick={A.buscarPendentes}>Buscar {pend} pendente(s)</button>}
+      {pend > 0 && <button className="btn pri" onClick={() => A.buscarPendentes()}>Buscar {pend} pendente(s)</button>}
       <button className="btn" onClick={() => A.mudar(() => { ui.soDuvidas = !ui.soDuvidas; })}>{ui.soDuvidas ? 'Mostrar todos' : 'Só os duvidosos'}</button>
       <button className={`btn ${pend ? '' : 'pri'}`} onClick={() => A.irPara('rota')}>Ir para a rota →</button>
     </div>

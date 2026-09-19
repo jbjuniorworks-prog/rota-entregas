@@ -18,6 +18,7 @@ export interface ItemPlanilha {
   texto: string;
   lat: number | null;
   lng: number | null;
+  aproximada: boolean;
   ml: string | null;
   cidade: string;
   bairro: string;
@@ -31,6 +32,16 @@ export interface ItemPlanilha {
 }
 
 const numeroDe = (v: unknown) => typeof v === 'number' ? v : parseFloat(String(v ?? '').trim().replace(',', '.'));
+const casasDecimais = (v: number) => (String(v).split('.')[1] || '').length;
+const noBrasil = (lat: number, lng: number) => lat >= -34 && lat <= 6 && lng >= -74 && lng <= -28;
+
+export function coordenadaDaPlanilha(latBruta: unknown, lngBruta: unknown): {lat: number; lng: number; aproximada: boolean} | null {
+  let lat = numeroDe(latBruta), lng = numeroDe(lngBruta);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !lat || !lng) return null;
+  if (!noBrasil(lat, lng) && noBrasil(lng, lat)) [lat, lng] = [lng, lat];
+  if (!noBrasil(lat, lng)) return null;
+  return {lat, lng, aproximada: Math.min(casasDecimais(lat), casasDecimais(lng)) <= 2};
+}
 
 export function ehArquivoZip(inicio: Uint8Array): boolean {
   return inicio[0] === 0x50 && inicio[1] === 0x4b && inicio[2] === 0x03 && inicio[3] === 0x04;
@@ -55,11 +66,10 @@ export function itensDaPlanilha(linhas: unknown[][], arquivo: string): ItemPlani
     const bairro = campo(l, 'bairro'), cep = campo(l, 'cep').replace(/\D/g, '');
     if (bairro && !normal(texto).includes(normal(bairro))) texto += ', ' + bairro;
     if (cep.length === 8 && !texto.replace(/\D/g, '').includes(cep)) texto += `, CEP ${cep.slice(0, 5)}-${cep.slice(5)}`;
-    const lat = numeroDe(l[col.lat]), lng = numeroDe(l[col.lng]);
-    const temCoord = col.lat >= 0 && col.lng >= 0 && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !!lat && !!lng;
+    const coord = col.lat >= 0 && col.lng >= 0 ? coordenadaDaPlanilha(l[col.lat], l[col.lng]) : null;
     const ordem = campo(l, 'ordem');
     itens.push({
-      texto, lat: temCoord ? lat : null, lng: temCoord ? lng : null, ml: /^\d{1,4}$/.test(ordem) ? ordem : null,
+      texto, lat: coord ? coord.lat : null, lng: coord ? coord.lng : null, aproximada: !!coord?.aproximada, ml: /^\d{1,4}$/.test(ordem) ? ordem : null,
       cidade: campo(l, 'cidade'), bairro, endereco: campo(l, 'endereco'), cep: cep || null,
       tn: campo(l, 'tn') || null, at: campo(l, 'at') || null, parada: campo(l, 'parada'), arquivo,
       linha: Object.fromEntries(cab.map((h, i) => [h || `coluna ${i + 1}`, l[i] ?? ''])),

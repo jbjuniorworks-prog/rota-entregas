@@ -1,4 +1,4 @@
-import {test, expect, abrir, carregar, aviso, aba, linhaDe, clicarMapa, ROTA_A} from './apoio';
+import {test, expect, abrir, carregar, aviso, aba, linhaDe, clicarMapa, montar, pontosNoMaps, ROTA_A} from './apoio';
 
 const RUA_D = 'Rua D, 49, Perto do Vale';
 const PERTO_DO_GRUPO = [-10.9605, -37.0455] as const;
@@ -47,6 +47,24 @@ test('a correção fica guardada depois do reset e vale para a planilha e para t
   await page.getByText('Posições que você corrigiu (1)').click();
   await page.getByRole('button', {name: 'Esquecer todas'}).click();
   await expect(page.getByText(/Posições que você corrigiu/)).toHaveCount(0);
+});
+
+test('entrega que a planilha joga longe vai para o bairro dela, e o Maps não recebe o ponto errado', async ({page}) => {
+  await abrir(page);
+  await carregar(page, 'testes/planilhas/rota-c.xlsx');
+  await expect(aviso(page)).toContainText('⚠️ 1 com posição longe das outras entregas: levada(s) para o bairro certo, confira no local.');
+  await expect(aviso(page)).toContainText('⚠️ 1 com posição aproximada na planilha');
+  await expect(aviso(page)).toContainText('⚠️ 2 com número que não bate com a posição');
+  const linha = linhaDe(page, 'Rua do Robalo Errado', 'Marcar no mapa');
+  await expect(linha).toContainText('Posição pelo bairro — confira no local');
+  await expect(linha).toContainText('Posição pelo bairro Bairro Robalo Teste');
+  await page.locator('[data-item]').filter({hasText: 'Rua do Robalo Errado'}).getByRole('button', {name: 'Ver', exact: true}).click();
+  await expect(page.getByText('Outras opções encontradas:')).toBeVisible();
+  await expect(page.getByRole('button', {name: /Posição que veio na planilha/})).toBeVisible();
+  await montar(page);
+  const pontos = await pontosNoMaps(page);
+  expect(pontos.some(p => p.startsWith('-10.92'))).toBe(false);
+  expect(pontos.some(p => p.startsWith('48.'))).toBe(false);
 });
 
 test('reset cancelado não apaga nada', async ({page}) => {

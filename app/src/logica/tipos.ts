@@ -1,4 +1,4 @@
-export type Precisao = 'exato' | 'planilha' | 'lembrado' | 'manual' | 'bom' | 'rua' | 'longe' | 'ruim' | 'nao' | 'pendente';
+export type Precisao = 'exato' | 'planilha' | 'lembrado' | 'manual' | 'bom' | 'rua' | 'longe' | 'bairro' | 'aproximada' | 'numero' | 'ruim' | 'nao' | 'pendente';
 
 export interface Ponto {
   lat: number;

@@ -12,7 +12,9 @@ describe('planilha da Shopee', () => {
 
   it('lê todas as linhas com rastreio, rota, ordem e a linha inteira', () => {
     expect(itens).toHaveLength(12);
-    expect(itens[1]).toMatchObject({tn: 'BRTESTA0002', at: 'ATTESTE0001', ml: '1', parada: '1', bairro: 'Bairro Norte', cep: '49000101', lat: -10.961, lng: -37.045, arquivo: 'rota-a.txt'});
+    expect(itens[1]).toMatchObject({tn: 'BRTESTA0002', at: 'ATTESTE0001', ml: '1', parada: '1', bairro: 'Bairro Norte', cep: '49000101', arquivo: 'rota-a.txt'});
+    expect(itens[1].lat).toBeCloseTo(-10.961, 5);
+    expect(itens[1].lng).toBeCloseTo(-37.045, 5);
     expect(Object.keys(itens[0].linha)).toHaveLength(10);
   });
   it('acrescenta bairro e CEP ao texto e deixa sem ordem quem vem com "-"', () => {

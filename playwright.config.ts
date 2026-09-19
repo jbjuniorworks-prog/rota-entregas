@@ -1,6 +1,6 @@
 import {defineConfig} from '@playwright/test';
 
-const URL = process.env.APP_URL || 'http://127.0.0.1:8765';
+const URL = process.env.APP_URL || 'http://127.0.0.1:4173';
 
 export default defineConfig({
   testDir: 'testes/e2e',
@@ -18,8 +18,9 @@ export default defineConfig({
     timezoneId: 'America/Maceio',
   },
   webServer: process.env.APP_URL ? undefined : {
-    command: 'npm run -s servir',
+    command: 'npm run -s build && npx vite preview',
     url: URL,
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
   },
 });
