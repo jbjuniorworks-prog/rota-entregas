@@ -1,0 +1,33 @@
+import {test, expect, abrir, carregar, aviso, aba, montar, pontosNoMaps, ROTA_A, ROTA_B} from './apoio';
+
+test('planilha da Shopee salva como .txt vira paradas, somando pacotes do mesmo endereço', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await expect(aviso(page)).toContainText('10 parada(s) da planilha, 2 pacote(s) somado(s) a um mesmo endereço.');
+  await expect(page.getByText('Conferir locais')).toBeVisible();
+  await expect(page.getByText('📦 3 unid.')).toBeVisible();
+  await expect(page.getByText('Rua dos Ipês, 300, Bloco B ap 202', {exact: false})).toBeVisible();
+});
+
+test('planilha .xlsx sem nada estranho não gera alerta', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_B);
+  await expect(aviso(page)).toHaveText('6 parada(s) da planilha.');
+  await expect(page.getByText(/❗ 0 para conferir/)).toBeVisible();
+});
+
+test('cada lugar diferente vira uma marcação no Maps, e só pacotes no mesmo ponto dividem uma', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await montar(page);
+  const pontos = await pontosNoMaps(page);
+  expect(pontos).toHaveLength(9);
+  expect(new Set(pontos).size).toBe(9);
+});
+
+test('a aba Conferir mostra a origem de cada posição', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_B);
+  await aba(page, '2. Conferir');
+  await expect(page.getByText('Posição da planilha').first()).toBeVisible();
+});

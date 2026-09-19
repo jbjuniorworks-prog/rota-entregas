@@ -701,6 +701,8 @@ function desenharMapa(enquadrar) {
   if (enquadrar && limites.length) mapa.fitBounds(limites, {padding: [30, 30], maxZoom: 16});
 }
 
+window.rotaTeste = {clicarMapa: (lat, lng) => mapa.fire('click', {latlng: L.latLng(lat, lng)})};
+
 mapa.on('click', e => {
   if (!posicionando) return;
   if (posicionando === 'fim') {
@@ -964,7 +966,7 @@ function linhaParada(p, comWaze) {
       </div>
       ${comWaze && !p.entregue ? `<a class="btn peq waze" href="${linkWaze(p)}" target="_blank" rel="noopener" aria-label="Waze">🧭</a>` : ''}
       ${p.entregue
-        ? `<button class="btn peq" data-acao="desfazer" data-id="${p.id}">↺</button>`
+        ? `<button class="btn peq" data-acao="desfazer" data-id="${p.id}" aria-label="Desfazer">↺</button>`
         : `<button class="btn peq ok" data-acao="entregue" data-id="${p.id}" aria-label="Entregue">✓</button>`}
     </div>`;
 }
