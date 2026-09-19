@@ -173,7 +173,7 @@ function avisoCompartilhadas(r: {confirmadas: number; sugestoes: number}): strin
 export function usarSugestao(p: Parada) {
   const s = p.sugestao;
   if (!s) return;
-  corrigirPosicao(p, s.lat, s.lng, 'Posição do outro motorista usada');
+  corrigirPosicao(p, s.lat, s.lng, 'Local do outro motorista usado');
 }
 
 async function levarAoBairroPeloMapa(): Promise<number> {
@@ -332,15 +332,34 @@ function prepararDesfazer(p: Parada): () => void {
   };
 }
 
-export function corrigirPosicao(p: Parada, lat: number, lng: number, prefixo = 'Local corrigido') {
+export function corrigirPosicao(p: Parada, lat: number, lng: number, prefixo = 'Local corrigido', exibido = 'Posição marcada no mapa') {
   const desfazer = prepararDesfazer(p);
   delete p.sugestao;
-  Object.assign(p, {lat, lng, precisao: 'manual', exibido: 'Posição marcada no mapa'});
+  Object.assign(p, {lat, lng, precisao: 'manual', exibido});
   const guardou = memoria.lembrar(p);
   if (p.adiada) marcarIsoladas(e().paradas);
   else invalidarRota();
   loja.mudou();
   status(prefixo + avisoGuardou(guardou) + (p.adiada ? ' Quando quiser, toque em "Voltar para a rota".' : prefixo === 'Local corrigido' ? ' Monte a rota de novo.' : ''), 10000, desfazer);
+}
+
+export const GPS_PRECISO = 50;
+
+export function estouAqui(p: Parada) {
+  if (!navigator.geolocation) { status('Este navegador não dá acesso ao GPS.', 4000); return; }
+  status('Pegando sua localização…');
+  navigator.geolocation.getCurrentPosition(pos => {
+    const margem = Math.round(pos.coords.accuracy);
+    if (margem > GPS_PRECISO && !confirm(`O GPS está impreciso agora (±${margem} m). Usar mesmo assim como posição desta entrega?
+
+Se puder, espere uns segundos ao ar livre e tente de novo.`)) {
+      status('Posição não alterada.', 3000);
+      return;
+    }
+    corrigirPosicao(p, pos.coords.latitude, pos.coords.longitude, 'Local corrigido pela sua localização', `Sua localização na porta (±${margem} m)`);
+  }, err => {
+    status('Não consegui o GPS: ' + (err.code === 1 ? 'permissão negada. Libere a localização para este site.' : err.message), 5000);
+  }, {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
 }
 
 export function deixarParaDepois(p: Parada) {

@@ -71,7 +71,7 @@ test.describe('correções compartilhadas @nuvem', () => {
     const cartaoB = b.locator('[data-item]').filter({hasText: RUA_D});
     await expect(cartaoB).toContainText('Outro motorista marcou este endereço em outro lugar');
     await cartaoB.getByRole('button', {name: 'Usar a posição dele'}).click();
-    await expect(aviso(b)).toContainText('Posição do outro motorista usada');
+    await expect(aviso(b)).toContainText('Local do outro motorista usado');
     await aba(b, '1. Endereços');
     await expect(b.getByText('✓ tudo salvo')).toBeVisible({timeout: 30_000});
 

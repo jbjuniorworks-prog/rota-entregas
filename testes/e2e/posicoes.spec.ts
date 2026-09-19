@@ -91,3 +91,42 @@ test('reset cancelado não apaga nada', async ({page}) => {
   await aba(page, '2. Conferir');
   await expect(page.getByText(RUA_D)).toBeVisible();
 });
+
+test.describe('corrigir pela localização do motorista', () => {
+  test.use({permissions: ['geolocation'], geolocation: {latitude: -10.9605, longitude: -37.0455, accuracy: 10}});
+
+  test('"Estou aqui" põe a entrega onde o motorista está, e dá para desfazer', async ({page}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await aba(page, '2. Conferir');
+    const cartao = page.locator('[data-item]').filter({hasText: RUA_D});
+    await cartao.getByRole('button', {name: '📍 Estou aqui'}).click();
+    await expect(aviso(page)).toContainText('Local corrigido pela sua localização e guardado para as próximas rotas.');
+    await expect(cartao).toContainText('Sua localização na porta (±10 m)');
+    await expect(page.getByText(/❗ 0 para conferir/)).toBeVisible();
+    await page.getByRole('button', {name: '↺ Desfazer'}).click();
+    await expect(page.getByText(/❗ 1 para conferir/)).toBeVisible();
+  });
+
+  test('com GPS impreciso, pergunta antes; recusando, nada muda', async ({page, context}) => {
+    const perguntas: string[] = [];
+    page.on('dialog', d => { perguntas.push(d.message()); d.dismiss(); });
+    await context.setGeolocation({latitude: -10.9605, longitude: -37.0455, accuracy: 200});
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await aba(page, '2. Conferir');
+    await page.locator('[data-item]').filter({hasText: RUA_D}).getByRole('button', {name: '📍 Estou aqui'}).click();
+    await expect(aviso(page)).toHaveText('Posição não alterada.');
+    expect(perguntas[0]).toContain('O GPS está impreciso agora (±200 m)');
+    await expect(page.getByText(/❗ 1 para conferir/)).toBeVisible();
+  });
+
+  test('o cartão da próxima entrega tem o "Estou aqui"', async ({page}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect(page.getByText('Chegou e o pino está errado?')).toBeVisible();
+    await page.locator('.proxima').getByRole('button', {name: '📍 Estou aqui'}).click();
+    await expect(aviso(page)).toContainText('Local corrigido pela sua localização');
+  });
+});

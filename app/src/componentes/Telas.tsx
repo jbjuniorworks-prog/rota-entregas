@@ -167,6 +167,7 @@ function ItemConferir({p}: {p: Parada}) {
     <div className="linha">
       {p.lat != null && <button className="btn peq" onClick={() => A.focar(p.id)}>Ver</button>}
       <button className="btn peq" onClick={() => A.posicionar(p.id)}>{ui.posicionando === p.id ? 'Toque no mapa…' : 'Marcar no mapa'}</button>
+      <button className="btn peq" onClick={() => A.estouAqui(p)}>📍 Estou aqui</button>
       <button className="btn peq" onClick={() => A.editar(p)}>Editar</button>
       <button className="btn peq" onClick={() => A.remover(p)}>Remover</button>
     </div>
@@ -242,6 +243,7 @@ function Adiadas() {
       <LinhaParada p={p} comWaze />
       <div className="linha">
         <button className="btn peq" onClick={() => A.posicionar(p.id)}>{ui.posicionando === p.id ? 'Toque no mapa…' : 'Marcar no mapa'}</button>
+      <button className="btn peq" onClick={() => A.estouAqui(p)}>📍 Estou aqui</button>
         <button className="btn peq pri" onClick={() => A.voltarParaARota(p)}>Voltar para a rota</button>
       </div>
     </div>)}
@@ -292,6 +294,7 @@ export function TelaRota() {
       {avisoPrazo(a)}
       <div className="grande">{pend.length > 1 ? `${pend.length} entregas ${mesmoEndereco(agora.b.map(id => loja.parada(id)!.texto)) ? 'no mesmo endereço' : 'aqui perto'}` : 'Próxima entrega'}</div>
       <div className="achado">📍 {alvo.exibido || alvo.texto}</div>
+      <div className="info" style={{marginTop: 4}}>Chegou e o pino está errado? <button className="btn peq" onClick={() => A.estouAqui(alvo)}>📍 Estou aqui</button></div>
       <div className="linha">
         <a className="btn waze" href={linkWaze(alvo as Ponto)} target="_blank" rel="noopener">Waze</a>
         <a className="btn pri" href={linkMaps(alvo as Ponto)} target="_blank" rel="noopener">Google Maps</a>
