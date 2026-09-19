@@ -97,7 +97,7 @@ const CHAVE = 'rota-entregas-v2';
 const BACKUP = 'rota-entregas-backup';
 const SERVICO_PADRAO = 180;
 const CORES = [['Verde','#16a34a','🟢'],['Amarelo','#ca8a04','🟡'],['Roxo','#9333ea','🟣'],['Azul','#2563eb','🔵'],['Laranja','#ea580c','🟠'],['Rosa','#db2777','🩷']];
-const ROTULO = {exato:'Número encontrado', planilha:'Posição da planilha', lembrado:'Corrigida por você antes', longe:'Planilha pôs longe das outras — confira o pino', bom:'Prédio encontrado', rua:'Rua encontrada (chega perto)', ruim:'Impreciso — confira o pino', nao:'Não encontrado', manual:'Ajustado por você', pendente:'Ainda não buscado'};
+const ROTULO = {exato:'Número encontrado', planilha:'Posição da planilha', lembrado:'Corrigida por você antes', longe:'Longe das outras entregas — confira o pino', bom:'Prédio encontrado', rua:'Rua encontrada (chega perto)', ruim:'Impreciso — confira o pino', nao:'Não encontrado', manual:'Ajustado por você', pendente:'Ainda não buscado'};
 const CORP = {exato:'#16a34a', planilha:'#16a34a', lembrado:'#7c3aed', longe:'#dc2626', bom:'#16a34a', rua:'#0891b2', ruim:'#dc2626', nao:'#dc2626', manual:'#7c3aed', pendente:'#6b7280'};
 const RANK = {exato:0, planilha:0, lembrado:0, manual:0, bom:1, rua:2, longe:3, ruim:3, nao:4, pendente:5};
 const DUVIDA = new Set(['ruim', 'nao', 'longe']);
@@ -404,16 +404,28 @@ function gravarMemoria(m) {
   try { localStorage.setItem(MEMORIA, JSON.stringify(m)); return true; } catch (e) { return false; }
 }
 
-function chaveLugar(texto) {
-  const d = decompor(analisarLinha(texto).texto);
+const TIPO_VIA = {r: 'rua', rua: 'rua', av: 'avenida', avenida: 'avenida', tv: 'travessa', trav: 'travessa', travessa: 'travessa', al: 'alameda', alameda: 'alameda', pc: 'praca', praca: 'praca', rod: 'rodovia', rodovia: 'rodovia', est: 'estrada', estrada: 'estrada'};
+function ruaCompleta(rua) {
+  const w = normal(rua).replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(Boolean);
+  if (w.length && TIPO_VIA[w[0]]) w[0] = TIPO_VIA[w[0]];
+  return w.join(' ');
+}
+
+function chaveLugar(p) {
+  const d = decompor(analisarLinha(p.texto).texto);
   if (!d.numero) return null;
   if (d.cep && !/000$/.test(d.cep)) return d.cep + '|' + d.numero;
-  const rua = palavrasRua(d.rua).join(' ');
-  return rua ? rua + '|' + d.numero : null;
+  const rua = ruaCompleta(d.rua), bairro = normal(p.bairro || '');
+  if (!rua || !bairro) return null;
+  return ['r', rua, d.numero, bairro, normal(S.cidade)].join('|');
+}
+
+function avisoGuardou(guardou) {
+  return guardou ? ' e guardado para as próximas rotas.' : '. Sem CEP nem bairro, não deu para guardar para as próximas rotas.';
 }
 
 function lembrarPosicao(p) {
-  const k = chaveLugar(p.texto);
+  const k = chaveLugar(p);
   if (!k || p.lat == null) return false;
   const m = lerMemoria();
   m[k] = {lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6), quando: Date.now()};
@@ -421,7 +433,7 @@ function lembrarPosicao(p) {
 }
 
 function aplicarMemoria(p) {
-  const k = chaveLugar(p.texto), r = k && lerMemoria()[k];
+  const k = chaveLugar(p), r = k && lerMemoria()[k];
   if (!r) return false;
   const dia = new Date(r.quando).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
   Object.assign(p, {lat: r.lat, lng: r.lng, precisao: 'lembrado', exibido: `Posição que você corrigiu em ${dia}`});
@@ -453,11 +465,14 @@ async function buscarPendentes() {
     salvar(); desenharMapa(); if (aba === 'conferir') render();
   }
   ocupado = false;
-  status(erro ? 'Alguns falharam (' + erro.message + '). Toque em "Buscar pendentes".' : 'Pronto! Confira os vermelhos, se houver.', 4000);
+  const longe = marcarIsoladas();
+  salvar();
+  status(erro ? 'Alguns falharam (' + erro.message + '). Toque em "Buscar pendentes".'
+    : longe ? `Pronto! ⚠️ ${longe} parada(s) longe das outras entregas: confira o pino.` : 'Pronto! Confira os vermelhos, se houver.', longe ? 8000 : 4000);
   render(); desenharMapa(true);
 }
 
-function invalidarRota() { S.rota = null; S.pernas = {}; salvar(); }
+function invalidarRota() { marcarIsoladas(); S.rota = null; S.pernas = {}; salvar(); }
 
 /* ---------- Otimização ---------- */
 
@@ -558,11 +573,11 @@ function ordenarAreas(pos) {
 async function montarRota() {
   if (ocupado) return;
   if (!S.paradas.some(p => !p.entregue && p.lat != null)) { status('Nenhuma parada com local encontrado.', 3000); return; }
-  if (!S.inicio || !S.inicio.texto) {
-    try { await gps(); } catch (e) { S.inicio = null; }
-  }
   ocupado = true;
   try {
+    if (!S.inicio || !S.inicio.texto) {
+      try { await gps(); } catch (e) { S.inicio = null; }
+    }
     let pos = S.inicio;
     const rota = {areas: [], dur: 0, dist: 0, mlDur: 0, mlDist: 0, porRuas: true, quando: Date.now()};
     S.pernas = {};
@@ -675,7 +690,7 @@ function desenharMapa(enquadrar) {
       Object.assign(p, {lat: ll.lat, lng: ll.lng, precisao: 'manual', exibido: 'Posição marcada no mapa'});
       const guardou = lembrarPosicao(p);
       invalidarRota(); render(); desenharMapa();
-      status('Local corrigido' + (guardou ? ' e guardado para as próximas rotas' : '') + '. Monte a rota de novo.', 3000);
+      status('Local corrigido' + avisoGuardou(guardou) + ' Monte a rota de novo.', 4000);
     });
     m.on('click', () => { selecionada = p.id; render(); document.querySelector(`[data-item="${p.id}"]`)?.scrollIntoView({behavior: 'smooth', block: 'center'}); });
     m.addTo(camada);
@@ -700,7 +715,7 @@ mapa.on('click', e => {
   Object.assign(p, {lat: e.latlng.lat, lng: e.latlng.lng, precisao: 'manual', exibido: 'Posição marcada no mapa'});
   const guardou = lembrarPosicao(p);
   invalidarRota(); render(); desenharMapa();
-  status('Local definido' + (guardou ? ' e guardado para as próximas rotas.' : '.'), 3000);
+  status('Local definido' + avisoGuardou(guardou), 4000);
 });
 
 function focar(id) {
@@ -868,7 +883,7 @@ function configInicio() {
       ${S.inicio && S.inicio.texto ? '<button class="btn" data-acao="semInicio">Usar o GPS</button>' : ''}
     </div>
     <label style="display:flex;gap:8px;align-items:center;color:var(--tx)">
-      <input type="checkbox" id="voltar" ${S.voltar && !S.fim ? 'checked' : ''} ${S.inicio && !S.fim ? '' : 'disabled'} style="width:20px;height:20px">
+      <input type="checkbox" id="voltar" ${S.voltar && !S.fim ? 'checked' : ''} ${S.fim ? 'disabled' : ''} style="width:20px;height:20px">
       Voltar ao ponto de saída no final
     </label>
     <h2>Terminar perto de</h2>
@@ -1171,7 +1186,7 @@ async function lerPlanilha(f) {
     const lat = numeroDe(l[col.lat]), lng = numeroDe(l[col.lng]);
     const temCoord = col.lat >= 0 && col.lng >= 0 && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && lat && lng;
     const ordem = campo(l, 'ordem');
-    itens.push({texto, lat: temCoord ? lat : null, lng: temCoord ? lng : null, ml: /^\d{1,4}$/.test(ordem) ? ordem : null, cidade: campo(l, 'cidade')});
+    itens.push({texto, lat: temCoord ? lat : null, lng: temCoord ? lng : null, ml: /^\d{1,4}$/.test(ordem) ? ordem : null, cidade: campo(l, 'cidade'), bairro});
   }
   return itens;
 }
@@ -1185,7 +1200,7 @@ function adicionarDaPlanilha(itens) {
     if (desta.has(chave)) { const p = desta.get(chave); p.unidades = (p.unidades || 1) + 1; juntas++; continue; }
     if (existentes.has(chave)) { repetidas++; continue; }
     const temCoord = it.lat != null;
-    const p = {id: novoId(), area: S.areaAtual, ml: it.ml, texto: it.texto, unidades: null, comercial: false,
+    const p = {id: novoId(), area: S.areaAtual, ml: it.ml, texto: it.texto, bairro: it.bairro, unidades: null, comercial: false,
       lat: temCoord ? it.lat : null, lng: temCoord ? it.lng : null, exibido: temCoord ? 'Posição da planilha' : '',
       precisao: temCoord ? 'planilha' : 'pendente', candidatos: [], entregue: false};
     const lembrada = aplicarMemoria(p);
@@ -1202,17 +1217,25 @@ function adicionarDaPlanilha(itens) {
   return {novas, juntas, repetidas, semPosicao, longe, lembradas};
 }
 
-const ISOLADA = 5000;
+const ISOLADA_MIN = 7000, ISOLADA_FATOR = 4;
+function mediana(v) {
+  const s = [...v].sort((a, b) => a - b), n = s.length;
+  return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+}
 function marcarIsoladas() {
-  const com = S.paradas.filter(p => p.lat != null);
-  if (com.length < 3) return 0;
+  for (const p of S.paradas) if (p.precisao === 'longe') p.precisao = p.precisaoAntes || 'planilha';
+  const com = S.paradas.filter(p => p.lat != null && !p.entregue);
+  if (com.length < 4) return 0;
+  const centro = {lat: mediana(com.map(p => p.lat)), lng: mediana(com.map(p => p.lng))};
+  const ds = com.map(p => haversine(p, centro));
+  const limite = Math.max(ISOLADA_MIN, ISOLADA_FATOR * mediana(ds));
   let n = 0;
-  for (const p of com) {
-    if (p.precisao !== 'planilha' && p.precisao !== 'longe') continue;
-    const vizinho = Math.min(...com.filter(q => q !== p).map(q => haversine(p, q)));
-    p.precisao = vizinho > ISOLADA ? 'longe' : 'planilha';
-    if (p.precisao === 'longe') n++;
-  }
+  com.forEach((p, i) => {
+    if (p.precisao === 'manual' || ds[i] <= limite) return;
+    p.precisaoAntes = p.precisao;
+    p.precisao = 'longe';
+    n++;
+  });
   return n;
 }
 
@@ -1540,7 +1563,7 @@ document.addEventListener('click', async e => {
     case 'escolher': {
       const c = p.candidatos[+b.dataset.k];
       Object.assign(p, {lat: c.lat, lng: c.lng, exibido: c.exibido, precisao: c.precisao});
-      lembrarPosicao(p);
+      if (!lembrarPosicao(p)) status('Local escolhido' + avisoGuardou(false), 4000);
       invalidarRota(); render(); desenharMapa(); focar(id);
       break;
     }
@@ -1561,7 +1584,7 @@ document.addEventListener('click', async e => {
       } catch (err) { status('Falhou: ' + err.message, 4000); }
       break;
     }
-    case 'semInicio': S.inicio = null; S.voltar = false; invalidarRota(); render(); desenharMapa(); break;
+    case 'semInicio': S.inicio = null; invalidarRota(); render(); desenharMapa(); break;
     case 'fimEndereco': {
       const t = prompt('Onde você quer terminar? (ex.: Ponto Novo, ou um endereço)', (S.fim && S.fim.texto) || '');
       if (!t || !t.trim()) return;
