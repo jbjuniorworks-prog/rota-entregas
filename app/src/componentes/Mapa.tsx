@@ -1,7 +1,7 @@
 import {useEffect, useRef} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {corrigirPosicao, tocouNoMapa} from '../acoes';
+import {tocouNoMapa} from '../acoes';
 import {DUVIDA} from '../logica/rotulos';
 import type {Parada} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
@@ -61,9 +61,8 @@ export function Mapa() {
     for (const p of e.paradas) {
       if (p.lat == null || p.lng == null) continue;
       const a = loja.area(p.area);
-      const mk = L.marker([p.lat, p.lng], {icon: icone(p.entregue ? '✓' : rotuloDe(p), a.cor, p.entregue, DUVIDA.has(p.precisao)), draggable: true});
-      mk.bindPopup(`<b>${esc(rotuloDe(p))} · ${esc(p.texto)}</b><br><small>${esc(p.exibido)}</small><br><small>Arraste o pino para corrigir.</small>`);
-      mk.on('dragend', () => { const ll = mk.getLatLng(); corrigirPosicao(p, ll.lat, ll.lng); });
+      const mk = L.marker([p.lat, p.lng], {icon: icone(p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p), a.cor, p.entregue || !!p.adiada, DUVIDA.has(p.precisao))});
+      mk.bindPopup(`<b>${esc(rotuloDe(p))} · ${esc(p.texto)}</b><br><small>${esc(p.exibido)}</small><br><small>Para corrigir: 2. Conferir → Marcar no mapa.</small>`);
       mk.on('click', () => {
         ui.selecionada = p.id;
         loja.mudou(false);

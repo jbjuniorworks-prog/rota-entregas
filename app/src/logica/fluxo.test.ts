@@ -59,6 +59,27 @@ describe('memória de posições', () => {
     mem.esquecer();
     expect(mem.quantas()).toBe(0);
   });
+  it('desfazer devolve a memória como estava, e a correção sai da fila se ainda não foi enviada', () => {
+    const g = guardaNaMemoria(), f = criarFila(g);
+    const mem = criarMemoria(g, () => 'Aracaju', (chave, lat, lng) => f.enfileirar({tipo: 'correcao', chave, lat, lng}));
+    const p = {texto: 'Rua D, 49, CEP 49000-199', lat: 1, lng: 1} as any;
+    mem.lembrar(p);
+    const foto = mem.fotografar(p)!;
+    Object.assign(p, {lat: 2, lng: 2});
+    mem.lembrar(p);
+    expect(f.pendentes()).toBe(2);
+    mem.restaurar(foto);
+    expect(f.retirarCorrecao(foto.chave)).toBe(true);
+    expect(f.pendentes()).toBe(1);
+    const q = {texto: 'Rua D, 49, CEP 49000-199'} as any;
+    mem.aplicar(q);
+    expect([q.lat, q.lng]).toEqual([1, 1]);
+    const novo = {texto: 'Rua E, 5, CEP 49000-198', lat: 3, lng: 3} as any;
+    const antes = mem.fotografar(novo)!;
+    mem.lembrar(novo);
+    mem.restaurar(antes);
+    expect(mem.aplicar({texto: 'Rua E, 5, CEP 49000-198'} as any)).toBe(false);
+  });
   it('sem CEP nem bairro, não guarda', () => {
     const mem = criarMemoria(guardaNaMemoria(), () => 'Aracaju');
     expect(mem.lembrar({texto: 'Rua D, 10', lat: 1, lng: 1} as any)).toBe(false);

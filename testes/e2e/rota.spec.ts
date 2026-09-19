@@ -33,6 +33,24 @@ test.describe('com GPS', () => {
     await expect(aviso(page)).toContainText(/Próxima a ~1[45]0 m: Rua Oeste, 150\. Dá para ir a pé\./);
   });
 
+  test('deixar para depois tira a parada da sequência sem desmontar a rota, e dá para arrumar e voltar', async ({page}) => {
+    await abrir(page);
+    await carregar(page, ROTA_B);
+    await montar(page);
+    await linhaDe(page, P1, 'Deixar para depois').getByRole('button', {name: 'Deixar para depois'}).click();
+    await expect(page.getByText('⏸ Deixadas para depois (1)')).toBeVisible();
+    expect((await ordem(page, NOMES))[0]).toBe(Q);
+    expect((await pontosNoMaps(page)).some(p => p.startsWith('-10.9300013,-37.1000013'))).toBe(false);
+    await page.getByRole('button', {name: 'Marcar no mapa'}).last().click();
+    await clicarMapa(page, -10.9301, -37.1001);
+    await expect(page.getByText(/Total estimado/)).toBeVisible();
+    await page.getByRole('button', {name: 'Voltar para a rota'}).click();
+    await expect(page.getByText(/1 parada\(s\) nova\(s\) ou corrigida\(s\) fora da rota/)).toBeVisible();
+    await page.getByRole('button', {name: 'Refazer rota'}).click();
+    await expect(page.getByText('⏸ Deixadas para depois')).toHaveCount(0);
+    await expect.poll(async () => (await ordem(page, NOMES)).length).toBe(6);
+  });
+
   test('o ponto final escolhido fica no fim da rota e é o destino do último trecho do Maps', async ({page, context}) => {
     await context.setGeolocation(GPS.p3);
     await abrir(page);

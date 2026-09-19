@@ -67,6 +67,21 @@ test('entrega que a planilha joga longe vai para o bairro dela, e o Maps não re
   expect(pontos.some(p => p.startsWith('48.'))).toBe(false);
 });
 
+test('os pinos não se movem ao arrastar o mapa, e uma correção errada se desfaz com um toque', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await expect(page.locator('.leaflet-marker-icon').first()).toBeVisible();
+  await expect(page.locator('.leaflet-marker-draggable')).toHaveCount(0);
+  await corrigirRuaD(page);
+  await expect(page.getByText(/❗ 0 para conferir/)).toBeVisible();
+  await page.getByRole('button', {name: '↺ Desfazer'}).click();
+  await expect(aviso(page)).toContainText('Posição anterior de volta.');
+  await expect(page.getByText(/❗ 1 para conferir/)).toBeVisible();
+  await expect(linhaDe(page, RUA_D, 'Marcar no mapa')).toContainText('Longe das outras entregas — confira o pino');
+  await aba(page, '1. Endereços');
+  await expect(page.getByText(/Posições que você corrigiu/)).toHaveCount(0);
+});
+
 test('reset cancelado não apaga nada', async ({page}) => {
   page.on('dialog', d => d.dismiss());
   await abrir(page);

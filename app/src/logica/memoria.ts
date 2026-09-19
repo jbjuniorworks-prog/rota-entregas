@@ -22,6 +22,16 @@ export function criarMemoria(g: Guarda, cidade: () => string, aoGuardar: (chave:
       aoGuardar(k, m[k].lat, m[k].lng);
       return g.gravar(CHAVES.memoria, m);
     },
+    fotografar(p: Parada): {chave: string; valor: Lembrada | undefined} | null {
+      const k = chave(p);
+      return k ? {chave: k, valor: todas()[k]} : null;
+    },
+    restaurar(foto: {chave: string; valor: Lembrada | undefined}) {
+      const m = todas();
+      if (foto.valor) m[foto.chave] = foto.valor;
+      else delete m[foto.chave];
+      g.gravar(CHAVES.memoria, m);
+    },
     aplicar(p: Parada): boolean {
       const k = chave(p), r = k ? todas()[k] : undefined;
       if (!r) return false;

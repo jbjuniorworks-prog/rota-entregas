@@ -84,6 +84,14 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
     enfileirar(...ops: Operacao[]) {
       g.gravar(CHAVES.fila, [...ler(), ...ops].slice(-FILA_MAX));
     },
+    retirarCorrecao(chave: string): boolean {
+      const f = ler();
+      const i = f.map(op => op.tipo === 'correcao' && op.chave === chave).lastIndexOf(true);
+      if (i < 0 || (i === 0 && enviando)) return false;
+      f.splice(i, 1);
+      g.gravar(CHAVES.fila, f);
+      return true;
+    },
     async enviar(c: ClienteNuvem | null): Promise<void> {
       if (!c || enviando) return;
       enviando = true;

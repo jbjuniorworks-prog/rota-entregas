@@ -126,7 +126,7 @@ export function TelaConferir() {
   return <>
     <h2>Conferir locais</h2>
     <div className="info">✅ {conta(NO_NUMERO)} no número · 🛣️ {conta(['rua'])} na rua certa · ❗ {duvidas} para conferir{pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
-    {duvidas > 0 && <div className="aviso">Os de borda vermelha podem estar longe do lugar. Toque em <b>Ver</b> e arraste o pino, ou use <b>Marcar no mapa</b> (olhando a posição no app de entregas).</div>}
+    {duvidas > 0 && <div className="aviso">Os de borda vermelha podem estar longe do lugar. Toque em <b>Ver</b> para olhar no mapa e use <b>Marcar no mapa</b> para corrigir (olhando a posição no app de entregas).</div>}
     <div className="linha">
       {pend > 0 && <button className="btn pri" onClick={() => A.buscarPendentes()}>Buscar {pend} pendente(s)</button>}
       <button className="btn" onClick={() => A.mudar(() => { ui.soDuvidas = !ui.soDuvidas; })}>{ui.soDuvidas ? 'Mostrar todos' : 'Só os duvidosos'}</button>
@@ -213,6 +213,7 @@ function LinhaParada({p, comWaze}: {p: Parada; comWaze: boolean}) {
       {DUVIDA.has(p.precisao) && <Tag p={p} />}
     </div>
     {comWaze && !p.entregue && <a className="btn peq waze" href={linkWaze(p as Ponto)} target="_blank" rel="noopener" aria-label="Waze">🧭</a>}
+    {!p.entregue && !p.adiada && loja.e.rota && <button className="btn peq" aria-label="Deixar para depois" title="Deixar para depois" onClick={() => A.deixarParaDepois(p)}>⏸</button>}
     {p.entregue
       ? <button className="btn peq" aria-label="Desfazer" onClick={() => A.marcarEntregue(p, false)}>↺</button>
       : <button className="btn peq ok" aria-label="Entregue" onClick={() => A.marcarEntregue(p, true)}>✓</button>}
@@ -221,15 +222,33 @@ function LinhaParada({p, comWaze}: {p: Parada; comWaze: boolean}) {
 
 const hhmm = (ms: number) => new Date(ms).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
 
+function Adiadas() {
+  const {e, ui} = useLoja();
+  const adiadas = e.paradas.filter(p => p.adiada && !p.entregue);
+  if (!adiadas.length) return null;
+  return <>
+    <div className="area-cab"><span className="txt">⏸ Deixadas para depois ({adiadas.length})</span></div>
+    <div className="info">Fora da sequência. Arrume a localização com "Marcar no mapa" (a rota de hoje não muda) e toque em "Voltar para a rota" quando quiser.</div>
+    {adiadas.map(p => <div className="item" key={p.id} data-item={p.id}>
+      <LinhaParada p={p} comWaze />
+      <div className="linha">
+        <button className="btn peq" onClick={() => A.posicionar(p.id)}>{ui.posicionando === p.id ? 'Toque no mapa…' : 'Marcar no mapa'}</button>
+        <button className="btn peq pri" onClick={() => A.voltarParaARota(p)}>Voltar para a rota</button>
+      </div>
+    </div>)}
+  </>;
+}
+
 export function TelaRota() {
   const {e} = useLoja();
   if (!e.rota) {
     const semLocal = e.paradas.filter(p => p.lat == null && !p.entregue).length;
-    return <><ConfigInicio />{semLocal > 0 && <div className="aviso">{semLocal} parada(s) sem local ficarão fora da rota. Corrija em <b>2. Conferir</b>.</div>}<BotaoResetar /></>;
+    return <><ConfigInicio />{semLocal > 0 && <div className="aviso">{semLocal} parada(s) sem local ficarão fora da rota. Corrija em <b>2. Conferir</b>.</div>}<Adiadas /><BotaoResetar /></>;
   }
   const R = e.rota;
   const naRota = new Set(R.areas.flatMap(a => a.ordem));
-  const foraDaRota = e.paradas.filter(p => !p.entregue && p.lat != null && !naRota.has(p.id)).length;
+  const foraDaRota = e.paradas.filter(p => !p.entregue && !p.adiada && p.lat != null && !naRota.has(p.id)).length;
+  const adiadas = e.paradas.filter(p => p.adiada && !p.entregue);
   const semLocal = e.paradas.filter(p => !p.entregue && p.lat == null).length;
   const prev = previsoes(e);
   const ultima = R.areas[R.areas.length - 1];
@@ -274,7 +293,9 @@ export function TelaRota() {
       {pend.length > 1 && <div className="info" style={{marginTop: 6}}>Chegando, use o mapa do app de entregas para achar a porta de cada uma.</div>}
     </div>;
   } else {
-    proxima = <div className="proxima"><div className="grande">🎉 Todas as entregas da rota foram feitas!</div></div>;
+    proxima = <div className="proxima"><div className="grande">{adiadas.length
+      ? `✓ Sequência concluída. Falta(m) ${adiadas.length} deixada(s) para depois, no fim da tela.`
+      : '🎉 Todas as entregas da rota foram feitas!'}</div></div>;
   }
 
   const economia = R.mlDist - R.dist;
@@ -324,6 +345,7 @@ export function TelaRota() {
         </>}
       </div>;
     })}
+    <Adiadas />
     <details><summary>Ponto de saída / refazer rota</summary><ConfigInicio /></details>
     <BotaoResetar />
   </>;

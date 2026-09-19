@@ -30,6 +30,7 @@ export interface Parada {
   candidatos: Candidato[];
   entregue: boolean;
   entregueEm?: number | null;
+  adiada?: boolean;
 }
 
 export interface Area {

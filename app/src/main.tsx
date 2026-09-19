@@ -36,7 +36,8 @@ function App() {
         </div>
       </div>
     </div>
-    <div id="status" className={ui.aviso ? 'on' : ''}>{ui.aviso}</div>
+    <div id="status" className={ui.aviso ? 'on' : ''}>{ui.aviso}
+      {ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>↺ Desfazer</button></>}</div>
   </>;
 }
 

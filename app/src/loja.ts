@@ -14,13 +14,14 @@ export interface Ui {
   aviso: string;
   enquadrar: number;
   focar: {id: string; vez: number} | null;
+  desfazer: (() => void) | null;
 }
 
 export const guarda = guardaEm(localStorage);
 let estado = carregarEstado(guarda);
 const ui: Ui = {
   aba: estado.paradas.length ? (estado.rota ? 'rota' : 'conferir') : 'enderecos',
-  posicionando: null, selecionada: null, soDuvidas: false, ocupado: false, mapaGrande: false, aviso: '', enquadrar: 1, focar: null,
+  posicionando: null, selecionada: null, soDuvidas: false, ocupado: false, mapaGrande: false, aviso: '', enquadrar: 1, focar: null, desfazer: null,
 };
 
 let versao = 0;
@@ -44,10 +45,11 @@ export const loja = {
 };
 
 let temporizador: ReturnType<typeof setTimeout> | undefined;
-export function status(msg: string, ms?: number) {
+export function status(msg: string, ms?: number, desfazer: (() => void) | null = null) {
   ui.aviso = msg;
+  ui.desfazer = desfazer;
   clearTimeout(temporizador);
-  if (msg && ms) temporizador = setTimeout(() => { if (ui.aviso === msg) { ui.aviso = ''; avisar(); } }, ms);
+  if (msg && ms) temporizador = setTimeout(() => { if (ui.aviso === msg) { ui.aviso = ''; ui.desfazer = null; avisar(); } }, ms);
   avisar();
 }
 

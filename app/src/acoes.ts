@@ -282,12 +282,41 @@ export function tocouNoMapa(lat: number, lng: number) {
   corrigirPosicao(p, lat, lng, 'Local definido');
 }
 
+function prepararDesfazer(p: Parada): () => void {
+  const antes = {lat: p.lat, lng: p.lng, precisao: p.precisao, precisaoAntes: p.precisaoAntes, exibido: p.exibido};
+  const foto = memoria.fotografar(p);
+  return () => {
+    Object.assign(p, antes);
+    if (foto) { memoria.restaurar(foto); fila.retirarCorrecao(foto.chave); }
+    if (p.adiada) marcarIsoladas(e().paradas);
+    else invalidarRota();
+    loja.mudou();
+    status('Posição anterior de volta.', 3000);
+  };
+}
+
 export function corrigirPosicao(p: Parada, lat: number, lng: number, prefixo = 'Local corrigido') {
+  const desfazer = prepararDesfazer(p);
   Object.assign(p, {lat, lng, precisao: 'manual', exibido: 'Posição marcada no mapa'});
   const guardou = memoria.lembrar(p);
-  invalidarRota();
+  if (p.adiada) marcarIsoladas(e().paradas);
+  else invalidarRota();
   loja.mudou();
-  status(prefixo + avisoGuardou(guardou) + (prefixo === 'Local corrigido' ? ' Monte a rota de novo.' : ''), 4000);
+  status(prefixo + avisoGuardou(guardou) + (p.adiada ? ' Quando quiser, toque em "Voltar para a rota".' : prefixo === 'Local corrigido' ? ' Monte a rota de novo.' : ''), 10000, desfazer);
+}
+
+export function deixarParaDepois(p: Parada) {
+  p.adiada = true;
+  if (e().rota) for (const ra of e().rota!.areas) ra.ordem = ra.ordem.filter(id => id !== p.id);
+  if (ui.selecionada === p.id) ui.selecionada = null;
+  loja.mudou();
+  status('Deixada para depois. Ela está no fim da tela, em "Deixadas para depois", para você arrumar a localização.', 5000);
+}
+
+export function voltarParaARota(p: Parada) {
+  p.adiada = false;
+  loja.mudou();
+  status('De volta. Toque em "Refazer rota" para ela entrar na sequência.', 4000);
 }
 
 export function focar(id: string) {
@@ -299,8 +328,9 @@ export function focar(id: string) {
 
 export function escolherCandidato(p: Parada, k: number) {
   const c = p.candidatos[k];
+  const desfazer = prepararDesfazer(p);
   Object.assign(p, {lat: c.lat, lng: c.lng, exibido: c.exibido, precisao: c.precisao});
-  if (!memoria.lembrar(p)) status('Local escolhido' + avisoGuardou(false), 4000);
+  status('Local escolhido' + avisoGuardou(memoria.lembrar(p)), 10000, desfazer);
   invalidarRota();
   loja.mudou();
   focar(p.id);

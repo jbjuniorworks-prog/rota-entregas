@@ -10,7 +10,7 @@ export interface ServicosDeRota {
 type ComPosicao = Parada & Ponto;
 
 export const pendentesDa = (e: Estado, areaId: string) =>
-  e.paradas.filter(p => p.area === areaId && !p.entregue && p.lat != null && p.lng != null) as ComPosicao[];
+  e.paradas.filter(p => p.area === areaId && !p.entregue && !p.adiada && p.lat != null && p.lng != null) as ComPosicao[];
 
 function centro(e: Estado, areaId: string): Ponto {
   const ps = pendentesDa(e, areaId);
