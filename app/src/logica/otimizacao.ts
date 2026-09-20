@@ -1,4 +1,5 @@
 import {haversine, RAIO_BLOCO} from './geo';
+import {chaveEndereco} from './texto';
 import type {Local, Parada, Ponto} from './tipos';
 
 export type Matriz = number[][];
@@ -49,6 +50,30 @@ export function otimizar(n: number, D: Matriz, fixo: boolean, fimFixo = false, t
     }
   }
   return p;
+}
+
+export interface GrupoNoMapa {
+  ids: string[];
+  pacotes: number;
+  enderecos: number;
+  lat: number;
+  lng: number;
+}
+
+export function gruposNoMapa(paradas: Parada[], raio = RAIO_BLOCO): GrupoNoMapa[] {
+  const grupos: {ps: Parada[]; lat: number; lng: number}[] = [];
+  for (const p of paradas) {
+    if (p.lat == null || p.lng == null || p.entregue) continue;
+    const g = grupos.find(x => haversine(x as Ponto, p as Ponto) <= raio);
+    if (g) g.ps.push(p);
+    else grupos.push({ps: [p], lat: p.lat, lng: p.lng});
+  }
+  return grupos.map(g => ({
+    ids: g.ps.map(p => p.id),
+    pacotes: g.ps.reduce((n, p) => n + (p.unidades || 1), 0),
+    enderecos: new Set(g.ps.map(p => chaveEndereco(p.texto).split('|').slice(0, 2).join('|'))).size,
+    lat: g.lat, lng: g.lng,
+  }));
 }
 
 export function blocos(ordem: string[], parada: (id: string) => Parada | undefined, raio = RAIO_BLOCO): string[][] {

@@ -1,7 +1,7 @@
 import {useState, type ReactNode} from 'react';
 import * as A from '../acoes';
 import {backupRecente} from '../logica/guarda';
-import {blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, trechos} from '../logica/otimizacao';
+import {blocos, fmtKm, fmtMin, gruposNoMapa, linkMaps, linkMapsVarios, linkWaze, trechos} from '../logica/otimizacao';
 import {previsoes} from '../logica/previsao';
 import {COR_PRECISAO, CORES, DUVIDA, NO_NUMERO, QUASE, ROTULO} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
@@ -309,12 +309,16 @@ export function TelaRota() {
     const pend = agora.b.map(loja.parada).filter((p): p is Parada => !!p && !p.entregue);
     const alvo = pend[0];
     const trechoAtual = trechosDe(agora.ra)[0] || [];
+    const grupoAqui = gruposNoMapa(pend)[0];
+    const pacotesAqui = grupoAqui ? grupoAqui.pacotes : 0;
+    const enderecosAqui = grupoAqui ? grupoAqui.enderecos : 0;
     const entregasTrecho = trechoAtual.reduce((n, x) => n + x.ids.filter(i => !loja.parada(i)!.entregue).length, 0);
     proxima = <div className="proxima" style={{borderColor: a.cor}}>
       <div className="info" style={{display: 'flex', gap: 6, alignItems: 'center', '--c': a.cor} as any}><span className="dot" />
         Área <b>{a.nome}</b>{a.prazo ? ' · até ' + a.prazo : ''} · {todasArea.filter(p => p.entregue).length}/{todasArea.length} entregues</div>
       {avisoPrazo(a)}
       <div className="grande">{pend.length > 1 ? `${pend.length} entregas ${mesmoEndereco(agora.b.map(id => loja.parada(id)!.texto)) ? 'no mesmo endereço' : 'aqui perto'}` : 'Próxima entrega'}</div>
+      {pacotesAqui > 1 && <div className="aviso" style={{margin: '4px 0'}}>📦 <b>{pacotesAqui} pacotes</b> para deixar nesta parada{enderecosAqui > 1 ? `, em ${enderecosAqui} endereços diferentes` : ''}. Confira se pegou todos.</div>}
       <div className="achado">📍 {alvo.exibido || alvo.texto}</div>
       {QUASE.has(alvo.precisao) && <div className="aviso laranja">🟠 Este é o ponto mais perto que achamos: a rua está certa, o número é aproximado. Confira o número na porta.</div>}
       <div className="info" style={{marginTop: 4}}>Chegou e o pino está errado? <button className="btn peq" onClick={() => A.estouAqui(alvo)}>📍 Estou aqui</button></div>

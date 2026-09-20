@@ -1,5 +1,5 @@
 import {haversine, marcarIsoladas, proximaAPe} from './geo';
-import {blocos, custo, linkMapsVarios, matrizAproximada, otimizar, trechos} from './otimizacao';
+import {gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, trechos} from './otimizacao';
 import type {Parada} from './tipos';
 
 let seq = 0;
@@ -101,5 +101,30 @@ describe('aviso a pé', () => {
     expect(proximaAPe(a, parada(-10.9300, -37.1000))).toBeNull();
     expect(proximaAPe(a, parada(-10.9400, -37.1000))).toBeNull();
     expect(Math.round(haversine({lat: -10.93, lng: -37.10}, {lat: -10.9313, lng: -37.10}))).toBe(145);
+  });
+});
+
+describe('balão de pacotes no mapa', () => {
+  const parada = (id: string, texto: string, lat: number, lng: number, extra: any = {}) =>
+    ({id, area: 'a', ml: null, texto, unidades: null, comercial: false, lat, lng, exibido: '', precisao: 'planilha', candidatos: [], entregue: false, ...extra}) as any;
+
+  it('soma os pacotes do mesmo ponto e conta quantos endereços são', () => {
+    const ps = [
+      parada('1', 'Rua dos Ipês, 300, ap 101', -10.94, -37.06, {unidades: 12}),
+      parada('2', 'Rua dos Ipês, 300, ap 202', -10.940005, -37.060005, {unidades: 8}),
+      parada('3', 'Rua dos Ipês, 318', -10.94001, -37.06001),
+      parada('4', 'Avenida Longe, 10', -10.99, -37.10, {unidades: 3}),
+    ];
+    const g = gruposNoMapa(ps);
+    expect(g).toHaveLength(2);
+    expect(g[0]).toMatchObject({pacotes: 21, enderecos: 2});
+    expect(g[1]).toMatchObject({pacotes: 3, enderecos: 1});
+  });
+  it('entrega já feita não conta no balão', () => {
+    const ps = [
+      parada('1', 'Rua A, 1', -10.94, -37.06, {unidades: 5, entregue: true}),
+      parada('2', 'Rua A, 1', -10.94, -37.06, {unidades: 2}),
+    ];
+    expect(gruposNoMapa(ps)[0]).toMatchObject({pacotes: 2, enderecos: 1});
   });
 });

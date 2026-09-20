@@ -2,6 +2,7 @@ import {useEffect, useRef} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {tocouNoMapa} from '../acoes';
+import {gruposNoMapa} from '../logica/otimizacao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import type {Parada} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
@@ -73,6 +74,12 @@ export function Mapa() {
       mk.addTo(c);
       marcadores.current[p.id] = mk;
       if (!p.entregue) limites.push([p.lat, p.lng]);
+    }
+    for (const g of gruposNoMapa(e.paradas)) {
+      if (g.pacotes < 2) continue;
+      const texto = `📦 ${g.pacotes}${g.enderecos > 1 ? ` · ${g.enderecos} endereços` : ''}`;
+      const mk = marcadores.current[g.ids[0]];
+      if (mk) mk.bindTooltip(texto, {permanent: true, direction: 'top', offset: [0, -28], className: 'balao'});
     }
     if (ui.aba === 'admin' && ui.marcas) {
       const pts = ui.marcas.pontos;
