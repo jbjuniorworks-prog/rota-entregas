@@ -10,7 +10,7 @@ export const ROTULO: Record<Precisao, string> = {
   aproximada: 'Posição aproximada da planilha — confira o pino',
   numero: 'Número não bate com a posição — confira',
   bom: 'Prédio encontrado',
-  rua: 'Rua encontrada (chega perto)',
+  rua: 'Rua certa, número aproximado — confira na porta',
   ruim: 'Impreciso — confira o pino',
   nao: 'Não encontrado',
   manual: 'Ajustado por você',
@@ -19,7 +19,7 @@ export const ROTULO: Record<Precisao, string> = {
 
 export const COR_PRECISAO: Record<Precisao, string> = {
   exato: '#16a34a', planilha: '#16a34a', lembrado: '#7c3aed', confirmado: '#0d9488', longe: '#dc2626', bairro: '#dc2626', aproximada: '#dc2626', numero: '#dc2626',
-  bom: '#16a34a', rua: '#0891b2', ruim: '#dc2626', nao: '#dc2626', manual: '#7c3aed', pendente: '#6b7280',
+  bom: '#16a34a', rua: '#ea580c', ruim: '#dc2626', nao: '#dc2626', manual: '#7c3aed', pendente: '#6b7280',
 };
 
 export const RANK: Record<Precisao, number> = {
@@ -27,6 +27,7 @@ export const RANK: Record<Precisao, number> = {
 };
 
 export const DUVIDA: ReadonlySet<Precisao> = new Set<Precisao>(['ruim', 'nao', 'longe', 'bairro', 'aproximada', 'numero']);
+export const QUASE: ReadonlySet<Precisao> = new Set<Precisao>(['rua']);
 export const NO_NUMERO: readonly Precisao[] = ['exato', 'bom', 'manual', 'planilha', 'lembrado', 'confirmado'];
 export const DA_PLANILHA: ReadonlySet<Precisao> = new Set<Precisao>(['planilha', 'aproximada', 'numero']);
 

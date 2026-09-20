@@ -127,7 +127,7 @@ export async function buscarPendentes(resumoAntes = '') {
   ui.enquadrar++;
   loja.mudou();
   const resultado = erro ? 'Alguns falharam (' + erro.message + '). Toque em "Buscar pendentes".'
-    : longe ? `Pronto! ⚠️ ${longe} parada(s) longe das outras entregas: confira o pino.` : 'Pronto! Confira os vermelhos, se houver.';
+    : longe ? `Pronto! ⚠️ ${longe} parada(s) longe das outras entregas: confira o pino.` : 'Pronto! Confira os laranja e os vermelhos, se houver.';
   const comp = avisoCompartilhadas(await consultarCompartilhadas());
   status((resumoAntes ? `${resumoAntes} Busca dos sem posição: ${resultado}` : resultado) + comp, resumoAntes || comp ? 15000 : longe ? 8000 : 4000);
 }

@@ -32,6 +32,7 @@ textarea{min-height:140px;resize:vertical}
 .achado{font-size:13px;color:var(--mut)}
 .tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;color:#fff;margin-top:4px}
 .aviso{background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:10px;font-size:14px;margin:10px 0}
+.aviso.laranja{background:#ffedd5;border-color:#fb923c}
 .info{font-size:14px;color:var(--mut)}
 .proxima{background:#f8fafc;border:3px solid var(--pri);border-radius:14px;padding:12px;margin-bottom:12px}
 .grande{font-size:19px;font-weight:700;margin:4px 0}
@@ -60,6 +61,7 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
 #status.on{display:block}
 .pino{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:grid;place-items:center}
 .pino.duvida{border:3px solid #dc2626}
+.pino.quase{border:3px solid #ea580c}
 .pino span{transform:rotate(45deg);color:#fff;font-weight:700;font-size:11px}
 @media (min-width:900px){
   #app{flex-direction:row-reverse}

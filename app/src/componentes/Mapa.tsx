@@ -2,7 +2,7 @@ import {useEffect, useRef} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {tocouNoMapa} from '../acoes';
-import {DUVIDA} from '../logica/rotulos';
+import {DUVIDA, QUASE} from '../logica/rotulos';
 import type {Parada} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
 
@@ -18,10 +18,10 @@ export function rotuloDe(p: Parada): string {
   return String(e.paradas.indexOf(p) + 1);
 }
 
-function icone(texto: string, cor: string, apagado = false, duvida = false) {
+function icone(texto: string, cor: string, apagado = false, borda = '') {
   return L.divIcon({
     className: '', iconSize: [30, 30], iconAnchor: [15, 30],
-    html: `<div class="pino ${duvida ? 'duvida' : ''}" style="background:${cor};opacity:${apagado ? .4 : 1}"><span>${esc(texto)}</span></div>`,
+    html: `<div class="pino ${borda}" style="background:${cor};opacity:${apagado ? .4 : 1}"><span>${esc(texto)}</span></div>`,
   });
 }
 
@@ -62,7 +62,7 @@ export function Mapa() {
     for (const p of e.paradas) {
       if (p.lat == null || p.lng == null) continue;
       const a = loja.area(p.area);
-      const mk = L.marker([p.lat, p.lng], {icon: icone(p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p), a.cor, p.entregue || !!p.adiada, DUVIDA.has(p.precisao))});
+      const mk = L.marker([p.lat, p.lng], {icon: icone(p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p), a.cor, p.entregue || !!p.adiada, DUVIDA.has(p.precisao) ? 'duvida' : QUASE.has(p.precisao) ? 'quase' : '')});
       mk.bindPopup(`<b>${esc(rotuloDe(p))} · ${esc(p.texto)}</b><br><small>${esc(p.exibido)}</small><br><small>Para corrigir: 2. Conferir → Marcar no mapa.</small>`);
       mk.on('click', () => {
         ui.selecionada = p.id;

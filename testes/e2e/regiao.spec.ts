@@ -64,7 +64,7 @@ test('rua que mudou de nome é reconhecida pelo nome antigo, e o app mostra os d
   await page.getByLabel(/Endereços da área/).fill('Rua Orlando Magalhães Maia 1520');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
   const linha = linhaDe(page, 'Rua Orlando Magalhães Maia 1520', 'Marcar no mapa');
-  await expect(linha).toContainText('Rua encontrada', {timeout: 30_000});
+  await expect(linha).toContainText('Rua certa, número aproximado', {timeout: 30_000});
   await expect(linha).toContainText('no mapa: Rua Acrísio Moreira Siqueira');
 });
 
@@ -89,6 +89,6 @@ test('com a rua na nossa base, o app nem precisa perguntar ao mapa de fora', asy
   await page.getByRole('button', {name: /^Adicionar em/}).click();
   const linha = linhaDe(page, 'Rua Lúcio Mota 114', 'Marcar no mapa');
   await expect(linha).toContainText('pela nossa base de ruas', {timeout: 30_000});
-  await expect(linha).toContainText('Rua encontrada');
+  await expect(linha).toContainText('Rua certa, número aproximado');
   expect(buscas.filter(b => !b.includes('Aracaju%2C+SE') && !b.includes('Aracaju%2C%20SE'))).toEqual([]);
 });

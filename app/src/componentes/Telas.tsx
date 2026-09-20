@@ -3,7 +3,7 @@ import * as A from '../acoes';
 import {backupRecente} from '../logica/guarda';
 import {blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, trechos} from '../logica/otimizacao';
 import {previsoes} from '../logica/previsao';
-import {COR_PRECISAO, CORES, DUVIDA, NO_NUMERO, ROTULO} from '../logica/rotulos';
+import {COR_PRECISAO, CORES, DUVIDA, NO_NUMERO, QUASE, ROTULO} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
 import type {Area, Parada, Ponto, RotaArea} from '../logica/tipos';
 import {guarda, loja, useLoja} from '../loja';
@@ -153,7 +153,8 @@ export function TelaConferir() {
   const duvidas = conta([...DUVIDA]), pend = conta(['pendente']), sugeridas = e.paradas.filter(p => p.sugestao && !p.entregue).length;
   return <>
     <h2>Conferir locais</h2>
-    <div className="info">✅ {conta(NO_NUMERO)} no número · 🛣️ {conta(['rua'])} na rua certa · ❗ {duvidas} para conferir{sugeridas ? ` · 💡 ${sugeridas} com sugestão` : ''}{pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
+    <div className="info">✅ {conta(NO_NUMERO)} no número · 🟠 {conta(['rua'])} só na rua · ❗ {duvidas} para conferir{sugeridas ? ` · 💡 ${sugeridas} com sugestão` : ''}{pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
+    {conta(['rua']) > 0 && <div className="aviso laranja">Os <b>laranja</b> são o mais perto que conseguimos: a rua está certa, mas o número é aproximado. Pode dar alguns metros de diferença.</div>}
     {duvidas > 0 && <div className="aviso">Os de borda vermelha podem estar longe do lugar. Toque em <b>Ver</b> para olhar no mapa e use <b>Marcar no mapa</b> para corrigir (olhando a posição no app de entregas).</div>}
     <div className="linha">
       {pend > 0 && <button className="btn pri" onClick={() => A.buscarPendentes()}>Buscar {pend} pendente(s)</button>}
@@ -240,7 +241,7 @@ function LinhaParada({p, comWaze}: {p: Parada; comWaze: boolean}) {
     <div className="badge" style={{background: a.cor}}>{rotuloDe(p)}</div>
     <div className="txt" onClick={() => A.focar(p.id)}>
       <div>{p.texto}</div><Meta p={p} />
-      {DUVIDA.has(p.precisao) && <Tag p={p} />}
+      {(DUVIDA.has(p.precisao) || QUASE.has(p.precisao)) && <Tag p={p} />}
       {p.sugestao && !p.entregue && <div className="achado">💡 Outro motorista sugere outro lugar: veja em 2. Conferir</div>}
     </div>
     {comWaze && !p.entregue && <a className="btn peq waze" href={linkWaze(p as Ponto)} target="_blank" rel="noopener" aria-label="Waze">🧭</a>}
@@ -315,6 +316,7 @@ export function TelaRota() {
       {avisoPrazo(a)}
       <div className="grande">{pend.length > 1 ? `${pend.length} entregas ${mesmoEndereco(agora.b.map(id => loja.parada(id)!.texto)) ? 'no mesmo endereço' : 'aqui perto'}` : 'Próxima entrega'}</div>
       <div className="achado">📍 {alvo.exibido || alvo.texto}</div>
+      {QUASE.has(alvo.precisao) && <div className="aviso laranja">🟠 Este é o ponto mais perto que achamos: a rua está certa, o número é aproximado. Confira o número na porta.</div>}
       <div className="info" style={{marginTop: 4}}>Chegou e o pino está errado? <button className="btn peq" onClick={() => A.estouAqui(alvo)}>📍 Estou aqui</button></div>
       <div className="linha">
         <a className="btn waze" href={linkWaze(alvo as Ponto)} target="_blank" rel="noopener">Waze</a>
