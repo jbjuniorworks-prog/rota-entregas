@@ -87,7 +87,10 @@ export function TelaEnderecos() {
     <h2>Adicionar endereços por área</h2>
     <div className="info">Faça uma área (cor do app) por vez: escolha a cor abaixo, tire print da lista dessa área e adicione.</div>
     <label htmlFor="cidade">Cidade padrão</label>
-    <input type="text" id="cidade" placeholder="Ex.: Aracaju, SE" defaultValue={e.cidade} onChange={ev => A.mudar(() => { e.cidade = ev.target.value.trim(); })} />
+    <input type="text" id="cidade" placeholder="Ex.: Aracaju, SE" defaultValue={e.cidade} onChange={ev => A.mudar(() => { e.cidade = ev.target.value.trim(); e.regiao = null; })} />
+    <div className="info">{e.regiao
+      ? `🔎 Só procuro endereço até ${Math.round(e.regiao.raio / 1000)} km de ${e.regiao.nome === 'entregas' ? 'onde você entrega' : e.regiao.nome}. Rua de mesmo nome em outro estado é descartada.`
+      : '🔎 Preencha a cidade acima. Sem ela, uma rua de mesmo nome em outro estado pode entrar na rota.'}</div>
     <label>Área</label>
     <div className="chips">
       {e.areas.map(x => <ChipArea key={x.id} a={x} on={x.id === a.id} onClick={() => A.mudar(() => { e.areaAtual = x.id; })} />)}

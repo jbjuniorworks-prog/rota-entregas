@@ -1,7 +1,7 @@
 import {haversine} from '../logica/geo';
 import {RANK} from '../logica/rotulos';
 import {decompor, mesmaRua, normal} from '../logica/texto';
-import type {Candidato, Precisao} from '../logica/tipos';
+import type {Candidato, Precisao, Regiao} from '../logica/tipos';
 import {buscarJson, espacado} from './rede';
 
 interface Cep {
@@ -25,17 +25,44 @@ function candidatoOSM(r: any): Candidato {
   return {lat: +r.lat, lng: +r.lon, exibido: [rua, bairro, cidade].filter(Boolean).join(' — ') || r.display_name, precisao, rua: a.road || (r.category === 'highway' ? r.name : ''), fonte: 'OpenStreetMap'};
 }
 
+let regiaoAtual: Regiao | null = null;
+
+export function usarRegiao(r: Regiao | null) {
+  regiaoAtual = r;
+}
+
+export function foraDaRegiao(p: {lat: number; lng: number}, r: Regiao | null = regiaoAtual): boolean {
+  return !!r && haversine(p, r) > r.raio;
+}
+
+function caixaDaRegiao(r: Regiao): string {
+  const dLat = r.raio / 111320, dLng = r.raio / (111320 * Math.cos(r.lat * Math.PI / 180));
+  return [r.lng - dLng, r.lat + dLat, r.lng + dLng, r.lat - dLat].map(v => v.toFixed(5)).join(',');
+}
+
 async function nominatim(params: Record<string, string>): Promise<Candidato[]> {
   await espacado('nominatim', 1100);
   const u = new URL('https://nominatim.openstreetmap.org/search');
-  const base = {format: 'jsonv2', addressdetails: '1', limit: '5', countrycodes: 'br', 'accept-language': 'pt-BR'};
+  const base: Record<string, string> = {format: 'jsonv2', addressdetails: '1', limit: '5', countrycodes: 'br', 'accept-language': 'pt-BR'};
+  if (regiaoAtual) { base.viewbox = caixaDaRegiao(regiaoAtual); base.bounded = '1'; }
   Object.entries({...base, ...params}).forEach(([k, v]) => u.searchParams.set(k, v));
-  return (await buscarJson<any[]>(u)).map(candidatoOSM);
+  return (await buscarJson<any[]>(u)).map(candidatoOSM).filter(c => !foraDaRegiao(c));
 }
 
 export async function centroDoBairro(bairro: string, cidade: string): Promise<{lat: number; lng: number} | null> {
   const [c] = await nominatim({q: comCidade(bairro, cidade)});
   return c ? {lat: c.lat, lng: c.lng} : null;
+}
+
+export async function centroDaCidade(cidade: string): Promise<{lat: number; lng: number} | null> {
+  const guardada = regiaoAtual;
+  regiaoAtual = null;
+  try {
+    const [c] = await nominatim({q: cidade, limit: '1'});
+    return c ? {lat: c.lat, lng: c.lng} : null;
+  } finally {
+    regiaoAtual = guardada;
+  }
 }
 
 async function cepComCoordenada(cep: string): Promise<Cep | null> {
@@ -105,7 +132,7 @@ async function geoGoogle(txt: string, cidade: string, chave: string): Promise<Ca
   const j = await buscarJson(u);
   if (j.status === 'ZERO_RESULTS') return [];
   if (j.status !== 'OK') throw new Error('Google: ' + j.status + (j.error_message ? ' — ' + j.error_message : ''));
-  return j.results.map((r: any) => {
+  return j.results.filter((r: any) => !foraDaRegiao({lat: r.geometry.location.lat, lng: r.geometry.location.lng})).map((r: any) => {
     const t = r.geometry.location_type;
     let precisao: Precisao = t === 'ROOFTOP' ? 'exato' : t === 'RANGE_INTERPOLATED' ? 'bom' : (r.types || []).includes('route') ? 'rua' : 'ruim';
     if (r.partial_match && precisao === 'exato') precisao = 'bom';

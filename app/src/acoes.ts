@@ -11,7 +11,7 @@ import {chaveLugar, extrairEnderecos} from './logica/texto';
 import type {Parada} from './logica/tipos';
 import {guarda, loja, status} from './loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from './servicos/arquivos';
-import {centroDoBairro, geocodificar} from './servicos/geocodificacao';
+import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from './servicos/geocodificacao';
 import {clienteNuvem, entrar as entrarNaNuvem, iniciarNuvem, sair as sairDaNuvem} from './servicos/nuvem';
 import {linhaDaRota, matriz} from './servicos/ruas';
 import {linkWaze} from './logica/otimizacao';
@@ -31,6 +31,7 @@ export async function enviarFila() {
 }
 
 export async function iniciar() {
+  usarRegiao(e().regiao || null);
   await iniciarNuvem();
   loja.mudou(false);
   enviarFila();
@@ -66,8 +67,31 @@ export function irPara(aba: typeof ui.aba) {
   loja.mudou(false);
 }
 
+export const RAIO_REGIAO = 100000;
+
+export async function garantirRegiao(): Promise<void> {
+  const est = e(), cidade = est.cidade.trim();
+  if (est.regiao && est.regiao.nome === (cidade || 'entregas')) { usarRegiao(est.regiao); return; }
+  if (cidade) {
+    try {
+      const c = await centroDaCidade(cidade);
+      if (c) est.regiao = {nome: cidade, lat: c.lat, lng: c.lng, raio: RAIO_REGIAO};
+    } catch {}
+  }
+  if (!cidade && (!est.regiao || est.regiao.nome !== 'entregas')) {
+    const comLocal = est.paradas.filter(p => p.lat != null && p.lng != null);
+    const base = comLocal.length >= 3
+      ? {lat: mediana(comLocal.map(p => p.lat!)), lng: mediana(comLocal.map(p => p.lng!))}
+      : est.inicio;
+    est.regiao = base ? {nome: 'entregas', lat: base.lat, lng: base.lng, raio: RAIO_REGIAO} : null;
+  }
+  usarRegiao(est.regiao || null);
+  loja.mudou();
+}
+
 export async function buscarParada(p: Parada) {
   if (memoria.aplicar(p)) return;
+  await garantirRegiao();
   try {
     const cands = await geocodificar(p.texto, {cidade: e().cidade, googleKey: e().googleKey});
     p.candidatos = cands;
@@ -84,6 +108,7 @@ export async function buscarPendentes(resumoAntes = '') {
   const alvo = e().paradas.filter(p => p.precisao === 'pendente');
   if (!alvo.length) return;
   ui.ocupado = true;
+  await garantirRegiao();
   let erro: Error | null = null;
   for (let i = 0; i < alvo.length; i++) {
     status(`Buscando endereços… ${i + 1} de ${alvo.length}`);

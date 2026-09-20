@@ -71,8 +71,16 @@ export interface Rota {
   fim?: Perna;
 }
 
+export interface Regiao {
+  nome: string;
+  lat: number;
+  lng: number;
+  raio: number;
+}
+
 export interface Estado {
   cidade: string;
+  regiao?: Regiao | null;
   googleKey: string;
   tamTrecho: number;
   inicio: Local | null;

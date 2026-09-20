@@ -31,7 +31,7 @@ export const CHAVES = {
 } as const;
 
 export function estadoVazio(id = Math.random().toString(36).slice(2, 10)): Estado {
-  return {cidade: '', googleKey: '', tamTrecho: 9, inicio: null, voltar: false, areas: [{id, nome: 'Verde', cor: '#16a34a', prazo: ''}], areaAtual: id, areasManual: false, paradas: [], rota: null, pernas: {}};
+  return {cidade: '', regiao: null, googleKey: '', tamTrecho: 9, inicio: null, voltar: false, areas: [{id, nome: 'Verde', cor: '#16a34a', prazo: ''}], areaAtual: id, areasManual: false, paradas: [], rota: null, pernas: {}};
 }
 
 export function carregarEstado(g: Guarda): Estado {
