@@ -83,7 +83,10 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
       }
       return 'ok';
     } catch (e) {
-      if (e instanceof ErroNuvem && !e.deRede) { erro = 'o servidor recusou um envio (' + e.message + ')'; return 'descartar'; }
+      if (e instanceof ErroNuvem && !e.deRede) {
+        if (op.tipo !== 'observacao') erro = 'o servidor recusou um envio (' + e.message + ')';
+        return 'descartar';
+      }
       return 'rede';
     }
   }
