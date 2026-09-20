@@ -36,7 +36,8 @@ trechos de rua que o mapa livre não tem. Consultas de endereço vão ao OpenStr
 - `npm run restaurar` devolve o último backup num **projeto Supabase de teste**
   (`SUPABASE_URL_DESTINO` e `SUPABASE_SERVICE_ROLE_KEY_DESTINO` no `.env`), recriando as
   contas por e-mail, e compara linha a linha com o que foi salvo. `--so-conferir` só compara.
-  Backup que nunca foi restaurado não conta como backup.
+  Backup que nunca foi restaurado não conta como backup: a conferência compara o conteúdo
+  linha a linha (não só a contagem) e diz qual linha falta.
 
 ## Testes e publicação
 

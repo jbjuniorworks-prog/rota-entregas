@@ -68,14 +68,30 @@ if (!soConferir) {
   await enviar('ruas', ler('ruas').map(({id, ...resto}) => resto), '?on_conflict=osm_id');
 }
 
-console.log('tabela        no backup   no projeto de teste');
+const ESSENCIA = {
+  rotas: l => [l.at_id, l.dia, l.arquivo].join('|'),
+  pacotes: l => [l.spx_tn, l.endereco, l.lat, l.lng, l.chave_lugar].join('|'),
+  correcoes: l => [l.chave_lugar, l.lat, l.lng].join('|'),
+  observacoes: l => [l.chave_lugar, l.lat, l.lng, l.precisao_m, l.rua_chave].join('|'),
+  ruas: l => [l.osm_id, l.nome_chave, l.nome_chave2, l.tipo, l.bairro, l.conjunto, l.cidade].join('|'),
+  perfis: l => [l.nome, l.papel, l.ativo].join('|'),
+};
+const digerir = (tabela, linhas) =>
+  createHash('sha256').update(linhas.map(ESSENCIA[tabela]).sort().join('|')).digest('hex').slice(0, 12);
+
+console.log('tabela        no backup   no teste   conteúdo');
 let tudoIgual = true;
 for (const t of ['perfis', ...TABELAS.filter(x => x !== 'perfis')]) {
-  const esperado = ler(t).length;
-  const achado = (await linhasDe(doTeste, t)).length;
-  const igual = achado >= esperado;
+  const doBackup = ler(t);
+  const noTeste = await linhasDe(doTeste, t);
+  const chavesLa = new Set(noTeste.map(ESSENCIA[t]));
+  const faltando = doBackup.filter(l => !chavesLa.has(ESSENCIA[t](l)));
+  const igual = !faltando.length;
   if (!igual) tudoIgual = false;
-  console.log(`${t.padEnd(14)}${String(esperado).padStart(8)}${String(achado).padStart(20)}  ${igual ? 'ok' : 'FALTANDO'}`);
+  const marca = igual
+    ? (doBackup.length === noTeste.length ? 'igual (' + digerir(t, doBackup) + ')' : 'tudo presente, e mais ' + (noTeste.length - doBackup.length) + ' que já estavam lá')
+    : `FALTAM ${faltando.length}: ` + faltando.slice(0, 2).map(ESSENCIA[t]).join(' / ').slice(0, 80);
+  console.log(`${t.padEnd(14)}${String(doBackup.length).padStart(8)}${String(noTeste.length).padStart(11)}   ${marca}`);
 }
 const daCasaContagem = await linhasDe(daCasa, 'correcoes');
 console.log(`\ncorreções no banco de verdade agora: ${daCasaContagem.length}`);
