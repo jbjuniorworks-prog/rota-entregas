@@ -27,6 +27,17 @@ trechos de rua que o mapa livre não tem. Consultas de endereço vão ao OpenStr
   (`npm run motoristas -- listar | criar email Nome | senha email | desativar email | ativar email`).
   Precisa do `.env` com `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`, fora do git.
 
+## Backup
+
+- `npm run backup` grava todas as tabelas em `OneDrive/backups/rota-entregas/<data>/`
+  (arquivos `.ndjson.gz` + `resumo.json` com contagem e soma de verificação). Guarda os
+  últimos 14 dias e o dia 1 de cada mês. Roda sozinho às 21h pela tarefa do Windows
+  "Backup rota-entregas" (`ferramentas/backup-diario.cmd`).
+- `npm run restaurar` devolve o último backup num **projeto Supabase de teste**
+  (`SUPABASE_URL_DESTINO` e `SUPABASE_SERVICE_ROLE_KEY_DESTINO` no `.env`), recriando as
+  contas por e-mail, e compara linha a linha com o que foi salvo. `--so-conferir` só compara.
+  Backup que nunca foi restaurado não conta como backup.
+
 ## Testes e publicação
 
 - `npm run tipos`, `npm run test:unidade`, `npm test` (e2e sobre o build, com a nuvem simulada).

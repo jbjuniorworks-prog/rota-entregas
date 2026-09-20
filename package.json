@@ -11,7 +11,9 @@
     "test:nuvem": "playwright test --grep @nuvem --workers 1",
     "dev": "vite",
     "build": "vite build",
-    "ruas": "node ferramentas/ruas.mjs"
+    "ruas": "node ferramentas/ruas.mjs",
+    "backup": "node ferramentas/backup.mjs",
+    "restaurar": "node ferramentas/restaurar.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",
