@@ -52,6 +52,22 @@ test('rua que o mapa não tem vai para o bairro certo, e a rua trocada fica só 
   await expect(page.getByRole('button', {name: /Acrísio Moreira Siqueira/})).toBeVisible();
 });
 
+test('rua que mudou de nome é reconhecida pelo nome antigo, e o app mostra os dois', async ({page}) => {
+  const MESMA_RUA = {
+    lat: '-10.9401', lon: '-37.0620', display_name: 'Rua Acrísio Moreira Siqueira, Aracaju', category: 'highway', addresstype: 'road',
+    address: {road: 'Rua Acrísio Moreira Siqueira', suburb: 'Jardins', city: 'Aracaju'},
+    namedetails: {name: 'Rua Acrísio Moreira Siqueira', alt_name: 'Rua Orlando Magalhaes Maia'},
+  };
+  await mapaFalso(page, MESMA_RUA);
+  await abrir(page);
+  await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+  await page.getByLabel(/Endereços da área/).fill('Rua Orlando Magalhães Maia 1520');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  const linha = linhaDe(page, 'Rua Orlando Magalhães Maia 1520', 'Marcar no mapa');
+  await expect(linha).toContainText('Rua encontrada', {timeout: 30_000});
+  await expect(linha).toContainText('no mapa: Rua Acrísio Moreira Siqueira');
+});
+
 test('a mesma rua dentro da região entra normalmente', async ({page}) => {
   await mapaFalso(page, NA_CIDADE);
   await abrir(page);

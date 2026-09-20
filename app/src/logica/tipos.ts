@@ -9,6 +9,7 @@ export interface Candidato extends Ponto {
   exibido: string;
   precisao: Precisao;
   rua?: string;
+  nomes?: string[];
   fonte: string;
 }
 

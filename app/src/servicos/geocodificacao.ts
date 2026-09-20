@@ -22,7 +22,10 @@ function candidatoOSM(r: any): Candidato {
   const rua = [a.road, a.house_number].filter(Boolean).join(', ');
   const bairro = a.suburb || a.neighbourhood || a.quarter || a.city_district || '';
   const cidade = a.city || a.town || a.village || a.municipality || '';
-  return {lat: +r.lat, lng: +r.lon, exibido: [rua, bairro, cidade].filter(Boolean).join(' — ') || r.display_name, precisao, rua: a.road || (r.category === 'highway' ? r.name : ''), fonte: 'OpenStreetMap'};
+  const nd = r.namedetails || {};
+  const nomes = [a.road, r.name, nd.name, nd['alt_name'], nd['old_name'], nd['official_name'], nd['short_name']]
+    .flatMap((n: string | undefined) => (n || '').split(';')).map((n: string) => n.trim()).filter(Boolean);
+  return {lat: +r.lat, lng: +r.lon, exibido: [rua, bairro, cidade].filter(Boolean).join(' — ') || r.display_name, precisao, rua: a.road || (r.category === 'highway' ? r.name : ''), nomes: [...new Set(nomes)], fonte: 'OpenStreetMap'};
 }
 
 let regiaoAtual: Regiao | null = null;
@@ -43,7 +46,7 @@ function caixaDaRegiao(r: Regiao): string {
 async function nominatim(params: Record<string, string>): Promise<Candidato[]> {
   await espacado('nominatim', 1100);
   const u = new URL('https://nominatim.openstreetmap.org/search');
-  const base: Record<string, string> = {format: 'jsonv2', addressdetails: '1', limit: '5', countrycodes: 'br', 'accept-language': 'pt-BR'};
+  const base: Record<string, string> = {format: 'jsonv2', addressdetails: '1', namedetails: '1', limit: '5', countrycodes: 'br', 'accept-language': 'pt-BR'};
   if (regiaoAtual) { base.viewbox = caixaDaRegiao(regiaoAtual); base.bounded = '1'; }
   Object.entries({...base, ...params}).forEach(([k, v]) => u.searchParams.set(k, v));
   return (await buscarJson<any[]>(u)).map(candidatoOSM).filter(c => !foraDaRegiao(c));
@@ -120,7 +123,10 @@ async function geoOSM(txt: string, cidade: string): Promise<Candidato[]> {
   const cands: Candidato[] = [];
   const validar = (lista: Candidato[]) => {
     for (const c of lista) {
-      const nomeOk = c.rua && mesmaRua(logradouro, c.rua);
+      const conhecidos = c.nomes && c.nomes.length ? c.nomes : (c.rua ? [c.rua] : []);
+      const casou = conhecidos.find(n => mesmaRua(logradouro, n));
+      const nomeOk = !!casou;
+      if (casou && c.rua && !mesmaRua(logradouro, c.rua)) c.exibido = `${logradouro} (no mapa: ${c.rua}) — ${c.exibido.split(' — ').slice(1).join(' — ')}`;
       const pertoDoCep = !cep || cep.lat == null || haversine(c, cep as {lat: number; lng: number}) < 2500;
       if (!nomeOk || !pertoDoCep) c.precisao = 'ruim';
       cands.push(c);
