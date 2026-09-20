@@ -83,8 +83,19 @@ test.describe('administrador', () => {
     await expect(lugar.locator('[data-marcacao="Luan"]')).toContainText('✓ a que vale');
     await expect(lugar.locator('[data-marcacao="Pedro"]')).toContainText('da que vale');
 
-    await lugar.locator('[data-marcacao="Luan"]').getByRole('button', {name: 'Confirmar'}).click();
-    await expect(aviso(page)).toContainText('Posição confirmada');
+    await page.route('**/rest/v1/correcoes**', async r => {
+      if (r.request().method() === 'POST') await new Promise(ok => setTimeout(ok, 1500));
+      await r.fallback();
+    });
+    const botaoConfirmar = lugar.locator('[data-marcacao="Luan"]').getByRole('button', {name: 'Confirmar'});
+    await botaoConfirmar.click();
+    await expect(lugar.getByRole('button', {name: 'Confirmando…'})).toBeDisabled();
+    await lugar.getByRole('button', {name: 'Confirmando…'}).dispatchEvent('click');
+    await lugar.getByRole('button', {name: 'Confirmando…'}).dispatchEvent('click');
+    await expect(lugar.locator('[data-marcacao="Pedro"]').getByRole('button', {name: 'Apagar'})).toBeDisabled();
+    await expect(aviso(page)).toContainText('Posição confirmada', {timeout: 10_000});
+    expect(nuvem.pedidos.filter(p => p.metodo === 'POST' && p.caminho === 'correcoes')).toHaveLength(1);
+
     expect(nuvem.pedidos.find(p => p.metodo === 'POST' && p.caminho === 'correcoes')?.corpo).toMatchObject({chave_lugar: CHAVE, lat: -10.9201, lng: -37.0601});
 
     await lugar.locator('[data-marcacao="Pedro"]').getByRole('button', {name: 'Apagar'}).click();
