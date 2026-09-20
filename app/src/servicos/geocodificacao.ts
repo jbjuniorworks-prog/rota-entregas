@@ -65,6 +65,32 @@ export async function centroDaCidade(cidade: string): Promise<{lat: number; lng:
   }
 }
 
+export function separarCidadeUf(cidade: string): {cidade: string; uf: string} | null {
+  const m = cidade.match(/^\s*([^,\/-]+?)\s*[,\/-]\s*([A-Za-z]{2})\s*$/);
+  return m ? {cidade: m[1], uf: m[2].toUpperCase()} : null;
+}
+
+export function bairroDeMaisCEPs(lista: {bairro?: string; logradouro?: string}[], rua: string): string {
+  const iguais = lista.filter(x => x.logradouro && mesmaRua(rua, x.logradouro));
+  const contagem = new Map<string, number>();
+  for (const x of (iguais.length ? iguais : lista)) if (x.bairro) contagem.set(x.bairro, (contagem.get(x.bairro) || 0) + 1);
+  return [...contagem.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+}
+
+async function ruaNosCorreios(rua: string, cidade: string): Promise<{bairro: string; cidade: string} | null> {
+  const lugar = separarCidadeUf(cidade);
+  const nome = rua.replace(/^\s*(rua|r\.?|avenida|av\.?|travessa|tv\.?|pra[çc]a)\s+/i, '').trim();
+  if (!lugar || nome.length < 4) return null;
+  try {
+    await espacado('viacep', 400);
+    const achados = await buscarJson<any[]>(`https://viacep.com.br/ws/${lugar.uf}/${encodeURIComponent(lugar.cidade)}/${encodeURIComponent(nome)}/json/`, 8000);
+    const bairro = Array.isArray(achados) ? bairroDeMaisCEPs(achados, rua) : '';
+    return bairro ? {bairro, cidade: lugar.cidade} : null;
+  } catch {
+    return null;
+  }
+}
+
 async function cepComCoordenada(cep: string): Promise<Cep | null> {
   try {
     const v = await buscarJson(`https://viacep.com.br/ws/${cep}/json/`, 8000);
@@ -116,8 +142,13 @@ async function geoOSM(txt: string, cidade: string): Promise<Candidato[]> {
     validar(await nominatim({q: cep ? `${q}, ${cep.cidade}, ${cep.uf}` : comCidade(q, cidade)}));
     if (!naRua() && d.numero) validar(await nominatim({q: cep ? `${logradouro}, ${cep.cidade}, ${cep.uf}` : comCidade(logradouro, cidade)}));
   }
-  if (!cands.length && cep && cep.bairro) {
-    cands.push(...(await nominatim({q: `${cep.bairro}, ${cep.cidade}, ${cep.uf}`})).map(c => ({...c, precisao: 'ruim' as Precisao})));
+  if (!naRua() && logradouro) {
+    const lugar = cep && cep.bairro ? {bairro: cep.bairro, cidade: cep.cidade} : await ruaNosCorreios(logradouro, cidade);
+    const centro = lugar ? await centroDoBairro(lugar.bairro, lugar.cidade) : null;
+    if (centro) {
+      cands.unshift({...centro, precisao: 'bairro', rua: logradouro, fonte: 'CEP',
+        exibido: `${logradouro}${d.numero ? ', ' + d.numero : ''} — o mapa não tem esta rua: posição pelo bairro ${lugar!.bairro}`});
+    }
   }
   return cands;
 }

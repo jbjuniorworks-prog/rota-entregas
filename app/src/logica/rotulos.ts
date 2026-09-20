@@ -23,7 +23,7 @@ export const COR_PRECISAO: Record<Precisao, string> = {
 };
 
 export const RANK: Record<Precisao, number> = {
-  exato: 0, planilha: 0, lembrado: 0, confirmado: 0, manual: 0, bom: 1, rua: 2, bairro: 3, aproximada: 3, numero: 3, longe: 3, ruim: 3, nao: 4, pendente: 5,
+  exato: 0, planilha: 0, lembrado: 0, confirmado: 0, manual: 0, bom: 1, rua: 2, bairro: 3, aproximada: 3, numero: 3, longe: 3, ruim: 3.5, nao: 4, pendente: 5,
 };
 
 export const DUVIDA: ReadonlySet<Precisao> = new Set<Precisao>(['ruim', 'nao', 'longe', 'bairro', 'aproximada', 'numero']);

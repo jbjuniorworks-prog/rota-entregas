@@ -29,6 +29,29 @@ test('rua de mesmo nome em outro estado não entra na rota', async ({page}) => {
   await expect(page.getByText(/Só procuro endereço até 100 km de Aracaju, SE/)).toBeVisible();
 });
 
+test('rua que o mapa não tem vai para o bairro certo, e a rua trocada fica só como opção', async ({page}) => {
+  const OUTRA_RUA = {lat: '-10.9401', lon: '-37.0620', display_name: 'Rua Acrísio Moreira Siqueira, Aracaju', category: 'highway', addresstype: 'road', address: {road: 'Rua Acrísio Moreira Siqueira', suburb: 'Jardins', city: 'Aracaju'}};
+  const BAIRRO = {lat: '-10.9350', lon: '-37.0550', display_name: 'Jardins, Aracaju', category: 'place', addresstype: 'suburb', address: {suburb: 'Jardins', city: 'Aracaju'}};
+  await page.route('**://viacep.com.br/**', r => r.fulfill({
+    status: 200, contentType: 'application/json', headers: {'access-control-allow-origin': '*'},
+    body: JSON.stringify([{cep: '49025-530', logradouro: 'Rua Orlando Magalhães Maia', bairro: 'Jardins', localidade: 'Aracaju', uf: 'SE'}]),
+  }));
+  await page.route('**://nominatim.openstreetmap.org/**', r => {
+    const q = new URL(r.request().url()).searchParams.get('q') || '';
+    const corpo = q.trim() === 'Aracaju, SE' ? ARACAJU : /^Jardins/.test(q) ? BAIRRO : OUTRA_RUA;
+    r.fulfill({status: 200, contentType: 'application/json', headers: {'access-control-allow-origin': '*'}, body: JSON.stringify([corpo])});
+  });
+  await abrir(page);
+  await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+  await page.getByLabel(/Endereços da área/).fill('Rua Orlando Magalhães Maia 1520');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  const linha = linhaDe(page, 'Rua Orlando Magalhães Maia 1520', 'Marcar no mapa');
+  await expect(linha).toContainText('o mapa não tem esta rua: posição pelo bairro Jardins', {timeout: 30_000});
+  await expect(linha).toContainText('Posição pelo bairro — confira no local');
+  await page.locator('[data-item]').filter({hasText: 'Orlando Magalhães Maia'}).getByRole('button', {name: 'Ver', exact: true}).click();
+  await expect(page.getByRole('button', {name: /Acrísio Moreira Siqueira/})).toBeVisible();
+});
+
 test('a mesma rua dentro da região entra normalmente', async ({page}) => {
   await mapaFalso(page, NA_CIDADE);
   await abrir(page);
