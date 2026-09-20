@@ -137,6 +137,27 @@ export async function listarCorrecoes(limite = 500): Promise<LugarCorrigido[]> {
   return [...lugares.values()];
 }
 
+export interface Cobertura {
+  ruas_com_nome: number;
+  trechos_sem_nome: number;
+  trechos_nossos: number;
+  passagens: number;
+  lugares: number;
+  lugares_confirmados: number;
+}
+
+export async function cobertura(): Promise<Cobertura | null> {
+  const {data, error} = await cliente().rpc('cobertura');
+  if (error) throw new Error(error.message);
+  return (data && data[0]) || null;
+}
+
+export async function nomearRuas(): Promise<{trechos: number; ruas: number}> {
+  const {data, error} = await cliente().rpc('nomear_ruas');
+  if (error) throw new Error(error.message);
+  return (data && data[0]) || {trechos: 0, ruas: 0};
+}
+
 export async function confirmarPosicao(chave: string, lat: number, lng: number) {
   const {error} = await cliente().from('correcoes').insert({chave_lugar: chave, lat, lng});
   falhou(error);

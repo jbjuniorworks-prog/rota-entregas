@@ -76,3 +76,19 @@ test('a mesma rua dentro da região entra normalmente', async ({page}) => {
   await page.getByRole('button', {name: /^Adicionar em/}).click();
   await expect(linhaDe(page, 'Rua Lúcio Mota 114', 'Marcar no mapa')).toContainText('Rua Lúcio Mota — Aracaju', {timeout: 30_000});
 });
+
+test('com a rua na nossa base, o app nem precisa perguntar ao mapa de fora', async ({page, nuvem}) => {
+  nuvem.tabelas = {ruas: [
+    {nome: 'Rua Lúcio Mota', nome_chave: 'lucio mota', cidade: 'Aracaju', lat: -10.9401, lng: -37.062, linha: [[-10.9401, -37.062], [-10.9405, -37.0625]]},
+    {nome: 'Rua Lúcio Mota', nome_chave: 'lucio mota', cidade: 'São Paulo', lat: -23.55, lng: -46.63, linha: [[-23.55, -46.63]]},
+  ]};
+  const buscas = await mapaFalso(page, ARACAJU);
+  await abrir(page);
+  await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+  await page.getByLabel(/Endereços da área/).fill('Rua Lúcio Mota 114');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  const linha = linhaDe(page, 'Rua Lúcio Mota 114', 'Marcar no mapa');
+  await expect(linha).toContainText('pela nossa base de ruas', {timeout: 30_000});
+  await expect(linha).toContainText('Rua encontrada');
+  expect(buscas.filter(b => !b.includes('Aracaju%2C+SE') && !b.includes('Aracaju%2C%20SE'))).toEqual([]);
+});

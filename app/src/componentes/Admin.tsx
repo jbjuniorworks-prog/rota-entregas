@@ -54,9 +54,34 @@ export function TelaAdmin() {
     {erro && <div className="aviso">Não consegui carregar: {erro}</div>}
     {!motoristas && !erro && <div className="info">Carregando…</div>}
     {motoristas && <Motoristas lista={motoristas} recarregar={carregar} />}
+    <BaseDeRuas />
     {rotas && <Rotas lista={rotas} />}
     {lugares && <Correcoes lista={lugares} corDe={corDe} recarregar={carregar} />}
   </>;
+}
+
+function BaseDeRuas() {
+  const [c, setC] = useState<Adm.Cobertura | null>(null);
+  const [erro, setErro] = useState('');
+  const ver = async () => {
+    try { setC(await Adm.cobertura()); setErro(''); } catch (err) { setErro((err as Error).message); }
+  };
+  useEffect(() => { ver(); }, []);
+  const nomear = async () => {
+    const r = await tentar(() => Adm.nomearRuas());
+    if (r) status(r.trechos ? `${r.trechos} trecho(s) ganharam nome, em ${r.ruas} rua(s).` : 'Nenhum trecho novo para nomear ainda.', 6000);
+    ver();
+  };
+  return <details open>
+    <summary>Nossa base de ruas</summary>
+    {erro && <div className="aviso">Falta rodar o SQL da base de ruas: {erro}</div>}
+    {c && <>
+      <div className="info">🛣️ {c.ruas_com_nome} ruas com nome · {c.trechos_sem_nome} trechos ainda sem nome{c.trechos_nossos ? ` · ${c.trechos_nossos} nomeados pelas entregas de vocês` : ''}</div>
+      <div className="info">📍 {c.passagens} entregas marcadas na porta, em {c.lugares} endereços · {c.lugares_confirmados} já com posição confirmada</div>
+      <div className="linha"><button className="btn" onClick={nomear}>Nomear ruas com as entregas</button></div>
+      <div className="info">Para trazer (ou atualizar) as ruas de uma cidade, no computador: <code>npm run ruas -- Aracaju</code>.</div>
+    </>}
+  </details>;
 }
 
 function Motoristas({lista, recarregar}: {lista: Adm.Motorista[]; recarregar: () => void}) {

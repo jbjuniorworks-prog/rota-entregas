@@ -7,7 +7,7 @@ import {avisoGuardou, criarMemoria} from './logica/memoria';
 import {montarRota as calcularRota} from './logica/montagem';
 import {CORES} from './logica/rotulos';
 import {aplicarCompartilhadas} from './logica/compartilhadas';
-import {chaveLugar, extrairEnderecos} from './logica/texto';
+import {chaveLugar, chaveRua, decompor, extrairEnderecos} from './logica/texto';
 import type {Parada} from './logica/tipos';
 import {guarda, loja, status} from './loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from './servicos/arquivos';
@@ -89,11 +89,18 @@ export async function garantirRegiao(): Promise<void> {
   loja.mudou();
 }
 
+export function centroDasEntregas() {
+  const comLocal = e().paradas.filter(p => p.lat != null && p.lng != null);
+  if (comLocal.length) return {lat: mediana(comLocal.map(p => p.lat!)), lng: mediana(comLocal.map(p => p.lng!))};
+  const r = e().regiao;
+  return r ? {lat: r.lat, lng: r.lng} : null;
+}
+
 export async function buscarParada(p: Parada) {
   if (memoria.aplicar(p)) return;
   await garantirRegiao();
   try {
-    const cands = await geocodificar(p.texto, {cidade: e().cidade, googleKey: e().googleKey});
+    const cands = await geocodificar(p.texto, {cidade: e().cidade, googleKey: e().googleKey, perto: centroDasEntregas()});
     p.candidatos = cands;
     if (cands.length) Object.assign(p, {lat: cands[0].lat, lng: cands[0].lng, exibido: cands[0].exibido, precisao: cands[0].precisao});
     else Object.assign(p, {lat: null, lng: null, exibido: '', precisao: 'nao'});
@@ -307,7 +314,11 @@ function guardarPassagem(p: Parada) {
   navigator.geolocation.getCurrentPosition(pos => {
     const {latitude, longitude, accuracy} = pos.coords;
     if (accuracy > GPS_PASSAGEM || foraDaRegiao({lat: latitude, lng: longitude})) return;
-    fila.enfileirar({tipo: 'observacao', chave, lat: +latitude.toFixed(6), lng: +longitude.toFixed(6), precisao: Math.round(accuracy), rua: p.texto.slice(0, 200)});
+    const rua = decompor(p.texto).rua;
+    fila.enfileirar({
+      tipo: 'observacao', chave, lat: +latitude.toFixed(6), lng: +longitude.toFixed(6), precisao: Math.round(accuracy),
+      endereco: p.texto.slice(0, 300), rua: rua.slice(0, 200), ruaChave: chaveRua(rua).slice(0, 200),
+    });
     enviarFila();
   }, () => {}, {enableHighAccuracy: true, timeout: 10000, maximumAge: 5000});
 }

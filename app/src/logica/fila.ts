@@ -22,7 +22,7 @@ export type Operacao =
   | {tipo: 'entregue'; rota: string; tns: string[]; quando: string | null}
   | {tipo: 'correcao'; chave: string; lat: number; lng: number}
   | {tipo: 'desfazerCorrecao'; chave: string; lat: number; lng: number}
-  | {tipo: 'observacao'; chave: string; lat: number; lng: number; precisao: number; rua: string};
+  | {tipo: 'observacao'; chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string};
 
 export class ErroNuvem extends Error {
   constructor(mensagem: string, readonly deRede: boolean) { super(mensagem); }
@@ -35,7 +35,7 @@ export interface ClienteNuvem {
   marcarEntregue(rotaId: string, tns: string[], quando: string | null): Promise<void>;
   inserirCorrecao(chave: string, lat: number, lng: number): Promise<void>;
   apagarCorrecao(chave: string, lat: number, lng: number): Promise<void>;
-  inserirObservacao(o: {chave: string; lat: number; lng: number; precisao: number; rua: string}): Promise<void>;
+  inserirObservacao(o: {chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string}): Promise<void>;
   posicoes(chaves: string[]): Promise<PosicaoCompartilhada[]>;
 }
 

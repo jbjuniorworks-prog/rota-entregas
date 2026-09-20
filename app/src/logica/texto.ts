@@ -170,6 +170,8 @@ export function palavrasRua(nome: string): string[] {
   return normal(nome).replace(TIPOS_RUA, '').replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(w => w.length > 1 && !PALAVRAS_VAZIAS.has(w));
 }
 
+export const chaveRua = (nome: string): string => palavrasRua(nome).join(' ');
+
 export function mesmaRua(procurada: string, achada: string): boolean {
   const a = palavrasRua(procurada), b = new Set(palavrasRua(achada));
   if (!a.length || !b.size) return false;

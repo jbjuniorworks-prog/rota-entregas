@@ -8,13 +8,16 @@ create table public.observacoes (
   lat double precision not null check (lat between -90 and 90),
   lng double precision not null check (lng between -180 and 180),
   precisao_m real not null check (precisao_m >= 0 and precisao_m <= 100),
+  endereco text check (endereco is null or length(endereco) <= 300),
   rua text check (rua is null or length(rua) <= 200),
+  rua_chave text check (rua_chave is null or length(rua_chave) <= 200),
   motorista_id uuid not null default auth.uid() references public.perfis (id),
   dia date not null default (now() at time zone 'America/Maceio')::date,
   criado_em timestamptz not null default now()
 );
 create index observacoes_chave on public.observacoes (chave_lugar, criado_em desc);
 create index observacoes_dia on public.observacoes (dia desc);
+create index observacoes_rua on public.observacoes (rua_chave) where rua_chave is not null;
 create unique index observacoes_por_dia on public.observacoes (chave_lugar, motorista_id, dia);
 
 alter table public.observacoes enable row level security;

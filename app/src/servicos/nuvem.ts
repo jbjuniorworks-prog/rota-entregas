@@ -94,9 +94,9 @@ export function clienteNuvem(): ClienteNuvem | null {
       const {error} = await s.from('correcoes').delete().eq('chave_lugar', chave).eq('lat', lat).eq('lng', lng);
       if (error) throw erro(error);
     },
-    async inserirObservacao({chave, lat, lng, precisao, rua}) {
+    async inserirObservacao({chave, lat, lng, precisao, endereco, rua, ruaChave}) {
       const {error} = await s.from('observacoes').upsert(
-        {chave_lugar: chave, lat, lng, precisao_m: precisao, rua},
+        {chave_lugar: chave, lat, lng, precisao_m: precisao, endereco, rua, rua_chave: ruaChave},
         {onConflict: 'chave_lugar,motorista_id,dia', ignoreDuplicates: true});
       if (error) throw erro(error);
     },

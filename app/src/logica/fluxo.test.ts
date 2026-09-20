@@ -202,6 +202,13 @@ describe('fila da nuvem', () => {
     expect(f.pendentes()).toBe(0);
     expect(f.erro()).toContain('row-level security');
   });
+  it('passagem recusada some sem assustar o motorista', async () => {
+    const g = guardaNaMemoria(), f = criarFila(g), {c} = servidor({recusar: 'tabela não existe'});
+    f.enfileirar({tipo: 'observacao', chave: 'x|1', lat: 1, lng: 1, precisao: 10, endereco: 'Rua Um, 1', rua: 'Rua Um', ruaChave: 'um'});
+    await f.enviar(c);
+    expect(f.pendentes()).toBe(0);
+    expect(f.erro()).toBe('');
+  });
   it('sem login, não envia', async () => {
     const g = guardaNaMemoria(), f = criarFila(g);
     f.enfileirar(...ops);

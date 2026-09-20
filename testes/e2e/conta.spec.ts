@@ -54,11 +54,21 @@ test.describe('administrador', () => {
         {chave_lugar: CHAVE, lat: -10.93, lng: -37.07, criado_em: agora, motorista_id: 'm2', perfis: {nome: 'Pedro', papel: 'motorista'}},
       ],
     };
-    nuvem.rpc = {posicoes: [{chave_lugar: CHAVE, lat: -10.9201, lng: -37.0601, situacao: 'sugestao', motoristas: 1, minha: false}]};
+    nuvem.rpc = {
+      posicoes: [{chave_lugar: CHAVE, lat: -10.9201, lng: -37.0601, situacao: 'sugestao', motoristas: 1, minha: false}],
+      cobertura: [{ruas_com_nome: 3548, trechos_sem_nome: 970, trechos_nossos: 4, passagens: 130, lugares: 96, lugares_confirmados: 21}],
+      nomear_ruas: [{trechos: 4, ruas: 2}],
+    };
 
     await abrir(page);
     await page.getByRole('button', {name: '⚙️ Admin'}).click();
     await expect(page.getByText('Motoristas (2)')).toBeVisible();
+
+    await expect(page.getByText(/3548 ruas com nome · 970 trechos ainda sem nome/)).toBeVisible();
+    await expect(page.getByText(/130 entregas marcadas na porta, em 96 endereços · 21 já com posição confirmada/)).toBeVisible();
+    await page.getByRole('button', {name: 'Nomear ruas com as entregas'}).click();
+    await expect(aviso(page)).toContainText('4 trecho(s) ganharam nome, em 2 rua(s).');
+    expect(nuvem.pedidos.some(p => p.caminho === 'rpc/nomear_ruas')).toBe(true);
 
     const rota = page.locator('[data-rota="r1"]');
     await expect(rota).toContainText('Luan · 1/2 entregues');
