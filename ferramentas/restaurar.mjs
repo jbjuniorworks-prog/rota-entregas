@@ -7,6 +7,8 @@ import {ambiente, api, linhasDe, usuariosDe, TABELAS} from './banco.mjs';
 const PADRAO = join(process.env.USERPROFILE || process.env.HOME || '.', 'OneDrive', 'backups', 'rota-entregas');
 const alvo = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : ultimoBackup();
 const soConferir = process.argv.includes('--so-conferir');
+const manter = process.argv.includes('--manter');
+const soLimpar = process.argv.includes('--limpar');
 
 function ultimoBackup() {
   const dias = readdirSync(PADRAO).filter(n => /^\d{4}-\d{2}-\d{2}$/.test(n)).sort();
@@ -38,6 +40,33 @@ async function enviar(tabela, linhas, opcoes = '') {
   }
 }
 
+const TABELAS_DE_DADOS = ['pacotes', 'rotas', 'correcoes', 'observacoes', 'ruas'];
+
+async function limpar(contas) {
+  for (const t of TABELAS_DE_DADOS) {
+    await doTeste(`/rest/v1/${t}?id=not.is.null`, {method: 'DELETE', headers: {Prefer: 'return=minimal'}});
+  }
+  const usuariosLa = await usuariosDe(doTeste);
+  let apagadas = 0;
+  for (const email of contas) {
+    const u = usuariosLa.find(x => (x.email || '').toLowerCase() === (email || '').trim().toLowerCase());
+    if (u) { await doTeste(`/auth/v1/admin/users/${u.id}`, {method: 'DELETE'}); apagadas++; }
+  }
+  const sobrou = [];
+  for (const t of TABELAS_DE_DADOS) {
+    const n = (await linhasDe(doTeste, t)).length;
+    if (n) sobrou.push(`${t}: ${n}`);
+  }
+  console.log(sobrou.length
+    ? `\n⚠️ Ainda sobrou no projeto de teste: ${sobrou.join(', ')}`
+    : `\n🧹 Projeto de teste limpo: nenhum dado de cliente ficou lá${apagadas ? ` (${apagadas} conta(s) apagada(s))` : ''}.`);
+}
+
+if (soLimpar) {
+  await limpar(ler('usuarios').map(u => u.email));
+  process.exit(0);
+}
+
 console.log(`Restaurando ${alvo}\n`);
 const usuarios = ler('usuarios');
 const jaLa = await usuariosDe(doTeste);
@@ -62,7 +91,7 @@ if (!soConferir) {
     if (id) await doTeste(`/rest/v1/perfis?id=eq.${id}`, {method: 'PATCH', body: JSON.stringify({nome: p.nome, papel: p.papel, ativo: p.ativo})});
   }
   await enviar('rotas', ler('rotas').map(trocar), '?on_conflict=id');
-  await enviar('pacotes', ler('pacotes').map(({id, ...resto}) => resto));
+  await enviar('pacotes', ler('pacotes').map(({id, ...resto}) => resto), '?on_conflict=rota_id,spx_tn');
   await enviar('correcoes', ler('correcoes').map(({id, ...resto}) => trocar(resto)));
   await enviar('observacoes', ler('observacoes').map(({id, ...resto}) => trocar(resto)));
   await enviar('ruas', ler('ruas').map(({id, ...resto}) => resto), '?on_conflict=osm_id');
@@ -97,4 +126,6 @@ const daCasaContagem = await linhasDe(daCasa, 'correcoes');
 console.log(`\ncorreções no banco de verdade agora: ${daCasaContagem.length}`);
 if (criadas.length) console.log('\nContas criadas no projeto de teste (senhas só valem lá):\n  ' + criadas.join('\n  '));
 console.log(tudoIgual ? '\n✅ Restauração conferida: o backup volta inteiro.' : '\n❌ Faltou dado na restauração — olhe as linhas marcadas acima.');
+if (manter) console.log('Os dados ficaram lá (--manter). Para apagar: npm run restaurar -- --limpar');
+else await limpar(criadas.map(c => c.split(':')[0]));
 process.exit(tudoIgual ? 0 : 1);
