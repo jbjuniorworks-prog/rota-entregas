@@ -199,3 +199,16 @@ grant execute on function public.nomear_ruas(int), public.cobertura() to authent
 alter table public.ruas add column if not exists tipo text;
 alter table public.ruas add column if not exists nome_chave2 text;
 create index if not exists ruas_chave2 on public.ruas (nome_chave2) where nome_chave2 is not null;
+
+-- ===== 008_bairro_rua.sql =====
+-- Guarda o bairro de cada trecho de rua, para não confundir a "Rua B" de um bairro
+-- com a "Rua B" de outro. Rodar uma vez em SQL Editor. Depois: npm run ruas -- Aracaju
+alter table public.ruas add column if not exists bairro text;
+create index if not exists ruas_bairro on public.ruas (bairro) where bairro is not null;
+
+-- ===== 009_conjunto_rua.sql =====
+-- Guarda também o conjunto/loteamento/condomínio de cada trecho: é ele que diferencia
+-- a "Rua B" de um conjunto da "Rua B" do conjunto ao lado.
+-- Rodar uma vez em SQL Editor. Depois: npm run ruas -- Aracaju
+alter table public.ruas add column if not exists conjunto text;
+create index if not exists ruas_conjunto on public.ruas (conjunto) where conjunto is not null;

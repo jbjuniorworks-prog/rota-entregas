@@ -167,10 +167,22 @@ export function juntarLeituras(leituras: string[], apoio: string[] = []): string
 }
 
 export function palavrasRua(nome: string): string[] {
-  return normal(nome).replace(TIPOS_RUA, '').replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(w => w.length > 1 && !PALAVRAS_VAZIAS.has(w));
+  return normal(nome).replace(TIPOS_RUA, '').replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(w => w && !PALAVRAS_VAZIAS.has(w));
 }
 
 export const chaveRua = (nome: string): string => palavrasRua(nome).join(' ');
+
+const AREA = /^(conjunto|conj|loteamento|lot|residencial|resid|condom[ií]nio|cond|vila|parque|jardim|quadra|qd)\b\.?\s*/i;
+
+export function conjuntoDoEndereco(texto: string, bairro = ''): string {
+  const d = decompor(analisarLinha(texto).texto);
+  const partes = [...d.resto, bairro].map(x => (x || '').trim()).filter(Boolean);
+  const achado = partes.find(x => AREA.test(x));
+  if (!achado) return '';
+  return achado.replace(/\s+\b(ap(to|artamento)?|bl(oco|c)?|casa|sala|loja)\b.*$/i, '').replace(/[,;].*$/, '').trim();
+}
+
+export const semTipoDeArea = (nome: string): string => normal(nome).replace(AREA, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
 export const tipoDaRua = (nome: string): string => TIPO_VIA[normal(nome).replace(/[^a-z0-9 ]/g, ' ').split(' ')[0]] || '';
 

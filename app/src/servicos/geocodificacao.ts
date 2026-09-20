@@ -1,6 +1,6 @@
 import {haversine} from '../logica/geo';
 import {RANK} from '../logica/rotulos';
-import {decompor, mesmaRua, normal} from '../logica/texto';
+import {conjuntoDoEndereco, decompor, mesmaRua, normal} from '../logica/texto';
 import type {Candidato, Ponto, Precisao, Regiao} from '../logica/tipos';
 import {ruaNaBase} from './base';
 import {buscarJson, espacado} from './rede';
@@ -109,7 +109,7 @@ export function comCidade(txt: string, cidade: string): string {
   return nome && normal(txt).includes(nome) ? txt : txt + ', ' + cidade;
 }
 
-async function geoOSM(txt: string, cidade: string, perto: Ponto | null): Promise<Candidato[]> {
+async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: string): Promise<Candidato[]> {
   const d = decompor(txt);
   const cep = d.cep ? await cepComCoordenada(d.cep) : null;
   const logradouro = (cep && cep.logradouro) || d.rua;
@@ -133,7 +133,9 @@ async function geoOSM(txt: string, cidade: string, perto: Ponto | null): Promise
       cands.push(c);
     }
   };
-  const naBase = logradouro ? await ruaNaBase(logradouro, cep ? `${cep.cidade}, ${cep.uf}` : cidade, perto) : null;
+  const naBase = logradouro
+    ? await ruaNaBase(logradouro, cep ? `${cep.cidade}, ${cep.uf}` : cidade, perto, bairro || (cep ? cep.bairro : ''), conjuntoDoEndereco(txt, bairro))
+    : null;
   if (naBase && !foraDaRegiao(naBase)) return [naBase];
   const bom = () => cands.some(c => c.precisao === 'exato' || c.precisao === 'bom');
   const naRua = () => cands.some(c => c.precisao === 'exato' || c.precisao === 'bom' || c.precisao === 'rua');
@@ -180,8 +182,8 @@ async function geoGoogle(txt: string, cidade: string, chave: string): Promise<Ca
   });
 }
 
-export async function geocodificar(txt: string, opcoes: {cidade: string; googleKey: string; perto?: Ponto | null}): Promise<Candidato[]> {
-  let cands = opcoes.googleKey ? await geoGoogle(txt, opcoes.cidade, opcoes.googleKey) : await geoOSM(txt, opcoes.cidade, opcoes.perto || null);
+export async function geocodificar(txt: string, opcoes: {cidade: string; googleKey: string; perto?: Ponto | null; bairro?: string}): Promise<Candidato[]> {
+  let cands = opcoes.googleKey ? await geoGoogle(txt, opcoes.cidade, opcoes.googleKey) : await geoOSM(txt, opcoes.cidade, opcoes.perto || null, opcoes.bairro || '');
   const vistos = new Set<string>();
   cands = cands.filter(c => {
     const k = c.lat.toFixed(5) + ',' + c.lng.toFixed(5);

@@ -100,7 +100,7 @@ export async function buscarParada(p: Parada) {
   if (memoria.aplicar(p)) return;
   await garantirRegiao();
   try {
-    const cands = await geocodificar(p.texto, {cidade: e().cidade, googleKey: e().googleKey, perto: centroDasEntregas()});
+    const cands = await geocodificar(p.texto, {cidade: e().cidade, googleKey: e().googleKey, perto: centroDasEntregas(), bairro: p.bairro || ''});
     p.candidatos = cands;
     if (cands.length) Object.assign(p, {lat: cands[0].lat, lng: cands[0].lng, exibido: cands[0].exibido, precisao: cands[0].precisao});
     else Object.assign(p, {lat: null, lng: null, exibido: '', precisao: 'nao'});

@@ -1,4 +1,4 @@
-import {analisarLinha, chaveEndereco, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, normal, ruaCompleta} from './texto';
+import {analisarLinha, chaveEndereco, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, normal, ruaCompleta} from './texto';
 
 describe('decompor', () => {
   it.each([
@@ -147,6 +147,19 @@ describe('extrairEnderecos (texto de print ou PDF)', () => {
   it('continua ignorando ruído que começa parecido com rua', () => {
     expect(extrairEnderecos('R$ 12,00\nBR 101 km 5\nR 12\nRua x\nRua B')).toEqual([]);
     expect(analisarLinha('BR 101, 200')).toMatchObject({ml: null, texto: 'BR 101, 200'});
+  });
+});
+
+describe('conjunto do endereço', () => {
+  it('acha conjunto, loteamento e condomínio, no complemento ou no bairro', () => {
+    expect(conjuntoDoEndereco('Rua B, 120, Conjunto Augusto Franco, CEP 49040-000')).toBe('Conjunto Augusto Franco');
+    expect(conjuntoDoEndereco('Rua D, 49, Bloco 3 ap 201', 'Conjunto Orlando Dantas')).toBe('Conjunto Orlando Dantas');
+    expect(conjuntoDoEndereco('Rua F, 10, Loteamento Aquário casa 2')).toBe('Loteamento Aquário');
+    expect(conjuntoDoEndereco('Rua das Flores, 100, Centro')).toBe('');
+  });
+  it('compara conjunto ignorando a palavra conjunto/residencial', () => {
+    expect(semTipoDeArea('Conjunto Augusto Franco')).toBe(semTipoDeArea('Augusto Franco'));
+    expect(semTipoDeArea('Residencial Serigy')).toBe('serigy');
   });
 });
 
