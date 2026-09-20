@@ -104,7 +104,8 @@ export async function montar(page: Page) {
 }
 
 export async function ordem(page: Page, nomes: string[]): Promise<string[]> {
-  const texto = await page.locator('body').innerText();
+  const cartoes = await page.locator('[data-item]').allInnerTexts();
+  const texto = cartoes.join(' | ');
   return nomes.filter(n => texto.includes(n)).sort((a, b) => texto.indexOf(a) - texto.indexOf(b));
 }
 

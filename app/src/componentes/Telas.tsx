@@ -1,7 +1,7 @@
 import {useState, type ReactNode} from 'react';
 import * as A from '../acoes';
 import {backupRecente} from '../logica/guarda';
-import {blocos, fmtKm, fmtMin, gruposNoMapa, linkMaps, linkMapsVarios, linkWaze, trechos} from '../logica/otimizacao';
+import {blocos, fmtKm, fmtMin, gruposNoMapa, linkMaps, linkMapsVarios, linkWaze, porPerto, trechos} from '../logica/otimizacao';
 import {previsoes} from '../logica/previsao';
 import {COR_PRECISAO, CORES, DUVIDA, NO_NUMERO, QUASE, ROTULO} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
@@ -309,6 +309,7 @@ export function TelaRota() {
     const pend = agora.b.map(loja.parada).filter((p): p is Parada => !!p && !p.entregue);
     const alvo = pend[0];
     const trechoAtual = trechosDe(agora.ra)[0] || [];
+    const vizinhas = porPerto(e.paradas, alvo as Ponto, agora.b);
     const grupoAqui = gruposNoMapa(pend)[0];
     const pacotesAqui = grupoAqui ? grupoAqui.pacotes : 0;
     const enderecosAqui = grupoAqui ? grupoAqui.enderecos : 0;
@@ -322,6 +323,9 @@ export function TelaRota() {
       <div className="achado">📍 {alvo.exibido || alvo.texto}</div>
       {QUASE.has(alvo.precisao) && <div className="aviso laranja">🟠 Este é o ponto mais perto que achamos: a rua está certa, o número é aproximado. Confira o número na porta.</div>}
       <div className="info" style={{marginTop: 4}}>Chegou e o pino está errado? <button className="btn peq" onClick={() => A.estouAqui(alvo)}>📍 Estou aqui</button></div>
+      {vizinhas.length > 0 && <div className="aviso" style={{margin: '4px 0'}}>🚶 Aqui perto, fora desta parada: {vizinhas.slice(0, 3).map(v =>
+        <span key={v.p.id}> <b onClick={() => A.focar(v.p.id)}>{v.p.ml ? `#${v.p.ml} ` : ''}{v.p.texto.split(',').slice(0, 2).join(',')}</b> (~{Math.round(v.distancia)} m){v.p.unidades ? ` · ${v.p.unidades} pacotes` : ''};</span>)}
+        {vizinhas.length > 3 ? ` e mais ${vizinhas.length - 3}.` : ''}</div>}
       <div className="linha">
         <a className="btn waze" href={linkWaze(alvo as Ponto)} target="_blank" rel="noopener">Waze</a>
         <a className="btn pri" href={linkMaps(alvo as Ponto)} target="_blank" rel="noopener">Google Maps</a>

@@ -45,7 +45,7 @@ export const ehVideo = (f: Arquivo) => (f.type || '').startsWith('video/') || /\
 
 const PERFIL_LARGURA = 32, PERFIL_ALTURA = 240;
 
-export async function quadrosDoVideo(f: Blob, aviso: Aviso): Promise<{quadros: Blob[]; rapido: boolean}> {
+export async function quadrosDoVideo(f: Blob, aviso: Aviso, cada: (q: Blob, i: number, total: number) => Promise<void>): Promise<{rapido: boolean}> {
   const v = document.createElement('video');
   v.muted = true; v.playsInline = true; v.preload = 'auto';
   const url = URL.createObjectURL(f);
@@ -83,14 +83,18 @@ export async function quadrosDoVideo(f: Blob, aviso: Aviso): Promise<{quadros: B
     const grande = document.createElement('canvas');
     grande.width = v.videoWidth; grande.height = v.videoHeight;
     const cg = grande.getContext('2d')!;
-    const quadros: Blob[] = [];
-    for (const i of indices) {
+    for (const [n, i] of indices.entries()) {
       await ir(tempos[i]);
       cg.drawImage(v, 0, 0);
-      quadros.push(await new Promise<Blob>((ok, falha) => grande.toBlob(b => b ? ok(b) : falha(new Error('quadro vazio')), 'image/png')));
+      const quadro = await new Promise<Blob>((ok, falha) => grande.toBlob(b => b ? ok(b) : falha(new Error('quadro vazio')), 'image/png'));
+      await cada(quadro, n + 1, indices.length);
     }
-    return {quadros, rapido};
+    grande.width = grande.height = 0;
+    pequeno.width = pequeno.height = 0;
+    return {rapido};
   } finally {
+    v.src = '';
+    v.load();
     URL.revokeObjectURL(url);
   }
 }
@@ -137,10 +141,10 @@ async function lerPdf(file: Arquivo, aviso: Aviso) {
   return {linhas, imagens};
 }
 
-async function prepararImagem(file: Blob): Promise<Blob> {
+async function prepararImagem(file: Blob, alvoLargura = 1700): Promise<Blob> {
   try {
     const bmp = await createImageBitmap(file);
-    const escala = Math.min(3, Math.max(1, 1700 / bmp.width));
+    const escala = Math.min(3, Math.max(1, alvoLargura / bmp.width));
     const w = Math.round(bmp.width * escala), h = Math.round(bmp.height * escala);
     const cv = document.createElement('canvas');
     cv.width = w; cv.height = h;
@@ -155,7 +159,9 @@ async function prepararImagem(file: Blob): Promise<Blob> {
       d[i] = d[i + 1] = d[i + 2] = v;
     }
     cx.putImageData(img, 0, 0);
-    return await new Promise(r => cv.toBlob(b => r(b || file), 'image/png'));
+    const saida = await new Promise<Blob>(r => cv.toBlob(b => r(b || file), 'image/png'));
+    cv.width = cv.height = 0;
+    return saida;
   } catch {
     return file;
   }
@@ -166,36 +172,30 @@ interface Imagem {
   doVideo: boolean;
 }
 
-async function lerImagens(imagens: Imagem[], aviso: Aviso): Promise<string[][]> {
+async function abrirLeitor() {
   const w = window as any;
   if (!w.Tesseract) await carregarScript(TESSERACT, 'sem internet para o leitor');
-  const worker = await w.Tesseract.createWorker('por');
-  const porImagem: string[][] = [];
-  try {
-    for (let i = 0; i < imagens.length; i++) {
-      const {blob, doVideo} = imagens[i];
-      const rotulo = imagens.length > 1 ? ` (${i + 1} de ${imagens.length})` : '';
-      aviso(`Lendo os endereços…${rotulo}`);
-      const tratada = await prepararImagem(blob);
-      const tentativas = doVideo
-        ? [{imagem: tratada, psm: '4'}, {imagem: blob, psm: '3'}]
-        : [{imagem: tratada, psm: '4'}, {imagem: tratada, psm: '6'}, {imagem: blob, psm: '3'}];
-      const leituras: string[] = [], apoio: string[] = [];
-      for (const t of tentativas) {
-        await worker.setParameters({tessedit_pageseg_mode: t.psm, preserve_interword_spaces: '1'});
-        const {data} = await worker.recognize(t.imagem);
-        (t.imagem === blob ? apoio : leituras).push(...extrairEnderecos(data.text));
-      }
-      porImagem.push(juntarLeituras(leituras, apoio));
-    }
-  } finally {
-    await worker.terminate();
+  return w.Tesseract.createWorker('por');
+}
+
+async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo: string): Promise<string[]> {
+  aviso(`Lendo os endereços…${rotulo}`);
+  const tratada = await prepararImagem(blob, doVideo ? 1000 : 1700);
+  const tentativas = doVideo
+    ? [{imagem: tratada, psm: '4'}, {imagem: blob, psm: '3'}]
+    : [{imagem: tratada, psm: '4'}, {imagem: tratada, psm: '6'}, {imagem: blob, psm: '3'}];
+  const leituras: string[] = [], apoio: string[] = [];
+  for (const t of tentativas) {
+    await worker.setParameters({tessedit_pageseg_mode: t.psm, preserve_interword_spaces: '1'});
+    const {data} = await worker.recognize(t.imagem);
+    (t.imagem === blob ? apoio : leituras).push(...extrairEnderecos(data.text));
   }
-  return porImagem;
+  return juntarLeituras(leituras, apoio);
 }
 
 export async function lerArquivos(files: Arquivo[], aviso: Aviso): Promise<string[] & {avisos: string[]}> {
   const imagens: Imagem[] = [], grupos: string[][] = [], avisos: string[] = [];
+  const videos: Arquivo[] = [];
   for (const f of files) {
     if ((f.type || '').includes('pdf') || /\.pdf$/i.test(f.name || '')) {
       const r = await lerPdf(f, aviso);
@@ -204,11 +204,31 @@ export async function lerArquivos(files: Arquivo[], aviso: Aviso): Promise<strin
     } else if ((f.type || '').startsWith('text/') || /\.txt$/i.test(f.name || '')) {
       grupos.push(extrairEnderecos(await f.text()));
     } else if (ehVideo(f)) {
-      const {quadros, rapido} = await quadrosDoVideo(f, aviso);
-      if (rapido) avisos.push('Parte do vídeo rolou rápido demais: confira se faltou alguma parada.');
-      imagens.push(...quadros.map(blob => ({blob, doVideo: true})));
+      videos.push(f);
     } else imagens.push({blob: f, doVideo: false});
   }
-  if (imagens.length) grupos.push(...await lerImagens(imagens, aviso));
+  if (imagens.length || videos.length) {
+    let worker = await abrirLeitor(), lidas = 0;
+    const descansar = async () => {
+      if (++lidas % 8) return;
+      await worker.terminate();
+      worker = await abrirLeitor();
+    };
+    try {
+      for (let i = 0; i < imagens.length; i++) {
+        grupos.push(await lerUma(worker, imagens[i], aviso, imagens.length > 1 ? ` (${i + 1} de ${imagens.length})` : ''));
+        await descansar();
+      }
+      for (const f of videos) {
+        const {rapido} = await quadrosDoVideo(f, aviso, async (quadro, n, total) => {
+          grupos.push(await lerUma(worker, {blob: quadro, doVideo: true}, aviso, ` (parte ${n} de ${total})`));
+          await descansar();
+        });
+        if (rapido) avisos.push('Parte do vídeo rolou rápido demais: confira se faltou alguma parada.');
+      }
+    } finally {
+      await worker.terminate();
+    }
+  }
   return Object.assign(juntarQuadros(grupos), {avisos});
 }

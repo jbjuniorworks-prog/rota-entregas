@@ -76,6 +76,20 @@ export function gruposNoMapa(paradas: Parada[], raio = RAIO_BLOCO): GrupoNoMapa[
   }));
 }
 
+export interface PertoDali {
+  p: Parada;
+  distancia: number;
+}
+
+export function porPerto(paradas: Parada[], alvo: Ponto, semEstes: string[], ateMetros = 200): PertoDali[] {
+  const fora = new Set(semEstes);
+  return paradas
+    .filter(p => !p.entregue && !fora.has(p.id) && p.lat != null && p.lng != null)
+    .map(p => ({p, distancia: haversine(alvo, p as Ponto)}))
+    .filter(x => x.distancia > RAIO_BLOCO && x.distancia <= ateMetros)
+    .sort((a, b) => a.distancia - b.distancia);
+}
+
 export function blocos(ordem: string[], parada: (id: string) => Parada | undefined, raio = RAIO_BLOCO): string[][] {
   const out: string[][] = [];
   for (const id of ordem) {

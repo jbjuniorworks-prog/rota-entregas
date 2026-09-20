@@ -29,6 +29,8 @@ test.describe('com GPS', () => {
     await carregar(page, ROTA_B);
     await montar(page);
     expect((await ordem(page, NOMES)).slice(0, 2)).toEqual([P1, Q]);
+    await expect(page.locator('.proxima')).toContainText('Aqui perto, fora desta parada');
+    await expect(page.locator('.proxima')).toContainText(/Rua Oeste, 150.*~1\d\d m/);
     await linhaDe(page, P1, 'Entregue').getByRole('button', {name: 'Entregue'}).click();
     await expect(aviso(page)).toContainText(/Próxima a ~1[45]0 m: Rua Oeste, 150\. Dá para ir a pé\./);
   });
