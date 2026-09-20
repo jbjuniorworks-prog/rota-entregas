@@ -46,11 +46,11 @@ export async function montarRota() {
   loja.mudou();
 }
 
-export function marcarEntregue(p: Parada, entregue: boolean) {
+export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = true) {
   p.entregue = entregue;
   p.entregueEm = entregue ? Date.now() : null;
   loja.mudou();
-  if (entregue && e().rota) {
+  if (entregue && avisarProxima && e().rota) {
     const proxima = e().rota!.areas.flatMap(a => a.ordem).map(loja.parada).find(x => x && !x.entregue && x.lat != null);
     const d = proximaAPe(p, proxima);
     if (d && proxima) {
@@ -63,6 +63,17 @@ export function marcarEntregue(p: Parada, entregue: boolean) {
     fila.enfileirar({tipo: 'entregue', rota: p.rota, tns: p.pacotes, quando: entregue ? new Date(p.entregueEm!).toISOString() : null});
     enviarFila();
   }
+}
+
+export function entregarTodas(ps: Parada[]) {
+  const faltando = ps.filter(p => !p.entregue);
+  if (!faltando.length) return;
+  const pacotes = faltando.reduce((n, p) => n + (p.unidades || 1), 0);
+  if (!confirm(`Marcar como entregue tudo desta parada?
+
+${faltando.length} entrega(s), ${pacotes} pacote(s).`)) return;
+  faltando.forEach((p, i) => marcarEntregue(p, true, i === faltando.length - 1));
+  status(`${faltando.length} entrega(s) marcada(s) aqui. Se sobrou alguma, toque no ↺ dela.`, 6000);
 }
 
 export function deixarParaDepois(p: Parada) {

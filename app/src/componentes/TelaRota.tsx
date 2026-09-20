@@ -138,6 +138,7 @@ export function TelaRota() {
       {trechoAtual.length > 1 && <div className="linha"><a className="btn pri" href={linkMapsVarios(trechoAtual.map(x => x.alvo))} target="_blank" rel="noopener">
         🗺️ Maps com os próximos {trechoAtual.filter(x => x.ids.length).length} pontos ({entregasTrecho} entregas){trechoAtual.some(x => !x.ids.length) ? ' + 🏁' : ''}</a></div>}
       <div style={{marginTop: 8}}>{agora.b.map(loja.parada).map(p => <LinhaParada key={p!.id} p={p!} comWaze={pend.length > 1} />)}</div>
+      {pend.length > 1 && <div className="linha"><button className="btn ok" onClick={() => A.entregarTodas(pend)}>✓ Entreguei as {pend.length} daqui</button></div>}
       {pend.length > 1 && <div className="info" style={{marginTop: 6}}>Chegando, use o mapa do app de entregas para achar a porta de cada uma.</div>}
     </div>;
   } else {
@@ -185,7 +186,10 @@ export function TelaRota() {
             return <div className="item" key={b[0]}>
               <div className="bloco-cab">
                 <span style={{flex: 1}}>Parada {k + 1}{b.length > 1 ? ` · ${b.length} entregas ${mesmoEndereco(bp.map(p => p.texto)) ? 'no mesmo endereço' : 'perto'}` : ''}{perna && perna.dur ? ` · 🚗 ${fmtMin(perna.dur)}` : ''}</span>
-                {pend.length ? <a className="btn peq waze" href={linkWaze(pend[0] as Ponto)} target="_blank" rel="noopener">Waze</a> : '✓'}
+                {pend.length ? <>
+                  {pend.length > 1 && <button className="btn peq ok" onClick={() => A.entregarTodas(pend)}>✓ todas</button>}
+                  <a className="btn peq waze" href={linkWaze(pend[0] as Ponto)} target="_blank" rel="noopener">Waze</a>
+                </> : '✓'}
               </div>
               {bp.map(p => <LinhaParada key={p.id} p={p} comWaze={false} />)}
             </div>;

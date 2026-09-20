@@ -1,4 +1,4 @@
-import {test, expect, abrir, carregar, aviso, aba, montar, ordem, linhaDe, clicarMapa, pontosNoMaps, ROTA_B} from './apoio';
+import {test, expect, abrir, carregar, aviso, aba, montar, ordem, linhaDe, clicarMapa, pontosNoMaps, ROTA_A, ROTA_B} from './apoio';
 
 const P1 = 'Rua Oeste, 1, Bairro';
 const Q = 'Rua Oeste, 150';
@@ -33,6 +33,34 @@ test.describe('com GPS', () => {
     await expect(page.locator('.proxima')).toContainText(/Rua Oeste, 150.*~1\d\d m/);
     await linhaDe(page, P1, 'Entregue').getByRole('button', {name: 'Entregue'}).click();
     await expect(aviso(page)).toContainText(/Próxima a ~1[45]0 m: Rua Oeste, 150\. Dá para ir a pé\./);
+  });
+
+  test('dá para entregar tudo da parada de uma vez, e continua dando para marcar uma a uma', async ({page}) => {
+    const perguntas: string[] = [];
+    page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const cartao = page.locator('.proxima');
+    const umPorUm = cartao.getByRole('button', {name: 'Entregue', exact: true});
+    const todas = cartao.getByRole('button', {name: /Entreguei as \d+ daqui/});
+
+    let entregues = 0;
+    for (let i = 0; i < 15 && !(await todas.count()); i++) {
+      await umPorUm.first().click();
+      entregues++;
+      await page.waitForTimeout(250);
+    }
+    expect(entregues).toBeGreaterThan(0);
+    expect(await umPorUm.count()).toBe(2);
+
+    await todas.click();
+    expect(perguntas.at(-1)).toMatch(/Marcar como entregue tudo desta parada\?[\s\S]*2 entrega\(s\), \d+ pacote\(s\)/);
+    await expect(aviso(page)).toContainText('2 entrega(s) marcada(s) aqui');
+    await expect(page.getByText(`${entregues + 2}/10 entregues`)).toBeVisible();
+
+    await umPorUm.first().click();
+    await expect(page.getByText(`${entregues + 3}/10 entregues`)).toBeVisible();
   });
 
   test('deixar para depois tira a parada da sequência sem desmontar a rota, e dá para arrumar e voltar', async ({page}) => {
