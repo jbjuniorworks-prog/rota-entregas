@@ -41,6 +41,13 @@ trechos de rua que o mapa livre não tem. Consultas de endereço vão ao OpenStr
   projeto de teste** e as contas que criou, para não deixar cópia de endereço de cliente
   parada lá; `--manter` guarda, e `--limpar` apaga sem restaurar.
 
+## Trava contra vazar dado
+
+O repositório é público. `node ferramentas/guarda-segredos.mjs` recusa planilha fora de
+`testes/planilhas`, `.txt` solto, `.env`, chave/token, e-mail de pessoa real, código de pacote
+e telefone. Roda no `pre-commit` (`git config core.hooksPath ferramentas/hooks`, já configurado
+neste clone) e na publicação. Em caso de engano: `git commit --no-verify`.
+
 ## Testes e publicação
 
 - `npm run tipos`, `npm run test:unidade`, `npm test` (e2e sobre o build, com a nuvem simulada).

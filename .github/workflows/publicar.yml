@@ -21,6 +21,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: node ferramentas/guarda-segredos.mjs
       - run: npm run tipos
       - run: npm run test:unidade
       - run: npx playwright install --with-deps chromium
