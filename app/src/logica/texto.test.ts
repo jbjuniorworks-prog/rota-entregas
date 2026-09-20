@@ -156,6 +156,11 @@ describe('comparação de ruas', () => {
     expect(mesmaRua('Rua Maruim', 'Rua Laranjeiras')).toBe(false);
     expect(mesmaRua('Av. Presidente Tancredo Neves', 'Avenida Tancredo Neves')).toBe(true);
   });
+  it('nome mais curto que o pedido não vale: faltam palavras do endereço', () => {
+    expect(mesmaRua('Rua Antônio Carlos Vasconcelos Lima', 'Rua Carlos Vasconcelos')).toBe(false);
+    expect(mesmaRua('Rua Doutor Osório de Araújo Ramos', 'Rua Doutor Osório Ramos')).toBe(true);
+    expect(mesmaRua('Avenida Santos Santana', 'Avenida Jornalista Santos Santana')).toBe(true);
+  });
   it('normal e ruaCompleta', () => {
     expect(normal('  São   Cristóvão ')).toBe('sao cristovao');
     expect(ruaCompleta('Av. Beira-Mar')).toBe('avenida beira mar');

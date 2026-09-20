@@ -1,5 +1,5 @@
 import {readFileSync} from 'node:fs';
-import {chaveRua} from './chave-rua.mjs';
+import {chaveRua, tipoDaRua} from './chave-rua.mjs';
 
 const env = Object.fromEntries(readFileSync(new URL('../.env', import.meta.url), 'utf8')
   .split(/\r?\n/).filter(l => /^\w+=/.test(l)).map(l => l.split(/=(.*)/s).slice(0, 2)));
@@ -21,6 +21,13 @@ async function overpass(cidade) {
     await new Promise(s => setTimeout(s, 20000));
   }
   throw new Error('o servidor do mapa não respondeu');
+}
+
+function outroNome(tags) {
+  const outros = [tags.alt_name, tags.old_name, tags.official_name, tags.short_name]
+    .flatMap(n => (n || '').split(';')).map(n => chaveRua(n.trim())).filter(Boolean);
+  const principal = tags.name ? chaveRua(tags.name) : '';
+  return outros.find(n => n !== principal) || null;
 }
 
 const meio = pontos => {
@@ -53,6 +60,8 @@ for (const cidade of cidades) {
     osm_id: v.id,
     nome: v.tags.name || null,
     nome_chave: v.tags.name ? chaveRua(v.tags.name) : null,
+    tipo: v.tags.name ? tipoDaRua(v.tags.name) || null : null,
+    nome_chave2: outroNome(v.tags),
     cidade,
     ...meio(v.geometry),
     linha: simplificar(v.geometry),
