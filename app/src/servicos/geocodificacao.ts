@@ -133,9 +133,8 @@ async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: 
       cands.push(c);
     }
   };
-  const naBase = logradouro
-    ? await ruaNaBase(logradouro, cep ? `${cep.cidade}, ${cep.uf}` : cidade, perto, bairro || (cep ? cep.bairro : ''), conjuntoDoEndereco(txt, bairro))
-    : null;
+  const lugares = [bairro, cep ? cep.bairro : '', conjuntoDoEndereco(txt, bairro), ...d.resto].filter(Boolean);
+  const naBase = logradouro ? await ruaNaBase(logradouro, cep ? `${cep.cidade}, ${cep.uf}` : cidade, perto, lugares) : null;
   if (naBase && !foraDaRegiao(naBase)) return [naBase];
   const bom = () => cands.some(c => c.precisao === 'exato' || c.precisao === 'bom');
   const naRua = () => cands.some(c => c.precisao === 'exato' || c.precisao === 'bom' || c.precisao === 'rua');

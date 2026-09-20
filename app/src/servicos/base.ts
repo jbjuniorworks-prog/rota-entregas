@@ -24,21 +24,26 @@ export function pontoDoTrecho(t: Trecho, perto: Ponto | null): Ponto {
   return melhor;
 }
 
-export function escolherTrecho(trechos: Trecho[], cidade: string, perto: Ponto | null, tipo = '', bairro = '', conjunto = ''): Trecho | null {
+export function escolherTrecho(trechos: Trecho[], cidade: string, perto: Ponto | null, tipo = '', lugares: string[] = []): Trecho | null {
   if (!trechos.length) return null;
   const nome = normal(cidade.split(/[,\-\/]/)[0]);
   const daCidade = nome ? trechos.filter(t => normal(t.cidade) === nome) : [];
   const naCidade = daCidade.length ? daCidade : trechos;
   const doTipo = tipo ? naCidade.filter(t => !t.tipo || t.tipo === tipo) : [];
   const certos = doTipo.length ? doTipo : naCidade;
-  const c = semTipoDeArea(conjunto);
-  const doConjunto = c ? certos.filter(t => semTipoDeArea(t.conjunto || '') === c) : [];
-  const b = semTipoDeArea(bairro);
-  const doBairro = b ? certos.filter(t => semTipoDeArea(t.bairro || '') === b || semTipoDeArea(t.conjunto || '') === b) : [];
-  const lista = doConjunto.length ? doConjunto : doBairro.length ? doBairro : certos;
+  const ditos = [...new Set(lugares.map(semTipoDeArea).filter(x => x.length > 2))];
+  const bate = (a: string, b: string) => !!a && !!b && (a === b || a.includes(b) || b.includes(a));
+  const doLugar = ditos.length
+    ? certos.filter(t => ditos.some(d => bate(semTipoDeArea(t.conjunto || ''), d) || bate(semTipoDeArea(t.bairro || ''), d)))
+    : [];
+  const lista = doLugar.length ? doLugar : certos;
+  if (!doLugar.length && ehGenerica(trechos) && certos.length > 1) return null;
   if (!perto) return lista[0];
   return lista.reduce((a, b) => haversine(perto, pontoDoTrecho(b, perto)) < haversine(perto, pontoDoTrecho(a, perto)) ? b : a);
 }
+
+export const ehGenerica = (trechos: Trecho[]): boolean =>
+  trechos.some(t => palavrasRua(t.nome || '').join('').length <= 2);
 
 export function cabeNoNome(pedido: string, achado: string): boolean {
   const pedidas = palavrasRua(pedido), tem = new Set(palavrasRua(achado));
@@ -47,15 +52,26 @@ export function cabeNoNome(pedido: string, achado: string): boolean {
 
 const maiorPalavra = (rua: string) => palavrasRua(rua).sort((a, b) => b.length - a.length)[0] || '';
 
-export async function ruaNaBase(rua: string, cidade: string, perto: Ponto | null, bairro = '', conjunto = ''): Promise<Candidato | null> {
+export async function ruaNaBase(rua: string, cidade: string, perto: Ponto | null, lugares: string[] = []): Promise<Candidato | null> {
   const supa = nuvem.cliente;
   const chave = chaveRua(rua);
   if (!supa || !nuvem.sessao || !chave || !navigator.onLine) return null;
   try {
     const campos = 'nome, tipo, bairro, conjunto, cidade, lat, lng, linha';
-    let {data, error} = await supa.from('ruas').select(campos).or(`nome_chave.eq."${chave}",nome_chave2.eq."${chave}"`).limit(80);
-    if (error) return null;
-    if (!data || !data.length) {
+    const pelaChave = () => supa.from('ruas').select(campos).or(`nome_chave.eq."${chave}",nome_chave2.eq."${chave}"`);
+    const ditos = [...new Set(lugares.map(semTipoDeArea).filter(x => x.length > 2))];
+    let data: any[] = [];
+    if (ditos.length) {
+      const filtros = ditos.flatMap(l => [`bairro.ilike.*${l}*`, `conjunto.ilike.*${l}*`]).join(',');
+      const r = await pelaChave().or(filtros).limit(80);
+      data = r.data || [];
+    }
+    if (!data.length) {
+      const r = await pelaChave().limit(80);
+      if (r.error) return null;
+      data = r.data || [];
+    }
+    if (!data.length) {
       const palavra = maiorPalavra(rua);
       if (palavra.length < 4) return null;
       const daCidade = normal(cidade.split(/[,\-\/]/)[0]);
@@ -63,8 +79,9 @@ export async function ruaNaBase(rua: string, cidade: string, perto: Ponto | null
       const parecidas = await supa.from('ruas').select(campos).ilike('nome_chave', `%${palavra}%`).ilike('cidade', daCidade).limit(80);
       data = (parecidas.data || []).filter((t: any) => t.nome && cabeNoNome(rua, t.nome));
       if (!data.length) return null;
+      
     }
-    const t = escolherTrecho(data as Trecho[], cidade, perto, tipoDaRua(rua), bairro, conjunto);
+    const t = escolherTrecho(data as Trecho[], cidade, perto, tipoDaRua(rua), lugares);
     if (!t) return null;
     const p = pontoDoTrecho(t, perto);
     const outroNome = t.nome && chaveRua(t.nome) !== chave;

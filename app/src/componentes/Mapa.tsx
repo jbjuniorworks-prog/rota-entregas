@@ -63,7 +63,8 @@ export function Mapa() {
       if (p.lat == null || p.lng == null) continue;
       const a = loja.area(p.area);
       const mk = L.marker([p.lat, p.lng], {icon: icone(p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p), a.cor, p.entregue || !!p.adiada, DUVIDA.has(p.precisao) ? 'duvida' : QUASE.has(p.precisao) ? 'quase' : '')});
-      mk.bindPopup(`<b>${esc(rotuloDe(p))} · ${esc(p.texto)}</b><br><small>${esc(p.exibido)}</small><br><small>Para corrigir: 2. Conferir → Marcar no mapa.</small>`);
+      const noApp = p.ml && e.rota ? `<br><small>no app do entregador: <b>#${esc(p.ml)}</b></small>` : '';
+      mk.bindPopup(`<b>${esc(rotuloDe(p))} · ${esc(p.texto)}</b>${noApp}<br><small>${esc(p.exibido)}</small><br><small>Para corrigir: 2. Conferir → Marcar no mapa.</small>`);
       mk.on('click', () => {
         ui.selecionada = p.id;
         loja.mudou(false);
