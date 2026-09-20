@@ -18,7 +18,8 @@ trechos de rua que o mapa livre não tem. Consultas de endereço vão ao OpenStr
 
 ## Código
 
-- `app/`: Vite + React + TypeScript. Lógica pura em `app/src/logica` (com testes).
+- `app/`: Vite + React + TypeScript. Lógica pura em `app/src/logica` (com testes), telas em
+  `app/src/componentes` (uma por aba) e ações em `app/src/acoes` (conta, endereços, posições, rota).
 - `supabase/`: estrutura do banco, rodada em ordem no SQL Editor.
 - `ferramentas/ruas.mjs`: copia as ruas de uma cidade do OpenStreetMap para a nossa base
   (`npm run ruas -- Aracaju "Nossa Senhora do Socorro"`). Na aba Admin dá para nomear, com as

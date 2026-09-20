@@ -4,7 +4,10 @@ import './estilo.css';
 import * as A from './acoes';
 import {Mapa} from './componentes/Mapa';
 import {TelaAdmin} from './componentes/Admin';
-import {TelaConferir, TelaEnderecos, TelaEntrar, TelaRota} from './componentes/Telas';
+import {TelaConferir} from './componentes/TelaConferir';
+import {TelaEnderecos} from './componentes/TelaEnderecos';
+import {TelaEntrar} from './componentes/Conta';
+import {TelaRota} from './componentes/TelaRota';
 import {useLoja, type Aba} from './loja';
 import {nuvem} from './servicos/nuvem';
 
