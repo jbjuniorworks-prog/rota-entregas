@@ -130,3 +130,25 @@ test.describe('corrigir pela localização do motorista', () => {
     await expect(aviso(page)).toContainText('Local corrigido pela sua localização');
   });
 });
+
+test.describe('a entrega marcada na porta vira posição para a base', () => {
+  test.use({permissions: ['geolocation'], geolocation: {latitude: -10.9605, longitude: -37.0455, accuracy: 12}});
+
+  test('marcar entregue guarda onde o motorista estava, e GPS ruim não guarda', async ({page, context, nuvem}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await page.locator('.proxima').getByRole('button', {name: 'Entregue'}).first().click();
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'observacoes').length, {timeout: 20_000}).toBe(1);
+    const passagem = nuvem.pedidos.find(p => p.caminho === 'observacoes')!;
+    expect(passagem.metodo).toBe('POST');
+    expect(passagem.corpo).toMatchObject({lat: -10.9605, lng: -37.0455, precisao_m: 12});
+    expect(String((passagem.corpo as any).chave_lugar).length).toBeGreaterThan(3);
+
+    await context.setGeolocation({latitude: -10.9605, longitude: -37.0455, accuracy: 300});
+    await page.waitForTimeout(5500);
+    await page.locator('.proxima').getByRole('button', {name: 'Entregue'}).first().click();
+    await page.waitForTimeout(1500);
+    expect(nuvem.pedidos.filter(p => p.caminho === 'observacoes')).toHaveLength(1);
+  });
+});

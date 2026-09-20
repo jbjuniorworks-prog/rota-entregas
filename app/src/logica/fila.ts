@@ -21,7 +21,8 @@ export type Operacao =
   | {tipo: 'rota'; chave: string; at_id: string | null; arquivo: string; pacotes: PacoteNuvem[]}
   | {tipo: 'entregue'; rota: string; tns: string[]; quando: string | null}
   | {tipo: 'correcao'; chave: string; lat: number; lng: number}
-  | {tipo: 'desfazerCorrecao'; chave: string; lat: number; lng: number};
+  | {tipo: 'desfazerCorrecao'; chave: string; lat: number; lng: number}
+  | {tipo: 'observacao'; chave: string; lat: number; lng: number; precisao: number; rua: string};
 
 export class ErroNuvem extends Error {
   constructor(mensagem: string, readonly deRede: boolean) { super(mensagem); }
@@ -34,6 +35,7 @@ export interface ClienteNuvem {
   marcarEntregue(rotaId: string, tns: string[], quando: string | null): Promise<void>;
   inserirCorrecao(chave: string, lat: number, lng: number): Promise<void>;
   apagarCorrecao(chave: string, lat: number, lng: number): Promise<void>;
+  inserirObservacao(o: {chave: string; lat: number; lng: number; precisao: number; rua: string}): Promise<void>;
   posicoes(chaves: string[]): Promise<PosicaoCompartilhada[]>;
 }
 
@@ -74,6 +76,8 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
         await c.marcarEntregue(id, op.tns, op.quando);
       } else if (op.tipo === 'correcao') {
         await c.inserirCorrecao(op.chave, op.lat, op.lng);
+      } else if (op.tipo === 'observacao') {
+        await c.inserirObservacao(op);
       } else {
         await c.apagarCorrecao(op.chave, op.lat, op.lng);
       }

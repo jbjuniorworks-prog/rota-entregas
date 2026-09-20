@@ -17,6 +17,12 @@ describe('posições de outros motoristas', () => {
     expect(p).toMatchObject({lat: -11.04, lng: -37.10, precisao: 'confirmado', exibido: 'Posição confirmada por 2 motoristas'});
     expect(p.candidatos[0]).toMatchObject({lat: -10.90, precisao: 'planilha', fonte: 'original'});
   });
+  it('posição confirmada pelas entregas feitas no local diz de onde veio', () => {
+    const p = parada('a|1');
+    aplicar([p], [pos('a|1', 'confirmado', {fonte: 'entrega', motoristas: 0, entregas: 2})]);
+    expect(p.exibido).toBe('Posição confirmada por 2 entrega(s) feitas aqui');
+    expect(p.precisao).toBe('confirmado');
+  });
   it('correção do administrador vale como confirmada', () => {
     const p = parada('a|1');
     aplicar([p], [pos('a|1', 'confirmado', {motoristas: 1})]);

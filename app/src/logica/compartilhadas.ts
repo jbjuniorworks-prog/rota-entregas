@@ -7,7 +7,15 @@ export interface PosicaoCompartilhada {
   lng: number;
   situacao: 'confirmado' | 'sugestao';
   motoristas: number;
+  entregas?: number;
+  fonte?: 'admin' | 'correcao' | 'entrega';
   minha: boolean;
+}
+
+export function comoFoiConfirmada(r: PosicaoCompartilhada): string {
+  if (r.fonte === 'entrega') return `Posição confirmada por ${r.entregas} entrega(s) feitas aqui`;
+  if (r.fonte === 'admin' || (!r.fonte && r.motoristas <= 1)) return 'Posição confirmada por quem administra';
+  return `Posição confirmada por ${r.motoristas} motoristas`;
 }
 
 const ESCOLHA_DO_MOTORISTA = new Set(['manual', 'lembrado']);
@@ -25,7 +33,7 @@ export function aplicarCompartilhadas(
     if (r.situacao === 'confirmado') {
       if (perto && p.precisao === 'confirmado') continue;
       if (p.lat != null && p.lng != null) p.candidatos = [{lat: p.lat, lng: p.lng, exibido: 'Posição de antes (planilha ou busca)', precisao: p.precisao, fonte: 'original'}, ...p.candidatos.filter(c => c.fonte !== 'original')];
-      Object.assign(p, {lat: r.lat, lng: r.lng, precisao: 'confirmado', exibido: `Posição confirmada por ${r.motoristas > 1 ? r.motoristas + ' motoristas' : 'quem administra'}`});
+      Object.assign(p, {lat: r.lat, lng: r.lng, precisao: 'confirmado', exibido: comoFoiConfirmada(r)});
       delete p.sugestao;
       confirmadas++;
     } else if (!perto) {

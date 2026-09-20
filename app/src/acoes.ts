@@ -11,7 +11,7 @@ import {chaveLugar, extrairEnderecos} from './logica/texto';
 import type {Parada} from './logica/tipos';
 import {guarda, loja, status} from './loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from './servicos/arquivos';
-import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from './servicos/geocodificacao';
+import {centroDaCidade, centroDoBairro, foraDaRegiao, geocodificar, usarRegiao} from './servicos/geocodificacao';
 import {clienteNuvem, entrar as entrarNaNuvem, iniciarNuvem, sair as sairDaNuvem} from './servicos/nuvem';
 import {linhaDaRota, matriz} from './servicos/ruas';
 import {linkWaze} from './logica/otimizacao';
@@ -298,6 +298,20 @@ export async function adicionarTexto(texto: string) {
   return true;
 }
 
+export const GPS_PASSAGEM = 40;
+
+function guardarPassagem(p: Parada) {
+  if (!navigator.geolocation) return;
+  const chave = chaveLugar(p.texto, p.bairro, e().cidade);
+  if (!chave) return;
+  navigator.geolocation.getCurrentPosition(pos => {
+    const {latitude, longitude, accuracy} = pos.coords;
+    if (accuracy > GPS_PASSAGEM || foraDaRegiao({lat: latitude, lng: longitude})) return;
+    fila.enfileirar({tipo: 'observacao', chave, lat: +latitude.toFixed(6), lng: +longitude.toFixed(6), precisao: Math.round(accuracy), rua: p.texto.slice(0, 200)});
+    enviarFila();
+  }, () => {}, {enableHighAccuracy: true, timeout: 10000, maximumAge: 5000});
+}
+
 export function marcarEntregue(p: Parada, entregue: boolean) {
   p.entregue = entregue;
   p.entregueEm = entregue ? Date.now() : null;
@@ -310,6 +324,7 @@ export function marcarEntregue(p: Parada, entregue: boolean) {
       try { navigator.vibrate?.(200); } catch {}
     }
   }
+  if (entregue) guardarPassagem(p);
   if (p.rota && p.pacotes && p.pacotes.length) {
     fila.enfileirar({tipo: 'entregue', rota: p.rota, tns: p.pacotes, quando: entregue ? new Date(p.entregueEm!).toISOString() : null});
     enviarFila();

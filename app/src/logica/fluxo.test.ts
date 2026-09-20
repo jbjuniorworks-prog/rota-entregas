@@ -162,6 +162,7 @@ describe('fila da nuvem', () => {
       async marcarEntregue(id, tns, q) { chamadas.push(`entregue ${tns.join(',')} ${q ? 'sim' : 'não'}`); },
       async inserirCorrecao(k) { if (falhas.recusar) throw new ErroNuvem(falhas.recusar, false); chamadas.push('correcao ' + k); },
       async apagarCorrecao(k, lat) { chamadas.push(`apagar ${k} ${lat}`); },
+      async inserirObservacao(o) { chamadas.push(`passagem ${o.chave} ${o.lat} ±${o.precisao}`); },
       async posicoes() { return []; },
     };
     return {c, chamadas};
@@ -216,6 +217,7 @@ describe('desfazer correção já enviada', () => {
       rotaExistente: async () => null, criarRota: async () => {}, inserirPacotes: async () => {}, marcarEntregue: async () => {},
       inserirCorrecao: async (k: string) => { chamadas.push('correcao ' + k); },
       apagarCorrecao: async (k: string, lat: number) => { chamadas.push(`apagar ${k} ${lat}`); },
+      inserirObservacao: async () => {},
       posicoes: async () => [],
     };
     f.enfileirar({tipo: 'correcao', chave: 'k|1', lat: -11.5, lng: -37.5});
