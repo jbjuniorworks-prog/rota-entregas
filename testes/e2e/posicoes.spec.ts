@@ -20,6 +20,24 @@ test('posição longe das outras entregas vem em vermelho e sai quando o motoris
   await expect(page.getByText(/❗ 0 para conferir/)).toBeVisible();
 });
 
+test('pino marcado perto de outro já marcado pode virar uma parada só', async ({page}) => {
+  const perguntas: string[] = [];
+  page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await aba(page, '2. Conferir');
+  await linhaDe(page, 'Avenida Central, 1500', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+  await clicarMapa(page, -10.9640, -37.0430);
+  await linhaDe(page, 'Travessa Um, 45', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+  await clicarMapa(page, -10.96412, -37.04305);
+  expect(perguntas.at(-1)).toContain('virarem uma parada só');
+  await expect(aviso(page)).toContainText('Local definido');
+  await aba(page, '3. Rota');
+  await page.getByRole('button', {name: /Montar melhor sequência/}).click();
+  await expect(page.getByText(/Total estimado/)).toBeVisible();
+  await expect(page.locator('.item').filter({hasText: 'Avenida Central, 1500'})).toContainText('2 entregas perto');
+});
+
 test('corrigir um pino do condomínio leva junto as outras entregas do mesmo endereço', async ({page}) => {
   const perguntas: string[] = [];
   page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });

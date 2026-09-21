@@ -97,6 +97,8 @@ function prepararDesfazer(p: Parada): () => void {
 }
 
 const JUNTO_DAQUI = 300;
+const COLAR_ATE = 25;
+const CONFIAVEL: ReadonlySet<string> = new Set(['manual', 'lembrado', 'confirmado']);
 
 export function irmasDoMesmoEndereco(p: Parada): Parada[] {
   if (p.lat == null || p.lng == null) return [];
@@ -104,7 +106,25 @@ export function irmasDoMesmoEndereco(p: Parada): Parada[] {
     && mesmoEndereco([q.texto, p.texto]) && haversine(q as Ponto, p as Ponto) <= JUNTO_DAQUI);
 }
 
+export function vizinhaJaMarcada(p: Parada, lat: number, lng: number): {q: Parada; metros: number} | null {
+  const perto = e().paradas
+    .filter(q => q !== p && !q.entregue && q.lat != null && q.lng != null && CONFIAVEL.has(q.precisao) && !mesmoEndereco([q.texto, p.texto]))
+    .map(q => ({q, metros: haversine({lat, lng}, q as Ponto)}))
+    .filter(x => x.metros > 0 && x.metros <= COLAR_ATE)
+    .sort((a, b) => a.metros - b.metros);
+  return perto[0] || null;
+}
+
 export function corrigirPosicao(p: Parada, lat: number, lng: number, prefixo = 'Local corrigido', exibido = 'Posição marcada no mapa') {
+  const vizinha = vizinhaJaMarcada(p, lat, lng);
+  if (vizinha && confirm(`Tem outra entrega já marcada a ${Math.round(vizinha.metros)} m daqui:
+
+${vizinha.q.texto.split(',').slice(0, 3).join(',')}
+
+Pôr esta no mesmo ponto, para as duas virarem uma parada só?`)) {
+    lat = vizinha.q.lat!;
+    lng = vizinha.q.lng!;
+  }
   const irmas = irmasDoMesmoEndereco(p);
   const juntas = irmas.length && confirm(`Outras ${irmas.length} entrega(s) deste mesmo endereço estão no lugar antigo.
 
