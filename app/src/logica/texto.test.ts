@@ -24,6 +24,11 @@ describe('mesmo condomínio, endereços diferentes', () => {
     expect(mesmoLugarNomeado(p('Rua A, 10, Residencial das Palmeiras'), p('Rua B, 20, Residencial dos Ipês'))).toBe(false);
   });
 
+  it('bloco I e bloco II do mesmo conjunto são lugares diferentes', () => {
+    expect(mesmoLugarNomeado(p('Rua F, 60, Rua f franco freire 1'), p('Rua E, 23, Franco Freire I'))).toBe(true);
+    expect(mesmoLugarNomeado(p('Rua E, 23, Franco Freire I'), p('Rua E, 264, Residencial Franco Freire 2'))).toBe(false);
+  });
+
   it('nome de comércio usado como referência não junta', () => {
     expect(mesmoLugarNomeado(p('Rua A, 741, Mercearia Kibarato'), p('Rua A, 105, perto Mercearia ki barato'))).toBe(false);
   });

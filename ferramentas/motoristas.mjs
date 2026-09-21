@@ -54,7 +54,24 @@ const acoes = {
     await api(`/rest/v1/perfis?id=eq.${await idPorEmail(email)}`, {method: 'PATCH', body: JSON.stringify({ativo: true})});
     console.log(`${email} ativado.`);
   },
+  async admin() {
+    await papel('admin');
+  },
+  async motorista() {
+    await papel('motorista');
+  },
 };
+
+async function papel(novo) {
+  const id = await idPorEmail(email);
+  if (novo === 'motorista') {
+    const admins = await api('/rest/v1/perfis?select=id&papel=eq.admin&ativo=is.true');
+    if (admins.length <= 1 && admins.some(a => a.id === id)) throw new Error('este e o unico admin ativo: promova outro antes de rebaixar este');
+  }
+  await api(`/rest/v1/perfis?id=eq.${id}`, {method: 'PATCH', body: JSON.stringify({papel: novo, ativo: true})});
+  const admins = await api('/rest/v1/perfis?select=nome&papel=eq.admin&ativo=is.true');
+  console.log(`${email} agora e ${novo}. Admins ativos: ${admins.map(a => a.nome).join(', ')}`);
+}
 
 if (!acoes[acao] || (acao !== 'listar' && !email)) {
   console.log(`Uso:
@@ -62,7 +79,9 @@ if (!acoes[acao] || (acao !== 'listar' && !email)) {
   npm run motoristas -- criar email@x.com Nome do Motorista
   npm run motoristas -- senha email@x.com        (gera senha nova)
   npm run motoristas -- desativar email@x.com
-  npm run motoristas -- ativar email@x.com`);
+  npm run motoristas -- ativar email@x.com
+  npm run motoristas -- admin email@x.com        (vira administrador)
+  npm run motoristas -- motorista email@x.com    (volta a ser motorista)`);
   process.exit(acao ? 1 : 0);
 }
 acoes[acao]().catch(e => { console.error('Erro:', e.message); process.exit(1); });

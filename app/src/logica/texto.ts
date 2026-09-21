@@ -372,11 +372,22 @@ export function pistasDeLugar(texto: string, bairro = ''): string[] {
     && !LUGAR_GENERICO.has(w) && !PALAVRAS_VAZIAS.has(w) && !fora.has(w)))];
 }
 
+const ROMANOS: Record<string, string> = {i: '1', ii: '2', iii: '3', iv: '4', v: '5', vi: '6'};
+
+export function blocoDoLugar(texto: string, nome: string): string {
+  const m = normal(texto).replace(/[^a-z0-9 ]/g, ' ').match(new RegExp(`\\b${nome}\\w*\\s+(\\d{1,2}|i{1,3}|iv|vi?)\\b`));
+  return m ? (ROMANOS[m[1]] || m[1]) : '';
+}
+
 export function mesmoLugarNomeado(a: {texto: string; bairro?: string}, b: {texto: string; bairro?: string}): boolean {
   const pa = pistasDeLugar(a.texto, a.bairro), pb = pistasDeLugar(b.texto, b.bairro);
   if (!pa.length || !pb.length) return false;
   const iguais = pa.filter(x => pb.some(y => quaseIgual(x, y)));
-  return iguais.length >= 2 || iguais.some(w => w.length >= 8);
+  if (iguais.length < 2 && !iguais.some(w => w.length >= 8)) return false;
+  return iguais.every(w => {
+    const na = blocoDoLugar(a.texto, w), nb = blocoDoLugar(b.texto, w);
+    return !na || !nb || na === nb;
+  });
 }
 
 export const semTipoDeArea = (nome: string): string => normal(nome).replace(AREA, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
