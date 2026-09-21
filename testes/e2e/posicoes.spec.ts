@@ -38,6 +38,21 @@ test('pino marcado perto de outro já marcado pode virar uma parada só', async 
   await expect(page.locator('.item').filter({hasText: 'Avenida Central, 1500'})).toContainText('2 entregas perto');
 });
 
+test('arrumar o pino de um condomínio ensina o nome dele para a base', async ({page, nuvem}) => {
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await aba(page, '1. Endereços');
+  await page.getByLabel(/Endereços da área/).fill('Avenida das Flores, 1500, Ed Villa Sorrento apto 101, CEP 49000-102');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await aba(page, '2. Conferir');
+  await linhaDe(page, 'Avenida das Flores, 1500', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+  await clicarMapa(page, -10.9412, -37.0456);
+  await expect(aviso(page)).toContainText('Local definido');
+  await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'lugares').length).toBeGreaterThan(0);
+  const corpo = nuvem.pedidos.find(p => p.caminho === 'lugares')!.corpo as Record<string, unknown> | Record<string, unknown>[];
+  expect(Array.isArray(corpo) ? corpo[0] : corpo).toMatchObject({nome_chave: 'sorrento villa', nome: 'Ed Villa Sorrento', lat: -10.9412, lng: -37.0456});
+});
+
 test('marcar ao lado de uma entrega que veio da planilha leva as duas para o ponto novo', async ({page}) => {
   const perguntas: string[] = [];
   page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });

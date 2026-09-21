@@ -1,4 +1,4 @@
-import {analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, normal, pistasDeLugar, ruaCompleta} from './texto';
+import {nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, normal, pistasDeLugar, ruaCompleta} from './texto';
 
 describe('mesmo condomínio, endereços diferentes', () => {
   const p = (texto: string, bairro = 'Jardins') => ({texto, bairro});
@@ -35,6 +35,14 @@ describe('mesmo condomínio, endereços diferentes', () => {
 
   it('instrução de horário não é nome de lugar', () => {
     expect(mesmoLugarNomeado(p('Rua A, 91, Comercio / segunda a sexta'), p('Rua B, 731, Entrega no hr comerci 8 a 18h'))).toBe(false);
+  });
+
+  it('tira do complemento o nome que vale guardar, e ignora o que não é nome', () => {
+    expect(nomeDoLugar('Avenida das Flores, 1500, Ed Villa Sorrento apto 101, Jardins', 'Jardins'))
+      .toEqual({chave: 'sorrento villa', nome: 'Ed Villa Sorrento'});
+    expect(nomeDoLugar('Rua A, 700, Ed Itacimirim 101', 'Atalaia')).toMatchObject({chave: 'itacimirim'});
+    expect(nomeDoLugar('Rua A, 10, Apto 101, Atalaia', 'Atalaia')).toBeNull();
+    expect(nomeDoLugar('Rua A, 91, Comercio / segunda a sexta', 'Atalaia')).toBeNull();
   });
 
   it('bairro não é nome de lugar', () => {

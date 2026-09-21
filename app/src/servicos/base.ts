@@ -1,5 +1,5 @@
 import {haversine} from '../logica/geo';
-import {chaveRua, normal, palavrasRua, quaseIgual, semTipoDeArea, tipoDaRua} from '../logica/texto';
+import {chaveRua, normal, palavrasRua, pistasBatem, quaseIgual, semTipoDeArea, tipoDaRua} from '../logica/texto';
 import type {Candidato, Ponto} from '../logica/tipos';
 import {nuvem} from './nuvem';
 
@@ -69,10 +69,27 @@ export function centroEJunto(pontos: Ponto[]): {ponto: Ponto; junto: boolean} {
   return {ponto, junto: pontos.every(p => haversine(ponto, p) <= RAIO_DO_LUGAR)};
 }
 
+async function lugarEnsinado(supa: NonNullable<typeof nuvem.cliente>, ditos: string[], daCidade: string): Promise<{ponto: Ponto; nome: string} | null> {
+  const palavras = [...new Set(ditos.flatMap(d => d.split(' ')).filter(w => w.length >= 5))].slice(0, 50);
+  if (!palavras.length) return null;
+  try {
+    const {data} = await supa.rpc('lugares_conhecidos', {palavras, cidade_: daCidade});
+    for (const dito of ditos) {
+      const meu = dito.split(' ').filter(w => w.length >= 5);
+      const achou = (data || []).find((x: {nome_chave: string; situacao: string}) =>
+        x.situacao === 'confirmado' && pistasBatem(meu, x.nome_chave.split(' ')).length > 0);
+      if (achou) return {ponto: {lat: achou.lat, lng: achou.lng}, nome: achou.nome};
+    }
+  } catch {}
+  return null;
+}
+
 async function lugarNaBase(ditos: string[], cidade: string): Promise<{ponto: Ponto; nome: string} | null> {
   const supa = nuvem.cliente;
   const daCidade = normal(cidade.split(/[,\-\/]/)[0]);
   if (!supa || !daCidade) return null;
+  const ensinado = await lugarEnsinado(supa, ditos, daCidade);
+  if (ensinado) return ensinado;
   for (const dito of ditos) {
     const palavra = dito.split(' ').filter(w => w.length >= 5).sort((a, b) => b.length - a.length)[0];
     if (!palavra) continue;

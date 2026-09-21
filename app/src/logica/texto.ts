@@ -348,7 +348,7 @@ const LUGAR_GENERICO = new Set([
   'condominio', 'condominios', 'cond', 'cdm', 'conj', 'conjunto', 'residencial', 'residence', 'residencia', 'resid',
   'edificio', 'edificios', 'edif', 'apartamento', 'apart', 'apto', 'bloco', 'casa', 'torre', 'predio', 'portaria',
   'porteira', 'entrada', 'fundos', 'frente', 'proximo', 'perto', 'referencia', 'quadra', 'lote', 'sala', 'loja',
-  'galpao', 'pousada', 'hotel', 'motel', 'mercado', 'mercadinho', 'supermercado', 'padaria', 'farmacia', 'escola',
+  'galpao', 'bairro', 'pousada', 'hotel', 'motel', 'mercado', 'mercadinho', 'supermercado', 'padaria', 'farmacia', 'escola',
   'colegio', 'igreja', 'posto', 'praca', 'esquina', 'numero', 'andar', 'terreo', 'cobertura', 'recepcao', 'portao',
   'entregar', 'receber', 'falar', 'ligar', 'telefone', 'whatsapp', 'obrigado', 'favor',
   'comercio', 'comercial', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo', 'feriado',
@@ -379,11 +379,27 @@ export function blocoDoLugar(texto: string, nome: string): string {
   return m ? (ROMANOS[m[1]] || m[1]) : '';
 }
 
-export function mesmoLugarNomeado(a: {texto: string; bairro?: string}, b: {texto: string; bairro?: string}): boolean {
-  const pa = pistasDeLugar(a.texto, a.bairro), pb = pistasDeLugar(b.texto, b.bairro);
-  if (!pa.length || !pb.length) return false;
+export function nomeDoLugar(texto: string, bairro = ''): {chave: string; nome: string} | null {
+  const pistas = pistasDeLugar(texto, bairro);
+  if (pistas.length < 2 && !pistas.some(w => w.length >= 8)) return null;
+  const d = decompor(analisarLinha(texto).texto);
+  const seg = d.resto.find(s => pistas.some(w => normal(s).includes(w))) || '';
+  const nome = seg.replace(/\s*\b(ap(to|artamento)?|bl(oco|c)?|casa|sala|loja)\b.*$/i, '')
+    .replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+  return {chave: [...pistas].sort().join(' '), nome: nome.length >= 2 ? nome : pistas.join(' ')};
+}
+
+export const chaveCidade = (cidade: string) => normal(String(cidade || '').split(/[,\-\/]/)[0]);
+
+export function pistasBatem(pa: string[], pb: string[]): string[] {
+  if (!pa.length || !pb.length) return [];
   const iguais = pa.filter(x => pb.some(y => quaseIgual(x, y)));
-  if (iguais.length < 2 && !iguais.some(w => w.length >= 8)) return false;
+  return iguais.length >= 2 || iguais.some(w => w.length >= 8) ? iguais : [];
+}
+
+export function mesmoLugarNomeado(a: {texto: string; bairro?: string}, b: {texto: string; bairro?: string}): boolean {
+  const iguais = pistasBatem(pistasDeLugar(a.texto, a.bairro), pistasDeLugar(b.texto, b.bairro));
+  if (!iguais.length) return false;
   return iguais.every(w => {
     const na = blocoDoLugar(a.texto, w), nb = blocoDoLugar(b.texto, w);
     return !na || !nb || na === nb;

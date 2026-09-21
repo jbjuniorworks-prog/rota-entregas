@@ -1,7 +1,7 @@
 import {aplicarCompartilhadas} from '../logica/compartilhadas';
 import {haversine, marcarIsoladas} from '../logica/geo';
 import {avisoGuardou} from '../logica/memoria';
-import {chaveLugar, chaveRua, decompor, mesmoEndereco} from '../logica/texto';
+import {chaveCidade, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
 import type {Parada, Ponto} from '../logica/tipos';
 import {loja, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
@@ -38,6 +38,15 @@ export function usarSugestao(p: Parada) {
 
 export const GPS_PASSAGEM = 40;
 
+export function guardarNome(p: Parada, lat: number, lng: number) {
+  const n = nomeDoLugar(p.texto, p.bairro), cidade = chaveCidade(e().cidade);
+  if (!n || !cidade) return;
+  fila.enfileirar({
+    tipo: 'lugar', nomeChave: n.chave, nome: n.nome, cidade,
+    lat: +lat.toFixed(6), lng: +lng.toFixed(6), endereco: p.texto.slice(0, 300),
+  });
+}
+
 export function guardarPassagens(ps: Parada[]) {
   if (!navigator.geolocation) return;
   const alvos = ps.map(p => ({p, chave: chaveLugar(p.texto, p.bairro, e().cidade)})).filter((x): x is {p: Parada; chave: string} => !!x.chave);
@@ -46,6 +55,7 @@ export function guardarPassagens(ps: Parada[]) {
     const {latitude, longitude, accuracy} = pos.coords;
     if (accuracy > GPS_PASSAGEM || foraDaRegiao({lat: latitude, lng: longitude})) return;
     for (const {p, chave} of alvos) {
+      guardarNome(p, latitude, longitude);
       const rua = decompor(p.texto).rua;
       fila.enfileirar({
         tipo: 'observacao', chave, lat: +latitude.toFixed(6), lng: +longitude.toFixed(6), precisao: Math.round(accuracy),
@@ -148,6 +158,7 @@ Levar todas para o ponto novo junto com esta?`)) juntas.push(...irmas);
     delete x.sugestao;
     Object.assign(x, {lat, lng, precisao: 'manual', exibido});
     guardou = memoria.lembrar(x) || guardou;
+    guardarNome(x, lat, lng);
   }
   if (p.adiada) marcarIsoladas(e().paradas);
   else invalidarRota();

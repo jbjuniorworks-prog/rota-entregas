@@ -21,7 +21,17 @@ export type Operacao =
   | {tipo: 'entregue'; rota: string; tns: string[]; quando: string | null}
   | {tipo: 'correcao'; chave: string; lat: number; lng: number}
   | {tipo: 'desfazerCorrecao'; chave: string; lat: number; lng: number}
-  | {tipo: 'observacao'; chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string};
+  | {tipo: 'observacao'; chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string}
+  | {tipo: 'lugar'; nomeChave: string; nome: string; cidade: string; lat: number; lng: number; endereco: string};
+
+export interface LugarConhecido {
+  nome_chave: string;
+  nome: string;
+  lat: number;
+  lng: number;
+  situacao: 'confirmado' | 'sugestao';
+  vistas: number;
+}
 
 export class ErroNuvem extends Error {
   constructor(mensagem: string, readonly deRede: boolean) { super(mensagem); }
@@ -35,6 +45,8 @@ export interface ClienteNuvem {
   inserirCorrecao(chave: string, lat: number, lng: number): Promise<void>;
   apagarCorrecao(chave: string, lat: number, lng: number): Promise<void>;
   inserirObservacao(o: {chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string}): Promise<void>;
+  inserirLugar(l: {nomeChave: string; nome: string; cidade: string; lat: number; lng: number; endereco: string}): Promise<void>;
+  lugaresConhecidos(palavras: string[], cidade: string): Promise<LugarConhecido[]>;
   posicoes(chaves: string[]): Promise<PosicaoCompartilhada[]>;
 }
 
@@ -77,13 +89,15 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
         await c.inserirCorrecao(op.chave, op.lat, op.lng);
       } else if (op.tipo === 'observacao') {
         await c.inserirObservacao(op);
+      } else if (op.tipo === 'lugar') {
+        await c.inserirLugar(op);
       } else {
         await c.apagarCorrecao(op.chave, op.lat, op.lng);
       }
       return 'ok';
     } catch (e) {
       if (e instanceof ErroNuvem && !e.deRede) {
-        if (op.tipo !== 'observacao') erro = 'o servidor recusou um envio (' + e.message + ')';
+        if (op.tipo !== 'observacao' && op.tipo !== 'lugar') erro = 'o servidor recusou um envio (' + e.message + ')';
         return 'descartar';
       }
       return 'rede';

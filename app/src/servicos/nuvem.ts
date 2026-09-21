@@ -100,6 +100,17 @@ export function clienteNuvem(): ClienteNuvem | null {
         {onConflict: 'chave_lugar,motorista_id,dia', ignoreDuplicates: true});
       if (error) throw erro(error);
     },
+    async inserirLugar({nomeChave, nome, cidade, lat, lng, endereco}) {
+      const {error} = await s.from('lugares').upsert(
+        {nome_chave: nomeChave, nome, cidade, lat, lng, endereco},
+        {onConflict: 'nome_chave,cidade,motorista_id,dia', ignoreDuplicates: true});
+      if (error) throw erro(error);
+    },
+    async lugaresConhecidos(palavras, cidade) {
+      const {data, error} = await s.rpc('lugares_conhecidos', {palavras, cidade_: cidade});
+      if (error) throw erro(error);
+      return data || [];
+    },
     async posicoes(chaves) {
       const saida = [];
       for (let i = 0; i < chaves.length; i += 400) {
