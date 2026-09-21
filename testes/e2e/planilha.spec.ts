@@ -9,12 +9,12 @@ test('planilha da Shopee salva como .txt vira paradas, somando pacotes do mesmo 
   await expect(page.getByText('Rua dos Ipês, 300, Bloco B ap 202', {exact: false})).toBeVisible();
 });
 
-test('o balão do mapa mostra a parada da Shopee, junto com os pacotes daquele ponto', async ({page}) => {
+test('o balão do mapa mostra a parada da Shopee, o ADS sem parada e os pacotes daquele ponto', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_A);
   await expect
     .poll(async () => [...new Set(await page.locator('.balao').allInnerTexts())].sort())
-    .toEqual(['P1', 'P2 · 📦 4', 'P3', 'P4', 'P5', 'P6', 'P7']);
+    .toEqual(['ADS', 'P1', 'P2 · 📦 4', 'P3', 'P4', 'P5', 'P6', 'P7']);
 });
 
 test('planilha .xlsx sem nada estranho não gera alerta', async ({page}) => {

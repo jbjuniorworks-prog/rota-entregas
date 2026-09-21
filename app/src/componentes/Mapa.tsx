@@ -65,7 +65,7 @@ export function Mapa() {
       const a = loja.area(p.area);
       const mk = L.marker([p.lat, p.lng], {icon: icone(p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p), a.cor, p.entregue || !!p.adiada, DUVIDA.has(p.precisao) ? 'duvida' : QUASE.has(p.precisao) ? 'quase' : '')});
       const noApp = [
-        p.stop ? `parada <b>${esc(p.stop)}</b>` : '',
+        p.stop ? `parada <b>${esc(p.stop)}</b>` : p.adicional ? 'sem parada (<b>ADS</b>, adicional)' : '',
         p.ml && e.rota ? `pacote <b>#${esc(p.ml)}</b>` : '',
       ].filter(Boolean).join(' · ');
       const linhaDoApp = noApp ? `<br><small>no app do entregador: ${noApp}</small>` : '';
@@ -80,8 +80,11 @@ export function Mapa() {
       if (!p.entregue) limites.push([p.lat, p.lng]);
     }
     for (const g of gruposNoMapa(e.paradas)) {
-      if (g.pacotes < 2 && !g.stops.length) continue;
-      const daParada = g.stops.length ? `P${g.stops.slice(0, 2).join('+')}${g.stops.length > 2 ? '+' : ''}` : '';
+      if (g.pacotes < 2 && !g.stops.length && !g.adicionais) continue;
+      const daParada = [
+        g.stops.length ? `P${g.stops.slice(0, 2).join('+')}${g.stops.length > 2 ? '+' : ''}` : '',
+        g.adicionais ? 'ADS' : '',
+      ].filter(Boolean).join(' ');
       const doPacote = g.pacotes > 1 ? `📦 ${g.pacotes}${g.enderecos > 1 ? ` · ${g.enderecos} endereços` : ''}` : '';
       const texto = [daParada, doPacote].filter(Boolean).join(' · ');
       const mk = marcadores.current[g.ids[0]];

@@ -1,6 +1,6 @@
 import type {ReactNode} from 'react';
 import * as A from '../acoes';
-import {blocos, fmtKm, fmtMin, gruposNoMapa, linkMaps, linkMapsVarios, linkWaze, porPerto, trechos} from '../logica/otimizacao';
+import {agruparPorEndereco, blocos, fmtKm, fmtMin, gruposNoMapa, linkMaps, linkMapsVarios, linkWaze, porPerto, trechos} from '../logica/otimizacao';
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
@@ -141,7 +141,10 @@ export function TelaRota() {
       </div>
       {trechoAtual.length > 1 && <div className="linha"><a className="btn pri" href={linkMapsVarios(trechoAtual.map(x => x.alvo))} target="_blank" rel="noopener">
         🗺️ Maps com os próximos {trechoAtual.filter(x => x.ids.length).length} pontos ({entregasTrecho} entregas){trechoAtual.some(x => !x.ids.length) ? ' + 🏁' : ''}</a></div>}
-      <div style={{marginTop: 8}}>{agora.b.map(loja.parada).map(p => <LinhaParada key={p!.id} p={p!} comWaze={pend.length > 1} />)}</div>
+      <div style={{marginTop: 8}}>{agruparPorEndereco(agora.b.map(loja.parada).filter((p): p is Parada => !!p)).map((g, i, todos) => <div key={g.chave}>
+        {todos.length > 1 && <div className="info" style={{marginTop: i ? 10 : 0, fontWeight: 600}}>📍 {g.titulo} · {g.pacotes} pacote(s) aqui</div>}
+        {g.ps.map(p => <LinhaParada key={p.id} p={p} comWaze={pend.length > 1} />)}
+      </div>)}</div>
       {pend.length > 1 && <div className="linha"><button className="btn ok" onClick={() => A.entregarTodas(pend)}>✓ Entreguei as {pend.length} daqui</button></div>}
       {pend.length > 1 && <div className="info" style={{marginTop: 6}}>Chegando, use o mapa do app de entregas para achar a porta de cada uma.</div>}
     </div>;
@@ -199,7 +202,10 @@ export function TelaRota() {
                   <a className="btn peq waze" href={linkWaze(pend[0] as Ponto)} target="_blank" rel="noopener">Waze</a>
                 </> : '✓'}
               </div>
-              {bp.map(p => <LinhaParada key={p.id} p={p} comWaze={false} />)}
+              {agruparPorEndereco(bp).map((g, i, todos) => <div key={g.chave}>
+                {todos.length > 1 && <div className="info" style={{marginTop: i ? 8 : 4, fontWeight: 600}}>📍 {g.titulo} · {g.pacotes} pacote(s)</div>}
+                {g.ps.map(p => <LinhaParada key={p.id} p={p} comWaze={false} />)}
+              </div>)}
             </div>;
           })}
         </>}

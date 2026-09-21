@@ -8,6 +8,8 @@ export const novoId = () => Math.random().toString(36).slice(2, 10);
 export const numeroDaParada = (valor: string | null | undefined): string | null =>
   /^\d{1,4}$/.test(String(valor ?? '').trim()) ? String(valor).trim() : null;
 
+export const ehAdicional = (valor: string | null | undefined): boolean => String(valor ?? '').trim() === '-';
+
 export interface ResumoPlanilha {
   novas: number;
   juntas: number;
@@ -36,13 +38,14 @@ export function adicionarDaPlanilha(
       ja.unidades = (ja.unidades || 1) + 1;
       if (it.tn) ja.pacotes!.push(it.tn);
       if (!ja.stop) ja.stop = numeroDaParada(it.parada);
+      if (ehAdicional(it.parada)) ja.adicional = true;
       r.juntas++;
       continue;
     }
     if (existentes.has(chave)) { r.repetidas++; continue; }
     const temCoord = it.lat != null;
     const p: Parada = {
-      id: novoId(), area: e.areaAtual, ml: it.ml, stop: numeroDaParada(it.parada), texto: it.texto, bairro: it.bairro, rota: rotaDe(it), pacotes: it.tn ? [it.tn] : [],
+      id: novoId(), area: e.areaAtual, ml: it.ml, stop: numeroDaParada(it.parada), adicional: ehAdicional(it.parada), texto: it.texto, bairro: it.bairro, rota: rotaDe(it), pacotes: it.tn ? [it.tn] : [],
       unidades: null, comercial: false, lat: temCoord ? it.lat : null, lng: temCoord ? it.lng : null,
       exibido: !temCoord ? '' : it.aproximada ? 'Posição da planilha com poucas casas decimais: pode errar em até 1 km' : 'Posição da planilha',
       precisao: !temCoord ? 'pendente' : it.aproximada ? 'aproximada' : 'planilha', candidatos: [], entregue: false,

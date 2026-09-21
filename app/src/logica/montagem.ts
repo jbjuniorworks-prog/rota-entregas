@@ -50,15 +50,17 @@ export async function montarRota(e: Estado, s: ServicosDeRota, aviso: (m: string
     const melhor = pts.length === 1 ? [0] : otimizar(pts.length, M.dur, !!pos, !!fim);
 
     const off = pos ? 1 : 0;
-    const todasComParada = alvos.every(x => x.stop);
-    const todasComNumero = alvos.every(x => x.ml);
+    const SEM_NUMERO = 9e6;
     const chave = (i: number) => {
       const x = pts[i] as Parada;
-      if (todasComParada) return +x.stop! * 10000 + (x.ml ? +x.ml : 0);
-      if (todasComNumero) return +x.ml!;
-      return e.paradas.indexOf(x);
+      const parada = x.stop ? +x.stop : SEM_NUMERO;
+      const pacote = x.ml ? +x.ml : SEM_NUMERO;
+      return [parada, pacote, e.paradas.indexOf(x)];
     };
-    const seqML = alvos.map((_, i) => i + off).sort((i, j) => chave(i) - chave(j));
+    const seqML = alvos.map((_, i) => i + off).sort((i, j) => {
+      const a = chave(i), b = chave(j);
+      return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+    });
     if (pos) seqML.unshift(0);
     if (fim) seqML.push(pts.length - 1);
     rota.mlDur += custo(seqML, M.dur);

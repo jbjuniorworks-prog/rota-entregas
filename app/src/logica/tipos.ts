@@ -18,6 +18,7 @@ export interface Parada {
   area: string;
   ml: string | null;
   stop?: string | null;
+  adicional?: boolean;
   texto: string;
   bairro?: string;
   rota?: string;

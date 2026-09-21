@@ -57,6 +57,7 @@ export interface GrupoNoMapa {
   pacotes: number;
   enderecos: number;
   stops: string[];
+  adicionais: number;
   lat: number;
   lng: number;
 }
@@ -74,6 +75,7 @@ export function gruposNoMapa(paradas: Parada[], raio = RAIO_BLOCO): GrupoNoMapa[
     pacotes: g.ps.reduce((n, p) => n + (p.unidades || 1), 0),
     enderecos: new Set(g.ps.map(p => chaveEndereco(p.texto).split('|').slice(0, 2).join('|'))).size,
     stops: [...new Set(g.ps.map(p => p.stop).filter(Boolean) as string[])].sort((a, b) => +a - +b),
+    adicionais: g.ps.filter(p => p.adicional).reduce((n, p) => n + (p.unidades || 1), 0),
     lat: g.lat, lng: g.lng,
   }));
 }
@@ -90,6 +92,25 @@ export function porPerto(paradas: Parada[], alvo: Ponto, semEstes: string[], ate
     .map(p => ({p, distancia: haversine(alvo, p as Ponto)}))
     .filter(x => x.distancia > RAIO_BLOCO && x.distancia <= ateMetros)
     .sort((a, b) => a.distancia - b.distancia);
+}
+
+export interface PorEndereco {
+  chave: string;
+  titulo: string;
+  ps: Parada[];
+  pacotes: number;
+}
+
+export function agruparPorEndereco(paradas: Parada[]): PorEndereco[] {
+  const out: PorEndereco[] = [];
+  for (const p of paradas) {
+    const chave = chaveEndereco(p.texto).split('|').slice(0, 2).join('|');
+    const g = out.find(x => x.chave === chave);
+    const pacotes = p.unidades || 1;
+    if (g) { g.ps.push(p); g.pacotes += pacotes; continue; }
+    out.push({chave, titulo: p.texto.split(',').slice(0, 2).join(',').trim(), ps: [p], pacotes});
+  }
+  return out;
 }
 
 export function blocos(ordem: string[], parada: (id: string) => Parada | undefined, raio = RAIO_BLOCO): string[][] {

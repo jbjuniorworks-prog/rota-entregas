@@ -1,6 +1,6 @@
 import {haversine, marcarIsoladas, proximaAPe} from './geo';
 import {montarRota as montarRotaDoEstado} from './montagem';
-import {gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, trechos} from './otimizacao';
+import {agruparPorEndereco, gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, trechos} from './otimizacao';
 import type {Parada, Ponto} from './tipos';
 
 let seq = 0;
@@ -148,6 +148,29 @@ describe('ordem do app de entrega', () => {
     const r = await montarRotaDoEstado(presa as never, servicos);
     expect(r.areas[0].ordem).toEqual(['longe', 'meio', 'perto']);
     expect(r.dist).toBeGreaterThan(r.melhorDist!);
+  });
+});
+
+describe('condomínio e casa do lado na mesma parada', () => {
+  const parada2 = (id: string, texto: string, extra: Partial<Parada> = {}) =>
+    ({id, area: 'a', ml: null, texto, unidades: null, comercial: false, lat: -10.94, lng: -37.06, exibido: '', precisao: 'planilha', candidatos: [], entregue: false, ...extra}) as Parada;
+
+  it('separa por endereço quem está na mesma parada, somando os pacotes de cada um', () => {
+    const g = agruparPorEndereco([
+      parada2('1', 'Rua Passos Cabral, 742, Cond. Alameda Residence apt 201', {unidades: 3}),
+      parada2('2', 'Rua Passos Cabral, 742, Cond. Alameda Residence apt 504'),
+      parada2('3', 'Rua Passos Cabral, 731, Loja laranja lima', {unidades: 2}),
+    ]);
+    expect(g).toHaveLength(2);
+    expect(g[0]).toMatchObject({titulo: 'Rua Passos Cabral, 742', pacotes: 4});
+    expect(g[0].ps.map(p => p.id)).toEqual(['1', '2']);
+    expect(g[1]).toMatchObject({titulo: 'Rua Passos Cabral, 731', pacotes: 2});
+  });
+  it('um endereço só continua sendo um grupo só, sem cabeçalho a mais', () => {
+    expect(agruparPorEndereco([
+      parada2('1', 'Rua dos Ipês, 300, Bloco A ap 101'),
+      parada2('2', 'Rua dos Ipês, 300, Bloco B ap 202'),
+    ])).toHaveLength(1);
   });
 });
 
