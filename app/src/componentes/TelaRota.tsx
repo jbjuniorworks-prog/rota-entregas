@@ -25,6 +25,10 @@ function ConfigInicio() {
       <input type="checkbox" id="voltar" checked={!!(e.voltar && !e.fim)} disabled={!!e.fim} style={{width: 20, height: 20}} onChange={ev => A.mudar(() => { e.voltar = ev.target.checked; }, true)} />
       Voltar ao ponto de saída no final
     </label>
+    <label style={{display: 'flex', gap: 8, alignItems: 'center', color: 'var(--tx)'}}>
+      <input type="checkbox" id="ordemDoApp" checked={!!e.ordemDoApp} style={{width: 20, height: 20}} onChange={ev => A.mudar(() => { e.ordemDoApp = ev.target.checked; }, true)} />
+      Seguir a ordem do app de entrega (parada 1, 2, 3…)
+    </label>
     <h2>Terminar perto de</h2>
     <div className="info">{e.fim ? `🏁 ${e.fim.exibido}. A última entrega fica o mais perto possível daqui.` : 'Sem ponto final: a rota termina onde for mais curto.'}</div>
     <div className="linha">
@@ -151,8 +155,12 @@ export function TelaRota() {
   return <>
     {proxima}
     <div className="info">Total estimado: <b>{fmtKm(R.dist)}</b>, cerca de <b>{fmtMin(R.dur)}</b> dirigindo (sem contar as paradas){R.porRuas ? '' : ', aproximado'}.</div>
-    {R.mlDist > 0 && <div className="info" style={{marginTop: 4}}>Na ordem da lista do app: {fmtKm(R.mlDist)}, {fmtMin(R.mlDur)}. {economia > 200
-      ? <b style={{color: 'var(--ok)'}}>Esta rota economiza {fmtKm(economia)}.</b> : 'A ordem do app já estava boa.'}</div>}
+    {R.ordemDoApp
+      ? <div className="info" style={{marginTop: 4}}>Você pediu a ordem do app (parada 1, 2, 3…).{R.melhorDist != null && R.dist - R.melhorDist > 200
+        ? <> A melhor sequência faria <b>{fmtKm(R.melhorDist)}</b>, {fmtMin(R.melhorDur!)} — <b>{fmtKm(R.dist - R.melhorDist)}</b> a menos. Desmarque a opção para usá-la.</>
+        : ' A melhor sequência não faria diferença hoje.'}</div>
+      : R.mlDist > 0 && <div className="info" style={{marginTop: 4}}>Na ordem da lista do app: {fmtKm(R.mlDist)}, {fmtMin(R.mlDur)}. {economia > 200
+        ? <b style={{color: 'var(--ok)'}}>Esta rota economiza {fmtKm(economia)}.</b> : 'A ordem do app já estava boa.'}</div>}
     {semLocal > 0 && <div className="aviso">{semLocal} parada(s) não encontrada(s) ficaram fora da rota. Corrija em <b>2. Conferir</b>.</div>}
     {foraDaRota > 0 && <div className="aviso">{foraDaRota} parada(s) nova(s) ou corrigida(s) fora da rota. <button className="btn peq pri" onClick={A.montarRota}>Refazer rota</button></div>}
     <div className="linha"><button className="btn" onClick={A.copiarRota}>📋 Copiar rota (WhatsApp)</button>

@@ -31,7 +31,7 @@ export const CHAVES = {
 } as const;
 
 export function estadoVazio(id = Math.random().toString(36).slice(2, 10)): Estado {
-  return {cidade: '', regiao: null, googleKey: '', tamTrecho: 9, inicio: null, voltar: false, areas: [{id, nome: 'Verde', cor: '#16a34a', prazo: ''}], areaAtual: id, areasManual: false, paradas: [], rota: null, pernas: {}};
+  return {cidade: '', regiao: null, googleKey: '', tamTrecho: 9, inicio: null, voltar: false, ordemDoApp: false, areas: [{id, nome: 'Verde', cor: '#16a34a', prazo: ''}], areaAtual: id, areasManual: false, paradas: [], rota: null, pernas: {}};
 }
 
 export function carregarEstado(g: Guarda): Estado {
@@ -44,8 +44,8 @@ export const salvarEstado = (g: Guarda, e: Estado) => g.gravar(CHAVES.estado, e)
 
 export function resetarDia(g: Guarda, e: Estado, agora = Date.now()): Estado {
   g.gravar(CHAVES.backup, {quando: agora, estado: e});
-  const {cidade, googleKey, inicio, tamTrecho} = e;
-  const novo = Object.assign(estadoVazio(), {cidade, googleKey, inicio, tamTrecho});
+  const {cidade, googleKey, inicio, tamTrecho, ordemDoApp} = e;
+  const novo = Object.assign(estadoVazio(), {cidade, googleKey, inicio, tamTrecho, ordemDoApp});
   salvarEstado(g, novo);
   return novo;
 }

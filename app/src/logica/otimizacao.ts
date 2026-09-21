@@ -56,6 +56,7 @@ export interface GrupoNoMapa {
   ids: string[];
   pacotes: number;
   enderecos: number;
+  stops: string[];
   lat: number;
   lng: number;
 }
@@ -72,6 +73,7 @@ export function gruposNoMapa(paradas: Parada[], raio = RAIO_BLOCO): GrupoNoMapa[
     ids: g.ps.map(p => p.id),
     pacotes: g.ps.reduce((n, p) => n + (p.unidades || 1), 0),
     enderecos: new Set(g.ps.map(p => chaveEndereco(p.texto).split('|').slice(0, 2).join('|'))).size,
+    stops: [...new Set(g.ps.map(p => p.stop).filter(Boolean) as string[])].sort((a, b) => +a - +b),
     lat: g.lat, lng: g.lng,
   }));
 }

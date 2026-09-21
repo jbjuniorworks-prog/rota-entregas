@@ -17,6 +17,7 @@ export interface Parada {
   id: string;
   area: string;
   ml: string | null;
+  stop?: string | null;
   texto: string;
   bairro?: string;
   rota?: string;
@@ -67,6 +68,9 @@ export interface Rota {
   dist: number;
   mlDur: number;
   mlDist: number;
+  ordemDoApp?: boolean;
+  melhorDur?: number;
+  melhorDist?: number;
   porRuas: boolean;
   quando: number;
   fim?: Perna;
@@ -87,6 +91,7 @@ export interface Estado {
   inicio: Local | null;
   fim?: Local | null;
   voltar: boolean;
+  ordemDoApp?: boolean;
   areas: Area[];
   areaAtual: string;
   areasManual: boolean;

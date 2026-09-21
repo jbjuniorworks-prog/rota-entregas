@@ -118,6 +118,18 @@ test('se o pedido de GPS fica sem resposta, a rota sai assim mesmo, e a resposta
   expect(await ordem(page, NOMES)).toHaveLength(6);
 });
 
+test('dá para pedir a rota na ordem do app de entrega, e o app diz o que isso custa', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await aba(page, '3. Rota');
+  await page.getByLabel('Seguir a ordem do app de entrega (parada 1, 2, 3…)').check();
+  await page.getByRole('button', {name: /Montar melhor sequência/}).click();
+  await expect(page.getByText(/Total estimado/)).toBeVisible();
+  await expect(page.getByText(/Você pediu a ordem do app/)).toBeVisible();
+  const naOrdem = await ordem(page, ['Rua das Acácias, 120', 'Rua dos Ipês, 300', 'Avenida Central, 1500', 'Travessa Um, 45', 'Rua D, 49']);
+  expect(naOrdem).toEqual(['Rua das Acácias, 120', 'Rua dos Ipês, 300', 'Avenida Central, 1500', 'Travessa Um, 45', 'Rua D, 49']);
+});
+
 test('sem GPS a rota ainda é montada, e "voltar ao ponto de saída" já pode ser marcado', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_B);

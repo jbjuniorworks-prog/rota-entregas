@@ -1,6 +1,7 @@
 import {haversine, marcarIsoladas, proximaAPe} from './geo';
+import {montarRota as montarRotaDoEstado} from './montagem';
 import {gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, trechos} from './otimizacao';
-import type {Parada} from './tipos';
+import type {Parada, Ponto} from './tipos';
 
 let seq = 0;
 function parada(lat: number | null, lng: number | null, extra: Partial<Parada> = {}): Parada {
@@ -101,6 +102,52 @@ describe('aviso a pé', () => {
     expect(proximaAPe(a, parada(-10.9300, -37.1000))).toBeNull();
     expect(proximaAPe(a, parada(-10.9400, -37.1000))).toBeNull();
     expect(Math.round(haversine({lat: -10.93, lng: -37.10}, {lat: -10.9313, lng: -37.10}))).toBe(145);
+  });
+});
+
+describe('ordem do app de entrega', () => {
+  const daPlanilha = (id: string, stop: string, ml: string, lat: number, lng: number) =>
+    ({id, area: 'a', ml, stop, texto: `Rua ${id}, 1`, unidades: null, comercial: false, lat, lng, exibido: '', precisao: 'planilha', candidatos: [], entregue: false}) as Parada;
+
+  const estado = (ordemDoApp: boolean) => ({
+    cidade: 'Aracaju', googleKey: '', tamTrecho: 9, voltar: false, ordemDoApp,
+    inicio: {id: 'inicio', lat: -10.9600, lng: -37.0451, exibido: 'saída'},
+    areas: [{id: 'a', nome: 'Verde', cor: '#16a34a', prazo: ''}], areaAtual: 'a', areasManual: false,
+    pernas: {}, rota: null,
+    paradas: [
+      daPlanilha('longe', '3', '3', -10.9700, -37.0400),
+      daPlanilha('perto', '1', '1', -10.9605, -37.0450),
+      daPlanilha('meio', '2', '2', -10.9650, -37.0420),
+    ],
+  }) as never;
+
+  const servicos = {
+    matriz: async (pts: Ponto[]) => {
+      const m = pts.map(a => pts.map(b => haversine(a, b)));
+      return {dur: m, dist: m, porRuas: false};
+    },
+    linha: async () => null,
+  };
+
+  it('desmarcada, monta a melhor sequência; marcada, segue parada 1, 2, 3', async () => {
+    const solta = estado(false) as {paradas: Parada[]; rota: {areas: {ordem: string[]}[]} | null};
+    const rSolta = await montarRotaDoEstado(solta as never, servicos);
+    expect(rSolta.areas[0].ordem).toEqual(['perto', 'meio', 'longe']);
+
+    const presa = estado(true);
+    const rPresa = await montarRotaDoEstado(presa, servicos);
+    expect(rPresa.areas[0].ordem).toEqual(['perto', 'meio', 'longe']);
+    expect(rPresa.ordemDoApp).toBe(true);
+    expect(rPresa.melhorDist).toBeGreaterThan(0);
+  });
+
+  it('quando a ordem do app é pior, a rota segue ela e o app diz quanto custa', async () => {
+    const presa = estado(true) as {paradas: Parada[]};
+    presa.paradas[0].stop = '1';
+    presa.paradas[1].stop = '3';
+    const r = await montarRotaDoEstado(presa as never, servicos);
+    expect(r.areas[0].ordem).toEqual(['longe', 'meio', 'perto']);
+    expect(r.dist).toBeGreaterThan(r.melhorDist!);
   });
 });
 

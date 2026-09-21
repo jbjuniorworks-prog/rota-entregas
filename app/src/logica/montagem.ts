@@ -44,21 +44,33 @@ export async function montarRota(e: Estado, s: ServicosDeRota, aviso: (m: string
     aviso(`Calculando área ${a.nome}…`);
     const alvos = pendentesDa(e, a.id);
     const fim: Local | null = a === areas[areas.length - 1] && e.fim ? e.fim : null;
-    const pts: (Ponto & {id?: string; ml?: string | null})[] = [...(pos ? [pos] : []), ...alvos, ...(fim ? [fim] : [])];
+    const pts: (Ponto & {id?: string; ml?: string | null; stop?: string | null})[] = [...(pos ? [pos] : []), ...alvos, ...(fim ? [fim] : [])];
     const M = await s.matriz(pts);
     if (!M.porRuas) rota.porRuas = false;
-    const p = pts.length === 1 ? [0] : otimizar(pts.length, M.dur, !!pos, !!fim);
-    const ordem = p.filter(i => !(pos && i === 0) && !(fim && i === pts.length - 1)).map(i => pts[i].id!);
-    {
-      const off = pos ? 1 : 0;
-      const todosComNumero = alvos.every(x => x.ml);
-      const chave = (i: number) => todosComNumero ? +pts[i].ml! : e.paradas.indexOf(pts[i] as Parada);
-      const seqML = alvos.map((_, i) => i + off).sort((i, j) => chave(i) - chave(j));
-      if (pos) seqML.unshift(0);
-      if (fim) seqML.push(pts.length - 1);
-      rota.mlDur += custo(seqML, M.dur);
-      rota.mlDist += custo(seqML, M.dist);
+    const melhor = pts.length === 1 ? [0] : otimizar(pts.length, M.dur, !!pos, !!fim);
+
+    const off = pos ? 1 : 0;
+    const todasComParada = alvos.every(x => x.stop);
+    const todasComNumero = alvos.every(x => x.ml);
+    const chave = (i: number) => {
+      const x = pts[i] as Parada;
+      if (todasComParada) return +x.stop! * 10000 + (x.ml ? +x.ml : 0);
+      if (todasComNumero) return +x.ml!;
+      return e.paradas.indexOf(x);
+    };
+    const seqML = alvos.map((_, i) => i + off).sort((i, j) => chave(i) - chave(j));
+    if (pos) seqML.unshift(0);
+    if (fim) seqML.push(pts.length - 1);
+    rota.mlDur += custo(seqML, M.dur);
+    rota.mlDist += custo(seqML, M.dist);
+
+    const p = e.ordemDoApp ? seqML : melhor;
+    if (e.ordemDoApp) {
+      rota.ordemDoApp = true;
+      rota.melhorDur = (rota.melhorDur || 0) + custo(melhor, M.dur);
+      rota.melhorDist = (rota.melhorDist || 0) + custo(melhor, M.dist);
     }
+    const ordem = p.filter(i => !(pos && i === 0) && !(fim && i === pts.length - 1)).map(i => pts[i].id!);
     let dur = 0, dist = 0;
     for (let k = 1; k < p.length; k++) {
       const perna = {dur: M.dur[p[k - 1]][p[k]], dist: M.dist[p[k - 1]][p[k]]};
