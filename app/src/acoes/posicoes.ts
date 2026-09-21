@@ -38,21 +38,25 @@ export function usarSugestao(p: Parada) {
 
 export const GPS_PASSAGEM = 40;
 
-export function guardarPassagem(p: Parada) {
+export function guardarPassagens(ps: Parada[]) {
   if (!navigator.geolocation) return;
-  const chave = chaveLugar(p.texto, p.bairro, e().cidade);
-  if (!chave) return;
+  const alvos = ps.map(p => ({p, chave: chaveLugar(p.texto, p.bairro, e().cidade)})).filter((x): x is {p: Parada; chave: string} => !!x.chave);
+  if (!alvos.length) return;
   navigator.geolocation.getCurrentPosition(pos => {
     const {latitude, longitude, accuracy} = pos.coords;
     if (accuracy > GPS_PASSAGEM || foraDaRegiao({lat: latitude, lng: longitude})) return;
-    const rua = decompor(p.texto).rua;
-    fila.enfileirar({
-      tipo: 'observacao', chave, lat: +latitude.toFixed(6), lng: +longitude.toFixed(6), precisao: Math.round(accuracy),
-      endereco: p.texto.slice(0, 300), rua: rua.slice(0, 200), ruaChave: chaveRua(rua).slice(0, 200),
-    });
+    for (const {p, chave} of alvos) {
+      const rua = decompor(p.texto).rua;
+      fila.enfileirar({
+        tipo: 'observacao', chave, lat: +latitude.toFixed(6), lng: +longitude.toFixed(6), precisao: Math.round(accuracy),
+        endereco: p.texto.slice(0, 300), rua: rua.slice(0, 200), ruaChave: chaveRua(rua).slice(0, 200),
+      });
+    }
     enviarFila();
   }, () => {}, {enableHighAccuracy: true, timeout: 10000, maximumAge: 5000});
 }
+
+export const guardarPassagem = (p: Parada) => guardarPassagens([p]);
 
 export function posicionar(alvo: string) {
   ui.posicionando = ui.posicionando === alvo ? null : alvo;

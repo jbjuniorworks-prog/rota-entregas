@@ -2,7 +2,6 @@ import {createRoot} from 'react-dom/client';
 import {Component, lazy, Suspense, useEffect, useRef, useState, type ReactNode} from 'react';
 import './estilo.css';
 import * as A from './acoes';
-import {TelaAdmin} from './componentes/Admin';
 import {TelaConferir} from './componentes/TelaConferir';
 import {TelaEnderecos} from './componentes/TelaEnderecos';
 import {TelaEntrar} from './componentes/Conta';
@@ -11,6 +10,7 @@ import {useLoja, type Aba} from './loja';
 import {nuvem} from './servicos/nuvem';
 
 const Mapa = lazy(() => import('./componentes/Mapa'));
+const TelaAdmin = lazy(() => import('./componentes/Admin').then(m => ({default: m.TelaAdmin})));
 
 class EscudoDoMapa extends Component<{children: ReactNode}, {caiu: boolean}> {
   state = {caiu: false};
@@ -71,7 +71,7 @@ function App() {
           {ui.aba === 'enderecos' && <TelaEnderecos />}
           {ui.aba === 'conferir' && <TelaConferir />}
           {ui.aba === 'rota' && <TelaRota />}
-          {ui.aba === 'admin' && <TelaAdmin />}
+          {ui.aba === 'admin' && <Suspense fallback={<div className="info">Abrindo…</div>}><TelaAdmin /></Suspense>}
         </div>
       </div>
     </div>

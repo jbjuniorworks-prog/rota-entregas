@@ -161,10 +161,14 @@ export function TelaRota() {
   const todasRota = R.areas.flatMap(ra => ra.ordem.map(loja.parada).filter((p): p is Parada => !!p));
   const feitasRota = todasRota.filter(p => p.entregue).length;
   const fimTudo = prev && ultima ? prev.porArea[ultima.id] : null;
+  const esperando = A.fila.pendentes();
+  const desde = A.fila.desde();
+  const minutos = desde ? Math.floor((Date.now() - desde) / 60000) : 0;
+  const haQuanto = !desde ? '' : minutos < 1 ? 'agora' : minutos < 60 ? `há ${minutos} min` : `há ${Math.floor(minutos / 60)} h`;
   return <>
     <div className="resumo">
       <div className="barra"><i style={{width: `${todasRota.length ? Math.round(feitasRota * 100 / todasRota.length) : 0}%`}} /></div>
-      <div><b>{feitasRota}/{todasRota.length}</b> entregas · {fmtKm(R.dist)} · {fmtMin(R.dur)} dirigindo{fimTudo ? <> · fim <b>~{hhmm(fimTudo.fim)}</b></> : null}{R.porRuas ? '' : ' · aproximado'}</div>
+      <div><b>{feitasRota}/{todasRota.length}</b> entregas · {fmtKm(R.dist)} · {fmtMin(R.dur)} dirigindo{fimTudo ? <> · fim <b>~{hhmm(fimTudo.fim)}</b></> : null}{R.porRuas ? '' : ' · aproximado'}{esperando > 0 ? ` · ⏳ ${esperando} para enviar${haQuanto ? ` (${haQuanto})` : ''}` : ''}</div>
     </div>
     {proxima}
     {!R.porRuas && <div className="aviso laranja">🟠 Esta sequência saiu <b>sem as ruas</b>{R.motivoSemRuas ? ` (${R.motivoSemRuas})` : ''}: usei distância em linha reta, que não sabe de mão única nem de canteiro. <button className="btn peq pri" onClick={A.montarRota}>Tentar de novo</button></div>}

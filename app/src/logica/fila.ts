@@ -92,8 +92,10 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
 
   return {
     pendentes: () => ler().length,
+    desde: () => g.ler<number>(CHAVES.filaDesde, 0),
     erro: () => erro,
     enfileirar(...ops: Operacao[]) {
+      if (!ler().length) g.gravar(CHAVES.filaDesde, Date.now());
       g.gravar(CHAVES.fila, [...ler(), ...ops].slice(-FILA_MAX));
     },
     desfazerCorrecao(chave: string, lat: number, lng: number): 'retirada' | 'apagar' {
@@ -117,6 +119,7 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
           const f = ler();
           f.shift();
           g.gravar(CHAVES.fila, f);
+          if (!f.length) g.gravar(CHAVES.filaDesde, 0);
         }
       } finally {
         enviando = false;

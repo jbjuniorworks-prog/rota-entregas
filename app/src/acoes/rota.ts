@@ -7,7 +7,7 @@ import type {Parada} from '../logica/tipos';
 import {guarda, loja, status} from '../loja';
 import {linhaDaRota, matriz} from '../servicos/ruas';
 import {e, enviarFila, fila, invalidarRota, ui} from './base';
-import {guardarPassagem} from './posicoes';
+import {guardarPassagem, guardarPassagens} from './posicoes';
 
 export function gps(aindaVale: () => boolean = () => true): Promise<void> {
   return new Promise((ok, falha) => {
@@ -58,7 +58,7 @@ export async function montarRota() {
   loja.mudou();
 }
 
-export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = true) {
+export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = true, comGps = true) {
   p.entregue = entregue;
   p.entregueEm = entregue ? Date.now() : null;
   loja.mudou();
@@ -70,7 +70,7 @@ export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = tru
       try { navigator.vibrate?.(200); } catch {}
     }
   }
-  if (entregue) guardarPassagem(p);
+  if (entregue && comGps) guardarPassagem(p);
   if (p.rota && p.pacotes && p.pacotes.length) {
     fila.enfileirar({tipo: 'entregue', rota: p.rota, tns: p.pacotes, quando: entregue ? new Date(p.entregueEm!).toISOString() : null});
     enviarFila();
@@ -84,7 +84,8 @@ export function entregarTodas(ps: Parada[]) {
   if (!confirm(`Marcar como entregue tudo desta parada?
 
 ${faltando.length} entrega(s), ${pacotes} pacote(s).`)) return;
-  faltando.forEach((p, i) => marcarEntregue(p, true, i === faltando.length - 1));
+  faltando.forEach((p, i) => marcarEntregue(p, true, i === faltando.length - 1, false));
+  guardarPassagens(faltando);
   status(`${faltando.length} entrega(s) marcada(s) aqui. Se sobrou alguma, toque no ↺ dela.`, 6000);
 }
 
