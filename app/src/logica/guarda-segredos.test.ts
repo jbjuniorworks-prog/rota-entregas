@@ -1,4 +1,14 @@
+import {mesmoBanco} from '../../../ferramentas/banco.mjs';
 import {olharConteudo, olharNome, revisar} from '../../../ferramentas/guarda-segredos.mjs';
+
+describe('trava da restauração', () => {
+  it('recusa restaurar/limpar quando o destino é o banco de verdade', () => {
+    const casa = {url: 'https://hkclz.supabase.co', chave: 'servico-da-casa'};
+    expect(mesmoBanco(casa, casa)).toBe(true);
+    expect(mesmoBanco(casa, {url: 'https://teste.supabase.co', chave: casa.chave})).toBe(true);
+    expect(mesmoBanco(casa, {url: 'https://teste.supabase.co', chave: 'servico-do-teste'})).toBe(false);
+  });
+});
 
 describe('trava contra subir dado real para o repositório público', () => {
   // Este arquivo é pulado pela própria trava; noutro lugar, marque a linha com guarda:exemplo.

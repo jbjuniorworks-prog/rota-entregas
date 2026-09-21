@@ -27,13 +27,19 @@ export function gps(): Promise<void> {
   });
 }
 
+const PRAZO_DO_GPS = 20000;
+
+function comPrazo<T>(promessa: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([promessa, new Promise<T>((_, falha) => setTimeout(() => falha(new Error('o GPS não respondeu')), ms))]);
+}
+
 export async function montarRota() {
   if (ui.ocupado) return;
   if (!e().paradas.some(p => !p.entregue && p.lat != null)) { status('Nenhuma parada com local encontrado.', 3000); return; }
   ui.ocupado = true;
   try {
     if (!e().inicio || !e().inicio!.texto) {
-      try { await gps(); } catch { e().inicio = null; }
+      try { await comPrazo(gps(), PRAZO_DO_GPS); } catch { e().inicio = null; }
     }
     const rota = await calcularRota(e(), {matriz, linha: linhaDaRota}, m => status(m));
     status(rota.porRuas ? 'Rota pronta!' : 'Rota pronta (sem acesso às ruas: usei distância aproximada).', 3500);

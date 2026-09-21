@@ -10,6 +10,8 @@ export function ambiente(sufixo = '') {
   return {url, chave};
 }
 
+export const mesmoBanco = (a, b) => !!a && !!b && (a.url === b.url || a.chave === b.chave);
+
 export function api({url, chave}) {
   return async (caminho, init = {}) => {
     const r = await fetch(url + caminho, {

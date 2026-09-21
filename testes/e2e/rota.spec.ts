@@ -95,6 +95,18 @@ test.describe('com GPS', () => {
   });
 });
 
+test('se o pedido de GPS fica sem resposta, a rota sai assim mesmo em vez de travar', async ({page}) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() => { navigator.geolocation.getCurrentPosition = () => {}; });
+  await abrir(page);
+  await carregar(page, ROTA_B);
+  await aba(page, '3. Rota');
+  await page.getByRole('button', {name: /Montar melhor sequência/}).click();
+  await expect(aviso(page)).toContainText('Pegando sua localização');
+  await expect(page.getByText(/Total estimado/)).toBeVisible({timeout: 60_000});
+  expect(await ordem(page, NOMES)).toHaveLength(6);
+});
+
 test('sem GPS a rota ainda é montada, e "voltar ao ponto de saída" já pode ser marcado', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_B);

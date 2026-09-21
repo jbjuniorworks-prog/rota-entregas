@@ -2,7 +2,7 @@ import {createHash, randomInt} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import {readFileSync, existsSync, readdirSync} from 'node:fs';
 import {join} from 'node:path';
-import {ambiente, api, linhasDe, usuariosDe, TABELAS} from './banco.mjs';
+import {ambiente, api, linhasDe, mesmoBanco, usuariosDe, TABELAS} from './banco.mjs';
 
 const PADRAO = join(process.env.USERPROFILE || process.env.HOME || '.', 'OneDrive', 'backups', 'rota-entregas');
 const alvo = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : ultimoBackup();
@@ -28,8 +28,12 @@ function ler(nome) {
 
 const senha = () => Array.from({length: 16}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'[randomInt(56)]).join('') + '9Zx';
 
-const daCasa = api(ambiente());
-const doTeste = api(ambiente('_DESTINO'));
+const deVerdade = ambiente(), destino = ambiente('_DESTINO');
+if (mesmoBanco(deVerdade, destino)) {
+  throw new Error(`o destino é o banco de verdade (${destino.url}). Esta ferramenta APAGA tudo no destino: aponte SUPABASE_URL_DESTINO e SUPABASE_SERVICE_ROLE_KEY_DESTINO para o projeto de teste.`);
+}
+const daCasa = api(deVerdade);
+const doTeste = api(destino);
 
 async function enviar(tabela, linhas, opcoes = '') {
   for (let i = 0; i < linhas.length; i += 500) {
