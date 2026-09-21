@@ -28,6 +28,7 @@ export const CHAVES = {
   fila: 'rota-entregas-fila',
   rotasNuvem: 'rota-entregas-rotas-nuvem',
   sessao: 'rota-entregas-auth',
+  mapaGrande: 'rota-entregas-mapa-grande',
 } as const;
 
 export function estadoVazio(id = Math.random().toString(36).slice(2, 10)): Estado {

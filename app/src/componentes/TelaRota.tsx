@@ -50,7 +50,7 @@ function LinhaParada({p, comWaze}: {p: Parada; comWaze: boolean}) {
   return <div className={`parada ${p.entregue ? 'feito' : ''}`} data-item={p.id}>
     <div className="badge" style={{background: a.cor}}>{rotuloDe(p)}</div>
     <div className="txt" onClick={() => A.focar(p.id)}>
-      <div>{p.texto}</div><Meta p={p} />
+      <div className="end">{p.texto}</div><Meta p={p} />
       {(DUVIDA.has(p.precisao) || QUASE.has(p.precisao)) && <Tag p={p} />}
       {p.sugestao && !p.entregue && <div className="achado">💡 Outro motorista sugere outro lugar: veja em 2. Conferir</div>}
     </div>
@@ -102,13 +102,12 @@ export function TelaRota() {
     if (agora) break;
   }
 
-  const avisoPrazo = (a: Area) => {
+  const prazoEstoura = (a: Area) => {
     const pa = prev && prev.porArea[a.id];
-    if (!pa) return null;
+    if (!pa || !pa.estoura) return null;
     const ritmo = `${Math.round(prev!.ritmo.segundos / 60)} min por parada, ${prev!.ritmo.medido ? 'seu ritmo de hoje' : 'estimado'}`;
-    if (pa.estoura) return <div className="aviso" style={{background: '#fee2e2', borderColor: '#fca5a5'}}><b>⚠ Você não fecha esta área no prazo.</b><br />
+    return <div className="aviso" style={{background: '#fee2e2', borderColor: '#fca5a5', margin: '0 0 8px'}}><b>⚠ Você não fecha esta área no prazo.</b><br />
       Previsão de terminar: <b>{hhmm(pa.fim)}</b>, e o prazo é <b>{a.prazo}</b>. ({ritmo})</div>;
-    return <div className="info">Previsão de terminar a área: <b>{hhmm(pa.fim)}</b>{a.prazo ? ` · prazo ${a.prazo} ✓` : ''} ({ritmo})</div>;
   };
 
   let proxima: ReactNode;
@@ -123,30 +122,34 @@ export function TelaRota() {
     const pacotesAqui = grupoAqui ? grupoAqui.pacotes : 0;
     const enderecosAqui = grupoAqui ? grupoAqui.enderecos : 0;
     const entregasTrecho = trechoAtual.reduce((n, x) => n + x.ids.filter(i => !loja.parada(i)!.entregue).length, 0);
+    const juntas = pend.length > 1;
     proxima = <div className="proxima" style={{borderColor: a.cor}}>
-      <div className="info" style={{display: 'flex', gap: 6, alignItems: 'center', '--c': a.cor} as any}><span className="dot" />
-        Área <b>{a.nome}</b>{a.prazo ? ' · até ' + a.prazo : ''} · {todasArea.filter(p => p.entregue).length}/{todasArea.length} entregues</div>
-      {avisoPrazo(a)}
-      <div className="grande">{pend.length > 1 ? `${pend.length} entregas ${mesmoEndereco(agora.b.map(id => loja.parada(id)!.texto)) ? 'no mesmo endereço' : 'aqui perto'}` : 'Próxima entrega'}</div>
-      {pacotesAqui > 1 && <div className="aviso" style={{margin: '4px 0'}}>📦 <b>{pacotesAqui} pacotes</b> para deixar nesta parada{enderecosAqui > 1 ? `, em ${enderecosAqui} endereços diferentes` : ''}. Confira se pegou todos.</div>}
-      <div className="achado">📍 {alvo.exibido || alvo.texto}</div>
+      {prazoEstoura(a)}
+      <div className="endereco">{alvo.texto}</div>
+      {alvo.exibido && <div className="achado">📍 {alvo.exibido}</div>}
+      <div className="etiquetas">
+        {alvo.stop && <span className="etiqueta">parada {alvo.stop}</span>}
+        {alvo.adicional && <span className="etiqueta">ADS</span>}
+        {pacotesAqui > 1 && <span className="etiqueta">📦 {pacotesAqui} pacotes{enderecosAqui > 1 ? ` · ${enderecosAqui} endereços` : ''}</span>}
+        {juntas && <span className="etiqueta">{pend.length} entregas {mesmoEndereco(agora.b.map(id => loja.parada(id)!.texto)) ? 'no mesmo endereço' : 'aqui perto'}</span>}
+      </div>
+      <div className="acoes">
+        <a className="btn waze" href={linkWaze(alvo as Ponto)} target="_blank" rel="noopener">🧭 Waze</a>
+        <button className="btn ok" onClick={() => juntas ? A.entregarTodas(pend) : A.marcarEntregue(alvo, true)}>✓ Entreguei{juntas ? ` as ${pend.length}` : ''}</button>
+      </div>
       {QUASE.has(alvo.precisao) && <div className="aviso laranja">🟠 Este é o ponto mais perto que achamos: a rua está certa, o número é aproximado. Confira o número na porta.</div>}
-      <div className="info" style={{marginTop: 4}}>Chegou e o pino está errado? <button className="btn peq" onClick={() => A.estouAqui(alvo)}>📍 Estou aqui</button></div>
-      {vizinhas.length > 0 && <div className="aviso" style={{margin: '4px 0'}}>🚶 Aqui perto, fora desta parada: {vizinhas.slice(0, 3).map(v =>
+      {vizinhas.length > 0 && <div className="aviso" style={{margin: '8px 0 0'}}>🚶 Aqui perto, fora desta parada: {vizinhas.slice(0, 3).map(v =>
         <span key={v.p.id}> <b onClick={() => A.focar(v.p.id)}>{v.p.ml ? `#${v.p.ml} ` : ''}{v.p.texto.split(',').slice(0, 2).join(',')}</b> (~{Math.round(v.distancia)} m){v.p.unidades ? ` · ${v.p.unidades} pacotes` : ''};</span>)}
         {vizinhas.length > 3 ? ` e mais ${vizinhas.length - 3}.` : ''}</div>}
-      <div className="linha">
-        <a className="btn waze" href={linkWaze(alvo as Ponto)} target="_blank" rel="noopener">Waze</a>
-        <a className="btn pri" href={linkMaps(alvo as Ponto)} target="_blank" rel="noopener">Google Maps</a>
-      </div>
-      {trechoAtual.length > 1 && <div className="linha"><a className="btn pri" href={linkMapsVarios(trechoAtual.map(x => x.alvo))} target="_blank" rel="noopener">
-        🗺️ Maps com os próximos {trechoAtual.filter(x => x.ids.length).length} pontos ({entregasTrecho} entregas){trechoAtual.some(x => !x.ids.length) ? ' + 🏁' : ''}</a></div>}
-      <div style={{marginTop: 8}}>{agruparPorEndereco(agora.b.map(loja.parada).filter((p): p is Parada => !!p)).map((g, i, todos) => <div key={g.chave}>
+      {agora.b.length > 1 && <div style={{marginTop: 8}}>{agruparPorEndereco(agora.b.map(loja.parada).filter((p): p is Parada => !!p)).map((g, i, todos) => <div key={g.chave}>
         {todos.length > 1 && <div className="info" style={{marginTop: i ? 10 : 0, fontWeight: 600}}>📍 {g.titulo} · {g.pacotes} pacote(s) aqui</div>}
-        {g.ps.map(p => <LinhaParada key={p.id} p={p} comWaze={pend.length > 1} />)}
-      </div>)}</div>
-      {pend.length > 1 && <div className="linha"><button className="btn ok" onClick={() => A.entregarTodas(pend)}>✓ Entreguei as {pend.length} daqui</button></div>}
-      {pend.length > 1 && <div className="info" style={{marginTop: 6}}>Chegando, use o mapa do app de entregas para achar a porta de cada uma.</div>}
+        {g.ps.map(p => <LinhaParada key={p.id} p={p} comWaze={juntas} />)}
+      </div>)}</div>}
+      <div className="info linha-peq">Pino errado? <button className="btn peq" onClick={() => A.estouAqui(alvo)}>📍 Estou aqui</button>
+        <a className="btn peq" href={linkMaps(alvo as Ponto)} target="_blank" rel="noopener">Google Maps</a>
+        {agora.b.length === 1 && <button className="btn peq" onClick={() => A.deixarParaDepois(alvo)}>⏸ Depois</button>}</div>
+      {trechoAtual.length > 1 && <div className="linha"><a className="btn peq pri" href={linkMapsVarios(trechoAtual.map(x => x.alvo))} target="_blank" rel="noopener">
+        🗺️ Maps com os próximos {trechoAtual.filter(x => x.ids.length).length} pontos ({entregasTrecho} entregas){trechoAtual.some(x => !x.ids.length) ? ' + 🏁' : ''}</a></div>}
     </div>;
   } else {
     proxima = <div className="proxima"><div className="grande">{adiadas.length
@@ -155,26 +158,56 @@ export function TelaRota() {
   }
 
   const economia = R.mlDist - R.dist;
+  const todasRota = R.areas.flatMap(ra => ra.ordem.map(loja.parada).filter((p): p is Parada => !!p));
+  const feitasRota = todasRota.filter(p => p.entregue).length;
+  const fimTudo = prev && ultima ? prev.porArea[ultima.id] : null;
   return <>
+    <div className="resumo">
+      <div className="barra"><i style={{width: `${todasRota.length ? Math.round(feitasRota * 100 / todasRota.length) : 0}%`}} /></div>
+      <div><b>{feitasRota}/{todasRota.length}</b> entregas · {fmtKm(R.dist)} · {fmtMin(R.dur)} dirigindo{fimTudo ? <> · fim <b>~{hhmm(fimTudo.fim)}</b></> : null}{R.porRuas ? '' : ' · aproximado'}</div>
+    </div>
     {proxima}
-    <div className="info">Total estimado: <b>{fmtKm(R.dist)}</b>, cerca de <b>{fmtMin(R.dur)}</b> dirigindo (sem contar as paradas){R.porRuas ? '' : ', aproximado'}.</div>
     {!R.porRuas && <div className="aviso laranja">🟠 Esta sequência saiu <b>sem as ruas</b>{R.motivoSemRuas ? ` (${R.motivoSemRuas})` : ''}: usei distância em linha reta, que não sabe de mão única nem de canteiro. <button className="btn peq pri" onClick={A.montarRota}>Tentar de novo</button></div>}
-    {R.ordemDoApp
-      ? <div className="info" style={{marginTop: 4}}>Você pediu a ordem do app (parada 1, 2, 3…).{R.melhorDist != null && R.dist - R.melhorDist > 200
-        ? <> A melhor sequência faria <b>{fmtKm(R.melhorDist)}</b>, {fmtMin(R.melhorDur!)} — <b>{fmtKm(R.dist - R.melhorDist)}</b> a menos. Desmarque a opção para usá-la.</>
-        : ' A melhor sequência não faria diferença hoje.'}</div>
-      : R.mlDist > 0 && <div className="info" style={{marginTop: 4}}>Na ordem da lista do app: {fmtKm(R.mlDist)}, {fmtMin(R.mlDur)}. {economia > 200
-        ? <b style={{color: 'var(--ok)'}}>Esta rota economiza {fmtKm(economia)}.</b> : 'A ordem do app já estava boa.'}</div>}
     {semLocal > 0 && <div className="aviso">{semLocal} parada(s) não encontrada(s) ficaram fora da rota. Corrija em <b>2. Conferir</b>.</div>}
     {foraDaRota > 0 && <div className="aviso">{foraDaRota} parada(s) nova(s) ou corrigida(s) fora da rota. <button className="btn peq pri" onClick={A.montarRota}>Refazer rota</button></div>}
-    <div className="linha"><button className="btn" onClick={A.copiarRota}>📋 Copiar rota (WhatsApp)</button>
-      {e.areasManual && <button className="btn" onClick={() => { e.areasManual = false; A.montarRota(); }}>Ordem automática das áreas</button>}</div>
+    <details>
+      <summary>Detalhes da rota</summary>
+      {R.ordemDoApp
+        ? <div className="info" style={{marginTop: 6}}>Você pediu a ordem do app (parada 1, 2, 3…).{R.melhorDist != null && R.dist - R.melhorDist > 200
+          ? <> A melhor sequência faria <b>{fmtKm(R.melhorDist)}</b>, {fmtMin(R.melhorDur!)} — <b>{fmtKm(R.dist - R.melhorDist)}</b> a menos. Desmarque a opção para usá-la.</>
+          : ' A melhor sequência não faria diferença hoje.'}</div>
+        : R.mlDist > 0 && <div className="info" style={{marginTop: 6}}>Na ordem da lista do app: {fmtKm(R.mlDist)}, {fmtMin(R.mlDur)}. {economia > 200
+          ? <b style={{color: 'var(--ok)'}}>Esta rota economiza {fmtKm(economia)}.</b> : 'A ordem do app já estava boa.'}</div>}
+      <div className="linha"><button className="btn" onClick={A.copiarRota}>📋 Copiar rota (WhatsApp)</button>
+        {e.areasManual && <button className="btn" onClick={() => { e.areasManual = false; A.montarRota(); }}>Ordem automática das áreas</button>}</div>
+    </details>
     {R.areas.map((ra, i) => {
       const a = loja.area(ra.id);
       const ps = ra.ordem.map(loja.parada).filter((p): p is Parada => !!p);
       const feitas = ps.filter(p => p.entregue).length;
       const pa = prev && prev.porArea[a.id];
       let n = 0;
+      const todosBlocos = blocos(ra.ordem, loja.parada).map((b, k) => ({b, k}));
+      const pronto = (x: {b: string[]}) => x.b.every(id => loja.parada(id)!.entregue);
+      const feitos = todosBlocos.filter(pronto), faltam = todosBlocos.filter(x => !pronto(x));
+      const cartao = ({b, k}: {b: string[]; k: number}) => {
+        const bp = b.map(loja.parada).filter((p): p is Parada => !!p);
+        const pend = bp.filter(p => !p.entregue);
+        const perna = e.pernas[b[0]];
+        return <div className="item" key={b[0]}>
+          <div className="bloco-cab">
+            <span style={{flex: 1}}>Parada {k + 1}{b.length > 1 ? ` · ${b.length} entregas ${mesmoEndereco(bp.map(p => p.texto)) ? 'no mesmo endereço' : 'perto'}` : ''}{perna && perna.dur ? ` · 🚗 ${fmtMin(perna.dur)}` : ''}</span>
+            {pend.length ? <>
+              {pend.length > 1 && <button className="btn peq ok" onClick={() => A.entregarTodas(pend)}>✓ todas</button>}
+              <a className="btn peq waze" href={linkWaze(pend[0] as Ponto)} target="_blank" rel="noopener">Waze</a>
+            </> : '✓'}
+          </div>
+          {agruparPorEndereco(bp).map((g, i2, todos) => <div key={g.chave}>
+            {todos.length > 1 && <div className="info" style={{marginTop: i2 ? 8 : 4, fontWeight: 600}}>📍 {g.titulo} · {g.pacotes} pacote(s)</div>}
+            {g.ps.map(p => <LinhaParada key={p.id} p={p} comWaze={false} />)}
+          </div>)}
+        </div>;
+      };
       return <div key={ra.id}>
         <div className="area-cab" style={{'--c': a.cor} as any}>
           <span className="dot" />
@@ -191,24 +224,11 @@ export function TelaRota() {
             n += t.filter(x => x.ids.length).length;
             return <a key={k} className="btn peq pri" href={linkMapsVarios(t.map(x => x.alvo))} target="_blank" rel="noopener">Maps trecho {k + 1} (pontos {ini}–{n})</a>;
           })}</div>
-          {blocos(ra.ordem, loja.parada).map((b, k) => {
-            const bp = b.map(loja.parada).filter((p): p is Parada => !!p);
-            const pend = bp.filter(p => !p.entregue);
-            const perna = e.pernas[b[0]];
-            return <div className="item" key={b[0]}>
-              <div className="bloco-cab">
-                <span style={{flex: 1}}>Parada {k + 1}{b.length > 1 ? ` · ${b.length} entregas ${mesmoEndereco(bp.map(p => p.texto)) ? 'no mesmo endereço' : 'perto'}` : ''}{perna && perna.dur ? ` · 🚗 ${fmtMin(perna.dur)}` : ''}</span>
-                {pend.length ? <>
-                  {pend.length > 1 && <button className="btn peq ok" onClick={() => A.entregarTodas(pend)}>✓ todas</button>}
-                  <a className="btn peq waze" href={linkWaze(pend[0] as Ponto)} target="_blank" rel="noopener">Waze</a>
-                </> : '✓'}
-              </div>
-              {agruparPorEndereco(bp).map((g, i, todos) => <div key={g.chave}>
-                {todos.length > 1 && <div className="info" style={{marginTop: i ? 8 : 4, fontWeight: 600}}>📍 {g.titulo} · {g.pacotes} pacote(s)</div>}
-                {g.ps.map(p => <LinhaParada key={p.id} p={p} comWaze={false} />)}
-              </div>)}
-            </div>;
-          })}
+          {faltam.map(cartao)}
+          {feitos.length > 0 && <details className="feitas">
+            <summary>✓ {feitos.reduce((n2, x) => n2 + x.b.length, 0)} entregue(s) nesta área</summary>
+            {feitos.map(cartao)}
+          </details>}
         </>}
       </div>;
     })}

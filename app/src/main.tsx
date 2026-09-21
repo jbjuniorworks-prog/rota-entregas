@@ -54,17 +54,19 @@ function App() {
   const pf = nuvem.perfil;
   if ((!nuvem.sessao && !nuvem.lembrada) || (nuvem.sessao && pf && !pf.ativo)) return <>
     <TelaEntrar />
-    <div id="status" className={ui.aviso ? 'on' : ''}>{ui.aviso}</div>
+    <div id="status" className={'flutua' + (ui.aviso ? ' on' : '')}>{ui.aviso}</div>
   </>;
   const abas: [Aba, string][] = pf?.papel === 'admin' ? [...ABAS, ['admin', '⚙️ Admin']] : ABAS;
   return <>
     <div id="app" className={ui.mapaGrande ? 'mapa-grande' : ''}>
       <div className="mapwrap">
         <EscudoDoMapa><Suspense fallback={null}>{comMapa && <Mapa />}</Suspense></EscudoDoMapa>
-        <button id="btnMapa" className="btn peq" onClick={() => A.mudar(() => { ui.mapaGrande = !ui.mapaGrande; })}>⤢ Mapa</button>
+        <button id="btnMapa" className="btn peq" onClick={A.alternarMapa}>⤢ Mapa</button>
       </div>
       <div id="painel">
         <nav>{abas.map(([id, nome]) => <button key={id} className={ui.aba === id ? 'on' : ''} onClick={() => A.irPara(id)}>{nome}</button>)}</nav>
+        <div id="status" className={ui.aviso ? 'on' : ''}>{ui.aviso}
+          {ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>↺ Desfazer</button></>}</div>
         <div id="conteudo" ref={conteudo} onScroll={ev => { rolagem.current[ui.aba] = (ev.target as HTMLDivElement).scrollTop; }}>
           {ui.aba === 'enderecos' && <TelaEnderecos />}
           {ui.aba === 'conferir' && <TelaConferir />}
@@ -73,8 +75,6 @@ function App() {
         </div>
       </div>
     </div>
-    <div id="status" className={ui.aviso ? 'on' : ''}>{ui.aviso}
-      {ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>↺ Desfazer</button></>}</div>
   </>;
 }
 

@@ -1,6 +1,7 @@
 import {criarFila} from '../logica/fila';
 import {marcarIsoladas} from '../logica/geo';
 import {criarMemoria} from '../logica/memoria';
+import {CHAVES} from '../logica/guarda';
 import {guarda, loja} from '../loja';
 import {clienteNuvem} from '../servicos/nuvem';
 
@@ -22,6 +23,12 @@ export function invalidarRota() {
   marcarIsoladas(e().paradas);
   e().rota = null;
   e().pernas = {};
+}
+
+export function alternarMapa() {
+  ui.mapaGrande = !ui.mapaGrande;
+  guarda.gravar(CHAVES.mapaGrande, ui.mapaGrande);
+  loja.mudou(false);
 }
 
 export function irPara(aba: typeof ui.aba) {

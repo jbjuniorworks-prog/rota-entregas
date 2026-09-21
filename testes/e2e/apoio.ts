@@ -100,7 +100,7 @@ export async function montar(page: Page) {
   const botao = page.getByRole('button', {name: /Montar melhor sequência/});
   if (!(await botao.isVisible())) await page.getByText('Ponto de saída / refazer rota').click();
   await botao.click();
-  await expect(page.getByText(/Total estimado/)).toBeVisible();
+  await expect(page.locator('.resumo')).toBeVisible();
 }
 
 export async function ordem(page: Page, nomes: string[]): Promise<string[]> {

@@ -1,5 +1,5 @@
 import {useSyncExternalStore} from 'react';
-import {carregarEstado, guardaEm, salvarEstado} from './logica/guarda';
+import {CHAVES, carregarEstado, guardaEm, salvarEstado} from './logica/guarda';
 import type {Estado, Parada} from './logica/tipos';
 
 export type Aba = 'enderecos' | 'conferir' | 'rota' | 'admin';
@@ -30,7 +30,7 @@ export const guarda = guardaEm(localStorage);
 let estado = carregarEstado(guarda);
 const ui: Ui = {
   aba: estado.paradas.length ? (estado.rota ? 'rota' : 'conferir') : 'enderecos',
-  posicionando: null, selecionada: null, soDuvidas: false, ocupado: false, mapaGrande: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
+  posicionando: null, selecionada: null, soDuvidas: false, ocupado: false, mapaGrande: guarda.ler(CHAVES.mapaGrande, false), aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
 };
 
 let versao = 0;

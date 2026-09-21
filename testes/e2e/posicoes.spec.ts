@@ -34,7 +34,7 @@ test('pino marcado perto de outro já marcado pode virar uma parada só', async 
   await expect(aviso(page)).toContainText('Local definido');
   await aba(page, '3. Rota');
   await page.getByRole('button', {name: /Montar melhor sequência/}).click();
-  await expect(page.getByText(/Total estimado/)).toBeVisible();
+  await expect(page.locator('.resumo')).toBeVisible();
   await expect(page.locator('.item').filter({hasText: 'Avenida Central, 1500'})).toContainText('2 entregas perto');
 });
 
@@ -49,7 +49,7 @@ test('marcar ao lado de uma entrega que veio da planilha leva as duas para o pon
   expect(perguntas.at(-1)).toContain('Levar as duas para o ponto que você marcou');
   await aba(page, '3. Rota');
   await page.getByRole('button', {name: /Montar melhor sequência/}).click();
-  await expect(page.getByText(/Total estimado/)).toBeVisible();
+  await expect(page.locator('.resumo')).toBeVisible();
   await expect(page.locator('.item').filter({hasText: 'Travessa Um, 45'})).toContainText('2 entregas');
 });
 
@@ -173,7 +173,7 @@ test.describe('corrigir pela localização do motorista', () => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
-    await expect(page.getByText('Chegou e o pino está errado?')).toBeVisible();
+    await expect(page.getByText('Pino errado?')).toBeVisible();
     await page.locator('.proxima').getByRole('button', {name: '📍 Estou aqui'}).click();
     await expect(aviso(page)).toContainText('Local corrigido pela sua localização');
   });
