@@ -1,5 +1,5 @@
 import {haversine} from './geo';
-import {custo, otimizar, type Matriz} from './otimizacao';
+import {agruparVisitas, custo, otimizar, type Matriz, type Visita} from './otimizacao';
 import type {Area, Estado, Local, Parada, Ponto, Rota} from './tipos';
 
 export interface ServicosDeRota {
@@ -44,23 +44,19 @@ export async function montarRota(e: Estado, s: ServicosDeRota, aviso: (m: string
     aviso(`Calculando área ${a.nome}…`);
     const alvos = pendentesDa(e, a.id);
     const fim: Local | null = a === areas[areas.length - 1] && e.fim ? e.fim : null;
-    const pts: (Ponto & {id?: string; ml?: string | null; stop?: string | null})[] = [...(pos ? [pos] : []), ...alvos, ...(fim ? [fim] : [])];
+    const visitas = agruparVisitas(alvos);
+    const pts: Ponto[] = [...(pos ? [pos] : []), ...visitas.map(v => v.ponto), ...(fim ? [fim] : [])];
     const M = await s.matriz(pts);
     if (!M.porRuas) rota.porRuas = false;
     const melhor = pts.length === 1 ? [0] : otimizar(pts.length, M.dur, !!pos, !!fim);
 
     const off = pos ? 1 : 0;
     const SEM_NUMERO = 9e6;
-    const chave = (i: number) => {
-      const x = pts[i] as Parada;
-      const parada = x.stop ? +x.stop : SEM_NUMERO;
-      const pacote = x.ml ? +x.ml : SEM_NUMERO;
-      return [parada, pacote, e.paradas.indexOf(x)];
-    };
-    const seqML = alvos.map((_, i) => i + off).sort((i, j) => {
-      const a = chave(i), b = chave(j);
-      return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
-    });
+    const chave = (x: Parada) => [x.stop ? +x.stop : SEM_NUMERO, x.ml ? +x.ml : SEM_NUMERO, e.paradas.indexOf(x)];
+    const antes = (a: number[], b: number[]) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+    const visita = (i: number): Visita => visitas[i - off];
+    for (const v of visitas) v.ps.sort((x, y) => antes(chave(x), chave(y)));
+    const seqML = visitas.map((_, i) => i + off).sort((i, j) => antes(chave(visita(i).ps[0]), chave(visita(j).ps[0])));
     if (pos) seqML.unshift(0);
     if (fim) seqML.push(pts.length - 1);
     rota.mlDur += custo(seqML, M.dur);
@@ -72,12 +68,13 @@ export async function montarRota(e: Estado, s: ServicosDeRota, aviso: (m: string
       rota.melhorDur = (rota.melhorDur || 0) + custo(melhor, M.dur);
       rota.melhorDist = (rota.melhorDist || 0) + custo(melhor, M.dist);
     }
-    const ordem = p.filter(i => !(pos && i === 0) && !(fim && i === pts.length - 1)).map(i => pts[i].id!);
+    const ordem = p.filter(i => !(pos && i === 0) && !(fim && i === pts.length - 1)).flatMap(i => visita(i).ps.map(x => x.id));
+    for (const v of visitas) for (const x of v.ps) e.pernas[x.id] = {dur: 0, dist: 0};
     let dur = 0, dist = 0;
     for (let k = 1; k < p.length; k++) {
       const perna = {dur: M.dur[p[k - 1]][p[k]], dist: M.dist[p[k - 1]][p[k]]};
       if (fim && p[k] === pts.length - 1) { rota.dur += perna.dur; rota.dist += perna.dist; rota.fim = perna; continue; }
-      e.pernas[pts[p[k]].id!] = perna;
+      e.pernas[visita(p[k]).ps[0].id] = perna;
       dur += perna.dur;
       dist += perna.dist;
     }

@@ -1,6 +1,6 @@
 import {haversine, marcarIsoladas, proximaAPe} from './geo';
 import {montarRota as montarRotaDoEstado} from './montagem';
-import {agruparPorEndereco, gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, trechos} from './otimizacao';
+import {agruparPorEndereco, agruparVisitas, gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, trechos} from './otimizacao';
 import type {Parada, Ponto} from './tipos';
 
 let seq = 0;
@@ -148,6 +148,45 @@ describe('ordem do app de entrega', () => {
     const r = await montarRotaDoEstado(presa as never, servicos);
     expect(r.areas[0].ordem).toEqual(['longe', 'meio', 'perto']);
     expect(r.dist).toBeGreaterThan(r.melhorDist!);
+  });
+});
+
+describe('entregas no mesmo ponto viram uma visita só', () => {
+  const noPonto = (id: string, lat: number, lng: number) =>
+    ({id, area: 'a', ml: null, stop: null, texto: `Rua ${id}, 1`, unidades: null, comercial: false, lat, lng, exibido: '', precisao: 'planilha', candidatos: [], entregue: false}) as Parada;
+
+  it('junta o que está a menos de 25 m, sem ir emendando de uma em uma', () => {
+    const vs = agruparVisitas([
+      noPonto('a', -10.9400, -37.0600),
+      noPonto('b', -10.94015, -37.0600),
+      noPonto('c', -10.9403, -37.0600),
+      noPonto('longe', -10.9500, -37.0600),
+    ] as never);
+    expect(vs.map(v => v.ps.map(p => p.id))).toEqual([['a', 'b'], ['c'], ['longe']]);
+  });
+
+  it('a matriz de ruas pede um ponto por visita, e as entregas do mesmo ponto ficam juntas', async () => {
+    const e = {
+      cidade: 'Aracaju', googleKey: '', tamTrecho: 9, voltar: false, ordemDoApp: false,
+      inicio: {id: 'inicio', lat: -10.9600, lng: -37.0451, exibido: 'saída'},
+      areas: [{id: 'a', nome: 'Verde', cor: '#16a34a', prazo: ''}], areaAtual: 'a', areasManual: false,
+      pernas: {} as Record<string, {dur: number; dist: number}>, rota: null,
+      paradas: [noPonto('porta1', -10.9650, -37.0420), noPonto('longe', -10.9700, -37.0400), noPonto('porta2', -10.96501, -37.04201)],
+    };
+    let pontos = 0;
+    const r = await montarRotaDoEstado(e as never, {
+      matriz: async (pts: Ponto[]) => {
+        pontos = pts.length;
+        const m = pts.map(a => pts.map(b => haversine(a, b)));
+        return {dur: m, dist: m, porRuas: true};
+      },
+      linha: async () => null,
+    });
+    expect(pontos).toBe(3);
+    const ordem = r.areas[0].ordem;
+    expect(ordem).toHaveLength(3);
+    expect(Math.abs(ordem.indexOf('porta1') - ordem.indexOf('porta2'))).toBe(1);
+    expect(e.pernas.porta2).toEqual({dur: 0, dist: 0});
   });
 });
 

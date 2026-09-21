@@ -3,6 +3,7 @@ import {decompor, normal} from './texto';
 import type {Parada, Ponto} from './tipos';
 
 export const RAIO_BLOCO = 10;
+export const RAIO_VISITA = 25;
 export const PERTO_A_PE = 300;
 export const ISOLADA_MIN = 7000;
 export const ISOLADA_FATOR = 4;
