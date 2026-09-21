@@ -158,8 +158,8 @@ describe('entregas no mesmo ponto viram uma visita só', () => {
   it('junta o que está no mesmo lugar, sem ir emendando de uma em uma', () => {
     const vs = agruparVisitas([
       noPonto('a', -10.9400, -37.0600),
-      noPonto('b', -10.94045, -37.0600),
-      noPonto('c', -10.94105, -37.0600),
+      noPonto('b', -10.94015, -37.0600),
+      noPonto('c', -10.9403, -37.0600),
       noPonto('longe', -10.9500, -37.0600),
     ] as never);
     expect(vs.map(v => v.ps.map(p => p.id))).toEqual([['a', 'b'], ['c'], ['longe']]);
