@@ -24,6 +24,8 @@ export function pontoDoTrecho(t: Trecho, perto: Ponto | null): Ponto {
   return melhor;
 }
 
+const bate = (a: string, b: string) => !!a && !!b && (a === b || a.includes(b) || b.includes(a));
+
 export function escolherTrecho(trechos: Trecho[], cidade: string, perto: Ponto | null, tipo = '', lugares: string[] = []): Trecho | null {
   if (!trechos.length) return null;
   const nome = normal(cidade.split(/[,\-\/]/)[0]);
@@ -32,7 +34,6 @@ export function escolherTrecho(trechos: Trecho[], cidade: string, perto: Ponto |
   const doTipo = tipo ? naCidade.filter(t => !t.tipo || t.tipo === tipo) : [];
   const certos = doTipo.length ? doTipo : naCidade;
   const ditos = [...new Set(lugares.map(semTipoDeArea).filter(x => x.length > 2))];
-  const bate = (a: string, b: string) => !!a && !!b && (a === b || a.includes(b) || b.includes(a));
   const doLugar = ditos.length
     ? certos.filter(t => ditos.some(d => bate(semTipoDeArea(t.conjunto || ''), d) || bate(semTipoDeArea(t.bairro || ''), d)))
     : [];
@@ -65,6 +66,43 @@ export function cabeNoNome(pedido: string, achado: string): boolean {
 
 const maiorPalavra = (rua: string) => palavrasRua(rua).sort((a, b) => b.length - a.length)[0] || '';
 
+const RAIO_DO_LUGAR = 800;
+const lugaresVistos = new Map<string, {ponto: Ponto; nome: string} | null>();
+const ACENTOS: Record<string, string> = {a: '[aáàâã]', e: '[eéèê]', i: '[iíì]', o: '[oóòôõ]', u: '[uúù]', c: '[cç]'};
+
+export const comAcento = (texto: string): string => texto.replace(/[aeiouc]/g, c => ACENTOS[c]);
+
+export function centroEJunto(pontos: Ponto[]): {ponto: Ponto; junto: boolean} {
+  const ponto = {
+    lat: pontos.reduce((s, p) => s + p.lat, 0) / pontos.length,
+    lng: pontos.reduce((s, p) => s + p.lng, 0) / pontos.length,
+  };
+  return {ponto, junto: pontos.every(p => haversine(ponto, p) <= RAIO_DO_LUGAR)};
+}
+
+async function lugarNaBase(ditos: string[], cidade: string): Promise<{ponto: Ponto; nome: string} | null> {
+  const supa = nuvem.cliente;
+  const daCidade = normal(cidade.split(/[,\-\/]/)[0]);
+  if (!supa || !daCidade) return null;
+  for (const dito of ditos) {
+    const palavra = dito.split(' ').filter(w => w.length >= 5).sort((a, b) => b.length - a.length)[0];
+    if (!palavra) continue;
+    const memoria = daCidade + '|' + dito;
+    if (!lugaresVistos.has(memoria)) {
+      const ehBairro = await supa.from('ruas').select('bairro').filter('bairro', 'imatch', `^${comAcento(dito)}$`).limit(1);
+      const r = ehBairro.data && ehBairro.data.length
+        ? {data: []}
+        : await supa.from('ruas').select('conjunto, lat, lng').filter('conjunto', 'imatch', comAcento(palavra)).ilike('cidade', daCidade).limit(200);
+      const linhas = (r.data || []).filter((t: {conjunto: string | null}) => bate(semTipoDeArea(t.conjunto || ''), dito));
+      const {ponto, junto} = linhas.length ? centroEJunto(linhas as Ponto[]) : {ponto: null, junto: false};
+      lugaresVistos.set(memoria, ponto && junto ? {ponto, nome: (linhas[0] as {conjunto: string}).conjunto} : null);
+    }
+    const achado = lugaresVistos.get(memoria);
+    if (achado) return achado;
+  }
+  return null;
+}
+
 export async function ruaNaBase(rua: string, cidade: string, perto: Ponto | null, lugares: string[] = []): Promise<Candidato | null> {
   const supa = nuvem.cliente;
   const chave = chaveRua(rua);
@@ -95,12 +133,16 @@ export async function ruaNaBase(rua: string, cidade: string, perto: Ponto | null
       if (comONome.length) data = comONome;
       if (!data.length) return null;
     } else data = peloNome;
-    const t = escolherTrecho(data as Trecho[], cidade, perto, tipoDaRua(rua), lugares);
+    const lugar = await lugarNaBase(ditos, cidade);
+    const alvo = lugar ? lugar.ponto : perto;
+    const t = escolherTrecho(data as Trecho[], cidade, alvo, tipoDaRua(rua), lugares);
     if (!t) return null;
-    const p = pontoDoTrecho(t, perto);
+    const p = pontoDoTrecho(t, alvo);
     const outroNome = t.nome && chaveRua(t.nome) !== chave;
     const titulo = outroNome ? `${rua} (no mapa: ${t.nome})` : (t.nome || rua);
-    return {...p, precisao: 'rua', rua: t.nome || rua, fonte: 'nossa base', exibido: `${titulo} — ${[t.conjunto, t.bairro, t.cidade].filter(Boolean).join(' — ')} (pela nossa base de ruas)`};
+    const onde = [t.conjunto, t.bairro, t.cidade].filter(Boolean).join(' — ');
+    const pelo = lugar ? `na frente do ${lugar.nome}, pela nossa base de ruas` : 'pela nossa base de ruas';
+    return {...p, precisao: 'rua', rua: t.nome || rua, fonte: 'nossa base', exibido: `${titulo} — ${onde} (${pelo})`};
   } catch {
     return null;
   }

@@ -1,6 +1,6 @@
 import {chaveRua as chaveDaFerramenta, tipoDaRua as tipoDaFerramenta} from '../../../ferramentas/chave-rua.mjs';
 import {chaveRua, tipoDaRua} from '../logica/texto';
-import {cabeNoNome, escolherTrecho, pontoDoTrecho, quaseIgual} from './base';
+import {cabeNoNome, centroEJunto, comAcento, escolherTrecho, pontoDoTrecho, quaseIgual} from './base';
 
 const trecho = (nome: string, cidade: string, lat: number, lng: number, linha: [number, number][] = [[lat, lng]], bairro = '', conjunto = '') =>
   ({nome, tipo: tipoDaRua(nome), bairro, conjunto, cidade, lat, lng, linha});
@@ -24,6 +24,18 @@ describe('nossa base de ruas', () => {
     expect(quaseIgual('neto', 'nato')).toBe(false);
     expect(cabeNoNome('Av. Poe. Vinícius de Moraes', 'Avenida Poeta Vinícius de Morais')).toBe(true);
     expect(cabeNoNome('Rua Santos Santana', 'Rua Santos Santiago')).toBe(false);
+  });
+  it('procura o lugar no banco sem depender do acento', () => {
+    expect(comAcento('patio')).toBe('p[aáàâã]t[iíì][oóòôõ]');
+    expect(new RegExp(comAcento('patio'), 'i').test('Condominio Patio')).toBe(true);
+    expect(new RegExp(comAcento('patio'), 'i').test('Condomínio Pátio Coroa do Meio')).toBe(true);
+    expect(new RegExp('^' + comAcento('inacio barbosa') + '$', 'i').test('Inácio Barbosa')).toBe(true);
+  });
+  it('so vale como alvo o lugar que cabe num raio pequeno', () => {
+    const junto = centroEJunto([{lat: -10.9986, lng: -37.0599}, {lat: -10.9989, lng: -37.0595}]);
+    expect(junto.junto).toBe(true);
+    expect(junto.ponto.lat).toBeCloseTo(-10.99875, 4);
+    expect(centroEJunto([{lat: -10.94, lng: -37.06}, {lat: -10.99, lng: -37.10}]).junto).toBe(false);
   });
   it('travessa não casa com a rua de mesmo nome', () => {
     const rua = trecho('Rua Um', 'Aracaju', -10.94, -37.06);
