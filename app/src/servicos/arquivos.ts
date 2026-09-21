@@ -1,5 +1,5 @@
 import {ehArquivoZip, itensDaPlanilha, pareceNomeDePlanilha, type ItemPlanilha} from '../logica/planilha';
-import {extrairEnderecos, juntarLeituras, juntarQuadros} from '../logica/texto';
+import {ehComanda, extrairEnderecos, juntarLeituras, juntarQuadros, melhorComanda} from '../logica/texto';
 import {escolherQuadros} from '../logica/video';
 
 type Arquivo = Blob & {name?: string};
@@ -141,7 +141,7 @@ async function lerPdf(file: Arquivo, aviso: Aviso) {
   return {linhas, imagens};
 }
 
-async function prepararImagem(file: Blob, alvoLargura = 1700): Promise<Blob> {
+async function prepararImagem(file: Blob, alvoLargura = 1700, contraste = true): Promise<Blob> {
   try {
     const bmp = await createImageBitmap(file);
     const escala = Math.min(3, Math.max(1, alvoLargura / bmp.width));
@@ -155,7 +155,7 @@ async function prepararImagem(file: Blob, alvoLargura = 1700): Promise<Blob> {
     const img = cx.getImageData(0, 0, w, h), d = img.data;
     for (let i = 0; i < d.length; i += 4) {
       const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      const v = g <= 105 ? 0 : g >= 195 ? 255 : (g - 105) * 255 / 90;
+      const v = contraste ? (g <= 105 ? 0 : g >= 195 ? 255 : (g - 105) * 255 / 90) : g;
       d[i] = d[i + 1] = d[i + 2] = v;
     }
     cx.putImageData(img, 0, 0);
@@ -183,13 +183,16 @@ async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo
   const tratada = await prepararImagem(blob, doVideo ? 1000 : 1700);
   const tentativas = doVideo
     ? [{imagem: tratada, psm: '4'}, {imagem: blob, psm: '3'}]
-    : [{imagem: tratada, psm: '4'}, {imagem: tratada, psm: '6'}, {imagem: blob, psm: '3'}];
-  const leituras: string[] = [], apoio: string[] = [];
+    : [{imagem: tratada, psm: '4'}, {imagem: await prepararImagem(blob, 1700, false), psm: '6'}, {imagem: blob, psm: '3'}];
+  const leituras: string[] = [], apoio: string[] = [], comandas: string[][] = [];
   for (const t of tentativas) {
     await worker.setParameters({tessedit_pageseg_mode: t.psm, preserve_interword_spaces: '1'});
     const {data} = await worker.recognize(t.imagem);
-    (t.imagem === blob ? apoio : leituras).push(...extrairEnderecos(data.text));
+    const achados = extrairEnderecos(data.text);
+    if (ehComanda(achados)) comandas.push(achados);
+    else (t.imagem === blob ? apoio : leituras).push(...achados);
   }
+  if (comandas.length) return melhorComanda([...comandas, leituras, apoio]);
   return juntarLeituras(leituras, apoio);
 }
 

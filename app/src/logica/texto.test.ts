@@ -1,4 +1,4 @@
-import {analisarLinha, chaveEndereco, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, normal, ruaCompleta} from './texto';
+import {analisarLinha, chaveEndereco, enderecoDaComanda, melhorComanda, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, normal, ruaCompleta} from './texto';
 
 describe('decompor', () => {
   it.each([
@@ -123,11 +123,13 @@ describe('extrairEnderecos (texto de print ou PDF)', () => {
     ]);
     expect(analisarLinha('1.63 Avenida das Mangueiras 3580').ml).toBe('63');
   });
-  it('a leitura de apoio só corrige número; endereço que só ela viu entra apenas se as outras não acharam nada', () => {
+  it('a leitura de apoio corrige número; e vira a principal quando a imagem tratada quase não leu nada', () => {
     const principais = ['5 Avenida Conselheiro Sicrano 21518, CEP 49000200', 'Rua Beltrano Fontes 190'];
     const apoio = ['Avenida Conselheiro Sicrano 2151', 'Rua Beltrano Fontesl) 190', 'Rua Fulana Barbosa 8'];
     expect(juntarLeituras(principais, apoio)).toEqual(['5 Avenida Conselheiro Sicrano 2151, CEP 49000200', 'Rua Beltrano Fontes 190']);
     expect(juntarLeituras([], apoio)).toEqual(apoio);
+    const soUma = ['Rua Beltrano Fontes 190'];
+    expect(juntarLeituras(soUma, ['Avenida Um 10', 'Avenida Dois 20', 'Avenida Tres 30'])).toHaveLength(3);
   });
   it('entre quadros do vídeo: junta o mesmo endereço e descarta o número cortado na borda', () => {
     expect(juntarQuadros([
@@ -177,5 +179,49 @@ describe('comparação de ruas', () => {
   it('normal e ruaCompleta', () => {
     expect(normal('  São   Cristóvão ')).toBe('sao cristovao');
     expect(ruaCompleta('Av. Beira-Mar')).toBe('avenida beira mar');
+  });
+});
+
+describe('comanda de restaurante (iFood/Goomer) fotografada', () => {
+  const ifood = [
+    'ENTREGA', '20/set - 12:50', 'Pedido: #11', 'Fulano de Tal',
+    'Telefone: 0800 700 3020, localizador: 89571185', 'ID do pedido:876404608',
+    'R, Cel. Testeiro da Silveira, 75, Nova torre do h', 'ospital teste. AP 723 para Fulano',
+    'Aracaju - São José', 'Ref :Encontro na recepção',
+    'Obs: Desconto do Restaurante: 4,99', 'Bandeira: NUBANK', 'Código de Coleta: 2961',
+    'Entrega para às 14:10', 'Qt .Descrição Valor', '1 Prato 83,00',
+  ].join('\n');
+
+  it('pega só o endereço do cliente, com bairro, referência e número do pedido', () => {
+    expect(enderecoDaComanda(ifood)).toEqual(['11 R, Cel. Testeiro da Silveira, 75, Nova torre do hospital teste. AP 723 para Fulano, São José, ref: Encontro na recepção']);
+  });
+  it('não leva nome, telefone, valores nem o endereço do restaurante', () => {
+    const saida = enderecoDaComanda(ifood)[0];
+    for (const proibido of ['Fulano de Tal', '0800', '89571185', '83,00', 'NUBANK', 'Coleta']) {
+      expect(saida).not.toContain(proibido);
+    }
+  });
+  it('lê também a comanda com bairro e CEP na mesma linha', () => {
+    const goomer = [
+      'Pedido #0004 - Entrega', '20/09/2026 12:05', 'Cliente: Beltrana Teste',
+      'Telefone: (79) 99999-0000', 'Rua Construtora Teste, 145, (Apto 802), Grageru,', 'Aracaju/SE, CEP: 49027340',
+      'NÃO É DOCUMENTO FISCAL', 'Qtd Item Preço', '1 GNOCCHI R$ 58,0', 'ID do pedido: 12', 'www.goomer.com.br',
+    ].join('\n');
+    expect(enderecoDaComanda(goomer)).toEqual(['4 Rua Construtora Teste, 145, (Apto 802), Grageru, Aracaju/SE, CEP: 49027340']);
+  });
+  it('junta o número do apartamento que caiu na linha de baixo', () => {
+    const quebrada = [
+      'Pedido: #7', 'Telefone: 0800 200 5011, localizador: 47154613', 'ID do pedido:876404502',
+      'Av. Deputado Teste, 1235, Bloco B Apt', '203', 'Aracaju - Grageru', 'Ref:Praça Teste', 'Obs: Desconto',
+    ].join('\n');
+    expect(enderecoDaComanda(quebrada)).toEqual(['7 Av. Deputado Teste, 1235, Bloco B Apt 203, Grageru, ref: Praça Teste']);
+  });
+  it('entre as leituras da mesma comanda, fica a mais completa', () => {
+    expect(melhorComanda([['Av. Teste, 1235, Bloco B Apt'], ['Av. Teste, 1235, Bloco B Apt 203, Grageru'], []]))
+      .toEqual(['Av. Teste, 1235, Bloco B Apt 203, Grageru']);
+    expect(melhorComanda([[], []])).toEqual([]);
+  });
+  it('print comum do app de entregas não vira comanda', () => {
+    expect(enderecoDaComanda('18\nAvenida Dulce Diniz 920\nCEP 49048430')).toEqual([]);
   });
 });

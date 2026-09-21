@@ -1,7 +1,7 @@
 export const normal = (s: unknown): string =>
   String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
-export const RUA = /^(rua|r\.?|avenida|av\.?|travessa|tv\.?|trav\.?|pra[çc]a|p[çc]\.|alameda|al\.|rodovia|rod\.|estrada|estr?\.|via|largo|beco|viela|passagem|conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
+export const RUA = /^(rua|r[.,:]?|avenida|av\.?|travessa|tv\.?|trav\.?|pra[çc]a|p[çc]\.|alameda|al\.|rodovia|rod\.|estrada|estr?\.|via|largo|beco|viela|passagem|conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
 const COMPLEMENTO = /^(condom[ií]nio|cond\.|edif[ií]cio|ed\.|apto?\.?|apartamento|bloco|bl\.|casa|lote|sala|loja|fundos|bairro|cep\b|pr[oó]ximo|perto|ao lado|em frente|refer[eê]ncia)/i;
 export const TEM_CEP = /\b\d{5}-?\d{3}\b/;
 const RUA_EM = new RegExp('^(.{0,6}?)\\s*(?<![a-zà-ÿ])(' + RUA.source.slice(1) + '.*)$', 'i');
@@ -97,7 +97,72 @@ interface Aberto {
   comercial?: boolean;
 }
 
+const DE_COMANDA = /(id do pedido|localizador|c[oó]digo de coleta|entrega para [aà]s|pedido\s*#?\s*\d|documento fiscal|taxa de entrega|goomer|itens\s*\(=\)|\(\+\))/i;
+const ANTES_DO_ENDERECO = /^(telefone|localizador|id do pedido|cliente)\b|\(\d{2}\)\s*\d{4,5}-?\d{4}|^\w{0,4}:\s*\(?\d{2}\)?\s*\d{4,5}-\d{4}/i;
+const LIXO_DA_COMANDA = /^(obs|bandeira|pago|fidelidade|c[oó]digo|telefone|entrega para|qt|quantidade|total|taxa|desconto|cliente|www|pedido|itens|valor|forma|pagamento|n[aã]o [eé] documento)\b/i;
+const CIDADE_BAIRRO = /^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' .]{2,30})\s*[-–]\s*([A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9' .]{2,40})$/;
+const REFERENCIA = /^ref\s*[.:]/i;
+
+function pareceEnderecoDeComanda(l: string): boolean {
+  if (/\b(telefone|localizador|pedido|cnpj|cliente|desconto|coleta|fidelidade)\b/i.test(l)) return false;
+  const letras = (l.match(/[a-zà-ÿ]/gi) || []).length;
+  if (!/\d/.test(l) || letras < 12) return false;
+  return RUA.test(l + ' ') ? pareceEndereco(l) : /^[a-zà-ÿ][a-zà-ÿ' .-]{4,}[,\s]+\d{1,5}\b/i.test(l);
+}
+
+function juntarQuebra(atual: string, proxima: string): string | null {
+  const complementoSemNumero = /\b(apt|apto|ap|bloco|bl|casa|sala|loja|lote|quadra|qd)\.?$/i;
+  const soNumero = proxima.match(/^(\d{1,5}[a-z]?)\b/i);
+  if (soNumero && complementoSemNumero.test(atual)) return atual + ' ' + soNumero[1];
+  const letras = (proxima.match(/[a-zà-ÿ]/gi) || []).length;
+  if (letras < 3 || letras / proxima.length < 0.35) return null;
+  if (/[a-zà-ÿ]$/.test(atual) && /^[a-zà-ÿ]/.test(proxima) && atual.length > 25) return atual + proxima;
+  if (/[,\-]$/.test(atual) || /^[a-zà-ÿ0-9]/.test(proxima)) return atual + ' ' + proxima;
+  return null;
+}
+
+export function enderecoDaComanda(bruto: string): string[] {
+  const linhas = bruto.split('\n').map(limparRuido).filter(Boolean);
+  if (!linhas.some(l => DE_COMANDA.test(l))) return [];
+  const pedido = linhas.map(l => l.match(/pedido:?\s*#?\s*(\d{1,4})\b/i)).find(Boolean);
+  const numeroDoPedido = pedido ? String(+pedido[1]) : null;
+
+  const comeco = linhas.findIndex(l => ANTES_DO_ENDERECO.test(l));
+  let endereco = '', bairro = '', referencia = '', dentro = false;
+  for (const [i, l] of linhas.entries()) {
+    if (!dentro && (i < comeco || (LIXO_DA_COMANDA.test(l) && !pareceEnderecoDeComanda(l)))) continue;
+    if (!dentro) {
+      if (!pareceEnderecoDeComanda(l)) continue;
+      endereco = l;
+      dentro = true;
+      continue;
+    }
+    if (REFERENCIA.test(l)) { referencia = l.replace(REFERENCIA, '').trim(); continue; }
+    if (LIXO_DA_COMANDA.test(l) || /^[-=_.\s]+$/.test(l)) break;
+    const cb = l.match(CIDADE_BAIRRO);
+    if (cb) { bairro = cb[2].trim(); continue; }
+    if (bairro || referencia) break;
+    const junto = TEM_CEP.test(endereco) ? null : juntarQuebra(endereco, l);
+    if (junto) endereco = junto;
+    else break;
+  }
+  if (!endereco || !pareceEndereco(endereco)) return [];
+  const partes = [endereco.replace(/[\s,]+$/, '')];
+  if (bairro && !normal(endereco).includes(normal(bairro))) partes.push(bairro);
+  if (referencia) partes.push('ref: ' + referencia);
+  return [(numeroDoPedido ? numeroDoPedido + ' ' : '') + partes.join(', ')];
+}
+
+export const ehComanda = (lista: string[]): boolean => (lista as {comanda?: boolean}).comanda === true;
+
+export function melhorComanda(leituras: string[][]): string[] {
+  const boas = leituras.flat().filter(Boolean);
+  return boas.length ? [boas.reduce((a, b) => (b.length > a.length ? b : a))] : [];
+}
+
 export function extrairEnderecos(bruto: string): string[] {
+  const daComanda = enderecoDaComanda(bruto);
+  if (daComanda.length) return Object.assign(daComanda, {comanda: true});
   const linhas = bruto.split('\n').map(limparRuido).filter(Boolean);
   const out: Aberto[] = [];
   let numeroSolto: string | null = null, aberto: Aberto | null = null;
@@ -143,8 +208,11 @@ export function juntarQuadros(quadros: string[][]): string[] {
     && y.d.numero.length > x.d.numero.length && y.d.numero.startsWith(x.d.numero) && normal(y.d.rua) === normal(x.d.rua))).map(x => x.e);
 }
 
+const quantasDiferentes = (lista: string[]) => new Set(lista.map(chaveEndereco)).size;
+
 export function juntarLeituras(leituras: string[], apoio: string[] = []): string[] {
-  if (!leituras.length) leituras = apoio;
+  const principais = quantasDiferentes(leituras);
+  if (principais <= 1 && quantasDiferentes(apoio) > principais) [leituras, apoio] = [apoio, leituras];
   const porChave = new Map<string, string>();
   for (const e of leituras) {
     const k = chaveEndereco(e), antigo = porChave.get(k);
@@ -163,7 +231,14 @@ export function juntarLeituras(leituras: string[], apoio: string[] = []): string
     x.e = x.e.replace(new RegExp(`\\b${x.d.numero}\\b`), y.d.numero!);
     if (j >= 0) fora.add(j);
   });
-  return itens.filter((_, i) => !fora.has(i)).map(x => x.e);
+  const sobraram = itens.filter((_, i) => !fora.has(i));
+  const juntas: typeof sobraram = [];
+  for (const x of sobraram) {
+    const parecida = juntas.find(y => y.d.numero && x.d.numero === y.d.numero && mesmaRua(x.d.rua, y.d.rua) && mesmaRua(y.d.rua, x.d.rua));
+    if (!parecida) { juntas.push(x); continue; }
+    if (x.e.length > parecida.e.length) parecida.e = x.e;
+  }
+  return juntas.map(x => x.e);
 }
 
 export function palavrasRua(nome: string): string[] {
