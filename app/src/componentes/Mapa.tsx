@@ -2,10 +2,10 @@ import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {tocouNoMapa} from '../acoes';
-import {haversine, RAIO_VISITA} from '../logica/geo';
+import {empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
-import type {Parada, Ponto} from '../logica/tipos';
+import type {Parada} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]!));
@@ -18,39 +18,14 @@ function icone(texto: string, cor: string, apagado = false, borda = '') {
 }
 
 const BALAO = {permanent: true as const, direction: 'top' as const, offset: [0, -28] as [number, number], className: 'balao'};
-const PIXELS_JUNTOS = 38;
 const ZOOM_DO_FOCO = 17;
 
 function balaoDoGrupo(g: {stops: string[]; adicionais: number; pacotes: number}): string {
   const daParada = [
-    g.stops.length ? `P${g.stops.slice(0, 2).join('+')}${g.stops.length > 2 ? '+' : ''}` : '',
+    g.stops.length ? `P${g.stops.slice(0, 3).join('+')}${g.stops.length > 3 ? '+' : ''}` : '',
     g.adicionais ? 'ADS' : '',
   ].filter(Boolean).join(' ');
   return [daParada, g.pacotes > 1 ? `×${g.pacotes}` : ''].filter(Boolean).join(' ');
-}
-
-interface Pilha {
-  ps: Parada[];
-  x: number;
-  y: number;
-  estado: string;
-}
-
-function empilhar(ps: Parada[], m: L.Map): Pilha[] {
-  const z = m.getZoom();
-  const out: Pilha[] = [];
-  for (const p of ps) {
-    if (p.lat == null || p.lng == null) continue;
-    const pt = m.project([p.lat, p.lng], z);
-    const estado = p.entregue ? 'e' : p.adiada ? 'a' : 'p';
-    const g = out.find(x => x.estado === estado
-      && ((Math.abs(x.x - pt.x) < PIXELS_JUNTOS && Math.abs(x.y - pt.y) < PIXELS_JUNTOS)
-        || haversine(x.ps[0] as Ponto, p as Ponto) <= RAIO_VISITA));
-    if (g) g.ps.push(p);
-    else out.push({ps: [p], x: pt.x, y: pt.y, estado});
-  }
-  for (const g of out) g.ps.sort((a, b) => (ondeNaRota(a.id) ?? 1e6) - (ondeNaRota(b.id) ?? 1e6));
-  return out;
 }
 
 interface NoMapa {
@@ -100,7 +75,8 @@ export default function Mapa() {
     if (e.fim) limites.push([e.fim.lat, e.fim.lng]);
     const marcasAdmin = ui.aba === 'admin' && ui.marcas ? ui.marcas : null;
 
-    const pilhas = empilhar(comLocal, m);
+    const z = m.getZoom();
+    const pilhas = empilhar(comLocal, q => m.project([q.lat, q.lng], z), q => ondeNaRota(q.id) ?? 1e6);
     const desenho = [
       pilhas.map(g => g.ps.map(p => [p.id, p.lat, p.lng, p.entregue, p.adiada, p.precisao, p.area, p.stop, p.adicional, p.unidades, rotuloDe(p), p.texto, p.exibido, p.ml].join(',')).join(';')).join('/'),
       e.inicio && [e.inicio.lat, e.inicio.lng, e.inicio.exibido].join(','),

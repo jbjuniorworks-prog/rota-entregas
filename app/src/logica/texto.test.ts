@@ -1,4 +1,41 @@
-import {analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, normal, ruaCompleta} from './texto';
+import {analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, normal, pistasDeLugar, ruaCompleta} from './texto';
+
+describe('mesmo condomínio, endereços diferentes', () => {
+  const p = (texto: string, bairro = 'Jardins') => ({texto, bairro});
+
+  it('junta o mesmo prédio escrito de três jeitos, em ruas diferentes', () => {
+    expect(mesmoLugarNomeado(
+      p('Avenida das Flores, 1500, Ed Villa Sorrento a'),
+      p('Rua do Poeta, 1500, Apt 704 edificio Villa Sorento'),
+    )).toBe(true);
+    expect(mesmoLugarNomeado(
+      p('Avenida das Flores, 1500, Ed Villa Sorrento a'),
+      p('Rua do Poeta, 16, Apt 103-Villa Sorrentto (fundo)'),
+    )).toBe(true);
+  });
+
+  it('um nome comprido sozinho basta', () => {
+    expect(mesmoLugarNomeado(p('Rua A, 700, Ed Itacimirim 101'), p('Rua A, 700, bloco itacimirim 304'))).toBe(true);
+  });
+
+  it('não junta prédio vizinho, nem referência a ponto conhecido', () => {
+    expect(mesmoLugarNomeado(p('Rua A, 475, Apto 1302 cond. Alto Belo'), p('Rua B, 300, algarve residence apto 604'))).toBe(false);
+    expect(mesmoLugarNomeado(p('Rua A, 89, Pousada Raio de Sol'), p('Rua A, 263, Casa 1 (perto pousada vila aju)'))).toBe(false);
+    expect(mesmoLugarNomeado(p('Rua A, 10, Residencial das Palmeiras'), p('Rua B, 20, Residencial dos Ipês'))).toBe(false);
+  });
+
+  it('nome de comércio usado como referência não junta', () => {
+    expect(mesmoLugarNomeado(p('Rua A, 741, Mercearia Kibarato'), p('Rua A, 105, perto Mercearia ki barato'))).toBe(false);
+  });
+
+  it('instrução de horário não é nome de lugar', () => {
+    expect(mesmoLugarNomeado(p('Rua A, 91, Comercio / segunda a sexta'), p('Rua B, 731, Entrega no hr comerci 8 a 18h'))).toBe(false);
+  });
+
+  it('bairro não é nome de lugar', () => {
+    expect(pistasDeLugar('Rua A, 10, Apto 101, Atalaia', 'Atalaia')).toEqual([]);
+  });
+});
 
 describe('decompor', () => {
   it.each([

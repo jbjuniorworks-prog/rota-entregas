@@ -177,6 +177,17 @@ describe('entregas no mesmo ponto viram uma visita só', () => {
     expect(vs.map(v => v.ps.map(p => p.id))).toEqual([['p9a', 'p9b'], ['p10'], ['outroDia']]);
   });
 
+  it('junta o mesmo condomínio em ruas diferentes, e deixa o prédio vizinho de fora', () => {
+    const comNome = (id: string, texto: string, lat: number) =>
+      ({...noPonto(id, lat, -37.0600), texto, bairro: 'Jardins'}) as Parada;
+    const vs = agruparVisitas([
+      comNome('condoA', 'Avenida das Flores, 1500, Ed Villa Sorrento a', -10.9400),
+      comNome('condoB', 'Rua do Poeta, 1500, Apt 704 edificio Villa Sorento', -10.94033),
+      comNome('vizinho', 'Rua do Poeta, 300, algarve residence apto 604', -10.93950),
+    ] as never);
+    expect(vs.map(v => v.ps.map(p => p.id))).toEqual([['condoA', 'condoB'], ['vizinho']]);
+  });
+
   it('a matriz de ruas pede um ponto por visita, e as entregas do mesmo ponto ficam juntas', async () => {
     const e = {
       cidade: 'Aracaju', googleKey: '', tamTrecho: 9, voltar: false, ordemDoApp: false,

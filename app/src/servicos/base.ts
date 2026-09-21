@@ -1,5 +1,5 @@
 import {haversine} from '../logica/geo';
-import {chaveRua, normal, palavrasRua, semTipoDeArea, tipoDaRua} from '../logica/texto';
+import {chaveRua, normal, palavrasRua, quaseIgual, semTipoDeArea, tipoDaRua} from '../logica/texto';
 import type {Candidato, Ponto} from '../logica/tipos';
 import {nuvem} from './nuvem';
 
@@ -46,18 +46,7 @@ export function escolherTrecho(trechos: Trecho[], cidade: string, perto: Ponto |
 export const ehGenerica = (trechos: Trecho[]): boolean =>
   trechos.some(t => palavrasRua(t.nome || '').join('').length <= 2);
 
-export function quaseIgual(a: string, b: string): boolean {
-  if (a === b) return true;
-  if (a.length < 5 || Math.abs(a.length - b.length) > 1) return false;
-  const [curta, longa] = a.length <= b.length ? [a, b] : [b, a];
-  let erros = 0;
-  for (let i = 0, j = 0; j < longa.length; i++, j++) {
-    if (curta[i] === longa[j]) continue;
-    if (++erros > 1) return false;
-    if (curta.length < longa.length) i--;
-  }
-  return true;
-}
+export {quaseIgual};
 
 export function cabeNoNome(pedido: string, achado: string): boolean {
   const pedidas = palavrasRua(pedido), tem = palavrasRua(achado);

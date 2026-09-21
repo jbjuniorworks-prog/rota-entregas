@@ -331,6 +331,54 @@ export function conjuntoDoEndereco(texto: string, bairro = ''): string {
   return achado.replace(/\s+\b(ap(to|artamento)?|bl(oco|c)?|casa|sala|loja)\b.*$/i, '').replace(/[,;].*$/, '').trim();
 }
 
+export function quaseIgual(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.length < 5 || Math.abs(a.length - b.length) > 1) return false;
+  const [curta, longa] = a.length <= b.length ? [a, b] : [b, a];
+  let erros = 0;
+  for (let i = 0, j = 0; j < longa.length; i++, j++) {
+    if (curta[i] === longa[j]) continue;
+    if (++erros > 1) return false;
+    if (curta.length < longa.length) i--;
+  }
+  return true;
+}
+
+const LUGAR_GENERICO = new Set([
+  'condominio', 'condominios', 'cond', 'cdm', 'conj', 'conjunto', 'residencial', 'residence', 'residencia', 'resid',
+  'edificio', 'edificios', 'edif', 'apartamento', 'apart', 'apto', 'bloco', 'casa', 'torre', 'predio', 'portaria',
+  'porteira', 'entrada', 'fundos', 'frente', 'proximo', 'perto', 'referencia', 'quadra', 'lote', 'sala', 'loja',
+  'galpao', 'pousada', 'hotel', 'motel', 'mercado', 'mercadinho', 'supermercado', 'padaria', 'farmacia', 'escola',
+  'colegio', 'igreja', 'posto', 'praca', 'esquina', 'numero', 'andar', 'terreo', 'cobertura', 'recepcao', 'portao',
+  'entregar', 'receber', 'falar', 'ligar', 'telefone', 'whatsapp', 'obrigado', 'favor',
+  'comercio', 'comercial', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo', 'feriado',
+  'horario', 'horas', 'manha', 'tarde', 'noite', 'entrega', 'entregas', 'entregue', 'recebe', 'morador',
+  'moradora', 'inquilino', 'proprietario', 'vizinho', 'vizinha', 'deixar', 'contato', 'celular', 'interfone',
+  'campainha', 'aberto', 'fechado', 'funciona', 'atende', 'atendimento', 'apenas', 'somente', 'depois', 'antes',
+  'urgente', 'antiga', 'antigo', 'novo', 'nova', 'lado', 'esquerda', 'direita',
+  'mercearia', 'quitanda', 'lanchonete', 'restaurante', 'pizzaria', 'oficina', 'salao', 'barbearia', 'academia',
+  'clinica', 'consultorio', 'laboratorio', 'loterica', 'correios', 'borracharia', 'deposito', 'distribuidora',
+  'sorveteria', 'papelaria', 'floricultura', 'petshop', 'conveniencia', 'estacionamento', 'condominios',
+]);
+
+const SO_REFERENCIA = /(perto|proxim[oa]|frente|defronte|atras|referencia|ref|depois|antes|fica)/;
+
+export function pistasDeLugar(texto: string, bairro = ''): string[] {
+  const d = decompor(analisarLinha(texto).texto);
+  const fora = new Set(normal(bairro).replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean));
+  const dele = d.resto.filter(s => !SO_REFERENCIA.test(normal(s)));
+  const palavras = normal(dele.join(' ')).replace(/[^a-z0-9 ]/g, ' ').split(/\s+/);
+  return [...new Set(palavras.filter(w => w.length >= 5 && !/\d/.test(w)
+    && !LUGAR_GENERICO.has(w) && !PALAVRAS_VAZIAS.has(w) && !fora.has(w)))];
+}
+
+export function mesmoLugarNomeado(a: {texto: string; bairro?: string}, b: {texto: string; bairro?: string}): boolean {
+  const pa = pistasDeLugar(a.texto, a.bairro), pb = pistasDeLugar(b.texto, b.bairro);
+  if (!pa.length || !pb.length) return false;
+  const iguais = pa.filter(x => pb.some(y => quaseIgual(x, y)));
+  return iguais.length >= 2 || iguais.some(w => w.length >= 8);
+}
+
 export const semTipoDeArea = (nome: string): string => normal(nome).replace(AREA, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
 export const tipoDaRua = (nome: string): string => TIPO_VIA[normal(nome).replace(/[^a-z0-9 ]/g, ' ').split(' ')[0]] || '';
