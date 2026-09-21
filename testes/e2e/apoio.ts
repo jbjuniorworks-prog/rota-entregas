@@ -113,6 +113,11 @@ export function linhaDe(page: Page, endereco: string, botao: string | RegExp): L
   return page.locator('div').filter({hasText: endereco}).filter({has: page.getByRole('button', {name: botao})}).last();
 }
 
+export async function zoom(page: Page, z: number) {
+  await page.waitForFunction(() => !!(window as any).rotaTeste);
+  await page.evaluate(z2 => (window as any).rotaTeste.zoom(z2), z);
+}
+
 export async function clicarMapa(page: Page, lat: number, lng: number) {
   await page.waitForFunction(() => !!(window as any).rotaTeste);
   await page.evaluate(([a, b]) => (window as any).rotaTeste.clicarMapa(a, b), [lat, lng]);

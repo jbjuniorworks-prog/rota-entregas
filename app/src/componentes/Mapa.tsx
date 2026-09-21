@@ -1,11 +1,11 @@
-import {useEffect, useRef} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {tocouNoMapa} from '../acoes';
-import {gruposNoMapa} from '../logica/otimizacao';
-import {rotuloDe} from '../logica/rotulo';
+import {haversine, RAIO_VISITA} from '../logica/geo';
+import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
-import type {Parada} from '../logica/tipos';
+import type {Parada, Ponto} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]!));
@@ -18,6 +18,8 @@ function icone(texto: string, cor: string, apagado = false, borda = '') {
 }
 
 const BALAO = {permanent: true as const, direction: 'top' as const, offset: [0, -28] as [number, number], className: 'balao'};
+const PIXELS_JUNTOS = 38;
+const ZOOM_DO_FOCO = 17;
 
 function balaoDoGrupo(g: {stops: string[]; adicionais: number; pacotes: number}): string {
   const daParada = [
@@ -25,6 +27,30 @@ function balaoDoGrupo(g: {stops: string[]; adicionais: number; pacotes: number})
     g.adicionais ? 'ADS' : '',
   ].filter(Boolean).join(' ');
   return [daParada, g.pacotes > 1 ? `×${g.pacotes}` : ''].filter(Boolean).join(' ');
+}
+
+interface Pilha {
+  ps: Parada[];
+  x: number;
+  y: number;
+  estado: string;
+}
+
+function empilhar(ps: Parada[], m: L.Map): Pilha[] {
+  const z = m.getZoom();
+  const out: Pilha[] = [];
+  for (const p of ps) {
+    if (p.lat == null || p.lng == null) continue;
+    const pt = m.project([p.lat, p.lng], z);
+    const estado = p.entregue ? 'e' : p.adiada ? 'a' : 'p';
+    const g = out.find(x => x.estado === estado
+      && ((Math.abs(x.x - pt.x) < PIXELS_JUNTOS && Math.abs(x.y - pt.y) < PIXELS_JUNTOS)
+        || haversine(x.ps[0] as Ponto, p as Ponto) <= RAIO_VISITA));
+    if (g) g.ps.push(p);
+    else out.push({ps: [p], x: pt.x, y: pt.y, estado});
+  }
+  for (const g of out) g.ps.sort((a, b) => (ondeNaRota(a.id) ?? 1e6) - (ondeNaRota(b.id) ?? 1e6));
+  return out;
 }
 
 interface NoMapa {
@@ -43,11 +69,13 @@ export default function Mapa() {
   const camadaFundo = useRef<L.LayerGroup | null>(null);
   const camadaPinos = useRef<L.LayerGroup | null>(null);
   const pinos = useRef<Record<string, NoMapa>>({});
+  const doPino = useRef<Record<string, string>>({});
   const desenhado = useRef('');
   const fundoFeito = useRef('');
   const enquadrado = useRef(0);
   const focado = useRef(0);
   const marcado = useRef(0);
+  const [, setZoom] = useState(0);
 
   useEffect(() => {
     const m = L.map(div.current!, {markerZoomAnimation: false}).setView([-15.8, -47.9], 4);
@@ -55,8 +83,12 @@ export default function Mapa() {
     camadaFundo.current = L.layerGroup().addTo(m);
     camadaPinos.current = L.layerGroup().addTo(m);
     m.on('click', ev => tocouNoMapa(ev.latlng.lat, ev.latlng.lng));
+    m.on('zoomend', () => setZoom(m.getZoom()));
     mapa.current = m;
-    (window as any).rotaTeste = {clicarMapa: (lat: number, lng: number) => m.fire('click', {latlng: L.latLng(lat, lng)})};
+    (window as any).rotaTeste = {
+      clicarMapa: (lat: number, lng: number) => m.fire('click', {latlng: L.latLng(lat, lng)}),
+      zoom: (z: number) => m.setZoom(z),
+    };
     return () => { m.remove(); };
   }, []);
 
@@ -68,8 +100,9 @@ export default function Mapa() {
     if (e.fim) limites.push([e.fim.lat, e.fim.lng]);
     const marcasAdmin = ui.aba === 'admin' && ui.marcas ? ui.marcas : null;
 
+    const pilhas = empilhar(comLocal, m);
     const desenho = [
-      comLocal.map(p => [p.id, p.lat, p.lng, p.entregue, p.adiada, p.precisao, p.area, p.stop, p.adicional, p.unidades, rotuloDe(p), p.texto, p.exibido, p.ml].join(',')).join(';'),
+      pilhas.map(g => g.ps.map(p => [p.id, p.lat, p.lng, p.entregue, p.adiada, p.precisao, p.area, p.stop, p.adicional, p.unidades, rotuloDe(p), p.texto, p.exibido, p.ml].join(',')).join(';')).join('/'),
       e.inicio && [e.inicio.lat, e.inicio.lng, e.inicio.exibido].join(','),
       e.fim && [e.fim.lat, e.fim.lng, e.fim.exibido].join(','),
       e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0)).join('|'),
@@ -79,30 +112,40 @@ export default function Mapa() {
 
     if (desenho !== desenhado.current) {
       desenhado.current = desenho;
-      const vivos = new Set(comLocal.map(p => p.id));
-      for (const [id, v] of Object.entries(pinos.current)) {
-        if (vivos.has(id)) continue;
+      const vivos = new Set(pilhas.map(g => g.ps.map(p => p.id).join('+')));
+      for (const [chave, v] of Object.entries(pinos.current)) {
+        if (vivos.has(chave)) continue;
         v.mk.unbindTooltip().unbindPopup().remove();
-        delete pinos.current[id];
+        delete pinos.current[chave];
       }
-      const baloes = new Map<string, string>();
-      for (const g of gruposNoMapa(e.paradas)) {
-        const texto = balaoDoGrupo(g);
-        if (texto) baloes.set(g.ids[0], texto);
-      }
-      for (const p of comLocal) {
+      doPino.current = {};
+      for (const g of pilhas) {
+        const p = g.ps[0];
+        const chave = g.ps.map(x => x.id).join('+');
+        for (const x of g.ps) doPino.current[x.id] = chave;
         const cor = loja.area(p.area).cor;
-        const rotulo = p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p);
         const apagado = p.entregue || !!p.adiada;
-        const borda = DUVIDA.has(p.precisao) ? 'duvida' : QUASE.has(p.precisao) ? 'quase' : '';
-        const noApp = [
-          p.stop ? `parada <b>${esc(p.stop)}</b>` : p.adicional ? 'sem parada (<b>ADS</b>, adicional)' : '',
-          p.ml && e.rota ? `pacote <b>#${esc(p.ml)}</b>` : '',
+        const so = g.ps.length === 1;
+        const rotulo = (p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p)) + (so ? '' : `+${g.ps.length - 1}`);
+        const borda = g.ps.some(x => DUVIDA.has(x.precisao)) ? 'duvida' : g.ps.some(x => QUASE.has(x.precisao)) ? 'quase' : '';
+        const naRota = (x: Parada) => x.entregue ? '✓' : x.adiada ? '⏸' : rotuloDe(x);
+        const noApp = (x: Parada) => [
+          x.stop ? `parada <b>${esc(x.stop)}</b>` : x.adicional ? 'sem parada (<b>ADS</b>, adicional)' : '',
+          x.ml && e.rota ? `pacote <b>#${esc(x.ml)}</b>` : '',
         ].filter(Boolean).join(' · ');
-        const popup = `<b>${esc(rotulo)} · ${esc(p.texto)}</b>${noApp ? `<br><small>no app do entregador: ${noApp}</small>` : ''}<br><small>${esc(p.exibido)}</small><br><small>Para corrigir: 2. Conferir → Marcar no mapa.</small>`;
-        const balao = baloes.get(p.id) || '';
+        const uma = (x: Parada) => `<b>${esc(naRota(x))} · ${esc(x.texto)}</b>${noApp(x) ? `<br><small>no app do entregador: ${noApp(x)}</small>` : ''}`;
+        const popup = (so
+          ? `${uma(p)}<br><small>${esc(p.exibido)}</small>`
+          : `<b>${g.ps.length} entregas neste ponto</b><br>${g.ps.map(x => uma(x)).join('<br>')}`)
+          + '<br><small>Para corrigir: 2. Conferir → Marcar no mapa.</small>';
+        const pendentes = g.ps.filter(x => !x.entregue);
+        const balao = balaoDoGrupo({
+          stops: [...new Set(pendentes.map(x => x.stop).filter(Boolean) as string[])].sort((a, b) => +a - +b),
+          adicionais: pendentes.filter(x => x.adicional).length,
+          pacotes: pendentes.reduce((n, x) => n + (x.unidades || 1), 0),
+        });
         const sig = [p.lat, p.lng, rotulo, cor, apagado, borda, popup, balao].join('|');
-        const antes = pinos.current[p.id];
+        const antes = pinos.current[chave];
         if (antes && antes.sig === sig) continue;
         if (!antes) {
           const mk = L.marker([p.lat!, p.lng!], {icon: icone(rotulo, cor, apagado, borda)}).bindPopup(popup);
@@ -114,7 +157,7 @@ export default function Mapa() {
           });
           if (balao) mk.bindTooltip(balao, BALAO);
           mk.addTo(camadaP);
-          pinos.current[p.id] = {mk, sig, lat: p.lat!, lng: p.lng!, popup, balao};
+          pinos.current[chave] = {mk, sig, lat: p.lat!, lng: p.lng!, popup, balao};
           continue;
         }
         if (antes.lat !== p.lat || antes.lng !== p.lng) {
@@ -160,11 +203,15 @@ export default function Mapa() {
       m.fitBounds(limites, {padding: [30, 30], maxZoom: 16});
     }
     if (ui.focar && ui.focar.vez !== focado.current) {
-      focado.current = ui.focar.vez;
       const p = loja.parada(ui.focar.id);
-      if (p && p.lat != null && p.lng != null) {
-        m.setView([p.lat, p.lng], 17);
-        pinos.current[p.id]?.mk.openPopup();
+      if (!p || p.lat == null || p.lng == null) focado.current = ui.focar.vez;
+      else {
+        const jaNoZoom = m.getZoom() === ZOOM_DO_FOCO;
+        m.setView([p.lat, p.lng], ZOOM_DO_FOCO);
+        if (jaNoZoom) {
+          focado.current = ui.focar.vez;
+          pinos.current[doPino.current[p.id]]?.mk.openPopup();
+        }
       }
     }
   });

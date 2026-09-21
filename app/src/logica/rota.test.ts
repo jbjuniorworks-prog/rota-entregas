@@ -155,11 +155,11 @@ describe('entregas no mesmo ponto viram uma visita só', () => {
   const noPonto = (id: string, lat: number, lng: number) =>
     ({id, area: 'a', ml: null, stop: null, texto: `Rua ${id}, 1`, unidades: null, comercial: false, lat, lng, exibido: '', precisao: 'planilha', candidatos: [], entregue: false}) as Parada;
 
-  it('junta o que está a menos de 25 m, sem ir emendando de uma em uma', () => {
+  it('junta o que está no mesmo lugar, sem ir emendando de uma em uma', () => {
     const vs = agruparVisitas([
       noPonto('a', -10.9400, -37.0600),
-      noPonto('b', -10.94015, -37.0600),
-      noPonto('c', -10.9403, -37.0600),
+      noPonto('b', -10.94045, -37.0600),
+      noPonto('c', -10.94105, -37.0600),
       noPonto('longe', -10.9500, -37.0600),
     ] as never);
     expect(vs.map(v => v.ps.map(p => p.id))).toEqual([['a', 'b'], ['c'], ['longe']]);
@@ -171,8 +171,8 @@ describe('entregas no mesmo ponto viram uma visita só', () => {
     const vs = agruparVisitas([
       daParada('p9a', '9', -10.9400),
       daParada('p9b', '9', -10.9409),
-      daParada('p10', '10', -10.94045),
-      daParada('outroDia', '9', -10.9412, 'AT2'),
+      daParada('p10', '10', -10.94105),
+      daParada('outroDia', '9', -10.9420, 'AT2'),
     ] as never);
     expect(vs.map(v => v.ps.map(p => p.id))).toEqual([['p9a', 'p9b'], ['p10'], ['outroDia']]);
   });

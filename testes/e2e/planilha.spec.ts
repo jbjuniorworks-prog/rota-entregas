@@ -1,4 +1,4 @@
-import {test, expect, abrir, carregar, aviso, aba, montar, pontosNoMaps, ROTA_A, ROTA_B} from './apoio';
+import {test, expect, abrir, carregar, aviso, aba, montar, pontosNoMaps, zoom, ROTA_A, ROTA_B} from './apoio';
 
 test('planilha da Shopee salva como .txt vira paradas, somando pacotes do mesmo endereço', async ({page}) => {
   await abrir(page);
@@ -12,9 +12,22 @@ test('planilha da Shopee salva como .txt vira paradas, somando pacotes do mesmo 
 test('o balão do mapa mostra a parada da Shopee, o ADS sem parada e os pacotes daquele ponto', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_A);
+  await zoom(page, 18);
   await expect
     .poll(async () => [...new Set(await page.locator('.balao').allInnerTexts())].sort())
     .toEqual(['ADS', 'P1', 'P2 ×4', 'P3', 'P4', 'P5', 'P6', 'P7']);
+});
+
+test('pinos em cima uns dos outros viram um pino só, e abrem quando dá zoom', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await zoom(page, 18);
+  const separados = await page.locator('.pino').count();
+  await zoom(page, 13);
+  await expect.poll(async () => await page.locator('.pino').count()).toBeLessThan(separados);
+  await expect(page.locator('.pino').filter({hasText: '+'})).not.toHaveCount(0);
+  await zoom(page, 18);
+  await expect.poll(async () => await page.locator('.pino').count()).toBe(separados);
 });
 
 test('planilha .xlsx sem nada estranho não gera alerta', async ({page}) => {
