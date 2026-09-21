@@ -20,6 +20,21 @@ test('posição longe das outras entregas vem em vermelho e sai quando o motoris
   await expect(page.getByText(/❗ 0 para conferir/)).toBeVisible();
 });
 
+test('corrigir um pino do condomínio leva junto as outras entregas do mesmo endereço', async ({page}) => {
+  const perguntas: string[] = [];
+  page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await aba(page, '2. Conferir');
+  await linhaDe(page, 'Rua dos Ipês, 300, Bloco A ap 101', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+  await clicarMapa(page, -10.9599, -37.0443);
+  expect(perguntas.at(-1)).toContain('Outras 1 entrega(s) deste mesmo endereço');
+  await expect(aviso(page)).toContainText('(2 entregas deste endereço)');
+  for (const texto of ['Rua dos Ipês, 300, Bloco A ap 101', 'Rua dos Ipês, 300, Bloco B ap 202']) {
+    await expect(linhaDe(page, texto, 'Marcar no mapa')).toContainText('Posição marcada no mapa');
+  }
+});
+
 test('a correção fica guardada depois do reset e vale para a planilha e para texto colado', async ({page}) => {
   const perguntas: string[] = [];
   page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });

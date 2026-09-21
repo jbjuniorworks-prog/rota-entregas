@@ -1,8 +1,8 @@
 import {aplicarCompartilhadas} from '../logica/compartilhadas';
-import {marcarIsoladas} from '../logica/geo';
+import {haversine, marcarIsoladas} from '../logica/geo';
 import {avisoGuardou} from '../logica/memoria';
-import {chaveLugar, chaveRua, decompor} from '../logica/texto';
-import type {Parada} from '../logica/tipos';
+import {chaveLugar, chaveRua, decompor, mesmoEndereco} from '../logica/texto';
+import type {Parada, Ponto} from '../logica/tipos';
 import {loja, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
 import {clienteNuvem} from '../servicos/nuvem';
@@ -96,15 +96,32 @@ function prepararDesfazer(p: Parada): () => void {
   };
 }
 
+const JUNTO_DAQUI = 300;
+
+export function irmasDoMesmoEndereco(p: Parada): Parada[] {
+  if (p.lat == null || p.lng == null) return [];
+  return e().paradas.filter(q => q !== p && !q.entregue && q.lat != null && q.lng != null
+    && mesmoEndereco([q.texto, p.texto]) && haversine(q as Ponto, p as Ponto) <= JUNTO_DAQUI);
+}
+
 export function corrigirPosicao(p: Parada, lat: number, lng: number, prefixo = 'Local corrigido', exibido = 'Posição marcada no mapa') {
-  const desfazer = prepararDesfazer(p);
-  delete p.sugestao;
-  Object.assign(p, {lat, lng, precisao: 'manual', exibido});
-  const guardou = memoria.lembrar(p);
+  const irmas = irmasDoMesmoEndereco(p);
+  const juntas = irmas.length && confirm(`Outras ${irmas.length} entrega(s) deste mesmo endereço estão no lugar antigo.
+
+Levar todas para o ponto novo junto com esta?`) ? irmas : [];
+  const desfazers = [p, ...juntas].map(prepararDesfazer);
+  const desfazer = () => desfazers.forEach(f => f());
+  let guardou = false;
+  for (const x of [p, ...juntas]) {
+    delete x.sugestao;
+    Object.assign(x, {lat, lng, precisao: 'manual', exibido});
+    guardou = memoria.lembrar(x) || guardou;
+  }
   if (p.adiada) marcarIsoladas(e().paradas);
   else invalidarRota();
   loja.mudou();
-  status(prefixo + avisoGuardou(guardou) + (p.adiada ? ' Quando quiser, toque em "Voltar para a rota".' : prefixo === 'Local corrigido' ? ' Monte a rota de novo.' : ''), 10000, desfazer);
+  const quantas = juntas.length ? ` (${juntas.length + 1} entregas deste endereço)` : '';
+  status(prefixo + quantas + avisoGuardou(guardou) + (p.adiada ? ' Quando quiser, toque em "Voltar para a rota".' : prefixo === 'Local corrigido' ? ' Monte a rota de novo.' : ''), 10000, desfazer);
 }
 
 export const GPS_PRECISO = 50;

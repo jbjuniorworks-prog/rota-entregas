@@ -14,7 +14,7 @@ test('o balão do mapa mostra a parada da Shopee, o ADS sem parada e os pacotes 
   await carregar(page, ROTA_A);
   await expect
     .poll(async () => [...new Set(await page.locator('.balao').allInnerTexts())].sort())
-    .toEqual(['ADS', 'P1', 'P2 · 📦 4', 'P3', 'P4', 'P5', 'P6', 'P7']);
+    .toEqual(['ADS', 'P1', 'P2 ×4', 'P3', 'P4', 'P5', 'P6', 'P7']);
 });
 
 test('planilha .xlsx sem nada estranho não gera alerta', async ({page}) => {

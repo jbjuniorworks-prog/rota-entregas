@@ -37,7 +37,7 @@ export function Mapa() {
   const marcado = useRef(0);
 
   useEffect(() => {
-    const m = L.map(div.current!).setView([-15.8, -47.9], 4);
+    const m = L.map(div.current!, {markerZoomAnimation: false}).setView([-15.8, -47.9], 4);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(m);
     camada.current = L.layerGroup().addTo(m);
     m.on('click', ev => tocouNoMapa(ev.latlng.lat, ev.latlng.lng));
@@ -48,6 +48,7 @@ export function Mapa() {
 
   useEffect(() => {
     const m = mapa.current!, c = camada.current!;
+    for (const mk of Object.values(marcadores.current)) mk.unbindTooltip().unbindPopup();
     c.clearLayers();
     marcadores.current = {};
     const limites: [number, number][] = [];
@@ -85,8 +86,7 @@ export function Mapa() {
         g.stops.length ? `P${g.stops.slice(0, 2).join('+')}${g.stops.length > 2 ? '+' : ''}` : '',
         g.adicionais ? 'ADS' : '',
       ].filter(Boolean).join(' ');
-      const doPacote = g.pacotes > 1 ? `📦 ${g.pacotes}${g.enderecos > 1 ? ` · ${g.enderecos} endereços` : ''}` : '';
-      const texto = [daParada, doPacote].filter(Boolean).join(' · ');
+      const texto = [daParada, g.pacotes > 1 ? `×${g.pacotes}` : ''].filter(Boolean).join(' ');
       const mk = marcadores.current[g.ids[0]];
       if (mk) mk.bindTooltip(texto, {permanent: true, direction: 'top', offset: [0, -28], className: 'balao'});
     }
