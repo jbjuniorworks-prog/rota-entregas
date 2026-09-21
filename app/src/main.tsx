@@ -1,5 +1,5 @@
 import {createRoot} from 'react-dom/client';
-import {lazy, Suspense, useEffect, useRef, useState} from 'react';
+import {Component, lazy, Suspense, useEffect, useRef, useState, type ReactNode} from 'react';
 import './estilo.css';
 import * as A from './acoes';
 import {TelaAdmin} from './componentes/Admin';
@@ -11,6 +11,18 @@ import {useLoja, type Aba} from './loja';
 import {nuvem} from './servicos/nuvem';
 
 const Mapa = lazy(() => import('./componentes/Mapa'));
+
+class EscudoDoMapa extends Component<{children: ReactNode}, {caiu: boolean}> {
+  state = {caiu: false};
+  static getDerivedStateFromError() { return {caiu: true}; }
+  render() {
+    if (!this.state.caiu) return this.props.children;
+    return <div className="semmapa">
+      <div>Não consegui carregar o mapa. O resto do app funciona: dá para conferir, marcar entregue e abrir no Maps.</div>
+      <button className="btn peq" onClick={() => location.reload()}>Tentar de novo</button>
+    </div>;
+  }
+}
 
 function depoisDeAparecer(fazer: () => void) {
   const ocioso = (window as unknown as {requestIdleCallback?: (f: () => void, o?: {timeout: number}) => void}).requestIdleCallback;
@@ -48,7 +60,7 @@ function App() {
   return <>
     <div id="app" className={ui.mapaGrande ? 'mapa-grande' : ''}>
       <div className="mapwrap">
-        <Suspense fallback={null}>{comMapa && <Mapa />}</Suspense>
+        <EscudoDoMapa><Suspense fallback={null}>{comMapa && <Mapa />}</Suspense></EscudoDoMapa>
         <button id="btnMapa" className="btn peq" onClick={() => A.mudar(() => { ui.mapaGrande = !ui.mapaGrande; })}>⤢ Mapa</button>
       </div>
       <div id="painel">

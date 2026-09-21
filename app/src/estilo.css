@@ -3,8 +3,9 @@
 html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--tx)}
 #app{display:flex;flex-direction:column;height:100%}
 .mapwrap{position:relative;flex:none}
-#map{height:36vh;background:#dde3ea}
-#app.mapa-grande #map{height:70vh}
+#map,.semmapa{height:36vh;background:#dde3ea}
+#app.mapa-grande #map,#app.mapa-grande .semmapa{height:70vh}
+.semmapa{display:grid;place-content:center;justify-items:center;gap:10px;padding:16px;text-align:center;font-size:14px;color:var(--mut)}
 #btnMapa{position:absolute;right:10px;top:10px;z-index:500}
 #painel{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--card)}
 nav{display:flex;border-bottom:1px solid var(--bd)}
@@ -68,7 +69,7 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
 @media (min-width:900px){
   #app{flex-direction:row-reverse}
   .mapwrap{flex:1}
-  #map,#app.mapa-grande #map{height:100%}
+  #map,#app.mapa-grande #map,.semmapa,#app.mapa-grande .semmapa{height:100%}
   #painel{flex:none;width:440px;border-right:1px solid var(--bd)}
   #btnMapa{display:none}
 }
