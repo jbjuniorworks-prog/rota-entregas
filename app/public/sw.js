@@ -30,6 +30,14 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
+  if (/\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.(js|css|woff2?)$/.test(url.pathname)) {
+    e.respondWith(caches.match(e.request).then(guardado => guardado || fetch(e.request).then(r => {
+      const copia = r.clone();
+      caches.open(VERSAO).then(c => c.put(e.request, copia));
+      return r;
+    })));
+    return;
+  }
   e.respondWith(
     fetch(e.request)
       .then(r => { const copia = r.clone(); caches.open(VERSAO).then(c => c.put(e.request, copia)); return r; })
