@@ -4,8 +4,12 @@ import {readFileSync, statSync} from 'node:fs';
 const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrY2x6bWxjZmlrc2FxcXNwcXN5Iiwicm9sZSI6ImFub24i';
 const PLANILHAS_OK = /^testes\/planilhas\//;
 const BINARIO = /\.(png|jpe?g|gif|webp|mp4|mov|pdf|ico|zip|gz)$/i;
+const IMAGENS_OK = /^app\/public\/[^/]+\.(png|ico|svg|webp)$/i;
 
 export function olharNome(caminho) {
+  if (BINARIO.test(caminho) && !IMAGENS_OK.test(caminho)) {
+    return 'imagem, vídeo ou PDF fora de app/public — a rota chega por print, e o que está dentro dele ninguém lê no diff';
+  }
   if (/\.(xlsx|xls|ods|csv)$/i.test(caminho) && !PLANILHAS_OK.test(caminho)) {
     return 'planilha fora de testes/planilhas — pode ser rota de verdade';
   }

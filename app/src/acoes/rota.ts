@@ -9,11 +9,16 @@ import {linhaDaRota, matriz} from '../servicos/ruas';
 import {e, enviarFila, fila, invalidarRota, ui} from './base';
 import {guardarPassagem} from './posicoes';
 
-export function gps(): Promise<void> {
+export function gps(aindaVale: () => boolean = () => true): Promise<void> {
   return new Promise((ok, falha) => {
     if (!navigator.geolocation) { status('Este navegador não dá acesso ao GPS.', 3000); falha(new Error('sem GPS')); return; }
     status('Pegando sua localização…');
     navigator.geolocation.getCurrentPosition(pos => {
+      if (!aindaVale()) {
+        status('A localização chegou depois que a rota ficou pronta. Toque em "Montar melhor sequência" de novo para ela sair de onde você está.', 8000);
+        ok();
+        return;
+      }
       e().inicio = {id: 'inicio', lat: pos.coords.latitude, lng: pos.coords.longitude, exibido: `Minha localização (±${Math.round(pos.coords.accuracy)} m)`};
       invalidarRota();
       ui.enquadrar++;
@@ -39,7 +44,8 @@ export async function montarRota() {
   ui.ocupado = true;
   try {
     if (!e().inicio || !e().inicio!.texto) {
-      try { await comPrazo(gps(), PRAZO_DO_GPS); } catch { e().inicio = null; }
+      let noPrazo = true;
+      try { await comPrazo(gps(() => noPrazo), PRAZO_DO_GPS); } catch { noPrazo = false; e().inicio = null; }
     }
     const rota = await calcularRota(e(), {matriz, linha: linhaDaRota}, m => status(m));
     status(rota.porRuas ? 'Rota pronta!' : 'Rota pronta (sem acesso às ruas: usei distância aproximada).', 3500);

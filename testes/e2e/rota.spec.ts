@@ -95,15 +95,26 @@ test.describe('com GPS', () => {
   });
 });
 
-test('se o pedido de GPS fica sem resposta, a rota sai assim mesmo em vez de travar', async ({page}) => {
+test('se o pedido de GPS fica sem resposta, a rota sai assim mesmo, e a resposta atrasada não desmonta ela', async ({page}) => {
   test.setTimeout(120_000);
-  await page.addInitScript(() => { navigator.geolocation.getCurrentPosition = () => {}; });
+  await page.addInitScript(() => {
+    (window as unknown as {permitirDepois?: () => void}).permitirDepois = undefined;
+    navigator.geolocation.getCurrentPosition = (ok: PositionCallback) => {
+      (window as unknown as {permitirDepois?: () => void}).permitirDepois =
+        () => ok({coords: {latitude: -10.93, longitude: -37.05, accuracy: 12}} as GeolocationPosition);
+    };
+  });
   await abrir(page);
   await carregar(page, ROTA_B);
   await aba(page, '3. Rota');
   await page.getByRole('button', {name: /Montar melhor sequência/}).click();
   await expect(aviso(page)).toContainText('Pegando sua localização');
   await expect(page.getByText(/Total estimado/)).toBeVisible({timeout: 60_000});
+  expect(await ordem(page, NOMES)).toHaveLength(6);
+
+  await page.evaluate(() => (window as unknown as {permitirDepois: () => void}).permitirDepois());
+  await expect(aviso(page)).toContainText('chegou depois que a rota ficou pronta');
+  await expect(page.getByText(/Total estimado/)).toBeVisible();
   expect(await ordem(page, NOMES)).toHaveLength(6);
 });
 

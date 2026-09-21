@@ -59,6 +59,16 @@ describe('memória de posições', () => {
     mem.esquecer();
     expect(mem.quantas()).toBe(0);
   });
+  it('escolher um palpite do mapa fica só neste celular, sem virar correção dos outros', () => {
+    const g = guardaNaMemoria(), enviadas: string[] = [];
+    const mem = criarMemoria(g, () => 'Aracaju', k => enviadas.push(k));
+    const p = {texto: 'Rua D, 49, CEP 49000-199', lat: -10.96, lng: -37.04} as never;
+    expect(mem.lembrar(p, Date.now(), false)).toBe(true);
+    expect(enviadas).toEqual([]);
+    expect(mem.quantas()).toBe(1);
+    expect(mem.lembrar(p)).toBe(true);
+    expect(enviadas).toEqual(['49000199|49']);
+  });
   it('desfazer devolve a memória como estava, e a correção sai da fila se ainda não foi enviada', () => {
     const g = guardaNaMemoria(), f = criarFila(g);
     const mem = criarMemoria(g, () => 'Aracaju', (chave, lat, lng) => f.enfileirar({tipo: 'correcao', chave, lat, lng}));

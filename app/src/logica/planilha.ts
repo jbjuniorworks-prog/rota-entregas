@@ -28,7 +28,6 @@ export interface ItemPlanilha {
   at: string | null;
   parada: string;
   arquivo: string;
-  linha: Record<string, unknown>;
 }
 
 const numeroDe = (v: unknown) => typeof v === 'number' ? v : parseFloat(String(v ?? '').trim().replace(',', '.'));
@@ -72,7 +71,6 @@ export function itensDaPlanilha(linhas: unknown[][], arquivo: string): ItemPlani
       texto, lat: coord ? coord.lat : null, lng: coord ? coord.lng : null, aproximada: !!coord?.aproximada, ml: /^\d{1,4}$/.test(ordem) ? ordem : null,
       cidade: campo(l, 'cidade'), bairro, endereco: campo(l, 'endereco'), cep: cep || null,
       tn: campo(l, 'tn') || null, at: campo(l, 'at') || null, parada: campo(l, 'parada'), arquivo,
-      linha: Object.fromEntries(cab.map((h, i) => [h || `coluna ${i + 1}`, l[i] ?? ''])),
     });
   }
   return itens;

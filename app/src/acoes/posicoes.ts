@@ -137,7 +137,10 @@ export function escolherCandidato(p: Parada, k: number) {
   const c = p.candidatos[k];
   const desfazer = prepararDesfazer(p);
   Object.assign(p, {lat: c.lat, lng: c.lng, exibido: c.exibido, precisao: c.precisao});
-  status('Local escolhido' + avisoGuardou(memoria.lembrar(p)), 10000, desfazer);
+  const guardou = memoria.lembrar(p, Date.now(), false);
+  status('Local escolhido' + (guardou
+    ? ' e guardado neste celular. Para valer para os outros motoristas, arraste o pino ou toque em "📍 Estou aqui" na porta.'
+    : '. Sem CEP nem bairro, não deu para guardar para as próximas rotas.'), 10000, desfazer);
   invalidarRota();
   loja.mudou();
   focar(p.id);

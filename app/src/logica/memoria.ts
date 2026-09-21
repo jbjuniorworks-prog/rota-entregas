@@ -14,12 +14,12 @@ export function criarMemoria(g: Guarda, cidade: () => string, aoGuardar: (chave:
   return {
     quantas: () => Object.keys(todas()).length,
     esquecer: () => g.gravar(CHAVES.memoria, {}),
-    lembrar(p: Parada, agora = Date.now()): boolean {
+    lembrar(p: Parada, agora = Date.now(), compartilhar = true): boolean {
       const k = chave(p);
       if (!k || p.lat == null || p.lng == null) return false;
       const m = todas();
       m[k] = {lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6), quando: agora};
-      aoGuardar(k, m[k].lat, m[k].lng);
+      if (compartilhar) aoGuardar(k, m[k].lat, m[k].lng);
       return g.gravar(CHAVES.memoria, m);
     },
     fotografar(p: Parada): {chave: string; valor: Lembrada | undefined} | null {

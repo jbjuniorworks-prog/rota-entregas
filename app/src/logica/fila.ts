@@ -14,7 +14,6 @@ export interface PacoteNuvem {
   lat: number | null;
   lng: number | null;
   chave_lugar: string | null;
-  linha: Record<string, unknown>;
 }
 
 export type Operacao =
@@ -50,7 +49,7 @@ export function operacoesDaPlanilha(itens: ItemPlanilha[], rotaDe: (it: ItemPlan
     porRota.get(k)!.pacotes.push({
       spx_tn: it.tn, sequencia: inteiro(it.ml), parada: inteiro(it.parada), endereco: it.endereco || it.texto,
       bairro: it.bairro || null, cidade: it.cidade || null, cep: it.cep, lat: it.lat, lng: it.lng,
-      chave_lugar: chaveLugar(it.texto, it.bairro, cidade), linha: it.linha,
+      chave_lugar: chaveLugar(it.texto, it.bairro, cidade),
     });
   }
   return [...porRota.values()];

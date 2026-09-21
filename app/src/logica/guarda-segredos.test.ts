@@ -12,6 +12,13 @@ describe('trava da restauração', () => {
 
 describe('trava contra subir dado real para o repositório público', () => {
   // Este arquivo é pulado pela própria trava; noutro lugar, marque a linha com guarda:exemplo.
+  it('barra print e PDF fora de app/public, que e por onde a rota chega', () => {
+    expect(olharNome('rota-de-hoje.png')).toMatch(/imagem/);
+    expect(olharNome('docs/print da lista.jpeg')).toMatch(/imagem/);
+    expect(olharNome('comanda.pdf')).toMatch(/imagem/);
+    expect(olharNome('app/public/icone-192.png')).toBeNull();
+    expect(olharNome('app/public/favicon.ico')).toBeNull();
+  });
   it('barra planilha de rota fora da pasta de teste', () => {
     expect(olharNome('20-09-2026 Luan Mateus Santos Silva.xlsx')).toMatch(/planilha/);
     expect(olharNome('app/dados/rota.csv')).toMatch(/planilha/);

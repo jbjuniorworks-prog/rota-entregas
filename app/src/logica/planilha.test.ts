@@ -10,12 +10,12 @@ function linhasDe(caminho: string): unknown[][] {
 describe('planilha da Shopee', () => {
   const itens = itensDaPlanilha(linhasDe('testes/planilhas/rota-a.txt'), 'rota-a.txt');
 
-  it('lê todas as linhas com rastreio, rota, ordem e a linha inteira', () => {
+  it('lê todas as linhas com rastreio, rota, ordem e bairro, e só essas colunas', () => {
     expect(itens).toHaveLength(12);
     expect(itens[1]).toMatchObject({tn: 'BRTESTA0002', at: 'ATTESTE0001', ml: '1', parada: '1', bairro: 'Bairro Norte', cep: '49000101', arquivo: 'rota-a.txt'});
     expect(itens[1].lat).toBeCloseTo(-10.961, 5);
     expect(itens[1].lng).toBeCloseTo(-37.045, 5);
-    expect(Object.keys(itens[0].linha)).toHaveLength(10);
+    expect(Object.keys(itens[0]).sort()).toEqual(['aproximada', 'arquivo', 'at', 'bairro', 'cep', 'cidade', 'endereco', 'lat', 'lng', 'ml', 'parada', 'texto', 'tn']);
   });
   it('acrescenta bairro e CEP ao texto e deixa sem ordem quem vem com "-"', () => {
     expect(itens[0].texto).toBe('Rua das Acácias, 10, Bairro Norte, CEP 49000-101');
