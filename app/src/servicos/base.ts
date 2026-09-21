@@ -45,9 +45,22 @@ export function escolherTrecho(trechos: Trecho[], cidade: string, perto: Ponto |
 export const ehGenerica = (trechos: Trecho[]): boolean =>
   trechos.some(t => palavrasRua(t.nome || '').join('').length <= 2);
 
+export function quaseIgual(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.length < 5 || Math.abs(a.length - b.length) > 1) return false;
+  const [curta, longa] = a.length <= b.length ? [a, b] : [b, a];
+  let erros = 0;
+  for (let i = 0, j = 0; j < longa.length; i++, j++) {
+    if (curta[i] === longa[j]) continue;
+    if (++erros > 1) return false;
+    if (curta.length < longa.length) i--;
+  }
+  return true;
+}
+
 export function cabeNoNome(pedido: string, achado: string): boolean {
-  const pedidas = palavrasRua(pedido), tem = new Set(palavrasRua(achado));
-  return pedidas.length > 0 && pedidas.every(w => tem.has(w));
+  const pedidas = palavrasRua(pedido), tem = palavrasRua(achado);
+  return pedidas.length > 0 && pedidas.every(w => tem.some(t => quaseIgual(w, t)));
 }
 
 const maiorPalavra = (rua: string) => palavrasRua(rua).sort((a, b) => b.length - a.length)[0] || '';
@@ -71,16 +84,17 @@ export async function ruaNaBase(rua: string, cidade: string, perto: Ponto | null
       if (r.error) return null;
       data = r.data || [];
     }
-    if (!data.length) {
+    const peloNome = data.filter((t: any) => chaveRua(t.nome || '') === chave);
+    if (!peloNome.length) {
       const palavra = maiorPalavra(rua);
-      if (palavra.length < 4) return null;
       const daCidade = normal(cidade.split(/[,\-\/]/)[0]);
-      if (!daCidade) return null;
-      const parecidas = await supa.from('ruas').select(campos).ilike('nome_chave', `%${palavra}%`).ilike('cidade', daCidade).limit(80);
-      data = (parecidas.data || []).filter((t: any) => t.nome && cabeNoNome(rua, t.nome));
+      const parecidas = palavra.length >= 4 && daCidade
+        ? await supa.from('ruas').select(campos).ilike('nome_chave', `%${palavra}%`).ilike('cidade', daCidade).limit(80)
+        : {data: []};
+      const comONome = (parecidas.data || []).filter((t: any) => t.nome && cabeNoNome(rua, t.nome));
+      if (comONome.length) data = comONome;
       if (!data.length) return null;
-      
-    }
+    } else data = peloNome;
     const t = escolherTrecho(data as Trecho[], cidade, perto, tipoDaRua(rua), lugares);
     if (!t) return null;
     const p = pontoDoTrecho(t, perto);

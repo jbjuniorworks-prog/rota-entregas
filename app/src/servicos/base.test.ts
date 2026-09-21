@@ -1,16 +1,29 @@
 import {chaveRua as chaveDaFerramenta, tipoDaRua as tipoDaFerramenta} from '../../../ferramentas/chave-rua.mjs';
 import {chaveRua, tipoDaRua} from '../logica/texto';
-import {cabeNoNome, escolherTrecho, pontoDoTrecho} from './base';
+import {cabeNoNome, escolherTrecho, pontoDoTrecho, quaseIgual} from './base';
 
 const trecho = (nome: string, cidade: string, lat: number, lng: number, linha: [number, number][] = [[lat, lng]], bairro = '', conjunto = '') =>
   ({nome, tipo: tipoDaRua(nome), bairro, conjunto, cidade, lat, lng, linha});
 
 describe('nossa base de ruas', () => {
   it('a ferramenta que copia o mapa guarda o nome do mesmo jeito que o app procura', () => {
-    for (const nome of ['Rua Orlando Magalhães Maia', 'Av. Pres. Tancredo Neves', 'Travessa São João', 'R Dr. Silva', 'Rua B', 'Alameda das Flores']) {
+    for (const nome of ['Rua Orlando Magalhães Maia', 'Av. Pres. Tancredo Neves', 'Travessa São João', 'R Dr. Silva', 'Rua B', 'Alameda das Flores', 'Av. Poe. Vinícius de Moraes', 'R. Des. José Sotero']) {
       expect(chaveDaFerramenta(nome)).toBe(chaveRua(nome));
       expect(tipoDaFerramenta(nome)).toBe(tipoDaRua(nome));
     }
+  });
+  it('o título abreviado da comanda vira a palavra inteira, que é como o mapa escreve', () => {
+    expect(chaveRua('Av. Poe. Vinícius de Moraes')).toBe('poeta vinicius moraes');
+    expect(chaveRua('R. Des. José Sotero')).toBe(chaveRua('Rua Desembargador José Sotero'));
+    expect(chaveRua('Rua Eng. Gentil Tavares')).toBe(chaveRua('Rua Engenheiro Gentil Tavares'));
+  });
+  it('uma letra de diferença ainda é a mesma rua, duas não', () => {
+    expect(quaseIgual('moraes', 'morais')).toBe(true);
+    expect(quaseIgual('barreto', 'barretto')).toBe(true);
+    expect(quaseIgual('santana', 'santiago')).toBe(false);
+    expect(quaseIgual('neto', 'nato')).toBe(false);
+    expect(cabeNoNome('Av. Poe. Vinícius de Moraes', 'Avenida Poeta Vinícius de Morais')).toBe(true);
+    expect(cabeNoNome('Rua Santos Santana', 'Rua Santos Santiago')).toBe(false);
   });
   it('travessa não casa com a rua de mesmo nome', () => {
     const rua = trecho('Rua Um', 'Aracaju', -10.94, -37.06);
