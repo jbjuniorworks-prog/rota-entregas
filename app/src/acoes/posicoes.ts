@@ -106,10 +106,10 @@ export function irmasDoMesmoEndereco(p: Parada): Parada[] {
     && mesmoEndereco([q.texto, p.texto]) && haversine(q as Ponto, p as Ponto) <= JUNTO_DAQUI);
 }
 
-export function vizinhaJaMarcada(p: Parada, lat: number, lng: number): {q: Parada; metros: number} | null {
+export function vizinhaJaMarcada(p: Parada, lat: number, lng: number): {q: Parada; metros: number; forte: boolean} | null {
   const perto = e().paradas
-    .filter(q => q !== p && !q.entregue && q.lat != null && q.lng != null && CONFIAVEL.has(q.precisao) && !mesmoEndereco([q.texto, p.texto]))
-    .map(q => ({q, metros: haversine({lat, lng}, q as Ponto)}))
+    .filter(q => q !== p && !q.entregue && q.lat != null && q.lng != null && !mesmoEndereco([q.texto, p.texto]))
+    .map(q => ({q, metros: haversine({lat, lng}, q as Ponto), forte: CONFIAVEL.has(q.precisao)}))
     .filter(x => x.metros > 0 && x.metros <= COLAR_ATE)
     .sort((a, b) => a.metros - b.metros);
   return perto[0] || null;
@@ -117,18 +117,26 @@ export function vizinhaJaMarcada(p: Parada, lat: number, lng: number): {q: Parad
 
 export function corrigirPosicao(p: Parada, lat: number, lng: number, prefixo = 'Local corrigido', exibido = 'Posição marcada no mapa') {
   const vizinha = vizinhaJaMarcada(p, lat, lng);
-  if (vizinha && confirm(`Tem outra entrega já marcada a ${Math.round(vizinha.metros)} m daqui:
+  const daVizinha = vizinha ? vizinha.q.texto.split(',').slice(0, 3).join(',') : '';
+  const juntas: Parada[] = [];
+  if (vizinha && vizinha.forte && confirm(`Tem outra entrega já marcada a ${Math.round(vizinha.metros)} m daqui:
 
-${vizinha.q.texto.split(',').slice(0, 3).join(',')}
+${daVizinha}
 
 Pôr esta no mesmo ponto, para as duas virarem uma parada só?`)) {
     lat = vizinha.q.lat!;
     lng = vizinha.q.lng!;
+  } else if (vizinha && !vizinha.forte && confirm(`Tem outra entrega a ${Math.round(vizinha.metros)} m daqui, ainda no lugar que veio da planilha:
+
+${daVizinha}
+
+Levar as duas para o ponto que você marcou, para virarem uma parada só?`)) {
+    juntas.push(vizinha.q);
   }
   const irmas = irmasDoMesmoEndereco(p);
-  const juntas = irmas.length && confirm(`Outras ${irmas.length} entrega(s) deste mesmo endereço estão no lugar antigo.
+  if (irmas.length && confirm(`Outras ${irmas.length} entrega(s) deste mesmo endereço estão no lugar antigo.
 
-Levar todas para o ponto novo junto com esta?`) ? irmas : [];
+Levar todas para o ponto novo junto com esta?`)) juntas.push(...irmas);
   const desfazers = [p, ...juntas].map(prepararDesfazer);
   const desfazer = () => desfazers.forEach(f => f());
   let guardou = false;

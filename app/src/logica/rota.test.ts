@@ -165,6 +165,18 @@ describe('entregas no mesmo ponto viram uma visita só', () => {
     expect(vs.map(v => v.ps.map(p => p.id))).toEqual([['a', 'b'], ['c'], ['longe']]);
   });
 
+  it('a mesma parada da Shopee fica junta mesmo espalhada, e não se mistura com a de outra planilha', () => {
+    const daParada = (id: string, stop: string, lat: number, rota = 'AT1') =>
+      ({...noPonto(id, lat, -37.0600), stop, rota}) as Parada;
+    const vs = agruparVisitas([
+      daParada('p9a', '9', -10.9400),
+      daParada('p9b', '9', -10.9409),
+      daParada('p10', '10', -10.94045),
+      daParada('outroDia', '9', -10.9412, 'AT2'),
+    ] as never);
+    expect(vs.map(v => v.ps.map(p => p.id))).toEqual([['p9a', 'p9b'], ['p10'], ['outroDia']]);
+  });
+
   it('a matriz de ruas pede um ponto por visita, e as entregas do mesmo ponto ficam juntas', async () => {
     const e = {
       cidade: 'Aracaju', googleKey: '', tamTrecho: 9, voltar: false, ordemDoApp: false,

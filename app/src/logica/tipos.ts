@@ -73,6 +73,7 @@ export interface Rota {
   melhorDur?: number;
   melhorDist?: number;
   porRuas: boolean;
+  motivoSemRuas?: string;
   quando: number;
   fim?: Perna;
 }

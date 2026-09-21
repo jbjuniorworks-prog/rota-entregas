@@ -38,6 +38,21 @@ test('pino marcado perto de outro já marcado pode virar uma parada só', async 
   await expect(page.locator('.item').filter({hasText: 'Avenida Central, 1500'})).toContainText('2 entregas perto');
 });
 
+test('marcar ao lado de uma entrega que veio da planilha leva as duas para o ponto novo', async ({page}) => {
+  const perguntas: string[] = [];
+  page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await aba(page, '2. Conferir');
+  await linhaDe(page, 'Travessa Um, 45', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+  await clicarMapa(page, -10.96502, -37.04201);
+  expect(perguntas.at(-1)).toContain('Levar as duas para o ponto que você marcou');
+  await aba(page, '3. Rota');
+  await page.getByRole('button', {name: /Montar melhor sequência/}).click();
+  await expect(page.getByText(/Total estimado/)).toBeVisible();
+  await expect(page.locator('.item').filter({hasText: 'Travessa Um, 45'})).toContainText('2 entregas');
+});
+
 test('corrigir um pino do condomínio leva junto as outras entregas do mesmo endereço', async ({page}) => {
   const perguntas: string[] = [];
   page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });

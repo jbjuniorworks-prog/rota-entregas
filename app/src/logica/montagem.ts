@@ -3,7 +3,7 @@ import {agruparVisitas, custo, otimizar, type Matriz, type Visita} from './otimi
 import type {Area, Estado, Local, Parada, Ponto, Rota} from './tipos';
 
 export interface ServicosDeRota {
-  matriz(pts: Ponto[]): Promise<{dur: Matriz; dist: Matriz; porRuas: boolean}>;
+  matriz(pts: Ponto[]): Promise<{dur: Matriz; dist: Matriz; porRuas: boolean; motivo?: string}>;
   linha(seq: Ponto[]): Promise<[number, number][] | null>;
 }
 
@@ -47,7 +47,7 @@ export async function montarRota(e: Estado, s: ServicosDeRota, aviso: (m: string
     const visitas = agruparVisitas(alvos);
     const pts: Ponto[] = [...(pos ? [pos] : []), ...visitas.map(v => v.ponto), ...(fim ? [fim] : [])];
     const M = await s.matriz(pts);
-    if (!M.porRuas) rota.porRuas = false;
+    if (!M.porRuas) { rota.porRuas = false; if (M.motivo) rota.motivoSemRuas = M.motivo; }
     const melhor = pts.length === 1 ? [0] : otimizar(pts.length, M.dur, !!pos, !!fim);
 
     const off = pos ? 1 : 0;

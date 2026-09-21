@@ -1,4 +1,4 @@
-import {haversine, RAIO_BLOCO, RAIO_VISITA} from './geo';
+import {haversine, PERTO_A_PE, RAIO_BLOCO, RAIO_VISITA} from './geo';
 import {chaveEndereco} from './texto';
 import type {Local, Parada, Ponto} from './tipos';
 
@@ -82,15 +82,19 @@ export function gruposNoMapa(paradas: Parada[], raio = RAIO_BLOCO): GrupoNoMapa[
 
 export interface Visita {
   ponto: Ponto;
+  chave: string;
   ps: (Parada & Ponto)[];
 }
+
+export const chaveDaParada = (p: Parada) => p.stop ? (p.rota || '') + '|' + p.stop : '';
 
 export function agruparVisitas(ps: (Parada & Ponto)[], raio = RAIO_VISITA): Visita[] {
   const out: Visita[] = [];
   for (const p of ps) {
-    const v = out.find(x => haversine(x.ponto, p) <= raio);
+    const chave = chaveDaParada(p);
+    const v = out.find(x => haversine(x.ponto, p) <= (chave && x.chave === chave ? PERTO_A_PE : raio));
     if (v) v.ps.push(p);
-    else out.push({ponto: {lat: p.lat, lng: p.lng}, ps: [p]});
+    else out.push({ponto: {lat: p.lat, lng: p.lng}, chave, ps: [p]});
   }
   return out;
 }

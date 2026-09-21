@@ -158,7 +158,7 @@ export function TelaRota() {
   return <>
     {proxima}
     <div className="info">Total estimado: <b>{fmtKm(R.dist)}</b>, cerca de <b>{fmtMin(R.dur)}</b> dirigindo (sem contar as paradas){R.porRuas ? '' : ', aproximado'}.</div>
-    {!R.porRuas && <div className="aviso laranja">🟠 Esta sequência saiu <b>sem as ruas</b>: o serviço de rotas não respondeu e usei distância em linha reta, que não sabe de mão única nem de canteiro. <button className="btn peq pri" onClick={A.montarRota}>Tentar de novo</button></div>}
+    {!R.porRuas && <div className="aviso laranja">🟠 Esta sequência saiu <b>sem as ruas</b>{R.motivoSemRuas ? ` (${R.motivoSemRuas})` : ''}: usei distância em linha reta, que não sabe de mão única nem de canteiro. <button className="btn peq pri" onClick={A.montarRota}>Tentar de novo</button></div>}
     {R.ordemDoApp
       ? <div className="info" style={{marginTop: 4}}>Você pediu a ordem do app (parada 1, 2, 3…).{R.melhorDist != null && R.dist - R.melhorDist > 200
         ? <> A melhor sequência faria <b>{fmtKm(R.melhorDist)}</b>, {fmtMin(R.melhorDur!)} — <b>{fmtKm(R.dist - R.melhorDist)}</b> a menos. Desmarque a opção para usá-la.</>
