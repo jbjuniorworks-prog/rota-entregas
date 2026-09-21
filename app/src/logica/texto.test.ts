@@ -1,4 +1,4 @@
-import {analisarLinha, chaveEndereco, enderecoDaComanda, melhorComanda, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, normal, ruaCompleta} from './texto';
+import {analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, normal, ruaCompleta} from './texto';
 
 describe('decompor', () => {
   it.each([
@@ -216,12 +216,51 @@ describe('comanda de restaurante (iFood/Goomer) fotografada', () => {
     ].join('\n');
     expect(enderecoDaComanda(quebrada)).toEqual(['7 Av. Deputado Teste, 1235, Bloco B Apt 203, Grageru, ref: Praça Teste']);
   });
-  it('entre as leituras da mesma comanda, fica a mais completa', () => {
-    expect(melhorComanda([['Av. Teste, 1235, Bloco B Apt'], ['Av. Teste, 1235, Bloco B Apt 203, Grageru'], []]))
-      .toEqual(['Av. Teste, 1235, Bloco B Apt 203, Grageru']);
-    expect(melhorComanda([[], []])).toEqual([]);
+  it('junta o que faltou em cada leitura da mesma comanda', () => {
+    expect(juntarComandas([
+      {pedido: null, endereco: 'Av. Teste, 1235, Bloco B Apt', bairro: '', referencia: ''},
+      {pedido: '30', endereco: 'Av. Teste, 1235, Bloco B Apt 203', bairro: 'Grageru', referencia: 'Praça Teste'},
+      null,
+    ])).toEqual(['30 Av. Teste, 1235, Bloco B Apt 203, Grageru, ref: Praça Teste']);
+    expect(juntarComandas([null, null])).toEqual([]);
+  });
+  it('junta a linha de baixo quando o parêntese do complemento ficou aberto, e larga o CEP cortado', () => {
+    const partida = [
+      'Pedido 0030 - Entrega', '20/09/2026 20:0', 'Cliente: Fulana Teste', 'Telefone: (71) 99172-9234',
+      'Rua Teste Rabelo Neto, 1340, (Dermeva', 'Mattos Casa 50), Atalaia, Aracaju/SE, CEP: 49037',
+      'NÃO É DOCUMENTO FISCAL',
+    ].join('\n');
+    expect(enderecoDaComanda(partida)).toEqual(['30 Rua Teste Rabelo Neto, 1340, (Dermeva Mattos Casa 50), Atalaia, Aracaju/SE']);
   });
   it('print comum do app de entregas não vira comanda', () => {
     expect(enderecoDaComanda('18\nAvenida Dulce Diniz 920\nCEP 49048430')).toEqual([]);
+  });
+});
+
+describe('print da lista de pedidos do app do restaurante', () => {
+  const lista = [
+    '20:36 &', 'Você está online.', 'Rota 10951', 'Pizzaria Teste', 'v1.31.3 (132)',
+    'Pedido 64 Pedido pago', 'Nome: FULANA TESTE',
+    'Endereço: Av. Poe. Teste de Moraes, 60 - Edf', 'Serra Testada ap 1004, Atalaia, Aracaju, SE',
+    'Pedido feito em: 20/set, 20:28', 'Itens: 01 itens', 'Valor total do pedido: R$ 67,00', 'Ver mais',
+    'Pedido 49 Pedido pago', 'Nome: Beltrano de Sá',
+    'Endereço: R. A Cd Morada Teste, 8750 -', 'Condominio Morada Teste, Zona De Expansao,', 'Aracaju, SE',
+    'Ponto de Referência: Poste 104', 'Pedido feito em: 20/set, 19:24', 'Itens: 02 itens',
+    'Lista de rotas', 'Rota atual', 'Relatório de entregas',
+  ].join('\n');
+
+  it('lê os dois pedidos, com o número do pedido e a referência', () => {
+    expect(enderecosDaLista(lista)).toEqual([
+      '64 Av. Poe. Teste de Moraes, 60 - Edf Serra Testada ap 1004, Atalaia, Aracaju, SE',
+      '49 R. A Cd Morada Teste, 8750 Condominio Morada Teste, Zona De Expansao, Aracaju, SE, ref: Poste 104',
+    ]);
+  });
+  it('não leva o nome do cliente nem os valores', () => {
+    const tudo = enderecosDaLista(lista).join(' | ');
+    for (const proibido of ['FULANA', 'Beltrano', '67,00', 'Itens']) expect(tudo).not.toContain(proibido);
+  });
+  it('a lista tem prioridade sobre a comanda, e o print comum continua no caminho de sempre', () => {
+    expect(extrairEnderecos(lista)).toHaveLength(2);
+    expect(enderecosDaLista('18\nAvenida Dulce Diniz 920\nCEP 49048430')).toEqual([]);
   });
 });

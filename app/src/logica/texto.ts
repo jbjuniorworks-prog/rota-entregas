@@ -110,6 +110,8 @@ function pareceEnderecoDeComanda(l: string): boolean {
   return RUA.test(l + ' ') ? pareceEndereco(l) : /^[a-zà-ÿ][a-zà-ÿ' .-]{4,}[,\s]+\d{1,5}\b/i.test(l);
 }
 
+const parenteseAberto = (s: string) => (s.match(/\(/g) || []).length > (s.match(/\)/g) || []).length;
+
 function juntarQuebra(atual: string, proxima: string): string | null {
   const complementoSemNumero = /\b(apt|apto|ap|bloco|bl|casa|sala|loja|lote|quadra|qd)\.?$/i;
   const soNumero = proxima.match(/^(\d{1,5}[a-z]?)\b/i);
@@ -118,14 +120,25 @@ function juntarQuebra(atual: string, proxima: string): string | null {
   if (letras < 3 || letras / proxima.length < 0.35) return null;
   if (/[a-zà-ÿ]$/.test(atual) && /^[a-zà-ÿ]/.test(proxima) && atual.length > 25) return atual + proxima;
   if (/[,\-]$/.test(atual) || /^[a-zà-ÿ0-9]/.test(proxima)) return atual + ' ' + proxima;
+  if (parenteseAberto(atual) && /^[A-Za-zÀ-Ý]/.test(proxima)) return atual + ' ' + proxima;
   return null;
 }
 
-export function enderecoDaComanda(bruto: string): string[] {
-  const linhas = bruto.split('\n').map(limparRuido).filter(Boolean);
-  if (!linhas.some(l => DE_COMANDA.test(l))) return [];
+const cepIncompleto = (s: string) => s.replace(/[,\s]*cep\s*[:.]?\s*\d{0,7}[:.]?\s*$/i, '');
+
+export interface Comanda {
+  pedido: string | null;
+  endereco: string;
+  bairro: string;
+  referencia: string;
+}
+
+const semSujeiraNaFrente = (l: string) => l.replace(/^[^0-9A-Za-zÀ-ÿ(]+/, '');
+
+export function partesDaComanda(bruto: string, forcar = false): Comanda | null {
+  const linhas = bruto.split('\n').map(l => semSujeiraNaFrente(limparRuido(l))).filter(Boolean);
+  if (!forcar && !linhas.some(l => DE_COMANDA.test(l))) return null;
   const pedido = linhas.map(l => l.match(/pedido:?\s*#?\s*(\d{1,4})\b/i)).find(Boolean);
-  const numeroDoPedido = pedido ? String(+pedido[1]) : null;
 
   const comeco = linhas.findIndex(l => ANTES_DO_ENDERECO.test(l));
   let endereco = '', bairro = '', referencia = '', dentro = false;
@@ -146,23 +159,82 @@ export function enderecoDaComanda(bruto: string): string[] {
     if (junto) endereco = junto;
     else break;
   }
-  if (!endereco || !pareceEndereco(endereco)) return [];
-  const partes = [endereco.replace(/[\s,]+$/, '')];
-  if (bairro && !normal(endereco).includes(normal(bairro))) partes.push(bairro);
-  if (referencia) partes.push('ref: ' + referencia);
-  return [(numeroDoPedido ? numeroDoPedido + ' ' : '') + partes.join(', ')];
+  endereco = cepIncompleto(endereco.replace(/[\s,]+$/, ''));
+  const numero = pedido ? String(+pedido[1]) : null;
+  if (!endereco || !pareceEndereco(endereco)) {
+    return forcar && numero ? {pedido: numero, endereco: '', bairro: '', referencia: ''} : null;
+  }
+  return {pedido: numero, endereco, bairro, referencia};
 }
 
-export const ehComanda = (lista: string[]): boolean => (lista as {comanda?: boolean}).comanda === true;
+function textoDaComanda(c: Comanda): string {
+  const partes = [c.endereco];
+  if (c.bairro && !normal(c.endereco).includes(normal(c.bairro))) partes.push(c.bairro);
+  if (c.referencia) partes.push('ref: ' + c.referencia);
+  return (c.pedido ? c.pedido + ' ' : '') + partes.join(', ');
+}
 
-export function melhorComanda(leituras: string[][]): string[] {
-  const boas = leituras.flat().filter(Boolean);
-  return boas.length ? [boas.reduce((a, b) => (b.length > a.length ? b : a))] : [];
+export function enderecoDaComanda(bruto: string): string[] {
+  const c = partesDaComanda(bruto);
+  return c ? [textoDaComanda(c)] : [];
+}
+
+export const pareceComanda = (bruto: string): boolean =>
+  bruto.split('\n').map(limparRuido).some(l => DE_COMANDA.test(l));
+
+export function juntarComandas(leituras: (Comanda | null)[]): string[] {
+  const boas = leituras.filter((c): c is Comanda => !!c);
+  if (!boas.some(c => c.endereco)) return [];
+  const melhor = (pegar: (c: Comanda) => string | null) => {
+    const vezes = new Map<string, number>();
+    for (const c of boas) {
+      const v = pegar(c);
+      if (v) vezes.set(v, (vezes.get(v) || 0) + 1);
+    }
+    return [...vezes.entries()].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)[0]?.[0] || '';
+  };
+  return [textoDaComanda({
+    pedido: melhor(c => c.pedido) || null,
+    endereco: boas.map(c => c.endereco).reduce((a, b) => (b.length > a.length ? b : a)),
+    bairro: melhor(c => c.bairro),
+    referencia: melhor(c => c.referencia),
+  })];
+}
+
+const ROTULO_ENDERECO = /^ende?re[çcgq]o\s*[:;.]?\s+/i;
+const ROTULO_REFERENCIA = /^ponto de refer[eê]ncia\s*[:;.]?\s+/i;
+const FIM_DO_ENDERECO = /^(nome|pedido|itens?|valor|pago|troco|taxa|voucher|desconto|forma|observa|obs|ver mais|status|cliente|telefone|entregador|hor[aá]rio|dist[aâ]ncia|tempo|total|sub ?total|retirada|entrega)\b/i;
+
+export function enderecosDaLista(bruto: string): string[] {
+  const linhas = bruto.split('\n').map(limparRuido).filter(Boolean);
+  const saida: string[] = [];
+  let pedido: string | null = null;
+  for (let i = 0; i < linhas.length; i++) {
+    const mp = linhas[i].match(/^pedido\s*#?\s*(\d{1,5})\b/i);
+    if (mp) { pedido = String(+mp[1]); continue; }
+    if (!ROTULO_ENDERECO.test(linhas[i])) continue;
+    let endereco = linhas[i].replace(ROTULO_ENDERECO, '').trim(), referencia = '';
+    while (i + 1 < linhas.length) {
+      const l = linhas[i + 1];
+      if (ROTULO_REFERENCIA.test(l)) { referencia = l.replace(ROTULO_REFERENCIA, '').trim(); i++; break; }
+      if (FIM_DO_ENDERECO.test(l) || ROTULO_ENDERECO.test(l) || !/[a-zà-ÿ]{3}/i.test(l)) break;
+      endereco = endereco.replace(/\s+$/, '') + ' ' + l;
+      i++;
+    }
+    endereco = cepIncompleto(endereco.replace(/[\s,]+$/, ''));
+    if (pareceEndereco(endereco)) {
+      saida.push((pedido ? pedido + ' ' : '') + endereco + (referencia ? ', ref: ' + referencia : ''));
+      pedido = null;
+    }
+  }
+  return saida;
 }
 
 export function extrairEnderecos(bruto: string): string[] {
+  const daLista = enderecosDaLista(bruto);
+  if (daLista.length) return daLista;
   const daComanda = enderecoDaComanda(bruto);
-  if (daComanda.length) return Object.assign(daComanda, {comanda: true});
+  if (daComanda.length) return daComanda;
   const linhas = bruto.split('\n').map(limparRuido).filter(Boolean);
   const out: Aberto[] = [];
   let numeroSolto: string | null = null, aberto: Aberto | null = null;

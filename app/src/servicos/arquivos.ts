@@ -1,5 +1,5 @@
 import {ehArquivoZip, itensDaPlanilha, pareceNomeDePlanilha, type ItemPlanilha} from '../logica/planilha';
-import {ehComanda, extrairEnderecos, juntarLeituras, juntarQuadros, melhorComanda} from '../logica/texto';
+import {enderecosDaLista, extrairEnderecos, juntarComandas, juntarLeituras, juntarQuadros, pareceComanda, partesDaComanda} from '../logica/texto';
 import {escolherQuadros} from '../logica/video';
 
 type Arquivo = Blob & {name?: string};
@@ -184,16 +184,19 @@ async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo
   const tentativas = doVideo
     ? [{imagem: tratada, psm: '4'}, {imagem: blob, psm: '3'}]
     : [{imagem: tratada, psm: '4'}, {imagem: await prepararImagem(blob, 1700, false), psm: '6'}, {imagem: blob, psm: '3'}];
-  const leituras: string[] = [], apoio: string[] = [], comandas: string[][] = [];
+  const leituras: string[] = [], apoio: string[] = [], textos: string[] = [];
   for (const t of tentativas) {
     await worker.setParameters({tessedit_pageseg_mode: t.psm, preserve_interword_spaces: '1'});
     const {data} = await worker.recognize(t.imagem);
-    const achados = extrairEnderecos(data.text);
-    if (ehComanda(achados)) comandas.push(achados);
-    else (t.imagem === blob ? apoio : leituras).push(...achados);
+    textos.push(data.text);
+    (t.imagem === blob ? apoio : leituras).push(...extrairEnderecos(data.text));
   }
-  if (comandas.length) return melhorComanda([...comandas, leituras, apoio]);
-  return juntarLeituras(leituras, apoio);
+  const juntas = juntarLeituras(leituras, apoio);
+  if (juntas.length <= 1 && !textos.some(t => enderecosDaLista(t).length) && textos.some(pareceComanda)) {
+    const daComanda = juntarComandas(textos.map(t => partesDaComanda(t, true)));
+    if (daComanda.length) return daComanda;
+  }
+  return juntas;
 }
 
 export async function lerArquivos(files: Arquivo[], aviso: Aviso): Promise<string[] & {avisos: string[]}> {
