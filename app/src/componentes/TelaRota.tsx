@@ -6,8 +6,8 @@ import {DUVIDA, QUASE} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
 import type {Area, Parada, Ponto, RotaArea} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
+import {rotuloDe} from '../logica/rotulo';
 import {BotaoResetar, hhmm, Meta, Tag} from './comuns';
-import {rotuloDe} from './Mapa';
 
 function ConfigInicio() {
   const {e, ui} = useLoja();

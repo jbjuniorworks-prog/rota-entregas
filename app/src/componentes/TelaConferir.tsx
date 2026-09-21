@@ -2,8 +2,8 @@ import * as A from '../acoes';
 import {DUVIDA, NO_NUMERO} from '../logica/rotulos';
 import type {Parada} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
+import {rotuloDe} from '../logica/rotulo';
 import {Meta, Sugestao, Tag} from './comuns';
-import {rotuloDe} from './Mapa';
 
 export function TelaConferir() {
   const {e, ui} = useLoja();

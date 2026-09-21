@@ -114,6 +114,7 @@ export function linhaDe(page: Page, endereco: string, botao: string | RegExp): L
 }
 
 export async function clicarMapa(page: Page, lat: number, lng: number) {
+  await page.waitForFunction(() => !!(window as any).rotaTeste);
   await page.evaluate(([a, b]) => (window as any).rotaTeste.clicarMapa(a, b), [lat, lng]);
 }
 

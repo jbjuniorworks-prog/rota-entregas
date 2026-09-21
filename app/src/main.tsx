@@ -1,8 +1,7 @@
 import {createRoot} from 'react-dom/client';
-import {useEffect, useRef} from 'react';
+import {lazy, Suspense, useEffect, useRef, useState} from 'react';
 import './estilo.css';
 import * as A from './acoes';
-import {Mapa} from './componentes/Mapa';
 import {TelaAdmin} from './componentes/Admin';
 import {TelaConferir} from './componentes/TelaConferir';
 import {TelaEnderecos} from './componentes/TelaEnderecos';
@@ -11,6 +10,14 @@ import {TelaRota} from './componentes/TelaRota';
 import {useLoja, type Aba} from './loja';
 import {nuvem} from './servicos/nuvem';
 
+const Mapa = lazy(() => import('./componentes/Mapa'));
+
+function depoisDeAparecer(fazer: () => void) {
+  const ocioso = (window as unknown as {requestIdleCallback?: (f: () => void, o?: {timeout: number}) => void}).requestIdleCallback;
+  if (ocioso) ocioso(fazer, {timeout: 3000});
+  else setTimeout(fazer, 300);
+}
+
 const ABAS: [Aba, string][] = [['enderecos', '1. Endereços'], ['conferir', '2. Conferir'], ['rota', '3. Rota']];
 
 function App() {
@@ -18,7 +25,12 @@ function App() {
   const conteudo = useRef<HTMLDivElement>(null);
   const rolagem = useRef<Record<string, number>>({});
   const abaAnterior = useRef(ui.aba);
+  const [comMapa, setComMapa] = useState(false);
   useEffect(() => { A.iniciar(); }, []);
+  useEffect(() => {
+    depoisDeAparecer(() => setComMapa(true));
+    depoisDeAparecer(() => { import('xlsx').catch(() => {}); });
+  }, []);
   useEffect(() => {
     const c = conteudo.current;
     if (!c) return;
@@ -36,7 +48,7 @@ function App() {
   return <>
     <div id="app" className={ui.mapaGrande ? 'mapa-grande' : ''}>
       <div className="mapwrap">
-        <Mapa />
+        <Suspense fallback={null}>{comMapa && <Mapa />}</Suspense>
         <button id="btnMapa" className="btn peq" onClick={() => A.mudar(() => { ui.mapaGrande = !ui.mapaGrande; })}>⤢ Mapa</button>
       </div>
       <div id="painel">

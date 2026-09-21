@@ -37,6 +37,8 @@ let versao = 0;
 const ouvintes = new Set<() => void>();
 const avisar = () => { versao++; ouvintes.forEach(f => f()); };
 
+let indice: {lista: Parada[]; quantas: number; onde: Map<string, Parada>} | null = null;
+
 export const loja = {
   get e(): Estado { return estado; },
   ui,
@@ -49,7 +51,12 @@ export const loja = {
     salvarEstado(guarda, estado);
     avisar();
   },
-  parada: (id: string): Parada | undefined => estado.paradas.find(p => p.id === id),
+  parada: (id: string): Parada | undefined => {
+    if (!indice || indice.lista !== estado.paradas || indice.quantas !== estado.paradas.length) {
+      indice = {lista: estado.paradas, quantas: estado.paradas.length, onde: new Map(estado.paradas.map(p => [p.id, p]))};
+    }
+    return indice.onde.get(id);
+  },
   area: (id: string) => estado.areas.find(a => a.id === id) || estado.areas[0],
 };
 
