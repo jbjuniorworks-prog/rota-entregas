@@ -19,7 +19,10 @@ export function comoFoiConfirmada(r: PosicaoCompartilhada): string {
   return `Posição confirmada por ${r.motoristas} motoristas`;
 }
 
-const ESCOLHA_DO_MOTORISTA = new Set(['manual', 'lembrado']);
+// 'manual' é o motorista arrastando o pino agora, neste aparelho: ninguém passa na frente disso.
+// 'lembrado' é só o eco do que este navegador guardou — e pode ter vindo de um toque numa opção
+// da lista, que é palpite e não sai deste aparelho. Palpite antigo não pode vencer quem foi lá.
+const ESCOLHA_DO_MOTORISTA = new Set(['manual']);
 
 export function aplicarCompartilhadas(
   paradas: Parada[], resultados: PosicaoCompartilhada[], chaveDe: (p: Parada) => string | null,

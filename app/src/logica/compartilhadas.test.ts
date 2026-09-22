@@ -40,10 +40,11 @@ describe('posições de outros motoristas', () => {
     expect(aplicar([p], [pos('a|1', 'sugestao')]).sugestoes).toBe(0);
     expect(p.sugestao).toBeUndefined();
   });
-  it('a escolha do próprio motorista vence: não mexe em ajustada nem lembrada', () => {
+  it('o pino ajustado na mão vence; o que o navegador só lembrava, não', () => {
     const a = parada('a|1', {precisao: 'manual'}), b = parada('b|1', {precisao: 'lembrado'});
-    expect(aplicar([a, b], [pos('a|1', 'confirmado'), pos('b|1', 'confirmado')]).confirmadas).toBe(0);
-    expect([a.lat, b.lat]).toEqual([-10.90, -10.90]);
+    expect(aplicar([a, b], [pos('a|1', 'confirmado'), pos('b|1', 'confirmado')]).confirmadas).toBe(1);
+    expect(a.lat).toBe(-10.90);
+    expect(b.lat).toBe(-11.04);
   });
   it('não mexe em entrega já feita nem em parada sem chave', () => {
     const b = parada('b|1', {entregue: true}), c = parada('');
@@ -85,5 +86,29 @@ describe('a posição que o próprio motorista arrumou', () => {
     const p = parada('a|1', {precisao: 'manual', lat: -10.5, lng: -37.5});
     aplicar([p], [pos('a|1', 'confirmado', {minha: true})]);
     expect(p).toMatchObject({lat: -10.5, lng: -37.5, precisao: 'manual'});
+  });
+});
+
+describe('memória deste navegador contra o que os motoristas arrumaram', () => {
+  it('posição confirmada vence o que este navegador só lembrava', () => {
+    const p = parada('a|1', {precisao: 'lembrado', exibido: 'Posição que você corrigiu em 19/09'});
+    const r = aplicar([p], [pos('a|1', 'confirmado')]);
+    expect(r.confirmadas).toBe(1);
+    expect(p).toMatchObject({lat: -11.04, lng: -37.10, precisao: 'confirmado'});
+    // e o que estava antes continua à mão, para poder voltar
+    expect(p.candidatos[0]).toMatchObject({precisao: 'lembrado', fonte: 'original'});
+  });
+
+  it('o pino arrastado agora neste aparelho continua ganhando de tudo', () => {
+    const p = parada('a|1', {precisao: 'manual', lat: -10.5, lng: -37.5});
+    expect(aplicar([p], [pos('a|1', 'confirmado')]).confirmadas).toBe(0);
+    expect(p).toMatchObject({lat: -10.5, lng: -37.5, precisao: 'manual'});
+  });
+
+  it('sugestão de um motorista só não derruba a memória do navegador', () => {
+    const p = parada('a|1', {precisao: 'lembrado'});
+    aplicar([p], [pos('a|1', 'sugestao')]);
+    expect(p.precisao).toBe('lembrado');
+    expect(p.sugestao).toBeTruthy();
   });
 });
