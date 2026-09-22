@@ -59,6 +59,53 @@ describe('decompor', () => {
   ])('%s', (txt, esperado) => {
     expect(decompor(txt)).toMatchObject(esperado);
   });
+
+  it('complemento escrito junto da rua não rouba o lugar do número da porta', () => {
+    expect(decompor('Rua Antônio Andrade- Casa 03, 380, Ao lado do hotel marezzi, Coroa do Meio, CEP 49035-050'))
+      .toMatchObject({rua: 'Rua Antônio Andrade', numero: '380', resto: ['Casa 03', 'Ao lado do hotel marezzi', 'Coroa do Meio']});
+    expect(decompor('Rua Prof Jugurta Feitosa Franco Bloco D Apto 303, 334, Cond.resid San Francisco, CEP 49035-690'))
+      .toMatchObject({rua: 'Rua Prof Jugurta Feitosa Franco', numero: '334', resto: ['Bloco D Apto 303', 'Cond.resid San Francisco']});
+  });
+
+  it('contagem colada no número da porta não apaga o número', () => {
+    expect(decompor('Avenida Governador Paulo Barreto de Menezes 2082(3)'))
+      .toMatchObject({rua: 'Avenida Governador Paulo Barreto de Menezes', numero: '2082'});
+    expect(chaveEndereco('Avenida Governador Paulo Barreto de Menezes 2082(3)'))
+      .toBe(chaveEndereco('Avenida Governador Paulo Barreto de Menezes 2082'));
+  });
+
+  it('sem número da rua, a numeração de dentro do condomínio não vira número da porta', () => {
+    expect(decompor('Rua Antônio Andrade Casa 03, Coroa do Meio, CEP 49035-050'))
+      .toMatchObject({rua: 'Rua Antônio Andrade', numero: null, resto: ['Casa 03', 'Coroa do Meio']});
+    expect(chaveLugar('Rua Antônio Andrade Casa 03, Coroa do Meio, CEP 49035-050', 'Coroa do Meio', 'Aracaju')).toBeNull();
+  });
+
+  it('palavra de unidade que faz parte do nome da rua não tira o número da porta', () => {
+    expect(decompor('Rua Casa Forte 100')).toMatchObject({rua: 'Rua Casa Forte', numero: '100'});
+  });
+
+  it('zero à esquerda não divide a mesma porta nem a mesma casa', () => {
+    expect(decompor('Rua Antônio Andrade, 08')).toMatchObject({numero: '8'});
+    expect(chaveEndereco('Rua Antônio Andrade, 08, CEP 49035-050')).toBe(chaveEndereco('Rua Antônio Andrade, 8, CEP 49035-050'));
+    expect(chaveLugar('Rua Antônio Andrade, 08, CEP 49035-050', 'Coroa do Meio', 'Aracaju'))
+      .toBe(chaveLugar('Rua Antônio Andrade, 8, CEP 49035-050', 'Coroa do Meio', 'Aracaju'));
+    expect(chaveEndereco('Rua Antônio Andrade, 380, Casa 03')).toBe(chaveEndereco('Rua Antônio Andrade, 380, Casa 3'));
+    expect(chaveEndereco('Rua Antônio Andrade, 380, Apto 09')).toBe(chaveEndereco('Rua Antônio Andrade, 380, Apto 9'));
+  });
+
+  it('apartamentos diferentes continuam diferentes com zero à esquerda', () => {
+    expect(chaveEndereco('Rua Antônio Andrade, 380, Apto 09')).not.toBe(chaveEndereco('Rua Antônio Andrade, 380, Apto 90'));
+  });
+
+  it('número que faz parte do nome da rua continua na rua', () => {
+    expect(decompor('Travessa L 2, 16')).toMatchObject({rua: 'Travessa L 2', numero: '16'});
+    expect(decompor('Quadra 15, 20')).toMatchObject({rua: 'Quadra 15', numero: '20'});
+  });
+
+  it('a mesma porta escrita com e sem o complemento na rua divide a mesma chave', () => {
+    expect(chaveLugar('Rua Prof Jugurta Feitosa Franco Bloco D Apto 303, 334, CEP 49035-690', 'Coroa do Meio', 'Aracaju'))
+      .toBe(chaveLugar('Rua Professor Jugurta Feitosa Franco, 334, Condomínio, CEP 49035-690', 'Coroa do Meio', 'Aracaju'));
+  });
 });
 
 describe('analisarLinha', () => {
@@ -111,6 +158,14 @@ describe('chaveLugar (memória de posições)', () => {
 });
 
 describe('extrairEnderecos (texto de print ou PDF)', () => {
+  it('nome de rua que quebra de linha não perde a entrega', () => {
+    expect(extrairEnderecos('#25\nAvenida Governador Paulo Barreto de\nMenezes, 1500, Ed. Champs Elysees-\napto 502, Jardins, CEP 49025-040'))
+      .toEqual(['25 Avenida Governador Paulo Barreto de Menezes, 1500, Ed. Champs Elysees-, apto 502, Jardins, CEP 49025-040']);
+  });
+  it('o resto do nome da rua entra sem vírgula, para o número continuar sendo o da porta', () => {
+    const [achado] = extrairEnderecos('Avenida Governador Paulo Barreto de\nMenezes, 1500, Jardins, CEP 49025-040');
+    expect(decompor(achado)).toMatchObject({rua: 'Avenida Governador Paulo Barreto de Menezes', numero: '1500'});
+  });
   it('junta a linha do número do app e o complemento', () => {
     expect(extrairEnderecos('18\nAvenida Dulce Diniz 920\nCondomínio Luzia Residence\nCEP 49048430')).toEqual(['18 Avenida Dulce Diniz 920, Condomínio Luzia Residence, CEP 49048430']);
   });

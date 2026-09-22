@@ -6,6 +6,8 @@ const COMPLEMENTO = /^(condom[ií]nio|cond\.|edif[ií]cio|ed\.|apto?\.?|apartame
 export const TEM_CEP = /\b\d{5}-?\d{3}\b/;
 const RUA_EM = new RegExp('^(.{0,6}?)\\s*(?<![a-zà-ÿ])(' + RUA.source.slice(1) + '.*)$', 'i');
 const RUA_COMPLEMENTO = /^(conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
+// "Avenida Governador Paulo Barreto de" / "Menezes, 1500, …": o nome da rua quebrou de linha no print.
+const RESTO_DA_RUA = /^[a-zà-ÿ][a-zà-ÿ .'-]*[,\s]\s*\d{1,5}\b/i;
 export const TIPOS_RUA = /^(rua|r|avenida|av|travessa|tv|trav|praca|pc|alameda|al|rodovia|rod|estrada|est|via|largo|beco|viela|passagem)\b\.?\s*/;
 const PALAVRAS_VAZIAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'doutor', 'dr', 'professor', 'prof', 'presidente', 'pres', 'governador', 'gov', 'ministro', 'min', 'senador', 'sen', 'deputado', 'dep', 'coronel', 'cel', 'general', 'gen', 'padre', 'pe', 'sao', 'santa', 'santo']);
 const ABREVIACOES: Record<string, string> = {poe: 'poeta', eng: 'engenheiro', des: 'desembargador', alm: 'almirante', mal: 'marechal', cap: 'capitao', ten: 'tenente', sgt: 'sargento', mons: 'monsenhor', pref: 'prefeito', jorn: 'jornalista', ver: 'vereador'};
@@ -43,6 +45,14 @@ export interface Decomposto {
   resto: string[];
 }
 
+const NUMERO_SOLTO = /^(?:n[º°o.]*\s*)?\d{1,5}[a-z]?\b/i;
+const UNIDADE = 'casas?|cs|ap|apt|apto|apartamento|bl|blc|bloco|lote|lt|quadra|qd';
+// "…- Casa 03", "… Bloco D Apto 303": numeração de dentro do condomínio grudada no nome da rua.
+// Só casa como unidade o que vem colado no fim: "Rua Casa Forte 100" continua sendo a casa 100 da rua.
+const CAUDA_UNIDADE = new RegExp(`\\s*[-–]?\\s*\\b(?:${UNIDADE})\\b\\.?(?:\\s+(?:(?:${UNIDADE})|[a-z0-9]{1,4})\\b\\.?)*\\s*$`, 'i');
+// "08" e "8" são a mesma porta; "Casa 03" e "Casa 3" são a mesma casa.
+export const semZeroAEsquerda = (n: string) => n.replace(/^0+(?=\d)/, '');
+
 export function decompor(txt: string): Decomposto {
   const mc = txt.match(/\b(\d{5})-?(\d{3})\b/);
   const cep = mc ? mc[1] + mc[2] : null;
@@ -50,15 +60,27 @@ export function decompor(txt: string): Decomposto {
   limpo = limpo.replace(/\bCEP\b:?/ig, ' ');
   const seg = limpo.split(',').map(s => s.trim()).filter(Boolean);
   let rua = seg[0] || '', numero: string | null = null, resto = seg.slice(1);
-  const fim = rua.match(/^(.*\D)\s+(?:n[º°o.]*\s*)?(\d{1,5})[a-z]?$/i);
-  if (fim) { rua = fim[1].trim(); numero = fim[2]; }
-  else if (resto.length && /^(?:n[º°o.]*\s*)?\d{1,5}[a-z]?\b/i.test(resto[0])) { numero = resto[0].match(/\d{1,5}/)![0]; resto = resto.slice(1); }
+  // "… 2082(3)": o print cola a contagem no número da porta; o número continua sendo o 2082.
+  const fim = rua.match(/^(.*\D)\s+(?:n[º°o.]*\s*)?(\d{1,5})[a-z]?(?:\s*\(\d{1,3}\))?$/i);
+  const cauda = fim ? fim[1].match(CAUDA_UNIDADE) : null;
+  const semCauda = cauda ? fim![1].slice(0, cauda.index).trim() : '';
+  const unidadeNaRua = !!cauda && /[a-zà-ÿ]{2}/i.test(semCauda);
+  const tirarCauda = () => { resto = [rua.slice(semCauda.length).replace(/^[\s\-–]+/, '').trim(), ...resto]; rua = semCauda; };
+  if (resto.length && NUMERO_SOLTO.test(resto[0])) {
+    numero = resto[0].match(/\d{1,5}/)![0];
+    resto = resto.slice(1);
+    if (unidadeNaRua) tirarCauda();
+  }
+  // Sem número da rua, o que sobrou é a unidade do condomínio: melhor ficar sem número do que
+  // mandar a entrega para a casa de mesmo número na rua.
+  else if (unidadeNaRua) tirarCauda();
+  else if (fim) { rua = fim[1].trim(); numero = fim[2]; }
   else {
     const meio = rua.match(/^((?:\S+\s+){1,7}?\S*[a-zà-ÿ])\s+(?:n[º°o.]*\s*)?(\d{1,5})[a-z]?(?:\s+(.*))?$/i);
     if (meio) { rua = meio[1].trim(); numero = meio[2]; if (meio[3]) resto = [meio[3].trim(), ...resto]; }
   }
   rua = rua.replace(/\s+n[º°o.]*$/i, '').trim();
-  return {rua, numero, cep, resto};
+  return {rua, numero: numero && semZeroAEsquerda(numero), cep, resto};
 }
 
 export function complementoChave(resto: string[]): string {
@@ -66,7 +88,7 @@ export function complementoChave(resto: string[]): string {
   const partes: string[] = [];
   for (const re of [/\bap(?:to|artamento)?\.?\s*(\w{1,6})/, /\bbl(?:oco|c)?\.?\s*(\w{1,4})/, /\bcasa\s*(\w{1,4})/, /\b(?:sala|loja|lote|lt)\.?\s*(\w{1,4})/, /\bqu?a?d?r?a?\.?\s*(\d{1,4})/]) {
     const m = txt.match(re);
-    if (m) partes.push(m[0].replace(/\s+/g, ''));
+    if (m) partes.push(m[0].replace(/\s+/g, '').replace(/(\D)0+(?=\d)/, '$1'));
   }
   return partes.join('+');
 }
@@ -256,7 +278,7 @@ export function extrairEnderecos(bruto: string): string[] {
     if (ultimo && mu) { ultimo.unidades = +mu[1]; if (etiqueta) ultimo.ml = etiqueta[1]; aberto = null; continue; }
     if (ultimo && etiqueta && /^.{0,5}EB\s*-/i.test(l)) { ultimo.ml = etiqueta[1]; aberto = null; continue; }
     if (aberto && !/\d/.test(aberto.texto) && /^\d{1,5}\b/.test(l)) { aberto.texto += ' ' + l; continue; }
-    if (aberto && !/\d/.test(aberto.texto) && !COMPLEMENTO.test(l) && /^[a-zà-ÿ][a-zà-ÿ .'-]*\s\d{1,5}$/i.test(l)) { aberto.texto += ' ' + l; continue; }
+    if (aberto && !/\d/.test(aberto.texto) && !COMPLEMENTO.test(l) && RESTO_DA_RUA.test(l)) { aberto.texto += ' ' + l; continue; }
     if (aberto && !TEM_CEP.test(aberto.texto) && (COMPLEMENTO.test(l) || TEM_CEP.test(l) || complementoDoAnterior)) { aberto.texto = aberto.texto.replace(/[\s,]+$/, '') + ', ' + l.replace(/[\s,]+$/, ''); continue; }
     aberto = null;
     const mn = l.match(/^[#(]?(\d{1,3})(?:[).:\]\-]|\s|$)/);
