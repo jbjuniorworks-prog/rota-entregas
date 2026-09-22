@@ -2,7 +2,7 @@
 // Vale menos que a correção do motorista e mais que o mapa aberto, e funciona sem internet.
 // O arquivo é gerado por `npm run cnefe`.
 import {haversine} from '../logica/geo';
-import {chaveRua, normal, tipoDaRua} from '../logica/texto';
+import {chaveBairro, chaveRua, jeitosDeLerBairro, normal, tipoDaRua} from '../logica/texto';
 import type {Candidato, Ponto} from '../logica/tipos';
 
 const ARQUIVO = 'aracaju-v1.bin';
@@ -213,4 +213,82 @@ export async function ruaDoIbge(rua: string, numero: string, cidade: string,
     exibido: `${nome}, ${pedido} — ${bonito(achado.bairro)}${ressalva}`,
     precisao: achado.salto ? 'rua' : 'bom', rua: nome, fonte: 'IBGE',
   };
+}
+
+// Âncora: onde fica, grosso modo, o bairro (ou o setor do CEP) daquele endereço. Serve de piso —
+// nenhuma resposta pode cair longe demais dela. Sai do mesmo arquivo do censo, sem rede.
+export interface Ancora {
+  lat: number;
+  lng: number;
+  raio: number;
+  nome: string;
+}
+
+interface Ancoras {
+  porBairro: Map<string, Ancora>;
+  porPrefixo: Map<number, Ancora>;
+}
+
+const ancorasDaTabela = new WeakMap<Tabela, Ancoras>();
+
+function mediana(v: number[]): number {
+  const s = [...v].sort((a, b) => a - b), n = s.length;
+  return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+}
+
+function juntar(pontos: Ponto[], nome: string): Ancora {
+  const centro = {lat: mediana(pontos.map(p => p.lat)), lng: mediana(pontos.map(p => p.lng))};
+  const ds = pontos.map(p => haversine(centro, p)).sort((a, b) => a - b);
+  // p99, não a média: bairro espalhado (Zona de Expansão) precisa de mais folga que bairro miúdo.
+  return {...centro, raio: ds[Math.floor(ds.length * 0.99)] || 0, nome};
+}
+
+function ancoras(t: Tabela): Ancoras {
+  let a = ancorasDaTabela.get(t);
+  if (!a) {
+    const porB = new Map<number, Ponto[]>(), porP = new Map<number, Ponto[]>();
+    for (let i = 0; i < t.ceps.length; i++) {
+      const p = {lat: t.lats[i] / 1e6, lng: t.lngs[i] / 1e6};
+      const b = t.iBairro[i], pref = Math.floor(t.ceps[i] / 1000);
+      (porB.get(b) || porB.set(b, []).get(b)!).push(p);
+      (porP.get(pref) || porP.set(pref, []).get(pref)!).push(p);
+    }
+    a = {porBairro: new Map(), porPrefixo: new Map()};
+    for (const [b, g] of porB) {
+      const nome = t.bairros[b] || '';
+      const chave = chaveBairro(nome);
+      if (chave) a.porBairro.set(chave, juntar(g, nome));
+    }
+    for (const [pref, g] of porP) a.porPrefixo.set(pref, juntar(g, String(pref)));
+    ancorasDaTabela.set(t, a);
+  }
+  return a;
+}
+
+// O campo do bairro chega sujo e com número por extenso; tenta as formas da mais específica
+// para a mais geral, e aceita o nome do censo que aparece inteiro dentro do que foi dito.
+export function acharAncoraDoBairro(t: Tabela, bairro: string): Ancora | null {
+  const {porBairro} = ancoras(t);
+  for (const jeito of jeitosDeLerBairro(bairro)) {
+    const certa = porBairro.get(jeito);
+    if (certa) return certa;
+    let melhor: Ancora | null = null, tamanho = 0;
+    for (const [chave, a] of porBairro) {
+      const dentro = jeito === chave || jeito.startsWith(chave + ' ') || jeito.endsWith(' ' + chave) || jeito.includes(' ' + chave + ' ');
+      if (dentro && chave.length > tamanho) { melhor = a; tamanho = chave.length; }
+    }
+    if (melhor) return melhor;
+  }
+  return null;
+}
+
+export async function ancoraDoIbge(cep: string | null, bairro: string, cidade: string): Promise<Ancora | null> {
+  const t = await tabela();
+  if (!t) return null;
+  const daCidade = normal(String(cidade || '').split(/[,\-\/]/)[0]);
+  if (daCidade && daCidade !== t.cidade) return null;
+  const pelaRua = bairro ? acharAncoraDoBairro(t, bairro) : null;
+  if (pelaRua) return pelaRua;
+  const n = cep ? parseInt(cep, 10) : NaN;
+  return Number.isFinite(n) ? ancoras(t).porPrefixo.get(Math.floor(n / 1000)) || null : null;
 }

@@ -1,4 +1,4 @@
-import {nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, normal, pistasDeLugar, ruaCompleta} from './texto';
+import {chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, normal, pistasDeLugar, ruaCompleta} from './texto';
 
 describe('mesmo condomínio, endereços diferentes', () => {
   const p = (texto: string, bairro = 'Jardins') => ({texto, bairro});
@@ -367,5 +367,33 @@ describe('print da lista de pedidos do app do restaurante', () => {
   it('a lista tem prioridade sobre a comanda, e o print comum continua no caminho de sempre', () => {
     expect(extrairEnderecos(lista)).toHaveLength(2);
     expect(enderecosDaLista('18\nAvenida Dulce Diniz 920\nCEP 49048430')).toEqual([]);
+  });
+});
+
+describe('bairro escrito de outro jeito', () => {
+  it('número por extenso e em algarismo são o mesmo bairro', () => {
+    expect(chaveBairro('17 de Março')).toBe(chaveBairro('Dezessete de Março'));
+    expect(chaveBairro('13 de Julho')).toBe(chaveBairro('Treze de Julho'));
+    expect(chaveBairro('18 do Forte')).toBe(chaveBairro('Dezoito do Forte'));
+  });
+
+  it('dezena com unidade vira um número só', () => {
+    expect(comNumeros(['vinte', 'e', 'cinco'])).toEqual(['25']);
+    expect(comNumeros(['vinte', 'cinco'])).toEqual(['25']);
+    expect(comNumeros(['trinta', 'e', 'sete', 'de', 'marco'])).toEqual(['37', 'de', 'marco']);
+    expect(comNumeros(['vinte'])).toEqual(['20']);
+    expect(comNumeros(['jabotiana'])).toEqual(['jabotiana']);
+  });
+
+  it('o campo do bairro vem sujo e ainda assim dá para ler', () => {
+    expect(jeitosDeLerBairro('Aruana - Condomínio Vistaruana')).toContain('aruana');
+    expect(jeitosDeLerBairro('São José dos Náufragos/Robalo')).toContain('jose naufragos');
+    expect(jeitosDeLerBairro('Zona de Expansão (Robalo)')).toContain('robalo');
+    expect(chaveBairro('17 de Março Bl 04 Ap 403')).toBe(chaveBairro('17 de Março'));
+  });
+
+  it('bairros diferentes continuam diferentes', () => {
+    expect(chaveBairro('13 de Julho')).not.toBe(chaveBairro('13 de Junho'));
+    expect(chaveBairro('Jabotiana')).not.toBe(chaveBairro('Jardins'));
   });
 });

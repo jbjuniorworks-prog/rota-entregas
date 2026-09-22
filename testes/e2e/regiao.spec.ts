@@ -92,3 +92,29 @@ test('com a rua na nossa base, o app nem precisa perguntar ao mapa de fora', asy
   await expect(linha).toContainText('Rua certa, número aproximado');
   expect(buscas.filter(b => !b.includes('Aracaju%2C+SE') && !b.includes('Aracaju%2C%20SE'))).toEqual([]);
 });
+
+test('resposta que cai em outro bairro não vira a posição da entrega', async ({page}) => {
+  // O caso real: "Rua Principal 17, Jabotiana". Existe Rua Principal em Cidade Nova, 6 km dali,
+  // e era ela que ganhava. O censo diz onde Jabotiana fica, e isso vira o piso.
+  const EM_CIDADE_NOVA = {
+    lat: '-10.8901', lon: '-37.0743', display_name: 'Rua Principal, Cidade Nova', category: 'highway', addresstype: 'road',
+    address: {road: 'Rua Principal', suburb: 'Cidade Nova', city: 'Aracaju'},
+  };
+  await page.route('**://viacep.com.br/**', r => {
+    const doCep = /\/ws\/\d{8}\/json/.test(new URL(r.request().url()).pathname);
+    r.fulfill({
+      status: 200, contentType: 'application/json', headers: {'access-control-allow-origin': '*'},
+      body: JSON.stringify(doCep
+        ? {cep: '49096-300', logradouro: 'Rua Principal', complemento: '(Aloc)', bairro: 'Jabotiana', localidade: 'Aracaju', uf: 'SE'}
+        : []),
+    });
+  });
+  await mapaFalso(page, EM_CIDADE_NOVA);
+  await abrir(page);
+  await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+  await page.getByLabel(/Endereços da área/).fill('Rua Principal 17, Jabotiana, CEP 49096-300');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  const linha = linhaDe(page, 'Rua Principal 17', 'Marcar no mapa');
+  await expect(linha).toContainText('Jabotiana', {timeout: 30_000});
+  await expect(page.getByText('Cidade Nova')).toHaveCount(0);
+});

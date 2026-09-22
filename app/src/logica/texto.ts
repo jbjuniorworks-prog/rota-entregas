@@ -452,3 +452,47 @@ export function chaveLugar(texto: string, bairro: string | undefined, cidade: st
   if (!rua || !b) return null;
   return ['r', rua, d.numero, b, normal(cidade)].join('|');
 }
+
+// Os bairros e as ruas de Aracaju aparecem dos dois jeitos: a planilha escreve "17 de Março"
+// e o censo "DEZESSETE DE MARCO". Vira tudo número, que é a forma que não tem duas grafias.
+const UNIDADES: Record<string, number> = {um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9};
+const ATE_DEZENOVE: Record<string, number> = {dez: 10, onze: 11, doze: 12, treze: 13, quatorze: 14, catorze: 14, quinze: 15, dezesseis: 16, dezasseis: 16, dezessete: 17, dezassete: 17, dezoito: 18, dezenove: 19, dezanove: 19};
+const DEZENAS: Record<string, number> = {vinte: 20, trinta: 30, quarenta: 40, cinquenta: 50, sessenta: 60, setenta: 70, oitenta: 80, noventa: 90};
+
+export function comNumeros(palavras: string[]): string[] {
+  const saida: string[] = [];
+  for (let i = 0; i < palavras.length; i++) {
+    const w = palavras[i];
+    if (DEZENAS[w] != null) {
+      const comE = palavras[i + 1] === 'e';
+      const proxima = comE ? palavras[i + 2] : palavras[i + 1];
+      if (proxima && UNIDADES[proxima] != null) {
+        saida.push(String(DEZENAS[w] + UNIDADES[proxima]));
+        i += comE ? 2 : 1;
+        continue;
+      }
+      saida.push(String(DEZENAS[w]));
+      continue;
+    }
+    const n = UNIDADES[w] ?? ATE_DEZENOVE[w];
+    saida.push(n != null ? String(n) : w);
+  }
+  return saida;
+}
+
+// O bairro chega sujo: "Aruana - Condomínio Vistaruana", "17 de Março Bl 04 Ap 403",
+// "São José dos Náufragos/Robalo", "Zona de Expansão (Robalo)".
+const CAUDA_DO_BAIRRO = /\s+\b(?:bl|bloco|ap|apt|apto|apartamento|casa|cond|condominio|lot|loteamento|cj|conjunto|qd|quadra|lote)\b.*$/i;
+
+export function chaveBairro(nome: string): string {
+  const limpo = normal(nome).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').replace(CAUDA_DO_BAIRRO, '').trim();
+  return comNumeros(limpo.split(/\s+/).filter(w => w && !PALAVRAS_VAZIAS.has(w))).join(' ');
+}
+
+// Formas alternativas de ler o mesmo campo, da mais específica para a mais geral.
+export function jeitosDeLerBairro(nome: string): string[] {
+  const cru = normal(nome);
+  const dentroDosParenteses = (cru.match(/\(([^)]{2,})\)/) || [])[1] || '';
+  const partes = [dentroDosParenteses, cru.split(/[/,]/)[0], cru.split(/\s+-\s+/)[0], cru];
+  return [...new Set(partes.map(chaveBairro).filter(Boolean))];
+}

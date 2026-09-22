@@ -3,7 +3,7 @@ import {RANK} from '../logica/rotulos';
 import {conjuntoDoEndereco, decompor, mesmaRua, normal} from '../logica/texto';
 import type {Candidato, Ponto, Precisao, Regiao} from '../logica/tipos';
 import {ruaNaBase} from './base';
-import {enderecoDoIbge, ruaDoIbge} from './ibge';
+import {ancoraDoIbge, bonito, enderecoDoIbge, ruaDoIbge, type Ancora} from './ibge';
 import {buscarJson, espacado} from './rede';
 
 interface Cep {
@@ -99,7 +99,11 @@ async function ruaNosCorreios(rua: string, cidade: string): Promise<{bairro: str
 async function cepComCoordenada(cep: string): Promise<Cep | null> {
   try {
     const v = await buscarJson(`https://viacep.com.br/ws/${cep}/json/`, 8000);
-    if (v && !v.erro) return {logradouro: v.logradouro || '', bairro: v.bairro || '', cidade: v.localidade, uf: v.uf, lat: null, lng: null};
+    // O ViaCEP diz a rua e o bairro mas não onde fica. Quem sabe onde é o censo, pelo setor do CEP.
+    if (v && !v.erro) {
+      const a = await ancoraDoIbge(cep, v.bairro || '', v.localidade || '');
+      return {logradouro: v.logradouro || '', bairro: v.bairro || '', cidade: v.localidade, uf: v.uf, lat: a ? a.lat : null, lng: a ? a.lng : null};
+    }
   } catch {}
   return null;
 }
@@ -201,6 +205,23 @@ async function geoGoogle(txt: string, cidade: string, chave: string): Promise<Ca
   });
 }
 
+// Piso de sanidade. Medido em 527 entregas reais: deixa passar 99,6% das posições boas e ainda
+// pega o erro que motivou isto (6,2 km, Jabotiana lida como Cidade Nova).
+export const LONGE_DA_ANCORA = 3000;
+
+export const limiteDaAncora = (a: Ancora) => Math.max(LONGE_DA_ANCORA, a.raio * 2);
+
+export async function ancoraDoEndereco(txt: string, cidade: string, bairro: string): Promise<Ancora | null> {
+  const d = decompor(txt);
+  const dito = await ancoraDoIbge(d.cep, bairro, cidade);
+  if (dito) return dito;
+  for (const parte of d.resto) {
+    const a = await ancoraDoIbge(null, parte, cidade);
+    if (a) return a;
+  }
+  return null;
+}
+
 export async function geocodificar(txt: string, opcoes: {cidade: string; googleKey: string; perto?: Ponto | null; bairro?: string}): Promise<Candidato[]> {
   let cands = opcoes.googleKey ? await geoGoogle(txt, opcoes.cidade, opcoes.googleKey) : await geoOSM(txt, opcoes.cidade, opcoes.perto || null, opcoes.bairro || '');
   const vistos = new Set<string>();
@@ -210,6 +231,22 @@ export async function geocodificar(txt: string, opcoes: {cidade: string; googleK
     vistos.add(k);
     return true;
   });
+  // Nada pode cair longe do bairro do endereço. O que fugiu vira opção, não resposta, e no lugar
+  // dela entra o bairro: errar por algumas quadras é conferível, errar de bairro manda o dia embora.
+  const ancora = await ancoraDoEndereco(txt, opcoes.cidade, opcoes.bairro || '');
+  if (ancora) {
+    const limite = limiteDaAncora(ancora);
+    // O que o motorista mesmo arrumou não se discute; o resto responde à âncora.
+    const dele = new Set<Precisao>(['manual', 'lembrado', 'confirmado']);
+    const fugiu = (c: Candidato) => !dele.has(c.precisao) && haversine(c, ancora) > limite;
+    if (cands.every(fugiu)) {
+      for (const c of cands) if (fugiu(c)) c.precisao = 'ruim';
+      cands.unshift({lat: ancora.lat, lng: ancora.lng, precisao: 'bairro', fonte: 'IBGE',
+        exibido: `${decompor(txt).rua || txt} — posição pelo bairro ${bonito(ancora.nome)}: o que achamos caía longe demais. Confira no local.`});
+    } else {
+      for (const c of cands) if (fugiu(c)) c.precisao = 'ruim';
+    }
+  }
   cands.sort((a, b) => RANK[a.precisao] - RANK[b.precisao]);
   return cands.slice(0, 6);
 }

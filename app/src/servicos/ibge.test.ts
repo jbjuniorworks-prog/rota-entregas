@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {describe, expect, it} from 'vitest';
 import {montar} from '../../../ferramentas/cnefe.mjs';
-import {lerTabela, procurar, procurarRua} from './ibge';
+import {acharAncoraDoBairro, lerTabela, procurar, procurarRua} from './ibge';
 
 const CABECA = 'COD_UNICO_ENDERECO;COD_UF;COD_MUNICIPIO;COD_DISTRITO;COD_SUBDISTRITO;COD_SETOR;NUM_QUADRA;'
   + 'NUM_FACE;CEP;DSC_LOCALIDADE;NOM_TIPO_SEGLOGR;NOM_TITULO_SEGLOGR;NOM_SEGLOGR;NUM_ENDERECO;DSC_MODIFICADOR;'
@@ -136,5 +136,34 @@ describe('mesma rua em vários bairros, sem CEP', () => {
 
   it('rua que não está no censo não vira resposta', () => {
     expect(procurarRua(t(), 'Rua Que Nao Existe', 34, {lat: -10.952, lng: -37.090})).toBeNull();
+  });
+});
+
+describe('âncora do bairro (piso de sanidade)', () => {
+  const t = () => tabelaDe([
+    linha('49096150', 'VINTE E CINCO', 5, -10.9450, -37.0827, '', 'JABOTIANA'),
+    linha('49096150', 'VINTE E CINCO', 35, -10.9460, -37.0837, '', 'JABOTIANA'),
+    linha('49096160', 'OUTRA', 10, -10.9470, -37.0847, '', 'JABOTIANA'),
+    linha('49070830', 'PRINCIPAL', 20, -10.8901, -37.0743, '', 'CIDADE NOVA'),
+    linha('49000100', 'A', 10, -10.9100, -37.0500, '', 'DEZESSETE DE MARCO'),
+  ]);
+
+  it('acha o bairro e devolve um ponto dentro dele', () => {
+    const a = acharAncoraDoBairro(t(), 'Jabotiana')!;
+    expect(a.nome).toBe('JABOTIANA');
+    expect(a.lat).toBeCloseTo(-10.946, 2);
+  });
+
+  it('lê o bairro sujo que vem na planilha', () => {
+    expect(acharAncoraDoBairro(t(), 'Jabotiana - Cond Vila Verde')!.nome).toBe('JABOTIANA');
+    expect(acharAncoraDoBairro(t(), 'Cidade Nova Bl 04 Ap 403')!.nome).toBe('CIDADE NOVA');
+  });
+
+  it('casa o bairro escrito com algarismo com o do censo por extenso', () => {
+    expect(acharAncoraDoBairro(t(), '17 de Março')!.nome).toBe('DEZESSETE DE MARCO');
+  });
+
+  it('bairro que não é da cidade não vira âncora', () => {
+    expect(acharAncoraDoBairro(t(), 'Boa Viagem')).toBeNull();
   });
 });
