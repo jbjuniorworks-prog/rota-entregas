@@ -1,8 +1,9 @@
 // Endereços do CNEFE/IBGE (Censo 2022) guardados no próprio app: CEP + número -> coordenada.
 // Vale menos que a correção do motorista e mais que o mapa aberto, e funciona sem internet.
 // O arquivo é gerado por `npm run cnefe`.
-import {normal} from '../logica/texto';
-import type {Candidato} from '../logica/tipos';
+import {haversine} from '../logica/geo';
+import {chaveRua, normal, tipoDaRua} from '../logica/texto';
+import type {Candidato, Ponto} from '../logica/tipos';
 
 const ARQUIVO = 'aracaju-v1.bin';
 
@@ -140,5 +141,76 @@ export async function enderecoDoIbge(cep: string, numero: string, cidade: string
     lat: achado.lat, lng: achado.lng,
     exibido: `${rua}, ${pedido} — ${bonito(achado.bairro)}${ressalva}`,
     precisao: 'bom', rua, fonte: 'IBGE',
+  };
+}
+
+// A mesma rua se repete em vários bairros de Aracaju ("Rua Vinte e Cinco" está em quatro).
+// Sem CEP, o que separa uma da outra é o número da porta e a distância das outras entregas.
+const chavesDeRua = new WeakMap<Tabela, Map<string, number[]>>();
+
+function indicePorNome(t: Tabela): Map<string, number[]> {
+  let m = chavesDeRua.get(t);
+  if (!m) {
+    m = new Map();
+    t.ruas.forEach((nome, i) => {
+      const k = chaveRua(nome);
+      if (!k) return;
+      const lista = m!.get(k);
+      if (lista) lista.push(i); else m!.set(k, [i]);
+    });
+    chavesDeRua.set(t, m);
+  }
+  return m;
+}
+
+export interface AchadoDeRua extends AchadoIbge {
+  bairros: number;
+}
+
+export function procurarRua(t: Tabela, rua: string, numero: number, perto: Ponto | null, bairro = ''): AchadoDeRua | null {
+  // A chave ignora o tipo, então "Rua Principal" casa com "Avenida Principal": são ruas diferentes.
+  const tipo = tipoDaRua(rua);
+  const mesmos = (indicePorNome(t).get(chaveRua(rua)) || []).filter(i => !tipo || tipoDaRua(t.ruas[i]) === tipo);
+  const iRuas = new Set(mesmos);
+  if (!iRuas.size || !Number.isFinite(numero) || numero <= 0) return null;
+  const melhorNoBairro = new Map<number, {i: number; salto: number}>();
+  for (let i = 0; i < t.iRua.length; i++) {
+    if (!iRuas.has(t.iRua[i])) continue;
+    const salto = Math.abs(t.numeros[i] - numero), atual = melhorNoBairro.get(t.iBairro[i]);
+    if (!atual || salto < atual.salto) melhorNoBairro.set(t.iBairro[i], {i, salto});
+  }
+  const ponto = (x: {i: number}) => ({lat: t.lats[x.i] / 1e6, lng: t.lngs[x.i] / 1e6});
+  const cabem = [...melhorNoBairro.values()].filter(x => x.salto <= t.saltoMaximo);
+  const dito = normal(bairro);
+  const doBairro = dito ? cabem.filter(x => normal(t.bairros[t.iBairro[x.i]]) === dito) : [];
+  const lista = doBairro.length ? doBairro : cabem;
+  if (!lista.length) return null;
+  // Sem o bairro e sem saber onde a rota está, chutar entre trechos distantes erra mais do que não responder.
+  if (lista.length > 1 && !perto) return null;
+  const achado = lista.length === 1 ? lista[0]
+    : lista.reduce((a, b) => haversine(perto!, ponto(b)) < haversine(perto!, ponto(a)) ? b : a);
+  return {
+    ...ponto(achado), bairro: t.bairros[t.iBairro[achado.i]] || '', rua: t.ruas[t.iRua[achado.i]] || '',
+    numero: t.numeros[achado.i], predio: !!t.predios[achado.i], salto: achado.salto, bairros: melhorNoBairro.size,
+  };
+}
+
+export async function ruaDoIbge(rua: string, numero: string, cidade: string,
+  perto: Ponto | null, bairro = ''): Promise<Candidato | null> {
+  const t = await tabela();
+  if (!t) return null;
+  const daCidade = normal(String(cidade || '').split(/[,\-\/]/)[0]);
+  if (daCidade && daCidade !== t.cidade) return null;
+  const pedido = parseInt(numero, 10);
+  const achado = procurarRua(t, rua, pedido, perto, bairro);
+  // Nome que só existe num bairro a nossa base resolve sozinha, e ela aprende com os motoristas.
+  // O censo só entra onde ela não tem como saber: o mesmo nome de rua em bairros diferentes.
+  if (!achado || achado.bairros < 2) return null;
+  const nome = bonito(achado.rua);
+  const ressalva = achado.salto ? ` (o IBGE tem o nº ${achado.numero}, o mais perto daqui)` : '';
+  return {
+    lat: achado.lat, lng: achado.lng,
+    exibido: `${nome}, ${pedido} — ${bonito(achado.bairro)}${ressalva}`,
+    precisao: achado.salto ? 'rua' : 'bom', rua: nome, fonte: 'IBGE',
   };
 }

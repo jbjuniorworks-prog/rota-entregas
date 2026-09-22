@@ -3,7 +3,7 @@ import {RANK} from '../logica/rotulos';
 import {conjuntoDoEndereco, decompor, mesmaRua, normal} from '../logica/texto';
 import type {Candidato, Ponto, Precisao, Regiao} from '../logica/tipos';
 import {ruaNaBase} from './base';
-import {enderecoDoIbge} from './ibge';
+import {enderecoDoIbge, ruaDoIbge} from './ibge';
 import {buscarJson, espacado} from './rede';
 
 interface Cep {
@@ -142,6 +142,13 @@ async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: 
     }
   };
   const lugares = [bairro, cep ? cep.bairro : '', conjuntoDoEndereco(txt, bairro), ...d.resto].filter(Boolean);
+  // Sem CEP e sem nenhuma pista de bairro ou condomínio, a nossa base escolhe às cegas entre as
+  // ruas de mesmo nome — "Rua Vinte e Cinco" está em quatro bairros. O censo sabe em qual delas
+  // o número da porta existe, e isso não custa rede nenhuma.
+  if (!d.cep && d.numero && d.rua && !lugares.length) {
+    const doCenso = await ruaDoIbge(d.rua, d.numero, cidade, perto);
+    if (doCenso && !foraDaRegiao(doCenso)) return [doCenso];
+  }
   const naBase = logradouro ? await ruaNaBase(logradouro, cep ? `${cep.cidade}, ${cep.uf}` : cidade, perto, lugares) : null;
   if (naBase && !foraDaRegiao(naBase)) return [naBase];
   // segunda tentativa: o CEP pode ter corrigido o número acima
