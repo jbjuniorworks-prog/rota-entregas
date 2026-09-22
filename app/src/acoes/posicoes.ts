@@ -8,8 +8,8 @@ import {foraDaRegiao} from '../servicos/geocodificacao';
 import {clienteNuvem} from '../servicos/nuvem';
 import {e, enviarFila, fila, invalidarRota, memoria, ui} from './base';
 
-export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number}> {
-  const zero = {confirmadas: 0, sugestoes: 0};
+export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number}> {
+  const zero = {confirmadas: 0, sugestoes: 0, minhas: 0};
   const c = clienteNuvem();
   if (!c) return zero;
   const chaveDe = (p: Parada) => chaveLugar(p.texto, p.bairro, e().cidade);
@@ -17,7 +17,7 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
   if (!chaves.length) return zero;
   try {
     const r = aplicarCompartilhadas(e().paradas, await c.posicoes(chaves), chaveDe);
-    if (r.confirmadas) invalidarRota();
+    if (r.confirmadas || r.minhas) invalidarRota();
     loja.mudou();
     return r;
   } catch {
@@ -25,8 +25,9 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
   }
 }
 
-export function avisoCompartilhadas(r: {confirmadas: number; sugestoes: number}): string {
+export function avisoCompartilhadas(r: {confirmadas: number; sugestoes: number; minhas?: number}): string {
   return (r.confirmadas ? ` 🤝 ${r.confirmadas} com posição confirmada por outros motoristas.` : '')
+    + (r.minhas ? ` ✍️ ${r.minhas} com a posição que você mesmo já arrumou.` : '')
     + (r.sugestoes ? ` 💡 ${r.sugestoes} com sugestão de outro motorista: veja em Conferir.` : '');
 }
 

@@ -13,7 +13,7 @@ const aplicar = (ps: (Parada & {chave: string})[], rs: PosicaoCompartilhada[]) =
 describe('posições de outros motoristas', () => {
   it('confirmada por 2 motoristas: aplica sozinha e guarda a de antes como opção', () => {
     const p = parada('a|1');
-    expect(aplicar([p], [pos('a|1', 'confirmado')])).toEqual({confirmadas: 1, sugestoes: 0});
+    expect(aplicar([p], [pos('a|1', 'confirmado')])).toEqual({confirmadas: 1, sugestoes: 0, minhas: 0});
     expect(p).toMatchObject({lat: -11.04, lng: -37.10, precisao: 'confirmado', exibido: 'Posição confirmada por 2 motoristas'});
     expect(p.candidatos[0]).toMatchObject({lat: -10.90, precisao: 'planilha', fonte: 'original'});
   });
@@ -30,7 +30,7 @@ describe('posições de outros motoristas', () => {
   });
   it('de 1 motorista só: não move, vira sugestão com a distância', () => {
     const p = parada('a|1');
-    expect(aplicar([p], [pos('a|1', 'sugestao')])).toEqual({confirmadas: 0, sugestoes: 1});
+    expect(aplicar([p], [pos('a|1', 'sugestao')])).toEqual({confirmadas: 0, sugestoes: 1, minhas: 0});
     expect(p.lat).toBe(-10.90);
     expect(p.sugestao).toMatchObject({lat: -11.04, lng: -37.10});
     expect(p.sugestao!.distancia).toBeGreaterThan(15000);
@@ -45,14 +45,45 @@ describe('posições de outros motoristas', () => {
     expect(aplicar([a, b], [pos('a|1', 'confirmado'), pos('b|1', 'confirmado')]).confirmadas).toBe(0);
     expect([a.lat, b.lat]).toEqual([-10.90, -10.90]);
   });
-  it('ignora a posição que é minha, entregues e paradas sem chave', () => {
-    const a = parada('a|1'), b = parada('b|1', {entregue: true}), c = parada('');
-    expect(aplicar([a, b, c], [pos('a|1', 'confirmado', {minha: true}), pos('b|1', 'confirmado')])).toEqual({confirmadas: 0, sugestoes: 0});
+  it('não mexe em entrega já feita nem em parada sem chave', () => {
+    const b = parada('b|1', {entregue: true}), c = parada('');
+    expect(aplicar([b, c], [pos('b|1', 'confirmado')])).toEqual({confirmadas: 0, sugestoes: 0, minhas: 0});
+    expect(b.lat).toBe(-10.90);
   });
   it('confirmada tira a sugestão antiga e corrige a posição que a planilha jogou longe', () => {
     const p = parada('a|1', {precisao: 'bairro', sugestao: {lat: 1, lng: 1, distancia: 5}});
     aplicar([p], [pos('a|1', 'confirmado')]);
     expect(p.precisao).toBe('confirmado');
     expect(p.sugestao).toBeUndefined();
+  });
+});
+
+describe('a posição que o próprio motorista arrumou', () => {
+  it('volta para ele em outro aparelho, mesmo sem ninguém mais ter confirmado', () => {
+    const p = parada('a|1');
+    const r = aplicar([p], [pos('a|1', 'sugestao', {minha: true})]);
+    expect(r).toEqual({confirmadas: 0, sugestoes: 0, minhas: 1});
+    expect(p).toMatchObject({lat: -11.04, lng: -37.10, precisao: 'confirmado', exibido: 'Posição que você mesmo arrumou aqui'});
+    expect(p.sugestao).toBeUndefined();
+  });
+
+  it('não vira recado de "outro motorista confirmou"', () => {
+    const p = parada('a|1');
+    aplicar([p], [pos('a|1', 'confirmado', {minha: true})]);
+    expect(p.exibido).toBe('Posição que você mesmo arrumou aqui');
+  });
+
+  it('a de outro motorista continua sendo só sugestão enquanto não confirma', () => {
+    const p = parada('a|1');
+    const r = aplicar([p], [pos('a|1', 'sugestao', {minha: false})]);
+    expect(r).toEqual({confirmadas: 0, sugestoes: 1, minhas: 0});
+    expect(p.precisao).toBe('planilha');
+    expect(p.sugestao).toBeTruthy();
+  });
+
+  it('o que o motorista escolheu na mão neste aparelho não é mexido', () => {
+    const p = parada('a|1', {precisao: 'manual', lat: -10.5, lng: -37.5});
+    aplicar([p], [pos('a|1', 'confirmado', {minha: true})]);
+    expect(p).toMatchObject({lat: -10.5, lng: -37.5, precisao: 'manual'});
   });
 });
