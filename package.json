@@ -13,7 +13,8 @@
     "build": "vite build",
     "ruas": "node ferramentas/ruas.mjs",
     "backup": "node ferramentas/backup.mjs",
-    "restaurar": "node ferramentas/restaurar.mjs"
+    "restaurar": "node ferramentas/restaurar.mjs",
+    "cnefe": "node ferramentas/cnefe.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",

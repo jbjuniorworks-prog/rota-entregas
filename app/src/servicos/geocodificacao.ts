@@ -3,6 +3,7 @@ import {RANK} from '../logica/rotulos';
 import {conjuntoDoEndereco, decompor, mesmaRua, normal} from '../logica/texto';
 import type {Candidato, Ponto, Precisao, Regiao} from '../logica/tipos';
 import {ruaNaBase} from './base';
+import {enderecoDoIbge} from './ibge';
 import {buscarJson, espacado} from './rede';
 
 interface Cep {
@@ -111,6 +112,13 @@ export function comCidade(txt: string, cidade: string): string {
 
 async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: string): Promise<Candidato[]> {
   const d = decompor(txt);
+  // Número exato no censo: o IBGE já traz rua, bairro e coordenada, então não precisamos
+  // perguntar nada para fora — nem o CEP, nem o mapa. É o caminho que funciona sem sinal.
+  // Só o casamento exato passa na frente da nossa base; o aproximado espera a vez lá embaixo.
+  if (d.cep && d.numero) {
+    const ibge = await enderecoDoIbge(d.cep, d.numero, cidade, true);
+    if (ibge && !foraDaRegiao(ibge)) return [ibge];
+  }
   const cep = d.cep ? await cepComCoordenada(d.cep) : null;
   const logradouro = (cep && cep.logradouro) || d.rua;
   if (cep && cep.logradouro) {
@@ -136,6 +144,11 @@ async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: 
   const lugares = [bairro, cep ? cep.bairro : '', conjuntoDoEndereco(txt, bairro), ...d.resto].filter(Boolean);
   const naBase = logradouro ? await ruaNaBase(logradouro, cep ? `${cep.cidade}, ${cep.uf}` : cidade, perto, lugares) : null;
   if (naBase && !foraDaRegiao(naBase)) return [naBase];
+  // segunda tentativa: o CEP pode ter corrigido o número acima
+  if (d.cep && d.numero) {
+    const ibge = await enderecoDoIbge(d.cep, d.numero, cep ? cep.cidade : cidade);
+    if (ibge && !foraDaRegiao(ibge)) return [ibge];
+  }
   const bom = () => cands.some(c => c.precisao === 'exato' || c.precisao === 'bom');
   const naRua = () => cands.some(c => c.precisao === 'exato' || c.precisao === 'bom' || c.precisao === 'rua');
 
