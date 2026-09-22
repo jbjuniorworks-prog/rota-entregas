@@ -22,7 +22,16 @@ export type Operacao =
   | {tipo: 'correcao'; chave: string; lat: number; lng: number}
   | {tipo: 'desfazerCorrecao'; chave: string; lat: number; lng: number}
   | {tipo: 'observacao'; chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string}
-  | {tipo: 'lugar'; nomeChave: string; nome: string; cidade: string; lat: number; lng: number; endereco: string};
+  | {tipo: 'lugar'; nomeChave: string; nome: string; cidade: string; lat: number; lng: number; endereco: string}
+  | {tipo: 'registro'; rota: string; semRuas: string | null; itens: ItemRegistro[]};
+
+export interface ItemRegistro {
+  tn: string;
+  lat: number | null;
+  lng: number | null;
+  fonte: string;
+  precisao: string;
+}
 
 export interface LugarConhecido {
   nome_chave: string;
@@ -46,6 +55,7 @@ export interface ClienteNuvem {
   apagarCorrecao(chave: string, lat: number, lng: number): Promise<void>;
   inserirObservacao(o: {chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string}): Promise<void>;
   inserirLugar(l: {nomeChave: string; nome: string; cidade: string; lat: number; lng: number; endereco: string}): Promise<void>;
+  registrar(rotaId: string, semRuas: string | null, itens: ItemRegistro[]): Promise<void>;
   lugaresConhecidos(palavras: string[], cidade: string): Promise<LugarConhecido[]>;
   posicoes(chaves: string[]): Promise<PosicaoCompartilhada[]>;
 }
@@ -91,13 +101,17 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
         await c.inserirObservacao(op);
       } else if (op.tipo === 'lugar') {
         await c.inserirLugar(op);
+      } else if (op.tipo === 'registro') {
+        const id = g.ler<Record<string, string>>(CHAVES.rotasNuvem, {})[op.rota];
+        if (!id) return 'descartar';
+        await c.registrar(id, op.semRuas, op.itens);
       } else {
         await c.apagarCorrecao(op.chave, op.lat, op.lng);
       }
       return 'ok';
     } catch (e) {
       if (e instanceof ErroNuvem && !e.deRede) {
-        if (op.tipo !== 'observacao' && op.tipo !== 'lugar') erro = 'o servidor recusou um envio (' + e.message + ')';
+        if (op.tipo !== 'observacao' && op.tipo !== 'lugar' && op.tipo !== 'registro') erro = 'o servidor recusou um envio (' + e.message + ')';
         return 'descartar';
       }
       return 'rede';

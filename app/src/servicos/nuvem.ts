@@ -100,6 +100,14 @@ export function clienteNuvem(): ClienteNuvem | null {
         {onConflict: 'chave_lugar,motorista_id,dia', ignoreDuplicates: true});
       if (error) throw erro(error);
     },
+    async registrar(rotaId, semRuas, itens) {
+      if (itens.length) {
+        const {error} = await s.rpc('registrar_posicoes', {rota: rotaId, itens});
+        if (error) throw erro(error);
+      }
+      const r = await s.from('rotas').update({sem_ruas: semRuas}).eq('id', rotaId);
+      if (r.error) throw erro(r.error);
+    },
     async inserirLugar({nomeChave, nome, cidade, lat, lng, endereco}) {
       const {error} = await s.from('lugares').upsert(
         {nome_chave: nomeChave, nome, cidade, lat, lng, endereco},

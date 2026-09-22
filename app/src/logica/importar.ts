@@ -49,6 +49,7 @@ export function adicionarDaPlanilha(
       unidades: null, comercial: false, lat: temCoord ? it.lat : null, lng: temCoord ? it.lng : null,
       exibido: !temCoord ? '' : it.aproximada ? 'Posição da planilha com poucas casas decimais: pode errar em até 1 km' : 'Posição da planilha',
       precisao: !temCoord ? 'pendente' : it.aproximada ? 'aproximada' : 'planilha', candidatos: [], entregue: false,
+      fonte: temCoord ? 'planilha' : undefined,
     };
     const lembrada = aplicarMemoria(p);
     if (!lembrada && p.precisao === 'aproximada') r.aproximadas++;

@@ -175,6 +175,7 @@ describe('fila da nuvem', () => {
       async inserirObservacao(o) { if (falhas.recusar) throw new ErroNuvem(falhas.recusar, false); chamadas.push(`passagem ${o.chave} ${o.lat} ±${o.precisao}`); },
       async inserirLugar(l) { if (falhas.recusar) throw new ErroNuvem(falhas.recusar, false); chamadas.push(`lugar ${l.nomeChave} ${l.lat}`); },
       async lugaresConhecidos() { return []; },
+      async registrar() {},
       async posicoes() { return []; },
     };
     return {c, chamadas};
@@ -239,6 +240,7 @@ describe('desfazer correção já enviada', () => {
       inserirObservacao: async () => {},
       inserirLugar: async () => {},
       lugaresConhecidos: async () => [],
+      registrar: async () => {},
       posicoes: async () => [],
     };
     f.enfileirar({tipo: 'correcao', chave: 'k|1', lat: -11.5, lng: -37.5});

@@ -36,7 +36,8 @@ export function criarMemoria(g: Guarda, cidade: () => string, aoGuardar: (chave:
       const k = chave(p), r = k ? todas()[k] : undefined;
       if (!r) return false;
       const dia = new Date(r.quando).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
-      Object.assign(p, {lat: r.lat, lng: r.lng, precisao: 'lembrado', exibido: `Posição que você corrigiu em ${dia}`});
+      Object.assign(p, {lat: r.lat, lng: r.lng, precisao: 'lembrado', fonte: 'memoria do aparelho',
+        exibido: `Posição que você corrigiu em ${dia}`});
       return true;
     },
   };

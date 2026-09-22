@@ -39,7 +39,8 @@ export function aplicarCompartilhadas(
     if (r.situacao === 'confirmado' || r.minha) {
       if (perto && p.precisao === 'confirmado') continue;
       if (p.lat != null && p.lng != null) p.candidatos = [{lat: p.lat, lng: p.lng, exibido: 'Posição de antes (planilha ou busca)', precisao: p.precisao, fonte: 'original'}, ...p.candidatos.filter(c => c.fonte !== 'original')];
-      Object.assign(p, {lat: r.lat, lng: r.lng, precisao: 'confirmado', exibido: comoFoiConfirmada(r)});
+      Object.assign(p, {lat: r.lat, lng: r.lng, precisao: 'confirmado', exibido: comoFoiConfirmada(r),
+        fonte: r.minha ? 'minha correcao' : 'outro motorista'});
       delete p.sugestao;
       if (r.minha) minhas++; else confirmadas++;
     } else if (!perto) {

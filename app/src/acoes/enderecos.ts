@@ -9,6 +9,7 @@ import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos'
 import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from '../servicos/geocodificacao';
 import {e, enviarFila, fila, invalidarRota, irPara, memoria, ui} from './base';
 import {avisoCompartilhadas, consultarCompartilhadas, focar} from './posicoes';
+import {registrarComoFicou} from './registro';
 import {montarRota} from './rota';
 
 export const RAIO_REGIAO = 100000;
@@ -46,8 +47,8 @@ export async function buscarParada(p: Parada) {
   try {
     const cands = await geocodificar(p.texto, {cidade: e().cidade, googleKey: e().googleKey, perto: centroDasEntregas(), bairro: p.bairro || ''});
     p.candidatos = cands;
-    if (cands.length) Object.assign(p, {lat: cands[0].lat, lng: cands[0].lng, exibido: cands[0].exibido, precisao: cands[0].precisao});
-    else Object.assign(p, {lat: null, lng: null, exibido: '', precisao: 'nao'});
+    if (cands.length) Object.assign(p, {lat: cands[0].lat, lng: cands[0].lng, exibido: cands[0].exibido, precisao: cands[0].precisao, fonte: cands[0].fonte});
+    else Object.assign(p, {lat: null, lng: null, exibido: '', precisao: 'nao', fonte: 'nao achou'});
   } catch (err) {
     p.precisao = 'pendente';
     throw err;
@@ -73,6 +74,8 @@ export async function buscarPendentes(resumoAntes = '') {
   const resultado = erro ? 'Alguns falharam (' + erro.message + '). Toque em "Buscar pendentes".'
     : longe ? `Pronto! ⚠️ ${longe} parada(s) longe das outras entregas: confira o pino.` : 'Pronto! Confira os laranja e os vermelhos, se houver.';
   const comp = avisoCompartilhadas(await consultarCompartilhadas());
+  registrarComoFicou();
+  enviarFila();
   status((resumoAntes ? `${resumoAntes} Busca dos sem posição: ${resultado}` : resultado) + comp, resumoAntes || comp ? 15000 : longe ? 8000 : 4000);
 }
 

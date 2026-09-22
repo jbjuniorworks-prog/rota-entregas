@@ -30,6 +30,7 @@ export interface Parada {
   exibido: string;
   precisao: Precisao;
   precisaoAntes?: Precisao;
+  fonte?: string;
   candidatos: Candidato[];
   entregue: boolean;
   entregueEm?: number | null;

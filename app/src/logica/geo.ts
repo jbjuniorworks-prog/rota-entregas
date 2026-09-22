@@ -43,7 +43,8 @@ export function marcarIsoladas(paradas: Parada[]): number {
 export function moverParaOBairro(p: Parada, ponto: Ponto, bairro: string) {
   const original = {lat: p.lat!, lng: p.lng!, exibido: 'Posição que veio na planilha (longe das outras entregas)', precisao: 'longe' as const, fonte: 'planilha'};
   p.candidatos = [{lat: ponto.lat, lng: ponto.lng, exibido: `Pelo bairro ${bairro}`, precisao: 'bairro', fonte: 'bairro'}, original];
-  Object.assign(p, {lat: ponto.lat, lng: ponto.lng, precisao: 'bairro', exibido: `Posição pelo bairro ${bairro}: a planilha mandava para longe. Confira no local.`});
+  Object.assign(p, {lat: ponto.lat, lng: ponto.lng, precisao: 'bairro', fonte: 'bairro',
+    exibido: `Posição pelo bairro ${bairro}: a planilha mandava para longe. Confira no local.`});
 }
 
 export function moverPeloBairro(paradas: Parada[]): Parada[] {

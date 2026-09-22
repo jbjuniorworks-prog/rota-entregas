@@ -157,7 +157,7 @@ Levar todas para o ponto novo junto com esta?`)) juntas.push(...irmas);
   let guardou = false;
   for (const x of [p, ...juntas]) {
     delete x.sugestao;
-    Object.assign(x, {lat, lng, precisao: 'manual', exibido});
+    Object.assign(x, {lat, lng, precisao: 'manual', exibido, fonte: 'motorista'});
     guardou = memoria.lembrar(x) || guardou;
     guardarNome(x, lat, lng);
   }
@@ -197,7 +197,7 @@ export function focar(id: string) {
 export function escolherCandidato(p: Parada, k: number) {
   const c = p.candidatos[k];
   const desfazer = prepararDesfazer(p);
-  Object.assign(p, {lat: c.lat, lng: c.lng, exibido: c.exibido, precisao: c.precisao});
+  Object.assign(p, {lat: c.lat, lng: c.lng, exibido: c.exibido, precisao: c.precisao, fonte: 'escolhida na lista'});
   const guardou = memoria.lembrar(p, Date.now(), false);
   status('Local escolhido' + (guardou
     ? ' e guardado neste celular. Para valer para os outros motoristas, arraste o pino ou toque em "📍 Estou aqui" na porta.'

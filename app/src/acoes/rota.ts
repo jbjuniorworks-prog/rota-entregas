@@ -8,6 +8,7 @@ import {guarda, loja, status} from '../loja';
 import {linhaDaRota, matriz} from '../servicos/ruas';
 import {e, enviarFila, fila, invalidarRota, ui} from './base';
 import {guardarPassagem, guardarPassagens} from './posicoes';
+import {registrarComoFicou} from './registro';
 
 export function gps(aindaVale: () => boolean = () => true): Promise<void> {
   return new Promise((ok, falha) => {
@@ -48,6 +49,10 @@ export async function montarRota() {
       try { await comPrazo(gps(() => noPrazo), PRAZO_DO_GPS); } catch { noPrazo = false; e().inicio = null; }
     }
     const rota = await calcularRota(e(), {matriz, linha: linhaDaRota}, m => status(m));
+    // fica registrado se a rota saiu com as ruas de verdade ou em linha reta, e por quê:
+    // rota em linha reta parece rota ruim, e até agora só dava para descobrir perguntando ao motorista
+    registrarComoFicou(rota.porRuas ? null : rota.motivoSemRuas || 'sem motivo anotado');
+    enviarFila();
     status(rota.porRuas ? 'Rota pronta!' : 'Rota pronta (sem acesso às ruas: usei distância aproximada).', 3500);
   } catch (err) {
     status('Erro ao montar rota: ' + (err as Error).message, 5000);
