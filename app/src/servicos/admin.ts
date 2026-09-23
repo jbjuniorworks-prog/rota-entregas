@@ -158,6 +158,12 @@ export async function nomearRuas(): Promise<{trechos: number; ruas: number}> {
   return (data && data[0]) || {trechos: 0, ruas: 0};
 }
 
+export async function criarRuasDasEntregas(): Promise<{gravadas: number; pontos: number}> {
+  const {data, error} = await cliente().rpc('criar_ruas_das_entregas');
+  if (error) throw new Error(error.message);
+  return (data && data[0]) || {gravadas: 0, pontos: 0};
+}
+
 export async function confirmarPosicao(chave: string, lat: number, lng: number) {
   const {error} = await cliente().from('correcoes').insert({chave_lugar: chave, lat, lng});
   falhou(error);

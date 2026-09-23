@@ -90,6 +90,12 @@ function BaseDeRuas() {
   const nomear = async () => {
     const r = await correr('nomear', () => Adm.nomearRuas());
     if (r) status(r.trechos ? `${r.trechos} trecho(s) ganharam nome, em ${r.ruas} rua(s).` : 'Nenhum trecho novo para nomear ainda.', 6000);
+  };
+  const criar = async () => {
+    const r = await correr('criar', () => Adm.criarRuasDasEntregas());
+    if (r) status(r.gravadas
+      ? `${r.gravadas} rua(s) que nenhum mapa tinha, desenhadas com ${r.pontos} entrega(s) de vocês.`
+      : 'Nenhuma rua nova ainda: é preciso ter entregado em duas portas diferentes da mesma rua.', 8000);
     ver();
   };
   return <details open>
@@ -98,7 +104,11 @@ function BaseDeRuas() {
     {c && <>
       <div className="info">🛣️ {c.ruas_com_nome} ruas com nome · {c.trechos_sem_nome} trechos ainda sem nome{c.trechos_nossos ? ` · ${c.trechos_nossos} nomeados pelas entregas de vocês` : ''}</div>
       <div className="info">📍 {c.passagens} entregas marcadas na porta, em {c.lugares} endereços · {c.lugares_confirmados} já com posição confirmada</div>
-      <div className="linha"><button className="btn" onClick={nomear} disabled={fazendo('nomear')}>{fazendo('nomear') ? 'Nomeando…' : 'Nomear ruas com as entregas'}</button></div>
+      <div className="linha">
+        <button className="btn" onClick={nomear} disabled={fazendo('nomear')}>{fazendo('nomear') ? 'Nomeando…' : 'Nomear ruas com as entregas'}</button>
+        <button className="btn" onClick={criar} disabled={fazendo('criar')}>{fazendo('criar') ? 'Desenhando…' : 'Criar rua que falta no mapa'}</button>
+      </div>
+      <div className="info">A segunda cria o trecho de uma rua que <b>não existe em mapa nenhum</b>, usando as entregas já feitas nela. Precisa de duas portas diferentes da mesma rua.</div>
       <div className="info">Para trazer (ou atualizar) as ruas de uma cidade, no computador: <code>npm run ruas -- Aracaju</code>.</div>
     </>}
   </details>;

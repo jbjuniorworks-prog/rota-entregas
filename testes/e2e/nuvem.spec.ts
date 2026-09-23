@@ -7,6 +7,7 @@ const env = existsSync('.env')
 const URL = env.SUPABASE_URL, SERVICO = env.SUPABASE_SERVICE_ROLE_KEY;
 const EMAIL = 'juniorpiks+motorista-teste@hotmail.com';
 const SENHA = 'Teste-' + Math.random().toString(36).slice(2) + '-9Z';
+const RUA_TESTE = 'rua so de teste automatizado';
 
 async function api(caminho: string, init: RequestInit = {}, chave = SERVICO) {
   const r = await fetch(URL + caminho, {...init, headers: {apikey: SERVICO, Authorization: `Bearer ${chave}`, 'Content-Type': 'application/json', Prefer: 'return=representation', ...(init.headers || {})}});
@@ -21,6 +22,7 @@ async function apagarMotoristaDeTeste() {
   await api(`/rest/v1/correcoes?motorista_id=eq.${u.id}`, {method: 'DELETE'});
   await api(`/rest/v1/observacoes?motorista_id=eq.${u.id}`, {method: 'DELETE'});
   await api(`/rest/v1/lugares?motorista_id=eq.${u.id}`, {method: 'DELETE'});
+  await api(`/rest/v1/ruas?nome_chave=eq.${encodeURIComponent(RUA_TESTE)}&fonte=eq.entregas`, {method: 'DELETE'});
   await api(`/rest/v1/rotas?motorista_id=eq.${u.id}`, {method: 'DELETE'});
   await api(`/auth/v1/admin/users/${u.id}`, {method: 'DELETE'});
 }
@@ -101,5 +103,42 @@ test.describe('nuvem @nuvem', () => {
 
     // CEP sobre o qual ninguém ensinou nada não inventa resposta
     expect((await api('/rest/v1/rpc/ancoras_de_cep', {method: 'POST', body: JSON.stringify({ceps: ['49098888']})}, token)).corpo).toHaveLength(0);
+  });
+
+  test('a rua que nenhum mapa tem nasce das entregas feitas nela', async ({page}) => {
+    await page.goto('./');
+    await page.getByLabel('E-mail').fill(EMAIL);
+    await page.getByLabel('Senha', {exact: true}).fill(SENHA);
+    await page.getByRole('button', {name: 'Entrar', exact: true}).click();
+    await expect(page.getByText('Conectado como Motorista Teste')).toBeVisible();
+    const token = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-auth') || '{}').access_token);
+
+    const passagem = (porta: string, lat: number, lng: number) => api('/rest/v1/observacoes', {method: 'POST', body: JSON.stringify({
+      chave_lugar: porta, lat, lng, precisao_m: 12, rua: 'Rua Só De Teste Automatizado', rua_chave: RUA_TESTE,
+    })}, token);
+
+    // uma porta só não desenha rua: é assim que nome mal lido é barrado
+    expect((await passagem('49097001|10', -10.9450, -37.0820)).status).toBe(201);
+    await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({papel: 'admin'})});
+    let r = await api('/rest/v1/rpc/criar_ruas_das_entregas', {method: 'POST', body: JSON.stringify({vao_maximo: 2000, apenas: [RUA_TESTE]})}, token);
+    expect(r.status).toBe(200);
+    expect(r.corpo[0].gravadas).toBe(0);
+
+    // a segunda porta confirma o nome, e aí a rua nasce
+    expect((await passagem('49097001|40', -10.9455, -37.0825)).status).toBe(201);
+    r = await api('/rest/v1/rpc/criar_ruas_das_entregas', {method: 'POST', body: JSON.stringify({vao_maximo: 2000, apenas: [RUA_TESTE]})}, token);
+    expect(r.corpo[0].gravadas).toBe(1);
+
+    const [rua] = (await api(`/rest/v1/ruas?nome_chave=eq.${encodeURIComponent(RUA_TESTE)}&select=nome,cidade,bairro,linha,fonte,lat,lng`)).corpo;
+    expect(rua.fonte).toBe('entregas');
+    expect(rua.nome).toBe('Rua Só De Teste Automatizado');
+    expect(rua.cidade).toBe('Aracaju');
+    expect(rua.linha).toHaveLength(2);
+    expect(rua.lat).toBeCloseTo(-10.94525, 4);
+
+    // rodar de novo não duplica: atualiza a mesma
+    r = await api('/rest/v1/rpc/criar_ruas_das_entregas', {method: 'POST', body: JSON.stringify({vao_maximo: 2000, apenas: [RUA_TESTE]})}, token);
+    expect(r.corpo[0].gravadas).toBe(1);
+    expect((await api(`/rest/v1/ruas?nome_chave=eq.${encodeURIComponent(RUA_TESTE)}&select=id`)).corpo).toHaveLength(1);
   });
 });
