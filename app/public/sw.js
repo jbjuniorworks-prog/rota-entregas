@@ -31,7 +31,7 @@ self.addEventListener('fetch', e => {
     return;
   }
   // o arquivo de endereços do IBGE tem versão no nome: uma vez guardado, nunca mais baixa
-  if (/\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.(js|css|woff2?)$/.test(url.pathname) || /\/[a-z]+-v\d+\.bin$/.test(url.pathname)) {
+  if (/\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.(js|css|woff2?)$/.test(url.pathname) || /\/[a-z][a-z-]*-v\d+\.bin$/.test(url.pathname)) {
     e.respondWith(caches.match(e.request).then(guardado => guardado || fetch(e.request).then(r => {
       const copia = r.clone();
       caches.open(VERSAO).then(c => c.put(e.request, copia));

@@ -1,16 +1,35 @@
-// Gera o arquivo de endereços de Aracaju a partir do CNEFE do IBGE (Censo 2022).
-// São 307 mil endereços com CEP, número e coordenada — dado público, aberto.
-// Uso: npm run cnefe            (baixa do IBGE e gera app/public/aracaju-v1.bin)
-//      npm run cnefe -- arquivo.csv   (usa um CSV já baixado)
+// Gera o arquivo de endereços de uma cidade a partir do CNEFE do IBGE (Censo 2022):
+// CEP, número e coordenada de cada porta — dado público, aberto, que fica dentro do app.
+// Uso: npm run cnefe                                  (Aracaju)
+//      npm run cnefe -- "Nossa Senhora do Socorro"    (qualquer município de Sergipe)
+//      npm run cnefe -- arquivo.csv Aracaju           (usa um CSV já baixado)
 import {createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {inflateRawSync} from 'node:zlib';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DESTINO = join(RAIZ, 'app', 'public', 'aracaju-v1.bin');
-const FONTE = 'https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos'
-  + '/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/28_SE/2800308_ARACAJU.zip';
+const PASTA = 'https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos'
+  + '/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/28_SE/';
+
+// o mesmo apelido que o app usa para achar o arquivo da cidade
+export const apelido = nome => String(nome || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .toLowerCase().split(/[,\/]/)[0].trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+// o mesmo que o normal() do app: é assim que o cabeçalho guarda o nome da cidade
+const normalizado = nome => String(nome || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .toLowerCase().split(/[,\/]/)[0].replace(/\s+/g, ' ').trim();
+
+// o IBGE nomeia o arquivo pelo código do município; pergunta a ele em vez de chutar
+async function arquivoDoIbge(cidade) {
+  const r = await fetch(PASTA);
+  if (!r.ok) throw new Error('o IBGE respondeu ' + r.status + ' ao listar os municípios');
+  const nomes = [...(await r.text()).matchAll(/(\d{7}_[A-Z0-9_ÀÁÂÃÇÉÊÍÓÔÕÚ]+)\.zip/g)].map(m => m[1]);
+  const querida = apelido(cidade);
+  const achado = nomes.find(n => apelido(n.slice(8)) === querida);
+  if (!achado) throw new Error(`não achei "${cidade}" em Sergipe. Tem ${nomes.length} municípios lá.`);
+  return {url: PASTA + achado + '.zip', codigo: achado.slice(0, 7)};
+}
 // O vizinho só serve de resposta até esta distância em números: medido com 108 mil casos,
 // até 20 o erro fica em 19 m na mediana; de 21 a 50 pula para 42 m e piora rápido.
 export const SALTO_MAXIMO = 20;
@@ -28,10 +47,10 @@ function descompactar(zip) {
   return metodo === 0 ? dados : inflateRawSync(dados);
 }
 
-async function pegarCsv(argumento) {
-  if (argumento) return readFileSync(argumento, 'utf8');
-  process.stdout.write('Baixando o CNEFE do IBGE... ');
-  const r = await fetch(FONTE);
+async function pegarCsv(cidade) {
+  const {url, codigo} = await arquivoDoIbge(cidade);
+  process.stdout.write(`Baixando o CNEFE de ${cidade} (IBGE ${codigo})... `);
+  const r = await fetch(url);
   if (!r.ok) throw new Error('o IBGE respondeu ' + r.status);
   const zip = Buffer.from(await r.arrayBuffer());
   console.log((zip.length / 1048576).toFixed(1) + ' MB');
@@ -47,7 +66,7 @@ function varint(saida, v) {
   } while (v);
 }
 
-export function montar(csv) {
+export function montar(csv, cidade = 'Aracaju') {
   const linhas = csv.split(/\r?\n/);
   const col = linhas[0].split(';');
   const ix = n => {
@@ -105,7 +124,7 @@ export function montar(csv) {
     cep = r.cep; numero = r.numero; lat = r.lat; lng = r.lng;
   }
   const cabeca = JSON.stringify({
-    v: 1, fonte: 'CNEFE/IBGE Censo 2022', cidade: 'aracaju',
+    v: 1, fonte: 'CNEFE/IBGE Censo 2022', cidade: normalizado(cidade),
     enderecos: regs.length, saltoMaximo: SALTO_MAXIMO, bairros, ruas,
   });
   return {
@@ -115,11 +134,15 @@ export function montar(csv) {
   };
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const csv = await pegarCsv(process.argv[2]);
-  const {arquivo, enderecos, predios, bairros, ruas} = montar(csv);
-  mkdirSync(dirname(DESTINO), {recursive: true});
-  writeFileSync(DESTINO, arquivo);
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const args = process.argv.slice(2);
+  const local = args[0] && /\.csv$/i.test(args[0]) ? args.shift() : null;
+  const cidade = args.join(' ').trim() || 'Aracaju';
+  const csv = local ? readFileSync(local, 'utf8') : await pegarCsv(cidade);
+  const {arquivo, enderecos, predios, bairros, ruas} = montar(csv, cidade);
+  const destino = join(RAIZ, 'app', 'public', `${apelido(cidade)}-v1.bin`);
+  mkdirSync(dirname(destino), {recursive: true});
+  writeFileSync(destino, arquivo);
   console.log(`${enderecos} endereços (${predios} prédios), ${ruas} ruas, ${bairros} bairros`);
-  console.log(`${(arquivo.length / 1024).toFixed(0)} KB em ${DESTINO.replace(RAIZ, '.')}`);
+  console.log(`${(arquivo.length / 1024).toFixed(0)} KB em ${destino.replace(RAIZ, '.')}`);
 }

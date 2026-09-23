@@ -5,7 +5,10 @@ import {haversine} from '../logica/geo';
 import {chaveBairro, chaveRua, jeitosDeLerBairro, normal, tipoDaRua} from '../logica/texto';
 import type {Candidato, Ponto} from '../logica/tipos';
 
-const ARQUIVO = 'aracaju-v1.bin';
+// Um arquivo por cidade: aracaju-v1.bin, nossa-senhora-do-socorro-v1.bin… O mesmo apelido que
+// `npm run cnefe` usa para gravar. Cidade sem arquivo responde 404 e o app segue sem o censo.
+export const apelidoDaCidade = (cidade: string) =>
+  normal(cidade).split(/[,\/]/)[0].trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 export interface AchadoIbge {
   lat: number;
@@ -31,7 +34,7 @@ interface Tabela {
   predios: Uint8Array;
 }
 
-let carregando: Promise<Tabela | null> | null = null;
+const tabelas = new Map<string, Promise<Tabela | null>>();
 
 export function lerTabela(bruto: Uint8Array): Tabela {
   const quebra = bruto.indexOf(10);
@@ -111,24 +114,29 @@ export function procurar(t: Tabela, cep: string, numero: number): AchadoIbge | n
   };
 }
 
-export function tabela(): Promise<Tabela | null> {
-  if (!carregando) {
-    carregando = (async () => {
-      const r = await fetch(import.meta.env.BASE_URL + ARQUIVO);
+export function tabela(cidade = 'Aracaju'): Promise<Tabela | null> {
+  const nome = apelidoDaCidade(cidade) || 'aracaju';
+  let pedido = tabelas.get(nome);
+  if (!pedido) {
+    pedido = (async () => {
+      const r = await fetch(import.meta.env.BASE_URL + nome + '-v1.bin');
+      // cidade sem censo gerado: guardar o "não tem" evita perguntar a cada endereço
+      if (r.status === 404) return null;
       if (!r.ok) throw new Error('não baixou (' + r.status + ')');
       return lerTabela(new Uint8Array(await r.arrayBuffer()));
     })().catch(() => {
       // sem sinal na primeira tentativa não pode condenar a sessão inteira: tenta de novo depois
-      carregando = null;
+      tabelas.delete(nome);
       return null;
     });
+    tabelas.set(nome, pedido);
   }
-  return carregando;
+  return pedido;
 }
 
 export async function enderecoDoIbge(cep: string, numero: string, cidade: string,
   soExato = false): Promise<Candidato | null> {
-  const t = await tabela();
+  const t = await tabela(cidade);
   if (!t) return null;
   const daCidade = normal(String(cidade || '').split(/[,\-\/]/)[0]);
   if (daCidade && daCidade !== t.cidade) return null;
@@ -197,7 +205,7 @@ export function procurarRua(t: Tabela, rua: string, numero: number, perto: Ponto
 
 export async function ruaDoIbge(rua: string, numero: string, cidade: string,
   perto: Ponto | null, bairro = ''): Promise<Candidato | null> {
-  const t = await tabela();
+  const t = await tabela(cidade);
   if (!t) return null;
   const daCidade = normal(String(cidade || '').split(/[,\-\/]/)[0]);
   if (daCidade && daCidade !== t.cidade) return null;
@@ -283,7 +291,7 @@ export function acharAncoraDoBairro(t: Tabela, bairro: string): Ancora | null {
 }
 
 export async function ancoraDoIbge(cep: string | null, bairro: string, cidade: string): Promise<Ancora | null> {
-  const t = await tabela();
+  const t = await tabela(cidade);
   if (!t) return null;
   const daCidade = normal(String(cidade || '').split(/[,\-\/]/)[0]);
   if (daCidade && daCidade !== t.cidade) return null;

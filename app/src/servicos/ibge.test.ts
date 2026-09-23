@@ -1,7 +1,7 @@
-import {readFileSync} from 'node:fs';
+import {readFileSync, readdirSync} from 'node:fs';
 import {describe, expect, it} from 'vitest';
 import {montar} from '../../../ferramentas/cnefe.mjs';
-import {acharAncoraDoBairro, lerTabela, procurar, procurarRua} from './ibge';
+import {acharAncoraDoBairro, apelidoDaCidade, lerTabela, procurar, procurarRua} from './ibge';
 
 const CABECA = 'COD_UNICO_ENDERECO;COD_UF;COD_MUNICIPIO;COD_DISTRITO;COD_SUBDISTRITO;COD_SETOR;NUM_QUADRA;'
   + 'NUM_FACE;CEP;DSC_LOCALIDADE;NOM_TIPO_SEGLOGR;NOM_TITULO_SEGLOGR;NOM_SEGLOGR;NUM_ENDERECO;DSC_MODIFICADOR;'
@@ -165,5 +165,36 @@ describe('âncora do bairro (piso de sanidade)', () => {
 
   it('bairro que não é da cidade não vira âncora', () => {
     expect(acharAncoraDoBairro(t(), 'Boa Viagem')).toBeNull();
+  });
+});
+
+describe('um arquivo de censo por cidade', () => {
+  it('o apelido da cidade é o nome do arquivo, e aguenta o campo sujo', () => {
+    expect(apelidoDaCidade('Aracaju')).toBe('aracaju');
+    expect(apelidoDaCidade('Aracaju, SE')).toBe('aracaju');
+    expect(apelidoDaCidade('Nossa Senhora do Socorro')).toBe('nossa-senhora-do-socorro');
+    expect(apelidoDaCidade('São Cristóvão')).toBe('sao-cristovao');
+    expect(apelidoDaCidade('Barra dos Coqueiros')).toBe('barra-dos-coqueiros');
+  });
+
+  it('todo arquivo que vai junto no app abre, diz a sua cidade e está em Sergipe', () => {
+    const arquivos = readdirSync('app/public').filter(n => n.endsWith('-v1.bin'));
+    expect(arquivos.length).toBeGreaterThanOrEqual(4);
+    for (const nome of arquivos) {
+      const t = lerTabela(new Uint8Array(readFileSync('app/public/' + nome)));
+      // o nome do arquivo tem que ser o apelido da cidade que está dentro dele
+      expect(nome).toBe(apelidoDaCidade(t.cidade) + '-v1.bin');
+      expect(t.ceps.length).toBeGreaterThan(1000);
+      // os CEPs têm que estar em ordem, senão a busca binária mente
+      let foraDeOrdem = 0;
+      for (let i = 1; i < t.ceps.length; i++) if (t.ceps[i] < t.ceps[i - 1]) foraDeOrdem++;
+      expect(foraDeOrdem, nome).toBe(0);
+      for (let i = 0; i < t.lats.length; i += 97) {
+        expect(t.lats[i] / 1e6, nome).toBeGreaterThan(-11.6);
+        expect(t.lats[i] / 1e6, nome).toBeLessThan(-9.5);
+        expect(t.lngs[i] / 1e6, nome).toBeGreaterThan(-38.3);
+        expect(t.lngs[i] / 1e6, nome).toBeLessThan(-36.3);
+      }
+    }
   });
 });

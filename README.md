@@ -26,6 +26,10 @@ Nenhuma posição pode cair longe do bairro do endereço — o censo do IBGE dá
 - `ferramentas/ruas.mjs`: copia as ruas de uma cidade do OpenStreetMap para a nossa base
   (`npm run ruas -- Aracaju "Nossa Senhora do Socorro"`). Na aba Admin dá para nomear, com as
   entregas dos motoristas, os trechos que vieram sem nome.
+- `ferramentas/cnefe.mjs`: baixa o censo de endereços do IBGE de um município e gera o arquivo que
+  o app carrega sozinho (`npm run cnefe -- "Nossa Senhora do Socorro"`). Um arquivo por cidade em
+  `app/public/<cidade>-v1.bin`; hoje vão junto Aracaju, N. S. do Socorro, São Cristóvão e Barra dos
+  Coqueiros. Cidade sem arquivo simplesmente não tem essa camada — o resto do app segue igual.
 - `ferramentas/motoristas.mjs`: criar conta, trocar senha, desativar
   (`npm run motoristas -- listar | criar email Nome | senha email | desativar email | ativar email`).
   Precisa do `.env` com `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`, fora do git.
