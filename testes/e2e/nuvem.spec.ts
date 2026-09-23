@@ -141,4 +141,41 @@ test.describe('nuvem @nuvem', () => {
     expect(r.corpo[0].gravadas).toBe(1);
     expect((await api(`/rest/v1/ruas?nome_chave=eq.${encodeURIComponent(RUA_TESTE)}&select=id`)).corpo).toHaveLength(1);
   });
+
+  test('a origem de cada posição chega ao banco', async ({page}) => {
+    await page.goto('./');
+    await page.getByLabel('E-mail').fill(EMAIL);
+    await page.getByLabel('Senha', {exact: true}).fill(SENHA);
+    await page.getByRole('button', {name: 'Entrar', exact: true}).click();
+    await expect(page.getByText('Conectado como Motorista Teste')).toBeVisible();
+    const token = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-auth') || '{}').access_token);
+
+    const rota = (await api('/rest/v1/rotas', {method: 'POST', body: JSON.stringify({at_id: 'ATREGISTRO001'})}, token)).corpo[0];
+    await api('/rest/v1/pacotes', {method: 'POST', body: JSON.stringify([
+      {rota_id: rota.id, spx_tn: 'BRTESTE0001', endereco: 'Rua de Teste, 10'},
+    ])}, token);
+
+    // é isto que o app faz ao fim da busca de endereços; sem a permissão de coluna ele
+    // devolvia 0 e a fila descartava calada, deixando fonte e precisao nulos para sempre
+    const r = await api('/rest/v1/rpc/registrar_posicoes', {method: 'POST', body: JSON.stringify({
+      rota: rota.id,
+      itens: [{tn: 'BRTESTE0001', lat: -10.95, lng: -37.05, fonte: 'IBGE', precisao: 'bom'}],
+    })}, token);
+    expect(r.status).toBe(200);
+    expect(r.corpo, 'o registro tem de alcançar o pacote').toBe(1);
+
+    const [p] = (await api(`/rest/v1/pacotes?rota_id=eq.${rota.id}&select=lat,lng,fonte,precisao`)).corpo;
+    expect(p.fonte).toBe('IBGE');
+    expect(p.precisao).toBe('bom');
+    expect(p.lat).toBeCloseTo(-10.95, 4);
+
+    // e não deixa mexer em rota de outro motorista
+    const outra = (await api('/rest/v1/rotas?select=id&at_id=neq.ATREGISTRO001&limit=1')).corpo[0];
+    if (outra) {
+      const alheia = await api('/rest/v1/rpc/registrar_posicoes', {method: 'POST', body: JSON.stringify({
+        rota: outra.id, itens: [{tn: 'X', lat: 0, lng: 0, fonte: 'x', precisao: 'x'}],
+      })}, token);
+      expect(alheia.corpo, 'não pode escrever na rota de outro').toBe(0);
+    }
+  });
 });
