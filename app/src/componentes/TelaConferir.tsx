@@ -1,5 +1,5 @@
 import * as A from '../acoes';
-import {DUVIDA, NO_NUMERO} from '../logica/rotulos';
+import {DUVIDA, NO_NUMERO, ROTULO} from '../logica/rotulos';
 import type {Parada} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
 import {rotuloDe} from '../logica/rotulo';
@@ -40,7 +40,8 @@ function ItemConferir({p}: {p: Parada}) {
       <div className="badge" style={{background: a.cor}}>{rotuloDe(p)}</div>
       <div className="txt">
         <div className="orig">{p.texto}</div><Meta p={p} />
-        {p.exibido && <div className="achado">📍 {p.exibido}</div>}
+        {/* a etiqueta colorida já diz isto; repetir a mesma frase logo acima é ruído em cada um dos 83 cartões */}
+        {p.exibido && p.exibido !== ROTULO[p.precisao] && <div className="achado">📍 {p.exibido}</div>}
         <Tag p={p} />
       </div>
     </div>

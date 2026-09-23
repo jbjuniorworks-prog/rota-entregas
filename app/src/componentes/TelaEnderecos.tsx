@@ -23,9 +23,13 @@ export function TelaEnderecos() {
     <div className="info">Faça uma área (cor do app) por vez: escolha a cor abaixo, tire print da lista dessa área e adicione.</div>
     <label htmlFor="cidade">Cidade padrão</label>
     <input type="text" id="cidade" placeholder="Ex.: Aracaju, SE" defaultValue={e.cidade} onChange={ev => A.mudar(() => { e.cidade = ev.target.value.trim(); e.regiao = null; })} />
+    {/* com a cidade escrita e sem região, quem faltou foi o mapa (sem sinal), não o motorista:
+        mandar "preencha a cidade" com a cidade preenchida logo acima só faz duvidar da tela */}
     <div className="info">{e.regiao
       ? `🔎 Só procuro endereço até ${Math.round(e.regiao.raio / 1000)} km de ${e.regiao.nome === 'entregas' ? 'onde você entrega' : e.regiao.nome}. Rua de mesmo nome em outro estado é descartada.`
-      : '🔎 Preencha a cidade acima. Sem ela, uma rua de mesmo nome em outro estado pode entrar na rota.'}</div>
+      : e.cidade
+        ? `🔎 Ainda não confirmei ${e.cidade} no mapa (sem sinal?). Vou procurar perto das suas entregas assim que a primeira tiver posição.`
+        : '🔎 Preencha a cidade acima. Sem ela, uma rua de mesmo nome em outro estado pode entrar na rota.'}</div>
     <label>Área</label>
     <div className="chips">
       {e.areas.map(x => <ChipArea key={x.id} a={x} on={x.id === a.id} onClick={() => A.mudar(() => { e.areaAtual = x.id; })} />)}
