@@ -180,6 +180,13 @@ async function abrirLeitor() {
 
 async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo: string): Promise<string[]> {
   aviso(`Lendo os endereços…${rotulo}`);
+  // O leitor joga um erro solto na página quando recebe algo que não é imagem. Barrar aqui é
+  // mais honesto: o arquivo é que não abre, e isso vira um aviso em vez de sujeira no console.
+  try {
+    (await createImageBitmap(blob)).close();
+  } catch {
+    throw new Error('este arquivo não abre como imagem');
+  }
   const tratada = await prepararImagem(blob, doVideo ? 1000 : 1700);
   const tentativas = doVideo
     ? [{imagem: tratada, psm: '4'}, {imagem: blob, psm: '3'}]
@@ -214,27 +221,42 @@ export async function lerArquivos(files: Arquivo[], aviso: Aviso): Promise<strin
     } else imagens.push({blob: f, doVideo: false});
   }
   if (imagens.length || videos.length) {
-    let worker = await abrirLeitor(), lidas = 0;
+    let worker = await abrirLeitor(), lidas = 0, falhas = 0;
     const descansar = async () => {
       if (++lidas % 8) return;
-      await worker.terminate();
-      worker = await abrirLeitor();
+      // o novo primeiro: se abrir falhar, seguimos com o que já estava funcionando em vez de
+      // ficar com um leitor morto e perder todo o resto da gravação
+      try {
+        const novo = await abrirLeitor();
+        await worker.terminate();
+        worker = novo;
+      } catch {}
+    };
+    // Uma parte ruim não pode levar embora as que já foram lidas: numa gravação com trinta
+    // quadros, um tropeço de sinal custava a rota inteira.
+    const ler = async (img: Imagem, rotulo: string) => {
+      try { grupos.push(await lerUma(worker, img, aviso, rotulo)); } catch { falhas++; }
+      await descansar();
     };
     try {
       for (let i = 0; i < imagens.length; i++) {
-        grupos.push(await lerUma(worker, imagens[i], aviso, imagens.length > 1 ? ` (${i + 1} de ${imagens.length})` : ''));
-        await descansar();
+        await ler(imagens[i], imagens.length > 1 ? ` (${i + 1} de ${imagens.length})` : '');
       }
       for (const f of videos) {
-        const {rapido} = await quadrosDoVideo(f, aviso, async (quadro, n, total) => {
-          grupos.push(await lerUma(worker, {blob: quadro, doVideo: true}, aviso, ` (parte ${n} de ${total})`));
-          await descansar();
-        });
-        if (rapido) avisos.push('Parte do vídeo rolou rápido demais: confira se faltou alguma parada.');
+        try {
+          const {rapido} = await quadrosDoVideo(f, aviso, (quadro, n, total) =>
+            ler({blob: quadro, doVideo: true}, ` (parte ${n} de ${total})`));
+          if (rapido) avisos.push('Parte do vídeo rolou rápido demais: confira se faltou alguma parada.');
+        } catch (err) {
+          avisos.push(`Um vídeo não deu para abrir (${(err as Error).message}).`);
+        }
       }
     } finally {
-      await worker.terminate();
+      await worker.terminate().catch(() => {});
     }
+    if (falhas) avisos.push(falhas === lidas
+      ? `Nenhuma das ${falhas} parte(s) deu para ler. Se estava sem sinal, tente de novo com internet.`
+      : `${falhas} parte(s) não deram para ler: confira se faltou alguma parada.`);
   }
   return Object.assign(juntarQuadros(grupos), {avisos});
 }

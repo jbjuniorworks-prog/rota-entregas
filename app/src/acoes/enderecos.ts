@@ -132,9 +132,14 @@ export async function lerPrints(files: File[], textoAtual: string): Promise<stri
   status('Carregando leitor de texto (a primeira vez demora)…');
   try {
     const unicos = await lerArquivos(files, m => status(m));
+    // sem nenhum endereço o app culpava a gravação; quando a leitura é que falhou, o aviso dela
+    // é que tem de aparecer, senão o motorista grava tudo de novo à toa
+    const avisos = unicos.avisos.map(a => ' ⚠️ ' + a).join('');
     status(unicos.length
-      ? `${unicos.length} endereço(s) lido(s). Confira o texto e toque em "Adicionar".${unicos.avisos.map(a => ' ⚠️ ' + a).join('')}`
-      : 'Não achei endereços. Use o print ou a gravação da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
+      ? `${unicos.length} endereço(s) lido(s). Confira o texto e toque em "Adicionar".${avisos}`
+      : avisos
+        ? `Não consegui ler.${avisos}`
+        : 'Não achei endereços. Use o print ou a gravação da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
     return (textoAtual.trim() ? textoAtual.trim() + '\n' : '') + unicos.join('\n');
   } catch (err) {
     status('Não consegui ler a imagem: ' + (err as Error).message, 5000);

@@ -62,5 +62,7 @@ neste clone) e na publicação. Em caso de engano: `git commit --no-verify`.
 ## Testes e publicação
 
 - `npm run tipos`, `npm run test:unidade`, `npm test` (e2e sobre o build, com a nuvem simulada).
+- `npm run test:leitor`: o leitor de texto de verdade (baixa o modelo do CDN), incluindo sem sinal.
+  Fica fora do `npm test` para o CI não depender de rede de fora.
 - `npm run test:nuvem`: contra o banco de verdade (cria e apaga usuários de teste).
 - Cada push na `main` roda os testes no GitHub Actions e, se passarem, publica no GitHub Pages.

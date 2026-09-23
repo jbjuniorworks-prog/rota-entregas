@@ -7,7 +7,7 @@
     "motoristas": "node ferramentas/motoristas.mjs",
     "test:unidade": "vitest run",
     "tipos": "tsc -p .",
-    "test": "playwright test --grep-invert @nuvem",
+    "test": "playwright test --grep-invert \"@nuvem|@leitor\"",
     "test:nuvem": "playwright test --grep @nuvem --workers 1",
     "dev": "vite",
     "build": "vite build",
@@ -16,7 +16,8 @@
     "restaurar": "node ferramentas/restaurar.mjs",
     "cnefe": "node ferramentas/cnefe.mjs",
     "bairros": "node ferramentas/bairros.mjs",
-    "prefeitura": "node ferramentas/prefeitura.mjs"
+    "prefeitura": "node ferramentas/prefeitura.mjs",
+    "test:leitor": "playwright test --grep @leitor --workers 1"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",
