@@ -41,6 +41,8 @@ textarea{min-height:140px;resize:vertical}
 .tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;color:#fff;margin-top:4px}
 .aviso{background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:10px;font-size:14px;margin:10px 0}
 .aviso.laranja{background:#ffedd5;border-color:#fb923c}
+/* estimativa de antes das correções: dá para ler, não dá para confundir com a de agora */
+.velho{opacity:.45}
 .info{font-size:14px;color:var(--mut)}
 .proxima{background:#f8fafc;border:3px solid var(--pri);border-radius:14px;padding:12px;margin-bottom:12px}
 .grande{font-size:19px;font-weight:700;margin:4px 0}

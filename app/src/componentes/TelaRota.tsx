@@ -88,6 +88,8 @@ export function TelaRota() {
     return <><ConfigInicio />{semLocal > 0 && <div className="aviso">{semLocal} parada(s) sem local ficarão fora da rota. Corrija em <b>2. Conferir</b>.</div>}<Adiadas /><BotaoResetar /></>;
   }
   const R = e.rota;
+  // número velho com cara de velho: as posições mudaram, a ordem vale, o relógio não
+  const velho = R.desatualizada ? 'velho' : '';
   const naRota = new Set(R.areas.flatMap(a => a.ordem));
   const foraDaRota = e.paradas.filter(p => !p.entregue && !p.adiada && p.lat != null && !naRota.has(p.id)).length;
   const adiadas = e.paradas.filter(p => p.adiada && !p.entregue);
@@ -168,10 +170,15 @@ export function TelaRota() {
   return <>
     <div className="resumo">
       <div className="barra"><i style={{width: `${todasRota.length ? Math.round(feitasRota * 100 / todasRota.length) : 0}%`}} /></div>
-      <div><b>{feitasRota}/{todasRota.length}</b> entregas · {fmtKm(R.dist)} · {fmtMin(R.dur)} dirigindo{fimTudo ? <> · fim <b>~{hhmm(fimTudo.fim)}</b></> : null}{R.porRuas ? '' : ' · aproximado'}{esperando > 0 ? ` · ⏳ ${esperando} para enviar${haQuanto ? ` (${haQuanto})` : ''}` : ''}</div>
+      <div><b>{feitasRota}/{todasRota.length}</b> entregas · <span className={velho}>{fmtKm(R.dist)} · {fmtMin(R.dur)} dirigindo{fimTudo ? <> · fim <b>~{hhmm(fimTudo.fim)}</b></> : null}</span>{R.porRuas ? '' : ' · aproximado'}{esperando > 0 ? ` · ⏳ ${esperando} para enviar${haQuanto ? ` (${haQuanto})` : ''}` : ''}</div>
     </div>
     {proxima}
     {!R.porRuas && <div className="aviso laranja">🟠 Esta sequência saiu <b>sem as ruas</b>{R.motivoSemRuas ? ` (${R.motivoSemRuas})` : ''}: usei distância em linha reta, que não sabe de mão única nem de canteiro. <button className="btn peq pri" onClick={A.montarRota}>Tentar de novo</button></div>}
+    {R.desatualizada && <div className={`aviso${R.mudouMuito ? ' laranja' : ''}`}>
+      {R.mudouMuito
+        ? '📍 Uma posição mudou de lugar de verdade depois que a rota foi montada: a sequência pode não valer mais.'
+        : '📍 As posições mudaram depois que a rota foi montada: a sequência continua valendo, o tempo e a distância é que são de antes.'}
+      {' '}<button className="btn peq pri" onClick={A.montarRota}>Refazer rota</button></div>}
     {semLocal > 0 && <div className="aviso">{semLocal} parada(s) não encontrada(s) ficaram fora da rota. Corrija em <b>2. Conferir</b>.</div>}
     {foraDaRota > 0 && <div className="aviso">{foraDaRota} parada(s) nova(s) ou corrigida(s) fora da rota. <button className="btn peq pri" onClick={A.montarRota}>Refazer rota</button></div>}
     <details>
@@ -200,7 +207,7 @@ export function TelaRota() {
         const perna = e.pernas[b[0]];
         return <div className="item" key={b[0]}>
           <div className="bloco-cab">
-            <span style={{flex: 1}}>Parada {k + 1}{b.length > 1 ? ` · ${b.length} entregas ${mesmoEndereco(bp.map(p => p.texto)) ? 'no mesmo endereço' : 'perto'}` : ''}{perna && perna.dur ? ` · 🚗 ${fmtMin(perna.dur)}` : ''}</span>
+            <span style={{flex: 1}}>Parada {k + 1}{b.length > 1 ? ` · ${b.length} entregas ${mesmoEndereco(bp.map(p => p.texto)) ? 'no mesmo endereço' : 'perto'}` : ''}{perna && perna.dur ? <span className={velho}> · 🚗 {fmtMin(perna.dur)}</span> : null}</span>
             {pend.length ? <>
               {pend.length > 1 && <button className="btn peq ok" onClick={() => A.entregarTodas(pend)}>✓ todas</button>}
               <a className="btn peq waze" href={linkWaze(pend[0] as Ponto)} target="_blank" rel="noopener">Waze</a>
@@ -217,12 +224,12 @@ export function TelaRota() {
           <span className="dot" />
           <span className="txt">{i + 1}. {a.nome}{a.prazo ? ' · até ' + a.prazo : ''}</span>
           <span className="info">{feitas}/{ps.length}</span>
-          {pa && <span className="info" style={{color: pa.estoura ? 'var(--bad)' : 'var(--mut)'}}>{pa.estoura ? '⚠ ' : '~'}{hhmm(pa.fim)}</span>}
+          {pa && <span className={`info ${velho}`} style={{color: pa.estoura ? 'var(--bad)' : 'var(--mut)'}}>{pa.estoura ? '⚠ ' : '~'}{hhmm(pa.fim)}</span>}
           <button className="btn peq" disabled={i === 0} aria-label="Subir área" onClick={() => A.moverArea(a.id, -1)}>▲</button>
           <button className="btn peq" disabled={i === R.areas.length - 1} aria-label="Descer área" onClick={() => A.moverArea(a.id, 1)}>▼</button>
         </div>
         {feitas === ps.length ? <div className="info">✓ Área concluída.</div> : <>
-          <div className="info">{fmtKm(ra.dist)} · {fmtMin(ra.dur)}</div>
+          <div className={`info ${velho}`}>{fmtKm(ra.dist)} · {fmtMin(ra.dur)}</div>
           <div className="linha">{trechosDe(ra).map((t, k) => {
             const ini = n + 1;
             n += t.filter(x => x.ids.length).length;

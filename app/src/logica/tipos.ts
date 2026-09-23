@@ -77,6 +77,9 @@ export interface Rota {
   motivoSemRuas?: string;
   quando: number;
   fim?: Perna;
+  // posições mudaram depois que ela foi montada: a ordem continua valendo, as estimativas não
+  desatualizada?: boolean;
+  mudouMuito?: boolean;
 }
 
 export interface Regiao {

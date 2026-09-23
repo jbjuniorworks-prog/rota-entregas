@@ -119,6 +119,37 @@ test('se o pedido de GPS fica sem resposta, a rota sai assim mesmo, e a resposta
   expect(await ordem(page, NOMES)).toHaveLength(6);
 });
 
+// Refazer não pode piorar. Sem sinal a sequência sai em linha reta, que não sabe de mão única
+// nem de canteiro — e a de antes, montada pelas ruas, era melhor. Numa zona morta isso era um
+// caminho sem volta: agora a rota de antes volta com um toque.
+test('se refazer sair sem as ruas, dá para voltar para a rota de antes', async ({page, context}) => {
+  let ruas = true;
+  await context.route('**://router.project-osrm.org/**', r => {
+    if (!ruas) return r.abort();
+    const caminho = new URL(r.request().url()).pathname;
+    const pts = caminho.split('/').pop()!.split(';').map(c => c.split(',').map(Number));
+    const corpo = caminho.includes('/table/')
+      ? {code: 'Ok', durations: pts.map(a => pts.map(b => Math.hypot(a[0] - b[0], a[1] - b[1]) * 14000)),
+         distances: pts.map(a => pts.map(b => Math.hypot(a[0] - b[0], a[1] - b[1]) * 111000))}
+      : {code: 'Ok', routes: [{geometry: {coordinates: pts}}]};
+    return r.fulfill({contentType: 'application/json', body: JSON.stringify(corpo)});
+  });
+  await abrir(page);
+  await carregar(page, ROTA_B);
+  await montar(page);
+  await expect(page.locator('.resumo')).not.toContainText('aproximado');
+  const pelasRuas = await page.locator('.resumo').innerText();
+
+  ruas = false;
+  await montar(page);
+  await expect(aviso(page)).toContainText('A de antes saiu pelas ruas');
+  await expect(page.locator('.resumo')).toContainText('aproximado');
+
+  await page.getByRole('button', {name: '↺ Desfazer'}).click();
+  await expect(aviso(page)).toContainText('A rota de antes voltou');
+  await expect(page.locator('.resumo')).toHaveText(pelasRuas);
+});
+
 test('dá para pedir a rota na ordem do app de entrega, e o app diz o que isso custa', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_A);

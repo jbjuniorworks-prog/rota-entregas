@@ -6,7 +6,7 @@ import type {Parada, Ponto} from '../logica/tipos';
 import {loja, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
 import {clienteNuvem} from '../servicos/nuvem';
-import {e, enviarFila, fila, invalidarRota, memoria, ui} from './base';
+import {desatualizarRota, e, enviarFila, fila, memoria, ui} from './base';
 
 export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number}> {
   const zero = {confirmadas: 0, sugestoes: 0, minhas: 0};
@@ -17,7 +17,7 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
   if (!chaves.length) return zero;
   try {
     const r = aplicarCompartilhadas(e().paradas, await c.posicoes(chaves), chaveDe);
-    if (r.confirmadas || r.minhas) invalidarRota();
+    if (r.confirmadas || r.minhas) desatualizarRota();
     loja.mudou();
     return r;
   } catch {
@@ -84,9 +84,9 @@ export function tocouNoMapa(lat: number, lng: number) {
   ui.posicionando = null;
   if (alvo === 'fim') {
     e().fim = {id: 'fim', lat, lng, exibido: 'Local marcado no mapa'};
-    invalidarRota();
+    desatualizarRota();
     loja.mudou();
-    status('Ponto final definido. Toque em "Montar melhor sequência".', 3000);
+    status('Ponto final definido. ' + (e().rota ? 'Toque em "Refazer rota" para a sequência terminar por aqui.' : 'Toque em "Montar melhor sequência".'), 4000);
     return;
   }
   const p = loja.parada(alvo);
@@ -105,7 +105,7 @@ function prepararDesfazer(p: Parada): () => void {
     }
     Object.assign(p, antes);
     if (p.adiada) marcarIsoladas(e().paradas);
-    else invalidarRota();
+    else desatualizarRota();
     loja.mudou();
     status('Posição anterior de volta.', 3000);
   };
@@ -113,6 +113,8 @@ function prepararDesfazer(p: Parada): () => void {
 
 const JUNTO_DAQUI = 300;
 const COLAR_ATE = 25;
+// pino que andou mais do que isto não é ajuste de porta: a sequência pode ter deixado de valer
+const MUDOU_MUITO = 300;
 const CONFIAVEL: ReadonlySet<string> = new Set(['manual', 'lembrado', 'confirmado']);
 
 export function irmasDoMesmoEndereco(p: Parada): Parada[] {
@@ -152,6 +154,7 @@ Levar as duas para o ponto que você marcou, para virarem uma parada só?`)) {
   if (irmas.length && confirm(`Outras ${irmas.length} entrega(s) deste mesmo endereço estão no lugar antigo.
 
 Levar todas para o ponto novo junto com esta?`)) juntas.push(...irmas);
+  const longe = [p, ...juntas].some(x => x.lat != null && x.lng != null && haversine(x as Ponto, {lat, lng}) > MUDOU_MUITO);
   const desfazers = [p, ...juntas].map(prepararDesfazer);
   const desfazer = () => desfazers.forEach(f => f());
   let guardou = false;
@@ -162,10 +165,13 @@ Levar todas para o ponto novo junto com esta?`)) juntas.push(...irmas);
     guardarNome(x, lat, lng);
   }
   if (p.adiada) marcarIsoladas(e().paradas);
-  else invalidarRota();
+  else desatualizarRota(longe);
   loja.mudou();
   const quantas = juntas.length ? ` (${juntas.length + 1} entregas deste endereço)` : '';
-  status(prefixo + quantas + avisoGuardou(guardou) + (p.adiada ? ' Quando quiser, toque em "Voltar para a rota".' : prefixo === 'Local corrigido' ? ' Monte a rota de novo.' : ''), 10000, desfazer);
+  const depois = p.adiada ? ' Quando quiser, toque em "Voltar para a rota".'
+    : e().rota ? ' A sequência continua de pé: só o tempo e a distância ficaram velhos.'
+    : prefixo === 'Local corrigido' ? ' Monte a rota de novo.' : '';
+  status(prefixo + quantas + avisoGuardou(guardou) + depois, 10000, desfazer);
 }
 
 export const GPS_PRECISO = 50;
@@ -196,13 +202,14 @@ export function focar(id: string) {
 
 export function escolherCandidato(p: Parada, k: number) {
   const c = p.candidatos[k];
+  const longe = p.lat != null && p.lng != null && haversine(p as Ponto, c) > MUDOU_MUITO;
   const desfazer = prepararDesfazer(p);
   Object.assign(p, {lat: c.lat, lng: c.lng, exibido: c.exibido, precisao: c.precisao, fonte: 'escolhida na lista'});
   const guardou = memoria.lembrar(p, Date.now(), false);
   status('Local escolhido' + (guardou
     ? ' e guardado neste celular. Para valer para os outros motoristas, arraste o pino ou toque em "📍 Estou aqui" na porta.'
     : '. Sem CEP nem bairro, não deu para guardar para as próximas rotas.'), 10000, desfazer);
-  invalidarRota();
+  desatualizarRota(longe);
   loja.mudou();
   focar(p.id);
 }

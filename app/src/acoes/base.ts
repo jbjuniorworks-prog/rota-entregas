@@ -19,6 +19,20 @@ export async function enviarFila() {
   loja.mudou(false);
 }
 
+// Duas coisas diferentes, que viviam na mesma função e custavam a rota do dia ao motorista.
+// Mudar a posição de uma parada não tira ela do lugar na sequência: envelhece as estimativas.
+// Apagar obriga a refazer, refazer precisa de rede, e sem rede a rota volta em linha reta —
+// numa zona morta, arrumar um pino custava a rota boa que ele já tinha na mão.
+export function desatualizarRota(mudouMuito = false) {
+  marcarIsoladas(e().paradas);
+  const r = e().rota;
+  if (!r) return;
+  r.desatualizada = true;
+  if (mudouMuito) r.mudouMuito = true;
+}
+
+// Só quando a rota deixa de descrever o dia: parada removida, área apagada, planilha nova, reset.
+// (Com um id que não existe mais em `ordem`, a aba Rota não só mente: ela quebra.)
 export function invalidarRota() {
   marcarIsoladas(e().paradas);
   e().rota = null;
@@ -53,6 +67,6 @@ export function irPara(aba: typeof ui.aba) {
 
 export function mudar(f: () => void, refazer = false) {
   f();
-  if (refazer) invalidarRota();
+  if (refazer) desatualizarRota();
   loja.mudou();
 }

@@ -8,7 +8,7 @@ import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
 import {carregarAncorasDeCep} from '../servicos/base';
 import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from '../servicos/geocodificacao';
-import {e, enviarFila, fila, invalidarRota, irPara, memoria, ui} from './base';
+import {desatualizarRota, e, enviarFila, fila, invalidarRota, irPara, memoria, ui} from './base';
 import {avisoCompartilhadas, consultarCompartilhadas, focar} from './posicoes';
 import {registrarComoFicou} from './registro';
 import {montarRota} from './rota';
@@ -95,7 +95,7 @@ async function levarAoBairroPeloMapa(): Promise<number> {
       if (c && haversine(c, centro) < 20000) { moverParaOBairro(p, c, p.bairro!); n++; }
     } catch {}
   }
-  if (n) invalidarRota();
+  if (n) desatualizarRota(true);
   return n;
 }
 
@@ -200,7 +200,7 @@ export async function editar(p: Parada) {
   if (novo == null || !novo.trim()) return;
   p.texto = novo.trim();
   p.precisao = 'pendente';
-  invalidarRota();
+  desatualizarRota(true);
   loja.mudou();
   status('Buscando…');
   try { await buscarParada(p); status('Pronto.', 1500); } catch (err) { status('Falhou: ' + (err as Error).message, 4000); }
@@ -233,7 +233,7 @@ export async function saidaPorEndereco() {
   const l = await localPorTexto('Endereço de saída (ex.: ponto de coleta):', e().inicio?.texto, 'Endereço de saída não encontrado.');
   if (!l) return;
   e().inicio = {id: 'inicio', ...l};
-  invalidarRota();
+  desatualizarRota();
   ui.enquadrar++;
   loja.mudou();
   status('Saída definida.', 2000);
@@ -243,7 +243,7 @@ export async function fimPorEndereco() {
   const l = await localPorTexto('Onde você quer terminar? (ex.: Ponto Novo, ou um endereço)', e().fim?.texto, 'Lugar não encontrado. Tente "Marcar no mapa".');
   if (!l) return;
   e().fim = {id: 'fim', ...l};
-  invalidarRota();
+  desatualizarRota();
   ui.enquadrar++;
   loja.mudou();
   status('Ponto final definido. Confira o F no mapa.', 3000);

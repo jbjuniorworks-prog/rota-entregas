@@ -184,13 +184,52 @@ test.describe('corrigir pela localização do motorista', () => {
     await expect(page.getByText(/❗ 1 para conferir/)).toBeVisible();
   });
 
-  test('o cartão da próxima entrega tem o "Estou aqui"', async ({page}) => {
+  // O botão do dia a dia: o motorista arruma o pino na porta, com o pacote na mão. A rota que
+  // ele está seguindo não pode sumir por causa disso — refazer precisa de rede, e em zona morta
+  // a sequência volta em linha reta, pior do que a que ele tinha.
+  test('o cartão da próxima entrega tem o "Estou aqui", e usar ele não apaga a rota', async ({page}) => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
     await expect(page.getByText('Pino errado?')).toBeVisible();
+    const proxima = await page.locator('.proxima .endereco').innerText();
+
     await page.locator('.proxima').getByRole('button', {name: '📍 Estou aqui'}).click();
     await expect(aviso(page)).toContainText('Local corrigido pela sua localização');
+    await expect(aviso(page)).toContainText('A sequência continua de pé');
+
+    await expect(page.locator('.resumo'), 'a rota tem de continuar montada').toBeVisible();
+    await expect(page.locator('.proxima .endereco')).toHaveText(proxima);
+    await expect(page.getByText('a sequência continua valendo')).toBeVisible();
+    await expect(page.getByRole('button', {name: 'Refazer rota'})).toBeVisible();
+    // o que envelheceu aparece envelhecido: km, tempo e previsão de fim
+    await expect(page.locator('.resumo .velho')).toBeVisible();
+  });
+
+  test('definir de onde eu saio, com a rota na tela, também não apaga ela', async ({page}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await page.getByText('Ponto de saída / refazer rota').click();
+    await page.getByRole('button', {name: '📡 Onde estou agora'}).click();
+    await expect(aviso(page)).toContainText('A rota continua na tela');
+    await expect(page.locator('.resumo')).toBeVisible();
+    await expect(page.locator('.proxima .endereco')).toBeVisible();
+  });
+
+  // O outro lado da regra: quando a parada deixa de existir, a rota deixa de descrever o dia.
+  test('remover uma parada, essa sim, desmonta a rota', async ({page}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await aba(page, '2. Conferir');
+    const cartao = page.locator('[data-item]').first();
+    await cartao.getByRole('button', {name: 'Ver', exact: true}).click();
+    await cartao.getByRole('button', {name: /Remover/}).click();
+    await aba(page, '3. Rota');
+    await expect(page.getByRole('button', {name: /Montar melhor sequência/})).toBeVisible();
+    await expect(page.locator('.resumo')).toHaveCount(0);
   });
 });
 

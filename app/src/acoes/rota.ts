@@ -6,7 +6,7 @@ import {CORES} from '../logica/rotulos';
 import type {Parada} from '../logica/tipos';
 import {guarda, loja, status} from '../loja';
 import {linhaDaRota, matriz} from '../servicos/ruas';
-import {e, enviarFila, fila, invalidarRota, ui} from './base';
+import {desatualizarRota, e, enviarFila, fila, ui} from './base';
 import {guardarPassagem, guardarPassagens} from './posicoes';
 import {registrarComoFicou} from './registro';
 
@@ -21,10 +21,12 @@ export function gps(aindaVale: () => boolean = () => true): Promise<void> {
         return;
       }
       e().inicio = {id: 'inicio', lat: pos.coords.latitude, lng: pos.coords.longitude, exibido: `Minha localização (±${Math.round(pos.coords.accuracy)} m)`};
-      invalidarRota();
+      desatualizarRota();
       ui.enquadrar++;
       loja.mudou();
-      status('Localização definida.', 2000);
+      status(e().rota
+        ? 'Localização definida. A rota continua na tela; toque em "Refazer rota" para a sequência sair daqui.'
+        : 'Localização definida.', e().rota ? 8000 : 2000);
       ok();
     }, err => {
       status('Não consegui o GPS: ' + (err.code === 1 ? 'permissão negada. Libere a localização para este site.' : err.message), 5000);
@@ -43,6 +45,8 @@ export async function montarRota() {
   if (ui.ocupado) return;
   if (!e().paradas.some(p => !p.entregue && p.lat != null)) { status('Nenhuma parada com local encontrado.', 3000); return; }
   ui.ocupado = true;
+  // Refazer não pode piorar: sem rede a sequência sai em linha reta e, até aqui, não tinha volta.
+  const antes = e().rota ? {rota: e().rota!, pernas: e().pernas} : null;
   try {
     if (!e().inicio || !e().inicio!.texto) {
       let noPrazo = true;
@@ -53,8 +57,18 @@ export async function montarRota() {
     // rota em linha reta parece rota ruim, e até agora só dava para descobrir perguntando ao motorista
     registrarComoFicou(rota.porRuas ? null : rota.motivoSemRuas || 'sem motivo anotado');
     enviarFila();
-    status(rota.porRuas ? 'Rota pronta!' : 'Rota pronta (sem acesso às ruas: usei distância aproximada).', 3500);
+    if (antes && antes.rota.porRuas && !rota.porRuas) {
+      status('Rota pronta, mas sem acesso às ruas: usei distância em linha reta. A de antes saiu pelas ruas.', 15000, () => {
+        e().rota = antes.rota;
+        e().pernas = antes.pernas;
+        loja.mudou();
+        status('A rota de antes voltou. O tempo e a distância dela são de antes das suas correções.', 5000);
+      });
+    } else status(rota.porRuas ? 'Rota pronta!' : 'Rota pronta (sem acesso às ruas: usei distância aproximada).', 3500);
   } catch (err) {
+    // a montagem zera as pernas antes de começar: se ela falhou no meio, a rota de antes ficava
+    // na tela sem os tempos de trecho. As estimativas voltam junto com ela.
+    if (antes && e().rota === antes.rota) e().pernas = antes.pernas;
     status('Erro ao montar rota: ' + (err as Error).message, 5000);
   }
   ui.ocupado = false;
