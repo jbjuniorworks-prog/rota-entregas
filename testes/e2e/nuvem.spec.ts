@@ -19,6 +19,8 @@ async function apagarMotoristaDeTeste() {
   const u = corpo.users.find((x: any) => x.email === EMAIL);
   if (!u) return;
   await api(`/rest/v1/correcoes?motorista_id=eq.${u.id}`, {method: 'DELETE'});
+  await api(`/rest/v1/observacoes?motorista_id=eq.${u.id}`, {method: 'DELETE'});
+  await api(`/rest/v1/lugares?motorista_id=eq.${u.id}`, {method: 'DELETE'});
   await api(`/rest/v1/rotas?motorista_id=eq.${u.id}`, {method: 'DELETE'});
   await api(`/auth/v1/admin/users/${u.id}`, {method: 'DELETE'});
 }
@@ -55,7 +57,8 @@ test.describe('nuvem @nuvem', () => {
     expect(rotas[0].at_id).toBe('ATTESTE0001');
     const pacotes = (await api(`/rest/v1/pacotes?rota_id=eq.${rotas[0].id}&select=spx_tn,entregue_em,linha`)).corpo;
     expect(pacotes).toHaveLength(12);
-    expect(pacotes.every((p: any) => Object.keys(p.linha).length === 10)).toBe(true);
+    // A linha crua da planilha não sobe mais: podia levar nome, telefone ou CPF junto (38b3e0b).
+    expect(pacotes.every((p: any) => p.linha === null)).toBe(true);
     expect(pacotes.filter((p: any) => p.entregue_em).length).toBeGreaterThan(0);
 
     const token = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-auth') || '{}').access_token);
@@ -65,5 +68,38 @@ test.describe('nuvem @nuvem', () => {
     expect((await api(`/rest/v1/perfis?id=eq.${uid}&select=papel`)).corpo[0].papel).toBe('motorista');
     await api(`/rest/v1/rotas?id=eq.${rotas[0].id}`, {method: 'DELETE'}, token);
     expect((await api(`/rest/v1/rotas?motorista_id=eq.${uid}&select=id`)).corpo).toHaveLength(1);
+  });
+
+  test('o CEP aprende com as entregas marcadas na porta', async ({page}) => {
+    await page.goto('./');
+    await page.getByLabel('E-mail').fill(EMAIL);
+    await page.getByLabel('Senha', {exact: true}).fill(SENHA);
+    await page.getByRole('button', {name: 'Entrar', exact: true}).click();
+    await expect(page.getByText('Conectado como Motorista Teste')).toBeVisible();
+    const token = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-auth') || '{}').access_token);
+
+    // CEP inventado, para não mexer em nada que os motoristas de verdade já ensinaram
+    const CEP = '49099999';
+    const pontos = [[-10.9500, -37.0900], [-10.9510, -37.0910], [-10.9520, -37.0920]];
+    for (const [i, [lat, lng]] of pontos.entries()) {
+      const r = await api('/rest/v1/observacoes', {method: 'POST', body: JSON.stringify({
+        chave_lugar: `${CEP}|${(i + 1) * 10}`, lat, lng, precisao_m: 10, rua: 'Rua de Teste',
+      })}, token);
+      expect(r.status).toBe(201);
+    }
+
+    const {status, corpo} = await api('/rest/v1/rpc/ancoras_de_cep', {method: 'POST', body: JSON.stringify({ceps: [CEP]})}, token);
+    expect(status).toBe(200);
+    expect(corpo).toHaveLength(1);
+    expect(corpo[0].cep).toBe(CEP);
+    expect(corpo[0].marcas).toBe(3);
+    expect(corpo[0].lat).toBeCloseTo(-10.9510, 4);
+    expect(corpo[0].lng).toBeCloseTo(-37.0910, 4);
+    // o raio é o espalhamento das próprias marcações, não um número fixo
+    expect(corpo[0].raio).toBeGreaterThan(100);
+    expect(corpo[0].raio).toBeLessThan(300);
+
+    // CEP sobre o qual ninguém ensinou nada não inventa resposta
+    expect((await api('/rest/v1/rpc/ancoras_de_cep', {method: 'POST', body: JSON.stringify({ceps: ['49098888']})}, token)).corpo).toHaveLength(0);
   });
 });
