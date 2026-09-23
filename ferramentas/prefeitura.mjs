@@ -8,7 +8,7 @@
 import {readFileSync} from 'node:fs';
 import {chaveRua, tipoDaRua} from './chave-rua.mjs';
 import {bairroDoPonto, baixarBairros} from './bairros.mjs';
-import {enviar, meio, simplificar} from './ruas.mjs';
+import {meio, simplificar} from './ruas.mjs';
 
 const env = Object.fromEntries(readFileSync(new URL('../.env', import.meta.url), 'utf8')
   .split(/\r?\n/).filter(l => /^\w+=/.test(l)).map(l => l.split(/=(.*)/s).slice(0, 2)));
@@ -23,10 +23,12 @@ const SERVICOS = {
   },
 };
 
+// O que as OUTRAS fontes já têm. Contar as da própria prefeitura aqui faria a segunda execução
+// achar que não falta nada, e o trocar() apagaria a importação inteira sem repor.
 async function daNossaBase(cidade) {
   const chaves = new Set();
   for (let de = 0; ; de += 1000) {
-    const r = await fetch(`${BASE}/rest/v1/ruas?select=nome_chave&cidade=eq.${encodeURIComponent(cidade)}&nome_chave=not.is.null&order=id`, {
+    const r = await fetch(`${BASE}/rest/v1/ruas?select=nome_chave&cidade=eq.${encodeURIComponent(cidade)}&nome_chave=not.is.null&fonte=neq.prefeitura&order=id`, {
       headers: {apikey: CHAVE, Authorization: `Bearer ${CHAVE}`, Range: `${de}-${de + 999}`},
     });
     const linhas = await r.json();
@@ -41,6 +43,22 @@ async function logradouros(s) {
   const r = await fetch(url);
   if (!r.ok) throw new Error('o serviço de logradouros respondeu ' + r.status);
   return (await r.json()).features || [];
+}
+
+// Reimportar troca tudo o que veio da prefeitura nesta cidade: apaga e põe de novo. O índice
+// único de (fonte, fonte_id) é parcial, e ON CONFLICT não sabe usar índice parcial — e para
+// uma carga inteira trocar é mais simples de entender do que casar linha a linha.
+async function trocar(cidade, linhas) {
+  const h = {apikey: CHAVE, Authorization: `Bearer ${CHAVE}`, 'Content-Type': 'application/json'};
+  const apagar = await fetch(`${BASE}/rest/v1/ruas?cidade=eq.${encodeURIComponent(cidade)}&fonte=eq.prefeitura`, {method: 'DELETE', headers: h});
+  if (!apagar.ok) throw new Error(`apagando as antigas: ${apagar.status} ${(await apagar.text()).slice(0, 200)}`);
+  for (let i = 0; i < linhas.length; i += 500) {
+    const r = await fetch(`${BASE}/rest/v1/ruas`, {
+      method: 'POST', headers: {...h, Prefer: 'return=minimal'}, body: JSON.stringify(linhas.slice(i, i + 500)),
+    });
+    if (!r.ok) throw new Error(`${r.status}: ${(await r.text()).slice(0, 300)}`);
+    process.stdout.write(`\r  enviados ${Math.min(i + 500, linhas.length)} de ${linhas.length}`);
+  }
 }
 
 // "RUA SEM DENOMINAÇÃO" é o preenchimento do cadastro para trecho sem nome, e é o nome mais
@@ -101,9 +119,6 @@ if (!gravar) {
   for (const l of linhas.slice(0, 10)) console.log(`    ${l.nome.slice(0, 44).padEnd(44)} ${l.bairro || '(sem bairro)'}`);
   console.log('\n  nada foi gravado. Para gravar: npm run prefeitura -- gravar');
 } else {
-  for (let i = 0; i < linhas.length; i += 500) {
-    await enviar(linhas.slice(i, i + 500), 'fonte,fonte_id');
-    process.stdout.write(`\r  enviados ${Math.min(i + 500, linhas.length)} de ${linhas.length}`);
-  }
+  await trocar(cidade, linhas);
   console.log(`\n  pronto: ${ruasNovas.size} ruas novas em ${cidade}.`);
 }
