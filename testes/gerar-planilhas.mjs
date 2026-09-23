@@ -40,6 +40,19 @@ const rotaC = [
   [9, 9, 'Rua Fora do Mapa, 20', 'Bairro Vizinho Teste', '49005-327', 48.85, 2.35],
 ];
 
+// Rota grande e sintética, para a tela poder ser testada com o tamanho que ela tem de verdade:
+// numa lista de 80 cartões, ruído que se repete por cartão é o que torna a tela cansativa.
+const RUAS = ['Rua das Acácias', 'Avenida Central', 'Travessa Um', 'Rua das Palmeiras', 'Rua das Flores',
+  'Alameda dos Coqueiros', 'Rua dos Ipês', 'Avenida do Norte', 'Rua do Meio', 'Travessa Dois'];
+const rotaD = Array.from({length: 80}, (_, i) => {
+  const rua = RUAS[i % RUAS.length];
+  const numero = 10 + (i % 8) * 25;                    // repete a porta de vez em quando, para juntar pacotes
+  const bairro = i % 3 === 0 ? 'Bairro Norte' : i % 3 === 1 ? 'Bairro Sul' : 'Bairro Leste';
+  return [i + 1, Math.floor(i / 2) + 1, `${rua}, ${numero}`, bairro,
+    `49000-${String(100 + (i % 9)).padStart(3, '0')}`,
+    -10.95 - (i % 20) * 0.0012, -37.05 - Math.floor(i / 20) * 0.0015];
+});
+
 function planilha(at, prefixo, linhas) {
   const realista = (v, crua) => crua ? v : +(v - 0.0000013).toFixed(7);
   const dados = linhas.map(([seq, stop, end, bairro, cep, lat, lng, crua], i) =>
@@ -54,4 +67,5 @@ mkdirSync(pasta, {recursive: true});
 writeFileSync(new URL('rota-a.txt', pasta), planilha('ATTESTE0001', 'BRTESTA', rotaA));
 writeFileSync(new URL('rota-b.xlsx', pasta), planilha('ATTESTE0002', 'BRTESTB', rotaB));
 writeFileSync(new URL('rota-c.xlsx', pasta), planilha('ATTESTE0003', 'BRTESTC', rotaC));
+writeFileSync(new URL('rota-d.xlsx', pasta), planilha('ATTESTE0004', 'BRTESTD', rotaD));
 console.log('planilhas geradas em testes/planilhas/');
