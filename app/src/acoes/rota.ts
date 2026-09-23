@@ -24,9 +24,11 @@ export function gps(aindaVale: () => boolean = () => true): Promise<void> {
       desatualizarRota();
       ui.enquadrar++;
       loja.mudou();
-      status(e().rota
+      // dentro do montarRota o GPS é só o primeiro passo: mandar "Refazer rota" ali seria mentira
+      const naTela = !!e().rota && !ui.ocupado;
+      status(naTela
         ? 'Localização definida. A rota continua na tela; toque em "Refazer rota" para a sequência sair daqui.'
-        : 'Localização definida.', e().rota ? 8000 : 2000);
+        : 'Localização definida.', naTela ? 8000 : 2000);
       ok();
     }, err => {
       status('Não consegui o GPS: ' + (err.code === 1 ? 'permissão negada. Libere a localização para este site.' : err.message), 5000);

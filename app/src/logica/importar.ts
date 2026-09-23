@@ -63,7 +63,12 @@ export function adicionarDaPlanilha(
   r.numeros = marcarNumerosIncoerentes(e.paradas);
   r.longe = marcarIsoladas(e.paradas);
   r.noBairro = moverPeloBairro(e.paradas).length;
-  if (r.novas || r.juntas) { e.rota = null; e.pernas = {}; }
+  // Parada nova não tira ninguém do lugar na sequência: ela entra na conta de "fora da rota",
+  // e o segundo lote do dia deixa de custar a rota que o motorista já está fazendo.
+  if (e.rota && (r.novas || r.juntas || r.noBairro)) {
+    e.rota.desatualizada = true;
+    if (r.noBairro) e.rota.mudouMuito = true;
+  }
   return {resumo: r, rotaDe};
 }
 
@@ -93,6 +98,6 @@ export function adicionarLinhas(e: Estado, linhas: string[]): {novas: number; re
     e.paradas.push({id: novoId(), area: e.areaAtual, ml, texto, unidades, comercial, lat: null, lng: null, exibido: '', precisao: 'pendente', candidatos: [], entregue: false});
     novas++;
   }
-  if (novas) { marcarIsoladas(e.paradas); e.rota = null; e.pernas = {}; }
+  if (novas) { marcarIsoladas(e.paradas); if (e.rota) e.rota.desatualizada = true; }
   return {novas, repetidas};
 }

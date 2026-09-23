@@ -121,8 +121,8 @@ export async function lerPrints(files: File[], textoAtual: string): Promise<stri
       ui.aba = 'conferir';
       ui.enquadrar++;
       loja.mudou();
-      const resumo = resumoPlanilha(r);
-      status(resumo, r.longe ? 12000 : 5000);
+      const resumo = resumoPlanilha(r) + (e().rota ? ' A rota de agora continua na tela: toque em "Refazer rota" para as novas entrarem na sequência.' : '');
+      status(resumo, r.longe || e().rota ? 12000 : 5000);
       await buscarPendentes(resumo);
     } catch (err) {
       status('Não consegui ler a planilha: ' + (err as Error).message, 6000);

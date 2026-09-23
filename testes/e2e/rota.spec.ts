@@ -119,6 +119,24 @@ test('se o pedido de GPS fica sem resposta, a rota sai assim mesmo, e a resposta
   expect(await ordem(page, NOMES)).toHaveLength(6);
 });
 
+// O segundo lote do dia — o adicional, o print que chega depois — não pode custar a sequência
+// que o motorista já está fazendo. Parada nova não tira ninguém do lugar: ela entra na conta de
+// "fora da rota", e ele refaz quando quiser.
+test('importar um segundo lote no meio do dia não apaga a rota', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await montar(page);
+  const proxima = await page.locator('.proxima .endereco').innerText();
+
+  await aba(page, '1. Endereços');
+  await carregar(page, ROTA_B);
+  await expect(aviso(page)).toContainText('A rota de agora continua na tela');
+  await aba(page, '3. Rota');
+  await expect(page.locator('.resumo')).toBeVisible();
+  await expect(page.locator('.proxima .endereco')).toHaveText(proxima);
+  await expect(page.getByText(/parada\(s\) nova\(s\) ou corrigida\(s\) fora da rota/)).toBeVisible();
+});
+
 // Refazer não pode piorar. Sem sinal a sequência sai em linha reta, que não sabe de mão única
 // nem de canteiro — e a de antes, montada pelas ruas, era melhor. Numa zona morta isso era um
 // caminho sem volta: agora a rota de antes volta com um toque.
