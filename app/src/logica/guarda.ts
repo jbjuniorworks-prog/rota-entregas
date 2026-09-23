@@ -28,7 +28,7 @@ export const CHAVES = {
   fila: 'rota-entregas-fila',
   rotasNuvem: 'rota-entregas-rotas-nuvem',
   sessao: 'rota-entregas-auth',
-  mapaGrande: 'rota-entregas-mapa-grande',
+  mapa: 'rota-entregas-mapa-abas',
   filaDesde: 'rota-entregas-fila-desde',
 } as const;
 

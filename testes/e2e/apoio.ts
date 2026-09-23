@@ -113,6 +113,19 @@ export function linhaDe(page: Page, endereco: string, botao: string | RegExp): L
   return page.locator('div').filter({hasText: endereco}).filter({has: page.getByRole('button', {name: botao})}).last();
 }
 
+// O tamanho do mapa é decisão por aba e fica guardado; teste que fala do mapa tem de dizer
+// que quer ele aberto, em vez de depender do padrão da aba em que caiu.
+export async function garantirMapa(page: Page) {
+  // olha a classe da aba, não a altura: quando o pedaço do mapa não carrega a área fica pequena
+  // de qualquer jeito, e medir altura fazia o laço fechar o mapa em vez de abrir
+  for (let i = 0; i < 3; i++) {
+    const classe = (await page.locator('#app').getAttribute('class')) || '';
+    if (!classe.includes('mapa-fechado')) return;
+    await page.locator('#btnMapa').click();
+    await page.waitForTimeout(200);
+  }
+}
+
 export async function zoom(page: Page, z: number) {
   await page.waitForFunction(() => !!(window as any).rotaTeste);
   await page.evaluate(z2 => (window as any).rotaTeste.zoom(z2), z);

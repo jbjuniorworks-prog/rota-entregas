@@ -1,4 +1,4 @@
-import {test, expect, abrir, carregar, aviso, aba, montar, pontosNoMaps, zoom, ROTA_A, ROTA_B} from './apoio';
+import {test, expect, abrir, carregar, aviso, aba, montar, pontosNoMaps, zoom, ROTA_A, ROTA_B, garantirMapa} from './apoio';
 
 test('planilha da Shopee salva como .txt vira paradas, somando pacotes do mesmo endereço', async ({page}) => {
   await abrir(page);
@@ -12,6 +12,7 @@ test('planilha da Shopee salva como .txt vira paradas, somando pacotes do mesmo 
 test('o balão do mapa mostra a parada da Shopee, o ADS sem parada e os pacotes daquele ponto', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_A);
+  await garantirMapa(page);
   await zoom(page, 18);
   await expect
     .poll(async () => [...new Set(await page.locator('.balao').allInnerTexts())].sort())
@@ -21,6 +22,7 @@ test('o balão do mapa mostra a parada da Shopee, o ADS sem parada e os pacotes 
 test('pinos em cima uns dos outros viram um pino só, e abrem quando dá zoom', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_A);
+  await garantirMapa(page);
   await zoom(page, 18);
   const separados = await page.locator('.pino').count();
   await zoom(page, 13);

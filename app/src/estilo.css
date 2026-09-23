@@ -5,6 +5,13 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,Robot
 .mapwrap{position:relative;flex:none}
 #map,.semmapa{height:28vh;background:#dde3ea}
 #app.mapa-grande #map,#app.mapa-grande .semmapa{height:70vh}
+/* fechado: fica só o botão, senão não há como trazer o mapa de volta */
+#app.mapa-fechado .mapwrap{min-height:46px;background:var(--card)}
+#app.mapa-fechado #btnMapa{top:6px}
+/* Na Rota o cartão da próxima entrega vem primeiro: é o que se olha de relance, moto parada.
+   Por `order`, não por column-reverse: aquele inverte a rolagem do contêiner e o navegador
+   deixa de conseguir rolar até o que está fora da tela. */
+@media (max-width:899px){#app.mapa-embaixo .mapwrap{order:2}#app.mapa-embaixo #painel{order:1}}
 .semmapa{display:grid;place-content:center;justify-items:center;gap:10px;padding:16px;text-align:center;font-size:14px;color:var(--mut)}
 #btnMapa{position:absolute;right:10px;top:10px;z-index:500}
 #painel{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--card)}
@@ -85,3 +92,4 @@ details.feitas summary{color:var(--mut);font-size:14px;font-weight:600}
   #painel{flex:none;width:440px;border-right:1px solid var(--bd)}
   #btnMapa{display:none}
 }
+.btn.apagar{color:var(--bad);border-color:#fecaca;background:#fff}

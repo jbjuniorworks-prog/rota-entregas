@@ -192,7 +192,7 @@ export default function Mapa() {
     }
   });
 
-  useEffect(() => { setTimeout(() => mapa.current?.invalidateSize(), 50); }, [ui.mapaGrande]);
+  useEffect(() => { setTimeout(() => mapa.current?.invalidateSize(), 50); }, [ui.mapa, ui.aba]);
 
   return <div id="map" ref={div} />;
 }

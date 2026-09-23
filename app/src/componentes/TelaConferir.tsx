@@ -51,12 +51,14 @@ function ItemConferir({p}: {p: Parada}) {
       <button className="btn peq" onClick={() => A.posicionar(p.id)}>{ui.posicionando === p.id ? 'Toque no mapa…' : 'Marcar no mapa'}</button>
       <button className="btn peq" onClick={() => A.estouAqui(p)}>📍 Estou aqui</button>
       <button className="btn peq" onClick={() => A.editar(p)}>Editar</button>
-      <button className="btn peq" onClick={() => A.remover(p)}>Remover</button>
     </div>
     {sel && <><label>Área</label>
       <select value={p.area} onChange={ev => A.mudar(() => { p.area = ev.target.value; }, true)}>
         {e.areas.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}
-      </select></>}
+      </select>
+      {/* Longe dos botões de todo dia: um toque errado numa rota de 83 apaga uma parada, e
+          ninguém percebe até ela não aparecer. Aqui só chega quem abriu o cartão de propósito. */}
+      <div className="linha"><button className="btn peq apagar" onClick={() => A.remover(p)}>Remover esta parada</button></div></>}
     {sel && p.candidatos && p.candidatos.length > 1 && <div className="cands"><div className="info" style={{marginTop: 8}}>Outras opções encontradas:</div>
       {p.candidatos.map((c, k) => <button key={k} onClick={() => A.escolherCandidato(p, k)}><Tag p={c} /><br />{c.exibido}</button>)}
     </div>}

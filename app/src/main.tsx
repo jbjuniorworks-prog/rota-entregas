@@ -38,6 +38,14 @@ function App() {
   const rolagem = useRef<Record<string, number>>({});
   const abaAnterior = useRef(ui.aba);
   const [comMapa, setComMapa] = useState(false);
+  // Em tela larga o mapa fica ao lado do painel e não custa altura nenhuma — e lá o botão ⤢ Mapa
+  // nem existe. Recolher só faz sentido no celular; no computador ele fica sempre.
+  const [largo, setLargo] = useState(() => matchMedia('(min-width:900px)').matches);
+  useEffect(() => {
+    const mq = matchMedia('(min-width:900px)'), ouvir = () => setLargo(mq.matches);
+    mq.addEventListener('change', ouvir);
+    return () => mq.removeEventListener('change', ouvir);
+  }, []);
   useEffect(() => { A.iniciar(); }, []);
   useEffect(() => {
     depoisDeAparecer(() => setComMapa(true));
@@ -57,11 +65,17 @@ function App() {
     <div id="status" className={'flutua' + (ui.aviso ? ' on' : '')}>{ui.aviso}</div>
   </>;
   const abas: [Aba, string][] = pf?.papel === 'admin' ? [...ABAS, ['admin', '⚙️ Admin']] : ABAS;
+  const escolhido = A.tamanhoDoMapa();
+  const tamanhoMapa = largo && escolhido === 'fechado' ? 'normal' : escolhido;
   return <>
-    <div id="app" className={ui.mapaGrande ? 'mapa-grande' : ''}>
+    <div id="app" className={`mapa-${tamanhoMapa}${ui.aba === 'rota' ? ' mapa-embaixo' : ''}`}>
       <div className="mapwrap">
-        <EscudoDoMapa><Suspense fallback={null}>{comMapa && <Mapa />}</Suspense></EscudoDoMapa>
-        <button id="btnMapa" className="btn peq" onClick={A.alternarMapa}>⤢ Mapa</button>
+        {/* fechado é não desenhar, não desenhar com altura zero: senão o mapa e o aviso de falha
+            ficam no DOM meio visíveis, e o Leaflet trabalha à toa numa aba que não o usa */}
+        {tamanhoMapa !== 'fechado'
+          && <EscudoDoMapa><Suspense fallback={null}>{comMapa && <Mapa />}</Suspense></EscudoDoMapa>}
+        <button id="btnMapa" className="btn peq" onClick={A.alternarMapa}
+          title="Toque para fechar, voltar ao normal ou ampliar o mapa desta aba">⤢ Mapa</button>
       </div>
       <div id="painel">
         <nav>{abas.map(([id, nome]) => <button key={id} className={ui.aba === id ? 'on' : ''} onClick={() => A.irPara(id)}>{nome}</button>)}</nav>

@@ -3,6 +3,7 @@ import {CHAVES, carregarEstado, guardaEm, salvarEstado} from './logica/guarda';
 import type {Estado, Parada} from './logica/tipos';
 
 export type Aba = 'enderecos' | 'conferir' | 'rota' | 'admin';
+export type TamanhoDoMapa = 'fechado' | 'normal' | 'grande';
 
 export interface Marca {
   lat: number;
@@ -18,7 +19,9 @@ export interface Ui {
   selecionada: string | null;
   soDuvidas: boolean;
   ocupado: boolean;
-  mapaGrande: boolean;
+  // o tamanho do mapa é decisão por aba: em Endereços ele não tem o que mostrar enquanto se
+  // digita, em Conferir ele é o trabalho, e em Rota o cartão da próxima entrega vem antes.
+  mapa: Partial<Record<Aba, TamanhoDoMapa>>;
   aviso: string;
   enquadrar: number;
   focar: {id: string; vez: number} | null;
@@ -30,7 +33,7 @@ export const guarda = guardaEm(localStorage);
 let estado = carregarEstado(guarda);
 const ui: Ui = {
   aba: estado.paradas.length ? (estado.rota ? 'rota' : 'conferir') : 'enderecos',
-  posicionando: null, selecionada: null, soDuvidas: false, ocupado: false, mapaGrande: guarda.ler(CHAVES.mapaGrande, false), aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
+  posicionando: null, selecionada: null, soDuvidas: false, ocupado: false, mapa: guarda.ler(CHAVES.mapa, {}), aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
 };
 
 let versao = 0;
