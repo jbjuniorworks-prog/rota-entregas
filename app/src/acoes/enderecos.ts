@@ -2,10 +2,11 @@ import {operacoesDaPlanilha} from '../logica/fila';
 import {haversine, marcarIsoladas, mediana, moverParaOBairro} from '../logica/geo';
 import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from '../logica/importar';
 import {CORES, DA_PLANILHA} from '../logica/rotulos';
-import {extrairEnderecos} from '../logica/texto';
+import {decompor, extrairEnderecos} from '../logica/texto';
 import type {Parada} from '../logica/tipos';
 import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
+import {carregarAncorasDeCep} from '../servicos/base';
 import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from '../servicos/geocodificacao';
 import {e, enviarFila, fila, invalidarRota, irPara, memoria, ui} from './base';
 import {avisoCompartilhadas, consultarCompartilhadas, focar} from './posicoes';
@@ -61,6 +62,8 @@ export async function buscarPendentes(resumoAntes = '') {
   if (!alvo.length) return;
   ui.ocupado = true;
   await garantirRegiao();
+  // Uma consulta só, antes de começar: onde ficam os CEPs desta rota, pelo que já foi entregue.
+  await carregarAncorasDeCep(alvo.map(p => decompor(p.texto).cep || '').filter(Boolean));
   let erro: Error | null = null;
   for (let i = 0; i < alvo.length; i++) {
     status(`Buscando endereços… ${i + 1} de ${alvo.length}`);

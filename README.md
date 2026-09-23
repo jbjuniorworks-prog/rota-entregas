@@ -14,7 +14,9 @@ as correções de pino vão para o Supabase; a correção de um motorista vira
 sugestão para os outros, e com 2 motoristas no mesmo ponto (ou o admin) vale
 para todos. Ao marcar uma entrega na porta, o app guarda a posição do celular:
 duas passagens no mesmo ponto também confirmam o lugar, e elas dão nome aos
-trechos de rua que o mapa livre não tem. Consultas de endereço vão ao OpenStreetMap/ViaCEP e de rota ao OSRM.
+trechos de rua que o mapa livre não tem. Elas também ensinam **onde fica cada CEP**: um CEP é
+uma quadra (80 m), e para a rua nova que nenhum mapa tem ainda é o que chega mais perto.
+Nenhuma posição pode cair longe do bairro do endereço — o censo do IBGE dá o piso, sem rede. Consultas de endereço vão ao OpenStreetMap/ViaCEP e de rota ao OSRM.
 
 ## Código
 

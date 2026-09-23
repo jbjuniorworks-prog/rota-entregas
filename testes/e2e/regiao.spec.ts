@@ -118,3 +118,21 @@ test('resposta que cai em outro bairro não vira a posição da entrega', async 
   await expect(linha).toContainText('Jabotiana', {timeout: 30_000});
   await expect(page.getByText('Cidade Nova')).toHaveCount(0);
 });
+
+test('rua que nenhum mapa tem cai onde já entregamos naquele CEP', async ({page, nuvem}) => {
+  // Rua Estanislau dos Santos não está no censo, nem no OpenStreetMap, nem nos Correios.
+  // O que existe é o que os motoristas marcaram na porta, guardado pelo CEP.
+  nuvem.rpc = {ancoras_de_cep: [{cep: '49096270', lat: -10.9512, lng: -37.0921, raio: 80, marcas: 3}]};
+  await page.route('**://nominatim.openstreetmap.org/**', r => r.fulfill({
+    status: 200, contentType: 'application/json', headers: {'access-control-allow-origin': '*'}, body: '[]',
+  }));
+  await abrir(page);
+  await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+  await page.getByLabel(/Endereços da área/).fill('Rua Estanislau dos Santos 39, Jabotiana, CEP 49096-270');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  const linha = linhaDe(page, 'Estanislau dos Santos', 'Marcar no mapa');
+  await expect(linha).toContainText('pelas entregas já feitas neste CEP', {timeout: 30_000});
+  const pedido = nuvem.pedidos.find(p => p.caminho === 'rpc/ancoras_de_cep');
+  expect(pedido, 'o app tem de perguntar pelos CEPs da rota').toBeTruthy();
+  expect((pedido!.corpo as {ceps: string[]}).ceps).toContain('49096270');
+});

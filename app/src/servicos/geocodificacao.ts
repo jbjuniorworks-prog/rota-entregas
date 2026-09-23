@@ -2,7 +2,7 @@ import {haversine} from '../logica/geo';
 import {RANK} from '../logica/rotulos';
 import {conjuntoDoEndereco, decompor, mesmaRua, normal} from '../logica/texto';
 import type {Candidato, Ponto, Precisao, Regiao} from '../logica/tipos';
-import {ruaNaBase} from './base';
+import {ancoraDeCep, ruaNaBase} from './base';
 import {ancoraDoIbge, bonito, enderecoDoIbge, ruaDoIbge, type Ancora} from './ibge';
 import {buscarJson, espacado} from './rede';
 
@@ -153,8 +153,18 @@ async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: 
     const doCenso = await ruaDoIbge(d.rua, d.numero, cidade, perto);
     if (doCenso && !foraDaRegiao(doCenso)) return [doCenso];
   }
+  // Rua que nenhum mapa tem, mas onde já entregamos: o CEP aprendido chega mais perto que
+  // qualquer chute pelo nome. Só entra confirmado por mais de uma marcação e se for apertado.
+  const doCep = ancoraDeCep(d.cep);
+  if (doCep && doCep.marcas >= 2 && doCep.raio <= 400) {
+    const c: Candidato = {lat: doCep.lat, lng: doCep.lng, precisao: 'rua', fonte: 'entregas',
+      exibido: `${logradouro || d.rua}${d.numero ? ', ' + d.numero : ''} — pelas entregas já feitas neste CEP. Confira o número na porta.`};
+    if (!foraDaRegiao(c)) cands.push(c);
+  }
   const naBase = logradouro ? await ruaNaBase(logradouro, cep ? `${cep.cidade}, ${cep.uf}` : cidade, perto, lugares) : null;
-  if (naBase && !foraDaRegiao(naBase)) return [naBase];
+  // A nossa base continua na frente; o CEP vai junto como opção. Se a base cair fora do bairro,
+  // a trava lá em cima rebaixa ela e quem assume é o CEP.
+  if (naBase && !foraDaRegiao(naBase)) return [naBase, ...cands];
   // segunda tentativa: o CEP pode ter corrigido o número acima
   if (d.cep && d.numero) {
     const ibge = await enderecoDoIbge(d.cep, d.numero, cep ? cep.cidade : cidade);
@@ -213,6 +223,9 @@ export const limiteDaAncora = (a: Ancora) => Math.max(LONGE_DA_ANCORA, a.raio * 
 
 export async function ancoraDoEndereco(txt: string, cidade: string, bairro: string): Promise<Ancora | null> {
   const d = decompor(txt);
+  // O que os motoristas já marcaram neste CEP vale mais que o centro do bairro: 80 m contra 600 m.
+  const aprendida = ancoraDeCep(d.cep);
+  if (aprendida) return {lat: aprendida.lat, lng: aprendida.lng, raio: aprendida.raio, nome: `CEP ${d.cep!.slice(0, 5)}-${d.cep!.slice(5)}`};
   const dito = await ancoraDoIbge(d.cep, bairro, cidade);
   if (dito) return dito;
   for (const parte of d.resto) {

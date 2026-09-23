@@ -153,3 +153,45 @@ export async function ruaNaBase(rua: string, cidade: string, perto: Ponto | null
     return null;
   }
 }
+
+// Onde fica cada CEP, aprendido com os pinos que os motoristas arrumaram e com as entregas
+// marcadas na porta. Um CEP é uma quadra: vale muito mais que o centro do bairro quando a rua
+// não está em mapa nenhum. Vem de uma consulta só, no começo da rota, e fica em memória.
+export interface AncoraDeCep {
+  lat: number;
+  lng: number;
+  raio: number;
+  marcas: number;
+}
+
+const ancorasDeCep = new Map<string, AncoraDeCep | null>();
+
+export function esquecerAncorasDeCep() {
+  ancorasDeCep.clear();
+}
+
+export async function carregarAncorasDeCep(ceps: string[]): Promise<number> {
+  const supa = nuvem.cliente;
+  const novos = [...new Set(ceps.filter(c => /^\d{8}$/.test(c) && !ancorasDeCep.has(c)))];
+  if (!supa || !nuvem.sessao || !novos.length || !navigator.onLine) return 0;
+  let achadas = 0;
+  for (let i = 0; i < novos.length; i += 500) {
+    const pedaco = novos.slice(i, i + 500);
+    try {
+      const {data, error} = await supa.rpc('ancoras_de_cep', {ceps: pedaco});
+      if (error) return achadas;
+      for (const r of (data || []) as ({cep: string} & AncoraDeCep)[]) {
+        ancorasDeCep.set(r.cep, {lat: r.lat, lng: r.lng, raio: r.raio, marcas: r.marcas});
+        achadas++;
+      }
+      // o que voltou vazio também fica marcado, para não perguntar de novo no mesmo dia
+      for (const c of pedaco) if (!ancorasDeCep.has(c)) ancorasDeCep.set(c, null);
+    } catch {
+      return achadas;
+    }
+  }
+  return achadas;
+}
+
+export const ancoraDeCep = (cep: string | null | undefined): AncoraDeCep | null =>
+  (cep && ancorasDeCep.get(cep)) || null;
