@@ -1,4 +1,5 @@
 import {readFileSync} from 'node:fs';
+import {pathToFileURL} from 'node:url';
 import {chaveRua, tipoDaRua} from './chave-rua.mjs';
 
 const env = Object.fromEntries(readFileSync(new URL('../.env', import.meta.url), 'utf8')
@@ -66,19 +67,19 @@ function outroNome(tags) {
   return outros.find(n => n !== principal) || null;
 }
 
-const meio = pontos => {
+export const meio = pontos => {
   const p = pontos[Math.floor(pontos.length / 2)];
   return {lat: +p.lat.toFixed(6), lng: +p.lon.toFixed(6)};
 };
 
-function simplificar(pontos, maximo = 40) {
+export function simplificar(pontos, maximo = 40) {
   if (pontos.length <= maximo) return pontos.map(p => [+p.lat.toFixed(6), +p.lon.toFixed(6)]);
   const passo = (pontos.length - 1) / (maximo - 1);
   return Array.from({length: maximo}, (_, i) => pontos[Math.round(i * passo)]).map(p => [+p.lat.toFixed(6), +p.lon.toFixed(6)]);
 }
 
-async function enviar(linhas) {
-  const r = await fetch(`${BASE}/rest/v1/ruas?on_conflict=osm_id`, {
+export async function enviar(linhas, chave = 'osm_id') {
+  const r = await fetch(`${BASE}/rest/v1/ruas?on_conflict=${chave}`, {
     method: 'POST',
     headers: {apikey: CHAVE, Authorization: `Bearer ${CHAVE}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal'},
     body: JSON.stringify(linhas),
@@ -86,8 +87,9 @@ async function enviar(linhas) {
   if (!r.ok) throw new Error(`${r.status}: ${(await r.text()).slice(0, 300)}`);
 }
 
-const cidades = process.argv.slice(2);
-if (!cidades.length) { console.error('uso: npm run ruas -- Aracaju "Nossa Senhora do Socorro"'); process.exit(1); }
+const ehCli = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+const cidades = ehCli ? process.argv.slice(2) : [];
+if (ehCli && !cidades.length) { console.error('uso: npm run ruas -- Aracaju "Nossa Senhora do Socorro"'); process.exit(1); }
 
 for (const cidade of cidades) {
   console.log(`\n${cidade}: pedindo as ruas ao OpenStreetMap…`);

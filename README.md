@@ -26,6 +26,10 @@ Nenhuma posição pode cair longe do bairro do endereço — o censo do IBGE dá
 - `ferramentas/ruas.mjs`: copia as ruas de uma cidade do OpenStreetMap para a nossa base
   (`npm run ruas -- Aracaju "Nossa Senhora do Socorro"`). Na aba Admin dá para nomear, com as
   entregas dos motoristas, os trechos que vieram sem nome.
+- `ferramentas/prefeitura.mjs`: traz da prefeitura de Aracaju as ruas que o OpenStreetMap não tem
+  (`npm run prefeitura` mostra o que faria; `-- gravar` grava). São 1.281 ruas a mais, com traçado,
+  do cadastro oficial de logradouros. Só entram as que faltam: onde o OSM já tem, ele continua
+  mandando. `ferramentas/bairros.mjs` pega os bairros desenhados, que é como a rua nova ganha bairro.
 - `ferramentas/cnefe.mjs`: baixa o censo de endereços do IBGE de um município e gera o arquivo que
   o app carrega sozinho (`npm run cnefe -- "Nossa Senhora do Socorro"`). Um arquivo por cidade em
   `app/public/<cidade>-v1.bin`; hoje vão junto Aracaju, N. S. do Socorro, São Cristóvão e Barra dos

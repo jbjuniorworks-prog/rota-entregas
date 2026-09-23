@@ -14,7 +14,9 @@
     "ruas": "node ferramentas/ruas.mjs",
     "backup": "node ferramentas/backup.mjs",
     "restaurar": "node ferramentas/restaurar.mjs",
-    "cnefe": "node ferramentas/cnefe.mjs"
+    "cnefe": "node ferramentas/cnefe.mjs",
+    "bairros": "node ferramentas/bairros.mjs",
+    "prefeitura": "node ferramentas/prefeitura.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",
