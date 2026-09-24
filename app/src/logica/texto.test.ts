@@ -385,6 +385,17 @@ describe('bairro escrito de outro jeito', () => {
     expect(comNumeros(['jabotiana'])).toEqual(['jabotiana']);
   });
 
+  // "Rua Cento e Dezessete" existe em Aracaju, e meio normalizada ("cento 17") ela não casava
+  // com "Rua 117" nem ficava igual a si mesma escrita de outro jeito.
+  it('centena por extenso vira um número só', () => {
+    expect(comNumeros(['cento', 'e', 'dezessete'])).toEqual(['117']);
+    expect(comNumeros(['cento', 'dezessete'])).toEqual(['117']);
+    expect(comNumeros(['cento', 'e', 'vinte', 'e', 'cinco'])).toEqual(['125']);
+    expect(comNumeros(['cem'])).toEqual(['100']);
+    expect(comNumeros(['duzentos', 'e', 'dez', 'de', 'marco'])).toEqual(['210', 'de', 'marco']);
+    expect(comNumeros(['cento', 'jabotiana'])).toEqual(['100', 'jabotiana']);
+  });
+
   it('o campo do bairro vem sujo e ainda assim dá para ler', () => {
     expect(jeitosDeLerBairro('Aruana - Condomínio Vistaruana')).toContain('aruana');
     expect(jeitosDeLerBairro('São José dos Náufragos/Robalo')).toContain('jose naufragos');
@@ -406,12 +417,14 @@ describe('a chave da rua', () => {
     expect(chaveRua('R. Vinte Cinco')).toBe(chaveRua('Rua 25'));
     expect(chaveRua('Rua Dois de Julho')).toBe(chaveRua('Rua 2 de Julho'));
     expect(chaveRua('Avenida Sete de Setembro')).toBe(chaveRua('Av 7 de Setembro'));
+    expect(chaveRua('Rua Cento e Dezessete')).toBe(chaveRua('Rua 117'));
   });
 
   it('ruas diferentes continuam diferentes', () => {
     expect(chaveRua('Rua 25')).not.toBe(chaveRua('Rua 24'));
     expect(chaveRua('Rua Vinte e Cinco')).not.toBe(chaveRua('Rua Vinte e Seis'));
     expect(chaveRua('Rua 2 de Julho')).not.toBe(chaveRua('Rua 2 de Junho'));
+    expect(chaveRua('Rua Cento e Dezessete')).not.toBe(chaveRua('Rua Dezessete'));
   });
 
   // A chave é gravada no banco pelas ferramentas e recalculada no celular. São duas
@@ -425,6 +438,7 @@ describe('a chave da rua', () => {
       'Alameda das Flores', 'Praça General Valadão', 'Rodovia dos Náufragos',
       'Rua Poeta Paulo Freire', 'Av. Eng. Gentil Tavares', 'Rua Trinta e Sete',
       'Rua Noventa e Nove', 'Beco Sem Nome', 'Estrada da Zona de Expansão',
+      'Rua Cento e Dezessete', 'Rua Cem', 'Avenida Duzentos e Dez', 'Rua Cento e Vinte e Cinco',
     ];
     for (const n of nomes) expect([n, ferramenta.chaveRua(n)]).toEqual([n, chaveRua(n)]);
   });

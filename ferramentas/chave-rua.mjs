@@ -12,23 +12,34 @@ const UNIDADES = {um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5,
 const ATE_DEZENOVE = {dez: 10, onze: 11, doze: 12, treze: 13, quatorze: 14, catorze: 14, quinze: 15, dezesseis: 16, dezasseis: 16, dezessete: 17, dezassete: 17, dezoito: 18, dezenove: 19, dezanove: 19};
 const DEZENAS = {vinte: 20, trinta: 30, quarenta: 40, cinquenta: 50, sessenta: 60, setenta: 70, oitenta: 80, noventa: 90};
 
+const CENTENAS = {cem: 100, cento: 100, duzentos: 200, duzentas: 200, trezentos: 300, trezentas: 300, quatrocentos: 400, quatrocentas: 400, quinhentos: 500, quinhentas: 500, seiscentos: 600, seiscentas: 600, setecentos: 700, setecentas: 700, oitocentos: 800, oitocentas: 800, novecentos: 900, novecentas: 900};
+
+// Lê um número inteiro escrito por extenso a partir de `i` ("cento e vinte e cinco", "vinte
+// cinco", "dez"), e diz quantas palavras ele ocupou. O "e" no meio é opcional porque nem sempre
+// chega aqui: quem monta a chave da rua já tirou as palavras vazias antes.
+function numeroEm(p, i) {
+  let valor = 0, comeu = 0, achou = false;
+  const depois = () => (comeu > 0 && p[i + comeu] === 'e' ? i + comeu + 1 : i + comeu);
+  if (CENTENAS[p[i]] != null) { valor = CENTENAS[p[i]]; comeu = 1; achou = true; }
+  let j = depois();
+  if (DEZENAS[p[j]] != null) {
+    valor += DEZENAS[p[j]]; comeu = j - i + 1; achou = true;
+    j = depois();
+    if (UNIDADES[p[j]] != null) { valor += UNIDADES[p[j]]; comeu = j - i + 1; }
+  } else {
+    const solto = ATE_DEZENOVE[p[j]] ?? UNIDADES[p[j]];
+    if (solto != null) { valor += solto; comeu = j - i + 1; achou = true; }
+  }
+  return achou ? {valor, comeu} : null;
+}
+
 export function comNumeros(palavras) {
   const saida = [];
   for (let i = 0; i < palavras.length; i++) {
-    const w = palavras[i];
-    if (DEZENAS[w] != null) {
-      const comE = palavras[i + 1] === 'e';
-      const proxima = comE ? palavras[i + 2] : palavras[i + 1];
-      if (proxima && UNIDADES[proxima] != null) {
-        saida.push(String(DEZENAS[w] + UNIDADES[proxima]));
-        i += comE ? 2 : 1;
-        continue;
-      }
-      saida.push(String(DEZENAS[w]));
-      continue;
-    }
-    const n = UNIDADES[w] ?? ATE_DEZENOVE[w];
-    saida.push(n != null ? String(n) : w);
+    const lido = numeroEm(palavras, i);
+    if (!lido) { saida.push(palavras[i]); continue; }
+    saida.push(String(lido.valor));
+    i += lido.comeu - 1;
   }
   return saida;
 }
