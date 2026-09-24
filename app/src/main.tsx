@@ -29,7 +29,8 @@ function BarraDoMapa() {
   return <div id="pegaMapa" role="separator" aria-label="Arraste para mudar o tamanho do mapa"
     onPointerDown={ev => {
       arrastando.current = ev.pointerId;
-      comeco.current = {y: ev.clientY, vh: A.alturaDoMapa() ?? daTela(document.getElementById('map')?.getBoundingClientRect().height || 0)};
+      // mede o conjunto (faixa + mapa), que é o que a altura guardada representa
+      comeco.current = {y: ev.clientY, vh: A.alturaDoMapa() ?? daTela(document.querySelector('.mapwrap')?.getBoundingClientRect().height || 0)};
       ev.currentTarget.setPointerCapture(ev.pointerId);
     }}
     onPointerMove={ev => {

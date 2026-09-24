@@ -82,6 +82,12 @@ test.describe('puxar o mapa para cima', () => {
     const antes = await altura();
     expect(antes).toBeLessThan(300);
 
+    // A faixa sai do orçamento do mapa, não do painel. Tirando do painel, o endereço da próxima
+    // entrega saía da tela — e isso só apareceu no CI, depois de passar aqui.
+    const conjunto = await page.locator('.mapwrap').evaluate(el => Math.round(el.getBoundingClientRect().height));
+    expect(Math.abs(conjunto - Math.round(915 * 0.28)), 'a faixa tem de caber dentro do mapa').toBeLessThan(4);
+
+
     const barra = page.locator('#pegaMapa');
     const cx = await barra.evaluate(el => { const r = el.getBoundingClientRect(); return Math.round(r.left + r.width / 2); });
     const cy = await barra.evaluate(el => { const r = el.getBoundingClientRect(); return Math.round(r.top + r.height / 2); });

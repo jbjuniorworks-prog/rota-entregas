@@ -3,8 +3,14 @@
 html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--tx)}
 #app{display:flex;flex-direction:column;height:100%}
 .mapwrap{position:relative;flex:none}
-#map,.semmapa{height:var(--mapa-h,28vh);background:#dde3ea}
-#app.mapa-grande #map,#app.mapa-grande .semmapa{height:var(--mapa-h,70vh)}
+/* A altura do mapa é uma variável só: o padrão vem da classe, e o valor que ele arrastou chega
+   por style no #app e ganha de qualquer regra. */
+#app{--mapa-h:28vh}
+#app.mapa-grande{--mapa-h:70vh}
+#map,.semmapa{height:var(--mapa-h);background:#dde3ea}
+/* A faixa de pegar sai do orçamento do MAPA, não do painel: tirando do painel, o endereço da
+   próxima entrega saía da tela — e foi o teste de tela de celular que pegou isso. */
+#app.com-barra #map,#app.com-barra .semmapa{height:calc(var(--mapa-h) - 26px)}
 /* fechado: fica só o botão, senão não há como trazer o mapa de volta */
 #app.mapa-fechado .mapwrap{min-height:46px;background:var(--card)}
 #app.mapa-fechado #btnMapa{top:6px}
