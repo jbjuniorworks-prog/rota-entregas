@@ -18,6 +18,9 @@ trechos de rua que o mapa livre não tem. Elas também ensinam **onde fica cada 
 uma quadra (80 m), e para a rua nova que nenhum mapa tem ainda é o que chega mais perto.
 Nenhuma posição pode cair longe do bairro do endereço — o censo do IBGE dá o piso, sem rede. Consultas de endereço vão ao OpenStreetMap/ViaCEP e de rota ao OSRM.
 
+[ABERTO.md](ABERTO.md) diz o que ainda está em aberto e o que já foi decidido.
+[CLAUDE.md](CLAUDE.md) diz como se trabalha aqui — convenções e as armadilhas que já custaram caro.
+
 ## Código
 
 - `app/`: Vite + React + TypeScript. Lógica pura em `app/src/logica` (com testes), telas em
