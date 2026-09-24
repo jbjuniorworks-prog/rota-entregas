@@ -12,6 +12,23 @@ import {registrarComoFicou} from './registro';
 
 // Quando vale a posição que o mapa já vem seguindo, em vez de pedir uma nova ao GPS.
 const RECENTE = 30000;
+// Num computador o navegador se localiza pela rede, não por satélite, e erra quilômetros. Isso
+// não é defeito nosso — calar sobre o tamanho do erro é. Recusar a posição grosseira e pedir
+// outra também não resolve: vem da mesma fonte, e com a vigia ligada o pedido novo fica sem
+// resposta até estourar o prazo. Então usa e diz de quanto foi o erro.
+const SAIDA_RUIM = 1000;
+
+function saidaDefinida(precisao: number) {
+  const m = Math.round(precisao);
+  if (m > SAIDA_RUIM) {
+    status(`Localização definida, mas com ±${m >= 2000 ? Math.round(m / 100) / 10 + ' km' : m + ' m'} de margem — esse aparelho se localizou pela internet, não por satélite. Num computador é assim mesmo. Se o ponto de saída ficou longe, use "Sair de outro endereço".`, 14000);
+    return;
+  }
+  const naTela = !!e().rota && !ui.ocupado;
+  status(naTela
+    ? `Localização definida (±${m} m). A rota continua na tela; toque em "Refazer rota" para a sequência sair daqui.`
+    : `Localização definida (±${m} m).`, naTela ? 8000 : 3000);
+}
 
 export function gps(aindaVale: () => boolean = () => true): Promise<void> {
   return new Promise((ok, falha) => {
@@ -24,10 +41,7 @@ export function gps(aindaVale: () => boolean = () => true): Promise<void> {
       desatualizarRota();
       ui.enquadrar++;
       loja.mudou();
-      const naTela = !!e().rota && !ui.ocupado;
-      status(naTela
-        ? 'Localização definida. A rota continua na tela; toque em "Refazer rota" para a sequência sair daqui.'
-        : 'Localização definida.', naTela ? 8000 : 2000);
+      saidaDefinida(meu.precisao);
       ok();
       return;
     }
@@ -42,11 +56,7 @@ export function gps(aindaVale: () => boolean = () => true): Promise<void> {
       desatualizarRota();
       ui.enquadrar++;
       loja.mudou();
-      // dentro do montarRota o GPS é só o primeiro passo: mandar "Refazer rota" ali seria mentira
-      const naTela = !!e().rota && !ui.ocupado;
-      status(naTela
-        ? 'Localização definida. A rota continua na tela; toque em "Refazer rota" para a sequência sair daqui.'
-        : 'Localização definida.', naTela ? 8000 : 2000);
+      saidaDefinida(pos.coords.accuracy);
       ok();
     }, err => {
       status('Não consegui o GPS: ' + (err.code === 1 ? 'permissão negada. Libere a localização para este site.' : err.message), 5000);

@@ -202,3 +202,18 @@ test('o ponto final é apagado no reset do dia', async ({page}) => {
   await aba(page, '3. Rota');
   await expect(page.getByText('Sem ponto final')).toBeVisible();
 });
+
+// Num computador o navegador se localiza pela internet e erra quilômetros. Isso não é defeito
+// nosso — dizer "Localização definida." e plantar o ponto de saída a 30 km era.
+test.describe('localização ruim como ponto de saída', () => {
+  test.use({permissions: ['geolocation'], geolocation: {latitude: -10.93, longitude: -37.10, accuracy: 38000}});
+
+  test('avisa o tamanho do erro em vez de apresentar como localização', async ({page}) => {
+    await abrir(page);
+    await carregar(page, ROTA_B);
+    await aba(page, '3. Rota');
+    await page.getByRole('button', {name: '📡 Onde estou agora'}).click();
+    await expect(aviso(page)).toContainText('38 km');
+    await expect(aviso(page)).toContainText('Sair de outro endereço');
+  });
+});
