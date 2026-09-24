@@ -8,13 +8,20 @@ const RUA_EM = new RegExp('^(.{0,6}?)\\s*(?<![a-zà-ÿ])(' + RUA.source.slice(1)
 const RUA_COMPLEMENTO = /^(conjunto|conj\.|loteamento|lot\.|residencial|quadra|qd\.?)\s/i;
 // "Avenida Governador Paulo Barreto de" / "Menezes, 1500, …": o nome da rua quebrou de linha no print.
 const RESTO_DA_RUA = /^[a-zà-ÿ][a-zà-ÿ .'-]*[,\s]\s*\d{1,5}\b/i;
+// "Rua F Quadra B Lot Jardim" / "Esperança Lot.Planalto SN": o nome quebrou de linha e a segunda
+// parte não tem número nenhum. Endereço rural é assim — o número da porta é "SN", sem número.
+const CONTINUA_O_NOME = /^[a-zà-ÿ][a-zà-ÿ0-9 .'/-]{2,}$/i;
+export const SEM_NUMERO = /\bs[/\s.]?n[º°o]?\b/i;
 export const TIPOS_RUA = /^(rua|r|avenida|av|travessa|tv|trav|praca|pc|alameda|al|rodovia|rod|estrada|est|via|largo|beco|viela|passagem)\b\.?\s*/;
 const PALAVRAS_VAZIAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'doutor', 'dr', 'professor', 'prof', 'presidente', 'pres', 'governador', 'gov', 'ministro', 'min', 'senador', 'sen', 'deputado', 'dep', 'coronel', 'cel', 'general', 'gen', 'padre', 'pe', 'sao', 'santa', 'santo']);
 const ABREVIACOES: Record<string, string> = {poe: 'poeta', eng: 'engenheiro', des: 'desembargador', alm: 'almirante', mal: 'marechal', cap: 'capitao', ten: 'tenente', sgt: 'sargento', mons: 'monsenhor', pref: 'prefeito', jorn: 'jornalista', ver: 'vereador'};
 const TIPO_VIA: Record<string, string> = {r: 'rua', rua: 'rua', av: 'avenida', avenida: 'avenida', tv: 'travessa', trav: 'travessa', travessa: 'travessa', al: 'alameda', alameda: 'alameda', pc: 'praca', praca: 'praca', rod: 'rodovia', rodovia: 'rodovia', est: 'estrada', estrada: 'estrada'};
 
 export const limparRuido = (l: string): string =>
-  l.replace(/[|©®✔✓]/g, ' ').replace(/\s+/g, ' ').trim().replace(/(\d)\s+[^\s\d,]{1,2}$/, '$1');
+  l.replace(/[|©®✔✓]/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(/(\d)\s+[^\s\d,]{1,2}$/, '$1')
+    // o selo de "verificado" do app de entrega sai como um símbolo solto no fim do nome da rua
+    .replace(/([a-zà-ÿ])\s+[^\sa-zà-ÿ\d]{1,2}$/i, '$1');
 
 export interface LinhaAnalisada {
   ml: string | null;
@@ -253,12 +260,26 @@ export function enderecosDaLista(bruto: string): string[] {
   return saida;
 }
 
+// Coluna estreita parte o CEP em duas linhas: "Área Rural de São Cristóvão, CEP" e "49109899".
+function juntarCepQuebrado(linhas: string[]): string[] {
+  const saida: string[] = [];
+  for (const l of linhas) {
+    const anterior = saida[saida.length - 1];
+    if (anterior && /\bcep\s*:?\s*$/i.test(anterior) && /^\d{5}-?\d{0,3}\b/.test(l)) {
+      saida[saida.length - 1] = anterior + ' ' + l;
+      continue;
+    }
+    saida.push(l);
+  }
+  return saida;
+}
+
 export function extrairEnderecos(bruto: string): string[] {
   const daLista = enderecosDaLista(bruto);
   if (daLista.length) return daLista;
   const daComanda = enderecoDaComanda(bruto);
   if (daComanda.length) return daComanda;
-  const linhas = bruto.split('\n').map(limparRuido).filter(Boolean);
+  const linhas = juntarCepQuebrado(bruto.split('\n').map(limparRuido).filter(Boolean));
   const out: Aberto[] = [];
   let numeroSolto: string | null = null, aberto: Aberto | null = null;
   for (const l of linhas) {
@@ -271,6 +292,12 @@ export function extrairEnderecos(bruto: string): string[] {
       continue;
     }
     const ultimo = out[out.length - 1];
+    // Sujeira curta no meio de um endereço que já tem número não fecha ele: o selo de
+    // "verificado" sai como "2" ou "[2" numa linha só dele, entre a rua e o bairro, e encerrar a
+    // parada ali levava o CEP embora. Fora daí vale a regra velha — uma linha curta com número
+    // ainda pode ser o número da parada no app, que abre a próxima.
+    const curta = l.replace(/[^a-zà-ÿ]/gi, '').length <= 2 && (l.match(/\d/g) || []).length <= 2;
+    if (curta && aberto && /\d/.test(aberto.texto)) continue;
     if (!/\d/.test(l) && l.replace(/[^a-zà-ÿ]/gi, '').length <= 2) continue;
     const etiqueta = l.match(/EB\s*-\s*(\d{1,3})/i);
     if (ultimo && /hor[aá]rio\s+comercial/i.test(l)) { ultimo.comercial = true; aberto = null; continue; }
@@ -278,7 +305,7 @@ export function extrairEnderecos(bruto: string): string[] {
     if (ultimo && mu) { ultimo.unidades = +mu[1]; if (etiqueta) ultimo.ml = etiqueta[1]; aberto = null; continue; }
     if (ultimo && etiqueta && /^.{0,5}EB\s*-/i.test(l)) { ultimo.ml = etiqueta[1]; aberto = null; continue; }
     if (aberto && !/\d/.test(aberto.texto) && /^\d{1,5}\b/.test(l)) { aberto.texto += ' ' + l; continue; }
-    if (aberto && !/\d/.test(aberto.texto) && !COMPLEMENTO.test(l) && RESTO_DA_RUA.test(l)) { aberto.texto += ' ' + l; continue; }
+    if (aberto && !/\d/.test(aberto.texto) && !COMPLEMENTO.test(l) && (RESTO_DA_RUA.test(l) || CONTINUA_O_NOME.test(l))) { aberto.texto += ' ' + l; continue; }
     if (aberto && !TEM_CEP.test(aberto.texto) && (COMPLEMENTO.test(l) || TEM_CEP.test(l) || complementoDoAnterior)) { aberto.texto = aberto.texto.replace(/[\s,]+$/, '') + ', ' + l.replace(/[\s,]+$/, ''); continue; }
     aberto = null;
     const mn = l.match(/^[#(]?(\d{1,3})(?:[).:\]\-]|\s|$)/);
@@ -287,6 +314,13 @@ export function extrairEnderecos(bruto: string): string[] {
   return out
     .filter(e => (/\s\d{1,5}\b/.test(e.texto) || TEM_CEP.test(e.texto)) && pareceEndereco(e.texto))
     .map(e => (e.ml ? e.ml + ' ' : '') + e.texto.replace(/\s[O0](?=\s)/g, '') + (e.unidades ? ` · ${e.unidades} unid` : '') + (e.comercial ? ' · comercial' : ''));
+}
+
+// Tira do fim do nome da rua a letra solta que sobrou onde o número estava tapado. Só quando
+// ainda resta nome depois dela: "Rua A" é uma rua de verdade, "Rua dos Ipês O" não é.
+function semLetraTapada(rua: string): string {
+  const p = palavrasRua(rua);
+  return (p.length > 1 && /^[o0]$/i.test(p[p.length - 1]) ? p.slice(0, -1) : p).join(' ');
 }
 
 export function juntarQuadros(quadros: string[][]): string[] {
@@ -299,8 +333,16 @@ export function juntarQuadros(quadros: string[][]): string[] {
     }
   }
   const itens = [...vistos.values()].map(v => ({...v, d: decompor(analisarLinha(v.e).texto)}));
-  return itens.filter(x => !itens.some(y => y !== x && x.d.numero && y.d.numero && y.n >= x.n
-    && y.d.numero.length > x.d.numero.length && y.d.numero.startsWith(x.d.numero) && normal(y.d.rua) === normal(x.d.rua))).map(x => x.e);
+  return itens.filter(x => !itens.some(y => y !== x && (
+    // "37" que na verdade era "37A": o número saiu cortado num quadro e inteiro em outro
+    (!!x.d.numero && !!y.d.numero && y.n >= x.n && y.d.numero.length > x.d.numero.length
+      && y.d.numero.startsWith(x.d.numero) && normal(y.d.rua) === normal(x.d.rua))
+    // O botão flutuante do mapa fica em cima do número da porta e sobra uma letra solta. Num
+    // quadro seguinte, com a lista rolada, o mesmo endereço aparece inteiro — e virava uma
+    // segunda parada, no mesmo lugar, que o motorista ia tentar entregar.
+    || (!x.d.numero && !!y.d.numero && !SEM_NUMERO.test(x.e) && !!x.d.cep && x.d.cep === y.d.cep
+      && semLetraTapada(x.d.rua) === semLetraTapada(y.d.rua))
+  ))).map(x => x.e);
 }
 
 const quantasDiferentes = (lista: string[]) => new Set(lista.map(chaveEndereco)).size;

@@ -443,3 +443,77 @@ describe('a chave da rua', () => {
     for (const n of nomes) expect([n, ferramenta.chaveRua(n)]).toEqual([n, chaveRua(n)]);
   });
 });
+
+// O formato que o app do Mercado Livre produz quando lido de uma gravação de tela. A forma é a
+// de um caso real; a rua e o CEP são inventados, que o repositório é público. Três coisas aqui
+// custaram entrega na rua: o selo de "verificado" vira lixo numa linha só dele entre a rua e o
+// bairro, o endereço rural não tem número de porta ("SN"), e o "CEP" fica numa linha e os
+// dígitos na seguinte.
+const DA_LISTA_DO_MELI = `10:30h a 13:35h
+
+Rua das Acácias 39
+[2
+
+Bairro Norte, CEP 49000101
+
+Entrega 1 unidade | ETIQUETA
+4V-9...
+
+v Estou chegando
+
+10:30h a 13:35h
+
+o)   Rua dos Ipês 37A
+Bairro Norte, CEP 49000102
+
+Entrega 1 unidade | ETIQUETA
+4V-10...
+
+AQ Há uma observação para você
+v Estou chegando
+
+10:30h a 13:35h
+
+(38)   Rua F Quadra B Lot Jardim
+Teste Lot.Planalto SN &
+
+Área Rural de Cidade Teste, CEP
+49000199
+
+Entrega 2 unidades | ETIQUETA
+41-38...
+
+v Estou chegando`;
+
+describe('a lista do Mercado Livre lida de uma gravação', () => {
+  const lidos = () => extrairEnderecos(DA_LISTA_DO_MELI);
+
+  it('o selo entre a rua e o bairro não leva o CEP embora', () => {
+    const acacias = lidos().find(e => /Acácias/.test(e));
+    expect(acacias, 'a parada das Acácias sumiu').toBeTruthy();
+    expect(acacias).toContain('49000101');
+    expect(acacias).toContain('Bairro Norte');
+  });
+
+  it('endereço rural sem número de porta continua sendo endereço', () => {
+    const rural = lidos().find(e => /Jardim/.test(e));
+    expect(rural, 'a parada rural sumiu inteira').toBeTruthy();
+    expect(rural).toContain('49000199');
+  });
+
+  it('as três paradas saem, e nenhuma a mais', () => {
+    expect(lidos()).toHaveLength(3);
+  });
+});
+
+describe('a mesma parada lida em dois quadros', () => {
+  // No primeiro quadro o botão flutuante do mapa fica em cima do número da porta.
+  const tapado = ['Rua dos Ipês O, Bairro Norte, CEP 49000102'];
+  const inteiro = ['Rua dos Ipês 37A, Bairro Norte, CEP 49000102 · 1 unid'];
+
+  it('o número tapado por um botão não vira uma segunda parada', () => {
+    const r = juntarQuadros([tapado, inteiro]);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toContain('37A');
+  });
+});

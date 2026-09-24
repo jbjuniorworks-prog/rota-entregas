@@ -3,13 +3,20 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 23/09/2026.
+Atualizado em 24/09/2026.
 
 ## Falha viva
 
-- **A leitura da lista do Mercado Livre.** O app lê quase nenhuma parada do vídeo/prints da lista.
-  É a única falha de rua ainda sem causa. Falta o vídeo ou ver onde foi — sem isso é chute.
-  (Cuidado: a `Rua 25` da Jabotiana **não** era isso. Medido: o censo já acertava a porta.)
+- Nenhuma no momento.
+
+## Fechado com medição
+
+- **A leitura da lista do Mercado Livre** não era "lê quase nada": lia quase tudo e perdia na
+  montagem do endereço. Medido contra a gravação de 22/09 (rota em 33 de 38, 5 paradas na tela):
+  saíam 4 paradas certas, 1 fantasma e 1 faltando. Hoje saem as 5, com CEP, e as 7 unidades batem
+  com o cabeçalho do próprio app. As três perdas estão travadas em teste com o formato exato que
+  o Meli produz.
+- A `Rua 25` da Jabotiana **não** era essa falha: o censo já acertava a porta antes da mudança.
 
 ## Esperando medição
 
