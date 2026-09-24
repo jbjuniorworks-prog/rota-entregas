@@ -18,18 +18,25 @@ function BarraDoMapa() {
   const arrastando = useRef(0);
   const comeco = useRef({y: 0, vh: 0});
   const daTela = (px: number) => px / window.innerHeight * 100;
+  // Soltar tem de valer também quando quem solta é o navegador (pointercancel): ficar com o
+  // arrasto preso é o tipo de coisa que só aparece na mão de quem está de capacete.
+  const soltar = (ev: React.PointerEvent<HTMLDivElement>) => {
+    arrastando.current = 0;
+    if (ev.currentTarget.hasPointerCapture(ev.pointerId)) ev.currentTarget.releasePointerCapture(ev.pointerId);
+  };
   return <div id="pegaMapa" role="separator" aria-label="Arraste para mudar o tamanho do mapa"
     onPointerDown={ev => {
       arrastando.current = ev.pointerId;
       comeco.current = {y: ev.clientY, vh: A.alturaDoMapa() ?? daTela(document.getElementById('map')?.getBoundingClientRect().height || 0)};
-      (ev.target as HTMLElement).setPointerCapture(ev.pointerId);
+      ev.currentTarget.setPointerCapture(ev.pointerId);
     }}
     onPointerMove={ev => {
       if (arrastando.current !== ev.pointerId) return;
       // o mapa está embaixo: puxar a barra para cima aumenta ele
       A.arrastarMapa(comeco.current.vh + daTela(comeco.current.y - ev.clientY));
     }}
-    onPointerUp={ev => { arrastando.current = 0; (ev.target as HTMLElement).releasePointerCapture(ev.pointerId); }}
+    onPointerUp={soltar}
+    onPointerCancel={soltar}
   ><i /></div>;
 }
 const TelaAdmin = lazy(() => import('./componentes/Admin').then(m => ({default: m.TelaAdmin})));
