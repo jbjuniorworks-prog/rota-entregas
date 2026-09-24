@@ -11,16 +11,20 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,Robot
 /* Na Rota o cartão da próxima entrega vem primeiro: é o que se olha de relance, moto parada.
    Por `order`, não por column-reverse: aquele inverte a rolagem do contêiner e o navegador
    deixa de conseguir rolar até o que está fora da tela. */
-@media (max-width:899px){#app.mapa-embaixo .mapwrap{order:2}#app.mapa-embaixo #painel{order:1}}
+@media (max-width:899px){
+  #app.mapa-embaixo .mapwrap{order:2}
+  #app.mapa-embaixo #painel{order:1}
+  /* a faixa de pegar ganha espaço só dela, acima do mapa; os botões descem junto */
+  #app.com-barra .mapwrap{padding-top:26px}
+  #app.com-barra #btnMapa{top:36px}
+  #app.com-barra #btnEu{top:78px}
+}
 .semmapa{display:grid;place-content:center;justify-items:center;gap:10px;padding:16px;text-align:center;font-size:14px;color:var(--mut)}
 #btnMapa{position:absolute;right:10px;top:10px;z-index:500}
-/* Barra de pegar o mapa. Fica dentro da borda de cima dele, com uma faixa clara por baixo: um
-   traço solto some no meio do mapa, e quem reclamou que não conseguia aumentar precisa ver que
-   dá para puxar. Alvo de 30px de altura, para o polegar com a moto parada. */
-/* Centrada e estreita de propósito: de ponta a ponta ela ficaria por cima do ⤢ e do zoom do
-   Leaflet, que estão nos cantos, e roubaria o toque deles. */
-#pegaMapa{position:absolute;left:25%;right:25%;top:0;height:30px;z-index:600;display:flex;justify-content:center;padding-top:7px;touch-action:none;cursor:ns-resize;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,0))}
-#pegaMapa i{width:56px;height:6px;border-radius:99px;background:#374151;opacity:.8}
+/* Barra de pegar o mapa, entre o cartão e o mapa. Fora dele de propósito: por cima, ela tornava
+   intocável qualquer pino que caísse embaixo dela. A faixa inteira é alvo, para o polegar. */
+#pegaMapa{position:absolute;left:0;right:0;top:0;height:26px;z-index:600;display:grid;place-items:center;background:var(--card);touch-action:none;cursor:ns-resize}
+#pegaMapa i{width:56px;height:6px;border-radius:99px;background:#374151;opacity:.55}
 #btnEu{position:absolute;right:10px;top:52px;z-index:500;font-size:18px;line-height:1;padding:8px 11px}
 /* "você está aqui": bolinha com anel branco, e a seta do rumo só quando ele está andando */
 .eu{width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 1px rgba(37,99,235,.6),0 1px 4px rgba(0,0,0,.4);position:relative;margin:2px}
@@ -95,6 +99,13 @@ details.feitas summary{color:var(--mut);font-size:14px;font-weight:600}
 .pino{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:grid;place-items:center}
 .pino.duvida{border:3px solid #dc2626}
 .pino.quase{border:3px solid #ea580c}
+/* o pino da próxima parada: halo, para achar de relance no meio de quarenta pinos iguais.
+   Nome "alvo" e não "proxima" porque .proxima já é o cartão da próxima entrega na aba Rota. */
+.pino.alvo{box-shadow:0 0 0 5px rgba(29,78,216,.5),0 1px 4px rgba(0,0,0,.45);z-index:1}
+/* os dois botões do balão, na aba Rota: ele age sem sair do mapa */
+.popacoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.popacoes button{flex:1 1 auto;border:0;border-radius:9px;padding:9px 10px;font:inherit;font-size:14px;font-weight:600;background:#e5e7eb;color:var(--tx);cursor:pointer}
+.popacoes button[data-acao=entregue]{background:var(--ok);color:#fff}
 .leaflet-tooltip.balao{background:#111827;color:#fff;border:0;border-radius:6px;padding:1px 5px;font-size:11px;font-weight:700;box-shadow:none}
 .leaflet-tooltip.balao::before{border-top-color:#111827}
 .pino span{transform:rotate(45deg);color:#fff;font-weight:700;font-size:11px}

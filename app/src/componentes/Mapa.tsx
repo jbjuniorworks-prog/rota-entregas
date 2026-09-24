@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {seguirMinhaPosicao, tocouNoMapa} from '../acoes';
+import {entregarTodas, marcarEntregue, posicionar, seguirMinhaPosicao, tocouNoMapa} from '../acoes';
 import {empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
@@ -66,6 +66,20 @@ export default function Mapa() {
     camadaFundo.current = L.layerGroup().addTo(m);
     camadaPinos.current = L.layerGroup().addTo(m);
     m.on('click', ev => tocouNoMapa(ev.latlng.lat, ev.latlng.lng));
+    // Os botões do balão saem de uma string de HTML, então quem escuta é o contêiner do mapa.
+    // Na rua ele está na porta com o mapa aberto: sair da tela para marcar entregue ou para
+    // arrumar o pino era o que custava tempo.
+    div.current!.addEventListener('click', ev => {
+      const b = (ev.target as HTMLElement).closest('[data-acao]') as HTMLElement | null;
+      if (!b) return;
+      const ps = (b.dataset.ids || '').split('+').map(loja.parada).filter((p): p is Parada => !!p);
+      if (!ps.length) return;
+      m.closePopup();
+      if (b.dataset.acao !== 'entregue') { posicionar(ps[0].id); return; }
+      const pendentes = ps.filter(p => !p.entregue);
+      if (pendentes.length > 1) entregarTodas(pendentes);
+      else if (pendentes.length === 1) marcarEntregue(pendentes[0], true);
+    });
     m.on('zoomend', () => setZoom(m.getZoom()));
     mapa.current = m;
     (window as any).rotaTeste = {
@@ -104,6 +118,13 @@ export default function Mapa() {
         delete pinos.current[chave];
       }
       doPino.current = {};
+      // A próxima parada é a que ele mais olha e a que menos saltava: num mapa com quarenta
+      // pinos iguais, achar qual é exigia ler os números um por um.
+      const proxima = comLocal
+        .filter(p => !p.entregue && !p.adiada)
+        .map(p => ({id: p.id, i: ondeNaRota(p.id)}))
+        .filter((x): x is {id: string; i: number} => x.i != null)
+        .sort((a, b) => a.i - b.i)[0]?.id;
       for (const g of pilhas) {
         const p = g.ps[0];
         const chave = g.ps.map(x => x.id).join('+');
@@ -112,18 +133,23 @@ export default function Mapa() {
         const apagado = p.entregue || !!p.adiada;
         const so = g.ps.length === 1;
         const rotulo = (p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p)) + (so ? '' : `+${g.ps.length - 1}`);
-        const borda = g.ps.some(x => DUVIDA.has(x.precisao)) ? 'duvida' : g.ps.some(x => QUASE.has(x.precisao)) ? 'quase' : '';
+        const duvidosa = g.ps.some(x => DUVIDA.has(x.precisao)) ? 'duvida' : g.ps.some(x => QUASE.has(x.precisao)) ? 'quase' : '';
+        const borda = [duvidosa, proxima && g.ps.some(x => x.id === proxima) ? 'alvo' : ''].filter(Boolean).join(' ');
         const naRota = (x: Parada) => x.entregue ? '✓' : x.adiada ? '⏸' : rotuloDe(x);
         const noApp = (x: Parada) => [
           x.stop ? `parada <b>${esc(x.stop)}</b>` : x.adicional ? 'sem parada (<b>ADS</b>, adicional)' : '',
           x.ml && e.rota ? `pacote <b>#${esc(x.ml)}</b>` : '',
         ].filter(Boolean).join(' · ');
         const uma = (x: Parada) => `<b>${esc(naRota(x))} · ${esc(x.texto)}</b>${noApp(x) ? `<br><small>no app do entregador: ${noApp(x)}</small>` : ''}`;
+        const pendentes = g.ps.filter(x => !x.entregue);
+        const acoes = ui.aba === 'rota'
+          ? `<div class="popacoes">${pendentes.length
+            ? `<button data-acao="entregue" data-ids="${esc(chave)}">✓ Entreguei${pendentes.length > 1 ? ` as ${pendentes.length}` : ''}</button>`
+            : ''}<button data-acao="arrumar" data-ids="${esc(chave)}">📍 Arrumar aqui</button></div>`
+          : '<br><small>Para corrigir: 2. Conferir → Marcar no mapa.</small>';
         const popup = (so
           ? `${uma(p)}<br><small>${esc(p.exibido)}</small>`
-          : `<b>${g.ps.length} entregas neste ponto</b><br>${g.ps.map(x => uma(x)).join('<br>')}`)
-          + '<br><small>Para corrigir: 2. Conferir → Marcar no mapa.</small>';
-        const pendentes = g.ps.filter(x => !x.entregue);
+          : `<b>${g.ps.length} entregas neste ponto</b><br>${g.ps.map(x => uma(x)).join('<br>')}`) + acoes;
         const balao = balaoDoGrupo({
           stops: [...new Set(pendentes.map(x => x.stop).filter(Boolean) as string[])].sort((a, b) => +a - +b),
           adicionais: pendentes.filter(x => x.adicional).length,

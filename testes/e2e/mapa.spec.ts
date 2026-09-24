@@ -107,3 +107,32 @@ test.describe('puxar o mapa para cima', () => {
     await expect.poll(altura, {timeout: 15_000}).toBeGreaterThan(escolhida - 20);
   });
 });
+
+// Na rua ele está na porta com o mapa aberto. Sair da aba para marcar entregue, ou para arrumar
+// o pino, era o que custava tempo — as duas coisas passam a caber no próprio balão do pino.
+test.describe('agir pelo pino, na aba Rota', () => {
+  // sem GPS de propósito: com ele, o marcador da saída cai em cima da entrega e tapa o pino
+  test.use({viewport: {width: 412, height: 915}});
+
+  test('o balão marca entregue e abre a correção da posição, sem trocar de aba', async ({page}) => {
+    const {carregar, montar, aviso, garantirMapa, ROTA_A} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await garantirMapa(page);
+
+    // a próxima parada da sequência sai destacada
+    await expect(page.locator('.pino.alvo')).toHaveCount(1);
+    const feitasAntes = await page.locator('.resumo').innerText();
+
+    await page.locator('.pino.alvo').click();
+    await page.getByRole('button', {name: /Entreguei/}).first().click();
+    await expect.poll(async () => (await page.locator('.resumo').innerText()) !== feitasAntes, {timeout: 10_000}).toBe(true);
+    await expect(page.locator('#painel')).toContainText('3. Rota');
+
+    // e o outro botão começa a correção ali mesmo
+    await page.locator('.leaflet-marker-icon .pino').first().click();
+    await page.getByRole('button', {name: /Arrumar aqui/}).click();
+    await expect(aviso(page)).toContainText('Toque no mapa, no local da entrega');
+  });
+});

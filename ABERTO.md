@@ -31,14 +31,6 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 - **O cartão inteiro talvez deva ser tocável como "Ver".** Se `Ver` é quase sempre seguido de
   `Editar`, os dois são um fluxo só e podem virar um botão.
 
-## Esperando o Luan usar
-
-- **Girar o mapa com a direção dele**, como o Waze. Foi o que ele pediu. Não foi feito: o Leaflet
-  não gira, e o único caminho é um plugin de CDN que remenda o núcleo dele — num app que precisa
-  funcionar sem sinal, é risco grande por conforto. A bolinha com a seta do rumo resolve a mesma
-  pergunta ("para que lado eu saio daqui") sem isso. Se ele usar e ainda pedir para girar, aí tem
-  motivo medido para pagar o preço.
-
 ## Ideias, não compromissos
 
 - `ruas.nome_chave2` (apelido vindo do OpenStreetMap) ainda tem chave no formato velho: o texto do
@@ -49,6 +41,11 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 - PostGIS, quando a base de ruas crescer a ponto de a consulta doer.
 
 ## Decidido — não reabrir sem motivo novo
+
+- **O mapa não gira com a direção do motorista.** Foi pedido, foi conversado e foi descartado
+  por ele mesmo depois de usar: o Leaflet não gira, e o único caminho seria um plugin de CDN
+  remendando o núcleo dele, num app que precisa funcionar sem sinal. A bolinha com a seta do
+  rumo responde a mesma pergunta.
 
 - **A linha crua da planilha não vai para o Supabase** (pode levar nome, telefone, CPF). Decidido
   em `38b3e0b`, hoje com teste guardando.

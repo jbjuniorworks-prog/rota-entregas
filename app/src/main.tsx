@@ -24,6 +24,8 @@ function BarraDoMapa() {
     arrastando.current = 0;
     if (ev.currentTarget.hasPointerCapture(ev.pointerId)) ev.currentTarget.releasePointerCapture(ev.pointerId);
   };
+  // A faixa fica ACIMA do mapa, em espaço só dela. Por cima do mapa ela tornava intocável todo
+  // pino que caísse embaixo dela — e o primeiro teste que escrevi já bateu num.
   return <div id="pegaMapa" role="separator" aria-label="Arraste para mudar o tamanho do mapa"
     onPointerDown={ev => {
       arrastando.current = ev.pointerId;
@@ -99,7 +101,7 @@ function App() {
   const altura = largo ? null : A.alturaDoMapa();
   const comBarra = !largo && ui.aba === 'rota' && tamanhoMapa !== 'fechado';
   return <>
-    <div id="app" className={`mapa-${tamanhoMapa}${ui.aba === 'rota' ? ' mapa-embaixo' : ''}`}
+    <div id="app" className={`mapa-${tamanhoMapa}${ui.aba === 'rota' ? ' mapa-embaixo' : ''}${comBarra ? ' com-barra' : ''}`}
       style={altura ? ({'--mapa-h': altura + 'vh'} as React.CSSProperties) : undefined}>
       <div className="mapwrap">
         {comBarra && <BarraDoMapa />}
