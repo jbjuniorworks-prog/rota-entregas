@@ -336,9 +336,12 @@ export function juntarLeituras(leituras: string[], apoio: string[] = []): string
   return juntas.map(x => x.e);
 }
 
+// "Rua 25" na planilha do Mercado Livre, "Rua Vinte e Cinco" no OSM e no censo: é a mesma rua da
+// Jabotiana, e não era achada porque a chave saía diferente. Número é a forma que não tem duas
+// grafias — o bairro já fazia isso desde o chaveBairro, a rua ficou para trás.
 export function palavrasRua(nome: string): string[] {
-  return normal(nome).replace(TIPOS_RUA, '').replace(/[^a-z0-9 ]/g, ' ').split(' ')
-    .map(w => ABREVIACOES[w] || w).filter(w => w && !PALAVRAS_VAZIAS.has(w));
+  return comNumeros(normal(nome).replace(TIPOS_RUA, '').replace(/[^a-z0-9 ]/g, ' ').split(' ')
+    .map(w => ABREVIACOES[w] || w).filter(w => w && !PALAVRAS_VAZIAS.has(w)));
 }
 
 export const chaveRua = (nome: string): string => palavrasRua(nome).join(' ');

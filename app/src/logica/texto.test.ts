@@ -1,4 +1,4 @@
-import {chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, normal, pistasDeLugar, ruaCompleta} from './texto';
+import {chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, normal, pistasDeLugar, ruaCompleta} from './texto';
 
 describe('mesmo condomínio, endereços diferentes', () => {
   const p = (texto: string, bairro = 'Jardins') => ({texto, bairro});
@@ -395,5 +395,37 @@ describe('bairro escrito de outro jeito', () => {
   it('bairros diferentes continuam diferentes', () => {
     expect(chaveBairro('13 de Julho')).not.toBe(chaveBairro('13 de Junho'));
     expect(chaveBairro('Jabotiana')).not.toBe(chaveBairro('Jardins'));
+  });
+});
+
+// A rua da Jabotiana que o app não achou na rua: a planilha do Meli escreve "Rua 25", o OSM e o
+// censo escrevem "Rua Vinte e Cinco".
+describe('a chave da rua', () => {
+  it('lê o número escrito por extenso, como já fazia com o bairro', () => {
+    expect(chaveRua('Rua Vinte e Cinco')).toBe(chaveRua('Rua 25'));
+    expect(chaveRua('R. Vinte Cinco')).toBe(chaveRua('Rua 25'));
+    expect(chaveRua('Rua Dois de Julho')).toBe(chaveRua('Rua 2 de Julho'));
+    expect(chaveRua('Avenida Sete de Setembro')).toBe(chaveRua('Av 7 de Setembro'));
+  });
+
+  it('ruas diferentes continuam diferentes', () => {
+    expect(chaveRua('Rua 25')).not.toBe(chaveRua('Rua 24'));
+    expect(chaveRua('Rua Vinte e Cinco')).not.toBe(chaveRua('Rua Vinte e Seis'));
+    expect(chaveRua('Rua 2 de Julho')).not.toBe(chaveRua('Rua 2 de Junho'));
+  });
+
+  // A chave é gravada no banco pelas ferramentas e recalculada no celular. São duas
+  // implementações (node e TypeScript): se elas se separarem, a rua deixa de ser achada e
+  // ninguém fica sabendo. Este teste é a costura entre as duas.
+  it('a ferramenta que grava no banco calcula a mesma chave que o app', async () => {
+    const ferramenta = await import('../../../ferramentas/chave-rua.mjs');
+    const nomes = [
+      'Rua Vinte e Cinco', 'Rua 25', 'Avenida Desembargador João Bosco de A. Lima',
+      'Trav. Dezessete de Março', 'R Dr. José Thomaz de Aquino', 'Rua Dois de Julho',
+      'Alameda das Flores', 'Praça General Valadão', 'Rodovia dos Náufragos',
+      'Rua Poeta Paulo Freire', 'Av. Eng. Gentil Tavares', 'Rua Trinta e Sete',
+      'Rua Noventa e Nove', 'Beco Sem Nome', 'Estrada da Zona de Expansão',
+    ];
+    for (const n of nomes) expect([n, ferramenta.chaveRua(n)]).toEqual([n, chaveRua(n)]);
   });
 });

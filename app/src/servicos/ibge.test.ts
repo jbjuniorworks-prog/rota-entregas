@@ -2,6 +2,7 @@ import {readFileSync, readdirSync} from 'node:fs';
 import {describe, expect, it} from 'vitest';
 import {montar} from '../../../ferramentas/cnefe.mjs';
 import {acharAncoraDoBairro, apelidoDaCidade, lerTabela, procurar, procurarRua} from './ibge';
+import {chaveRua} from '../logica/texto';
 
 const CABECA = 'COD_UNICO_ENDERECO;COD_UF;COD_MUNICIPIO;COD_DISTRITO;COD_SUBDISTRITO;COD_SETOR;NUM_QUADRA;'
   + 'NUM_FACE;CEP;DSC_LOCALIDADE;NOM_TIPO_SEGLOGR;NOM_TITULO_SEGLOGR;NOM_SEGLOGR;NUM_ENDERECO;DSC_MODIFICADOR;'
@@ -136,6 +137,41 @@ describe('mesma rua em vários bairros, sem CEP', () => {
 
   it('rua que não está no censo não vira resposta', () => {
     expect(procurarRua(t(), 'Rua Que Nao Existe', 34, {lat: -10.952, lng: -37.090})).toBeNull();
+  });
+
+  // Todos os testes acima perguntam do jeito que o censo escreve. A planilha do Mercado Livre
+  // escreve "Rua 25", e era esse o jeito que nunca tinha sido testado.
+  it('a planilha escreve com algarismo e o censo por extenso: é a mesma rua', () => {
+    const porExtenso = procurarRua(t(), 'Rua Vinte e Cinco', 34, {lat: -10.952, lng: -37.090});
+    const comAlgarismo = procurarRua(t(), 'Rua 25', 34, {lat: -10.952, lng: -37.090});
+    expect(comAlgarismo).toEqual(porExtenso);
+    expect(comAlgarismo!.bairro).toBe('JABOTIANA');
+  });
+});
+
+// A entrega que falhou na rua, contra o censo de verdade que vai junto no app.
+describe('a Rua 25 da Jabotiana, no arquivo que o app leva', () => {
+  const perto = {lat: -10.952, lng: -37.090};
+  const censo = () => lerTabela(new Uint8Array(readFileSync('app/public/aracaju-v1.bin')));
+
+  it('os dois jeitos de escrever caem na mesma porta', () => {
+    const t = censo();
+    const comAlgarismo = procurarRua(t, 'Rua 25', 34, perto, 'Jabotiana')!;
+    const porExtenso = procurarRua(t, 'Rua Vinte e Cinco', 34, perto, 'Jabotiana')!;
+    expect(comAlgarismo).not.toBeNull();
+    expect(comAlgarismo.bairro).toBe('JABOTIANA');
+    expect(comAlgarismo.numero).toBe(34);
+    expect(comAlgarismo.salto).toBe(0);
+    expect(porExtenso.lat).toBeCloseTo(comAlgarismo.lat, 6);
+    expect(porExtenso.lng).toBeCloseTo(comAlgarismo.lng, 6);
+  });
+
+  it('o censo guarda os dois jeitos como nomes diferentes, e a chave junta eles', () => {
+    const nomes = censo().ruas.filter(n => chaveRua(n) === '25');
+    expect(nomes).toContain('RUA 25');
+    expect(nomes).toContain('RUA VINTE E CINCO');
+    // e continua separando o que é de verdade outra rua
+    expect(chaveRua('Rua 25')).not.toBe(chaveRua('Rua 24'));
   });
 });
 

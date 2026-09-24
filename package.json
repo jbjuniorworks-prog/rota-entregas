@@ -17,6 +17,7 @@
     "cnefe": "node ferramentas/cnefe.mjs",
     "bairros": "node ferramentas/bairros.mjs",
     "prefeitura": "node ferramentas/prefeitura.mjs",
+    "rechavear": "node ferramentas/rechavear.mjs",
     "test:leitor": "playwright test --grep @leitor --workers 1",
     "test:ui": "playwright test --grep @ui --workers 1"
   },
