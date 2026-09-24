@@ -114,6 +114,11 @@ export function clienteNuvem(): ClienteNuvem | null {
         {onConflict: 'nome_chave,cidade,motorista_id,dia', ignoreDuplicates: true});
       if (error) throw erro(error);
     },
+    async contarUso(dia, linhas) {
+      if (!linhas.length) return;
+      const {error} = await s.rpc('contar_uso', {dia_: dia, linhas});
+      if (error) throw erro(error);
+    },
     async lugaresConhecidos(palavras, cidade) {
       const {data, error} = await s.rpc('lugares_conhecidos', {palavras, cidade_: cidade});
       if (error) throw erro(error);

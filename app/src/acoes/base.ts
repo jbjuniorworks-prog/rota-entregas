@@ -1,6 +1,7 @@
 import {criarFila} from '../logica/fila';
 import {marcarIsoladas} from '../logica/geo';
 import {criarMemoria} from '../logica/memoria';
+import {criarUso} from '../logica/uso';
 import {CHAVES} from '../logica/guarda';
 import {guarda, loja, type Aba, type TamanhoDoMapa} from '../loja';
 import {clienteNuvem} from '../servicos/nuvem';
@@ -33,6 +34,15 @@ export function desatualizarRota(mudouMuito = false) {
 
 // Só quando a rota deixa de descrever o dia: parada removida, área apagada, planilha nova, reset.
 // (Com um id que não existe mais em `ordem`, a aba Rota não só mente: ela quebra.)
+export const uso = criarUso(guarda);
+
+// Quais botões do cartão o motorista usa, e qual vem depois de qual. Vai na mesma fila offline,
+// sem forçar envio: é medição nossa, não trabalho dele — pode esperar o próximo envio.
+export function contar(botao: string) {
+  const r = uso.registrar(botao);
+  fila.contarUso(r.dia, r.linhas);
+}
+
 export function invalidarRota() {
   marcarIsoladas(e().paradas);
   e().rota = null;

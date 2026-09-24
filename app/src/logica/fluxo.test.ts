@@ -176,6 +176,7 @@ describe('fila da nuvem', () => {
       async inserirLugar(l) { if (falhas.recusar) throw new ErroNuvem(falhas.recusar, false); chamadas.push(`lugar ${l.nomeChave} ${l.lat}`); },
       async lugaresConhecidos() { return []; },
       async registrar() {},
+      async contarUso(dia, linhas) { if (falhas.recusar) throw new ErroNuvem(falhas.recusar, false); chamadas.push(`uso ${dia} ${linhas.map(l => `${l.botao}|${l.antes}=${l.vezes}`).join(' ')}`); },
       async posicoes() { return []; },
     };
     return {c, chamadas};
@@ -228,6 +229,32 @@ describe('fila da nuvem', () => {
     await f.enviar(null);
     expect(f.pendentes()).toBe(1);
   });
+
+  // O contador de botões manda o acumulado do dia a cada toque. Se cada um virasse uma operação,
+  // um dia de rota deixaria centenas delas na fila esperando rede.
+  it('o retrato do uso substitui o anterior em vez de empilhar', async () => {
+    const g = guardaNaMemoria(), f = criarFila(g), {c, chamadas} = servidor();
+    f.contarUso('2026-09-23', [{botao: 'ver', antes: '', vezes: 1}]);
+    f.contarUso('2026-09-23', [{botao: 'ver', antes: '', vezes: 2}]);
+    f.contarUso('2026-09-24', [{botao: 'ver', antes: '', vezes: 1}]);
+    await f.enviar(c);
+    expect(chamadas).toEqual(['uso 2026-09-23 ver|=2', 'uso 2026-09-24 ver|=1']);
+  });
+
+  it('o contador não entra no "para enviar" do motorista', () => {
+    const f = criarFila(guardaNaMemoria());
+    f.contarUso('2026-09-23', [{botao: 'ver', antes: '', vezes: 1}]);
+    expect(f.pendentes()).toBe(0);
+    f.enfileirar({tipo: 'correcao', chave: 'x|1', lat: 1, lng: 1});
+    expect(f.pendentes()).toBe(1);
+  });
+
+  it('contador recusado pelo servidor some sem assustar o motorista', async () => {
+    const f = criarFila(guardaNaMemoria()), {c} = servidor({recusar: 'tabela não existe'});
+    f.contarUso('2026-09-23', [{botao: 'ver', antes: '', vezes: 1}]);
+    await f.enviar(c);
+    expect(f.erro()).toBe('');
+  });
 });
 
 describe('desfazer correção já enviada', () => {
@@ -241,6 +268,7 @@ describe('desfazer correção já enviada', () => {
       inserirLugar: async () => {},
       lugaresConhecidos: async () => [],
       registrar: async () => {},
+      contarUso: async () => {},
       posicoes: async () => [],
     };
     f.enfileirar({tipo: 'correcao', chave: 'k|1', lat: -11.5, lng: -37.5});

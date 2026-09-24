@@ -146,6 +146,34 @@ export interface Cobertura {
   lugares_confirmados: number;
 }
 
+export interface UsoDoBotao {
+  botao: string;
+  total: number;
+  depois: {botao: string; vezes: number}[];
+}
+
+// Soma os dias e os motoristas. Linha com `antes` vazio é o total do botão; com `antes`
+// preenchido é "este botão foi tocado logo depois daquele".
+export async function usoDosBotoes(dias = 30): Promise<{lista: UsoDoBotao[]; diasComDado: number}> {
+  const desde = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
+  const {data, error} = await cliente().from('uso_dos_botoes').select('dia, botao, antes, vezes').gte('dia', desde).limit(5000);
+  falhou(error);
+  const linhas = (data || []) as {dia: string; botao: string; antes: string; vezes: number}[];
+  const total = new Map<string, number>();
+  const pares = new Map<string, Map<string, number>>();
+  for (const l of linhas) {
+    if (!l.antes) { total.set(l.botao, (total.get(l.botao) || 0) + l.vezes); continue; }
+    if (!pares.has(l.antes)) pares.set(l.antes, new Map());
+    const m = pares.get(l.antes)!;
+    m.set(l.botao, (m.get(l.botao) || 0) + l.vezes);
+  }
+  const lista = [...total].sort((a, b) => b[1] - a[1]).map(([botao, t]) => ({
+    botao, total: t,
+    depois: [...(pares.get(botao) || new Map())].map(([b, v]) => ({botao: b, vezes: v})).sort((a, b) => b.vezes - a.vezes),
+  }));
+  return {lista, diasComDado: new Set(linhas.map(l => l.dia)).size};
+}
+
 export async function cobertura(): Promise<Cobertura | null> {
   const {data, error} = await cliente().rpc('cobertura');
   if (error) throw new Error(error.message);

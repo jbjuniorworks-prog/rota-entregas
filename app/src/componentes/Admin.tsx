@@ -74,9 +74,39 @@ export function TelaAdmin() {
     {!motoristas && !erro && <div className="info">Carregando…</div>}
     {motoristas && <Motoristas lista={motoristas} recarregar={carregar} />}
     <BaseDeRuas />
+    <UsoDosBotoes />
     {rotas && <Rotas lista={rotas} />}
     {lugares && <Correcoes lista={lugares} corDe={corDe} recarregar={carregar} />}
   </>;
+}
+
+const NOME_DO_BOTAO: Record<string, string> = {ver: 'Ver', mapa: 'Marcar no mapa', aqui: '📍 Estou aqui', editar: 'Editar', remover: 'Remover'};
+
+// Para parar de decidir no chute quais botões ficam na frente do cartão. Mostra quanto cada um
+// é usado e qual costuma vir depois de qual — dois botões que andam sempre juntos são, na
+// prática, um fluxo só. Não há endereço nem pacote aqui: só nome de botão e contagem.
+function UsoDosBotoes() {
+  const [dados, setDados] = useState<{lista: Adm.UsoDoBotao[]; diasComDado: number} | null>(null);
+  const {ocupado, correr, fazendo} = useTrabalho();
+  const buscar = () => correr('uso', () => Adm.usoDosBotoes(), undefined).then(d => d && setDados(d));
+  const maior = dados ? Math.max(1, ...dados.lista.map(b => b.total)) : 1;
+  return <details>
+    <summary>Uso dos botões do cartão</summary>
+    <div className="info">Quantas vezes cada botão foi usado e qual veio logo depois dele. Serve para decidir com medida, não com opinião, quais ficam à mão.</div>
+    <div className="linha"><button className="btn" onClick={buscar} disabled={!!ocupado}>{fazendo('uso') ? 'Buscando…' : dados ? '↻ Atualizar' : 'Ver a medição'}</button></div>
+    {dados && !dados.lista.length && <div className="info">Ainda não chegou nada. Começa a contar assim que os motoristas usarem os botões com esta versão.</div>}
+    {dados && dados.lista.length > 0 && <>
+      <div className="info">{dados.diasComDado} dia(s) com dado, últimos 30.</div>
+      {dados.lista.map(b => <div className="item" key={b.botao}>
+        <div><b>{NOME_DO_BOTAO[b.botao] || b.botao}</b> · {b.total} vez(es)</div>
+        <div className="barra" style={{height: 6, borderRadius: 99, background: 'var(--bd)', overflow: 'hidden', margin: '4px 0'}}>
+          <i style={{display: 'block', height: '100%', width: `${Math.round(b.total * 100 / maior)}%`, background: 'var(--pri)'}} />
+        </div>
+        {b.depois.length > 0 && <div className="achado">Depois dele: {b.depois.map(d =>
+          `${NOME_DO_BOTAO[d.botao] || d.botao} ${d.vezes}× (${Math.round(d.vezes * 100 / b.total)}%)`).join(' · ')}</div>}
+      </div>)}
+    </>}
+  </details>;
 }
 
 function BaseDeRuas() {

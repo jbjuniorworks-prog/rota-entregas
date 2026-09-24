@@ -204,6 +204,39 @@ describe('âncora do bairro (piso de sanidade)', () => {
   });
 });
 
+// A Zona de Expansão fica de 10 a 18 km do centro e é a parte da cidade que ninguém tinha
+// conferido. O censo cobre: 5.716 endereços nos seis bairros de lá. Isto é para saber na hora
+// se uma reconstrução do arquivo (npm run cnefe) deixar essa ponta de fora — do jeito que o
+// app funciona, a falta não aparece como erro, aparece como entrega caindo no centro do bairro.
+describe('a Zona de Expansão está no arquivo', () => {
+  const censo = () => lerTabela(new Uint8Array(readFileSync('app/public/aracaju-v1.bin')));
+  const DE_LA = ['SAO JOSE DOS NAUFRAGOS', 'MOSQUEIRO', 'AREIA BRANCA', 'ROBALO', 'MATAPOA', 'GAMELEIRA'];
+
+  it('cada bairro de lá tem endereços e uma âncora dentro de Aracaju', () => {
+    const t = censo();
+    const quantos = new Map<number, number>();
+    for (const i of t.iBairro) quantos.set(i, (quantos.get(i) || 0) + 1);
+    for (const nome of DE_LA) {
+      const i = t.bairros.indexOf(nome);
+      expect(i, `${nome} sumiu do censo`).toBeGreaterThanOrEqual(0);
+      expect(quantos.get(i) || 0, `${nome} com endereços de menos`).toBeGreaterThan(200);
+      const a = acharAncoraDoBairro(t, nome)!;
+      expect(a, `${nome} sem âncora`).not.toBeNull();
+      expect(a.lat).toBeGreaterThan(-11.2);
+      expect(a.lat).toBeLessThan(-10.8);
+      expect(a.lng).toBeGreaterThan(-37.3);
+      expect(a.lng).toBeLessThan(-36.9);
+    }
+  });
+
+  it('o bairro do jeito que a planilha escreve chega no do censo', () => {
+    const t = censo();
+    expect(acharAncoraDoBairro(t, 'Zona de Expansão (Robalo)')!.nome).toBe('ROBALO');
+    expect(acharAncoraDoBairro(t, 'São José dos Náufragos/Robalo')!.nome).toBe('SAO JOSE DOS NAUFRAGOS');
+    expect(acharAncoraDoBairro(t, 'Mosqueiro')!.nome).toBe('MOSQUEIRO');
+  });
+});
+
 describe('um arquivo de censo por cidade', () => {
   it('o apelido da cidade é o nome do arquivo, e aguenta o campo sujo', () => {
     expect(apelidoDaCidade('Aracaju')).toBe('aracaju');

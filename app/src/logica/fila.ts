@@ -2,6 +2,7 @@ import {CHAVES, type Guarda} from './guarda';
 import type {ItemPlanilha} from './planilha';
 import type {PosicaoCompartilhada} from './compartilhadas';
 import {chaveLugar} from './texto';
+import type {LinhaDeUso} from './uso';
 
 export interface PacoteNuvem {
   spx_tn: string | null;
@@ -23,7 +24,8 @@ export type Operacao =
   | {tipo: 'desfazerCorrecao'; chave: string; lat: number; lng: number}
   | {tipo: 'observacao'; chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string}
   | {tipo: 'lugar'; nomeChave: string; nome: string; cidade: string; lat: number; lng: number; endereco: string}
-  | {tipo: 'registro'; rota: string; semRuas: string | null; itens: ItemRegistro[]};
+  | {tipo: 'registro'; rota: string; semRuas: string | null; itens: ItemRegistro[]}
+  | {tipo: 'uso'; dia: string; linhas: LinhaDeUso[]};
 
 export interface ItemRegistro {
   tn: string;
@@ -56,6 +58,7 @@ export interface ClienteNuvem {
   inserirObservacao(o: {chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string}): Promise<void>;
   inserirLugar(l: {nomeChave: string; nome: string; cidade: string; lat: number; lng: number; endereco: string}): Promise<void>;
   registrar(rotaId: string, semRuas: string | null, itens: ItemRegistro[]): Promise<void>;
+  contarUso(dia: string, linhas: LinhaDeUso[]): Promise<void>;
   lugaresConhecidos(palavras: string[], cidade: string): Promise<LugarConhecido[]>;
   posicoes(chaves: string[]): Promise<PosicaoCompartilhada[]>;
 }
@@ -105,13 +108,16 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
         const id = g.ler<Record<string, string>>(CHAVES.rotasNuvem, {})[op.rota];
         if (!id) return 'descartar';
         await c.registrar(id, op.semRuas, op.itens);
+      } else if (op.tipo === 'uso') {
+        await c.contarUso(op.dia, op.linhas);
       } else {
         await c.apagarCorrecao(op.chave, op.lat, op.lng);
       }
       return 'ok';
     } catch (e) {
       if (e instanceof ErroNuvem && !e.deRede) {
-        if (op.tipo !== 'observacao' && op.tipo !== 'lugar' && op.tipo !== 'registro') erro = 'o servidor recusou um envio (' + e.message + ')';
+        const calado = op.tipo === 'observacao' || op.tipo === 'lugar' || op.tipo === 'registro' || op.tipo === 'uso';
+        if (!calado) erro = 'o servidor recusou um envio (' + e.message + ')';
         return 'descartar';
       }
       return 'rede';
@@ -119,12 +125,21 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
   }
 
   return {
-    pendentes: () => ler().length,
+    // o contador de botões não é trabalho do motorista: não entra no "⏳ N para enviar"
+    pendentes: () => ler().filter(op => op.tipo !== 'uso').length,
     desde: () => g.ler<number>(CHAVES.filaDesde, 0),
     erro: () => erro,
     enfileirar(...ops: Operacao[]) {
       if (!ler().length) g.gravar(CHAVES.filaDesde, Date.now());
       g.gravar(CHAVES.fila, [...ler(), ...ops].slice(-FILA_MAX));
+    },
+    // O retrato do dia substitui o anterior em vez de empilhar: senão cada toque num botão
+    // deixaria mais uma operação na fila, e um dia de rota entupiria ela à toa.
+    contarUso(dia: string, linhas: LinhaDeUso[]) {
+      const f = ler();
+      if (!f.length) g.gravar(CHAVES.filaDesde, Date.now());
+      const manter = f.filter((op, i) => op.tipo !== 'uso' || op.dia !== dia || (i === 0 && enviando));
+      g.gravar(CHAVES.fila, [...manter, {tipo: 'uso', dia, linhas}].slice(-FILA_MAX));
     },
     desfazerCorrecao(chave: string, lat: number, lng: number): 'retirada' | 'apagar' {
       const f = ler();
