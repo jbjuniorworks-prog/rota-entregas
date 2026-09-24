@@ -3,8 +3,8 @@
 html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--tx)}
 #app{display:flex;flex-direction:column;height:100%}
 .mapwrap{position:relative;flex:none}
-#map,.semmapa{height:28vh;background:#dde3ea}
-#app.mapa-grande #map,#app.mapa-grande .semmapa{height:70vh}
+#map,.semmapa{height:var(--mapa-h,28vh);background:#dde3ea}
+#app.mapa-grande #map,#app.mapa-grande .semmapa{height:var(--mapa-h,70vh)}
 /* fechado: fica só o botão, senão não há como trazer o mapa de volta */
 #app.mapa-fechado .mapwrap{min-height:46px;background:var(--card)}
 #app.mapa-fechado #btnMapa{top:6px}
@@ -14,6 +14,17 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,Robot
 @media (max-width:899px){#app.mapa-embaixo .mapwrap{order:2}#app.mapa-embaixo #painel{order:1}}
 .semmapa{display:grid;place-content:center;justify-items:center;gap:10px;padding:16px;text-align:center;font-size:14px;color:var(--mut)}
 #btnMapa{position:absolute;right:10px;top:10px;z-index:500}
+/* Barra de pegar o mapa. Fica dentro da borda de cima dele, com uma faixa clara por baixo: um
+   traço solto some no meio do mapa, e quem reclamou que não conseguia aumentar precisa ver que
+   dá para puxar. Alvo de 30px de altura, para o polegar com a moto parada. */
+/* Centrada e estreita de propósito: de ponta a ponta ela ficaria por cima do ⤢ e do zoom do
+   Leaflet, que estão nos cantos, e roubaria o toque deles. */
+#pegaMapa{position:absolute;left:25%;right:25%;top:0;height:30px;z-index:600;display:flex;justify-content:center;padding-top:7px;touch-action:none;cursor:ns-resize;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,0))}
+#pegaMapa i{width:56px;height:6px;border-radius:99px;background:#374151;opacity:.8}
+#btnEu{position:absolute;right:10px;top:52px;z-index:500;font-size:18px;line-height:1;padding:8px 11px}
+/* "você está aqui": bolinha com anel branco, e a seta do rumo só quando ele está andando */
+.eu{width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 1px rgba(37,99,235,.6),0 1px 4px rgba(0,0,0,.4);position:relative;margin:2px}
+.eu i{position:absolute;left:50%;top:50%;width:0;height:0;margin:-6px 0 0 -6px;border:6px solid transparent;border-bottom-color:#2563eb;transform-origin:50% 50%}
 #painel{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--card)}
 nav{display:flex;border-bottom:1px solid var(--bd)}
 nav button{flex:1;border:0;background:none;padding:12px 4px;font-size:15px;font-weight:600;color:var(--mut);border-bottom:3px solid transparent}

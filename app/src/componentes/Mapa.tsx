@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {tocouNoMapa} from '../acoes';
+import {seguirMinhaPosicao, tocouNoMapa} from '../acoes';
 import {empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
@@ -19,6 +19,13 @@ function icone(texto: string, cor: string, apagado = false, borda = '') {
 
 const BALAO = {permanent: true as const, direction: 'top' as const, offset: [0, -28] as [number, number], className: 'balao'};
 const ZOOM_DO_FOCO = 17;
+const ZOOM_DE_MIM = 17;
+
+// A bolinha de "você está aqui", com a seta do rumo quando ele está andando.
+const iconeDeMim = (rumo: number | null) => L.divIcon({
+  className: '', iconSize: [26, 26], iconAnchor: [13, 13],
+  html: `<div class="eu">${rumo == null ? '' : `<i style="transform:rotate(${Math.round(rumo)}deg) translateY(-17px)"></i>`}</div>`,
+});
 
 function balaoDoGrupo(g: {stops: string[]; adicionais: number; pacotes: number}): string {
   const daParada = [
@@ -43,6 +50,7 @@ export default function Mapa() {
   const mapa = useRef<L.Map | null>(null);
   const camadaFundo = useRef<L.LayerGroup | null>(null);
   const camadaPinos = useRef<L.LayerGroup | null>(null);
+  const camadaEu = useRef<L.LayerGroup | null>(null);
   const pinos = useRef<Record<string, NoMapa>>({});
   const doPino = useRef<Record<string, string>>({});
   const desenhado = useRef('');
@@ -63,6 +71,7 @@ export default function Mapa() {
     (window as any).rotaTeste = {
       clicarMapa: (lat: number, lng: number) => m.fire('click', {latlng: L.latLng(lat, lng)}),
       zoom: (z: number) => m.setZoom(z),
+      centro: () => { const c = m.getCenter(); return {lat: +c.lat.toFixed(5), lng: +c.lng.toFixed(5)}; },
     };
     return () => { m.remove(); };
   }, []);
@@ -193,6 +202,33 @@ export default function Mapa() {
   });
 
   useEffect(() => { setTimeout(() => mapa.current?.invalidateSize(), 50); }, [ui.mapa, ui.aba]);
+
+  // Só segue a posição na aba Rota, que é a que ele olha dirigindo, e só enquanto o mapa está
+  // desenhado — com o mapa fechado este componente nem existe, e o GPS não fica ligado à toa.
+  useEffect(() => {
+    if (ui.aba !== 'rota') return;
+    return seguirMinhaPosicao();
+  }, [ui.aba]);
+
+  useEffect(() => {
+    const m = mapa.current;
+    if (!m) return;
+    if (!camadaEu.current) camadaEu.current = L.layerGroup().addTo(m);
+    const c = camadaEu.current;
+    c.clearLayers();
+    const eu = ui.euAqui;
+    if (!eu || ui.aba !== 'rota') return;
+    // o círculo é a margem de erro do GPS: some quando ele é bom, para não virar mancha na tela
+    if (eu.precisao > 25) {
+      L.circle([eu.lat, eu.lng], {radius: Math.min(300, eu.precisao), color: '#2563eb', weight: 1, fillOpacity: 0.1, interactive: false}).addTo(c);
+    }
+    L.marker([eu.lat, eu.lng], {icon: iconeDeMim(eu.rumo), interactive: false, zIndexOffset: 2000}).addTo(c);
+  }, [ui.euAqui, ui.aba]);
+
+  useEffect(() => {
+    if (!ui.irParaMim || !ui.euAqui) return;
+    mapa.current?.setView([ui.euAqui.lat, ui.euAqui.lng], Math.max(mapa.current.getZoom(), ZOOM_DE_MIM));
+  }, [ui.irParaMim]);
 
   return <div id="map" ref={div} />;
 }

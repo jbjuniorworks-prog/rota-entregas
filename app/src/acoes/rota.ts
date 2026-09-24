@@ -10,9 +10,27 @@ import {desatualizarRota, e, enviarFila, fila, ui} from './base';
 import {guardarPassagem, guardarPassagens} from './posicoes';
 import {registrarComoFicou} from './registro';
 
+// Quando vale a posição que o mapa já vem seguindo, em vez de pedir uma nova ao GPS.
+const RECENTE = 30000;
+
 export function gps(aindaVale: () => boolean = () => true): Promise<void> {
   return new Promise((ok, falha) => {
     if (!navigator.geolocation) { status('Este navegador não dá acesso ao GPS.', 3000); falha(new Error('sem GPS')); return; }
+    // Com o mapa da Rota aberto a posição já está chegando sozinha: pedir de novo faz o motorista
+    // esperar o GPS à toa — e, com uma vigia ligada, o pedido novo pode nem ser respondido.
+    const meu = ui.euAqui;
+    if (meu && Date.now() - meu.quando < RECENTE && aindaVale()) {
+      e().inicio = {id: 'inicio', lat: meu.lat, lng: meu.lng, exibido: `Minha localização (±${Math.round(meu.precisao)} m)`};
+      desatualizarRota();
+      ui.enquadrar++;
+      loja.mudou();
+      const naTela = !!e().rota && !ui.ocupado;
+      status(naTela
+        ? 'Localização definida. A rota continua na tela; toque em "Refazer rota" para a sequência sair daqui.'
+        : 'Localização definida.', naTela ? 8000 : 2000);
+      ok();
+      return;
+    }
     status('Pegando sua localização…');
     navigator.geolocation.getCurrentPosition(pos => {
       if (!aindaVale()) {

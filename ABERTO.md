@@ -31,9 +31,16 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 - **O cartão inteiro talvez deva ser tocável como "Ver".** Se `Ver` é quase sempre seguido de
   `Editar`, os dois são um fluxo só e podem virar um botão.
 
+## Esperando o Luan usar
+
+- **Girar o mapa com a direção dele**, como o Waze. Foi o que ele pediu. Não foi feito: o Leaflet
+  não gira, e o único caminho é um plugin de CDN que remenda o núcleo dele — num app que precisa
+  funcionar sem sinal, é risco grande por conforto. A bolinha com a seta do rumo resolve a mesma
+  pergunta ("para que lado eu saio daqui") sem isso. Se ele usar e ainda pedir para girar, aí tem
+  motivo medido para pagar o preço.
+
 ## Ideias, não compromissos
 
-- Mapa da aba Rota arrastável para cima.
 - `ruas.nome_chave2` (apelido vindo do OpenStreetMap) ainda tem chave no formato velho: o texto do
   apelido não é guardado, então só se acerta no próximo `npm run ruas`. Não dá resposta errada —
   nenhuma busca produz mais aquela forma, ela só deixa de casar.

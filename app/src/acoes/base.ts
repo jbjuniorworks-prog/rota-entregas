@@ -55,18 +55,36 @@ export function invalidarRota() {
 const PADRAO: Record<string, TamanhoDoMapa> = {enderecos: 'fechado', conferir: 'grande', rota: 'normal', admin: 'fechado'};
 const VOLTA: TamanhoDoMapa[] = ['fechado', 'normal', 'grande'];
 
+// Três tamanhos no botão ⤢ resolvem o caso comum; arrastar a barra guarda a altura exata, em vh.
+// Quem arrasta uma vez quer aquele tamanho, não o mais próximo dos três.
+export const ALTURA_MIN = 18;
+export const ALTURA_MAX = 82;
+
 export function tamanhoDoMapa(aba: Aba = ui.aba): TamanhoDoMapa {
   const escolhido = ui.mapa[aba];
+  if (typeof escolhido === 'number') return 'normal';
   if (escolhido) return escolhido;
   if (aba === 'enderecos' && e().paradas.some(p => p.lat != null)) return 'normal';
   return PADRAO[aba] || 'normal';
 }
 
-export function alternarMapa() {
-  const agora = tamanhoDoMapa();
-  ui.mapa = {...ui.mapa, [ui.aba]: VOLTA[(VOLTA.indexOf(agora) + 1) % VOLTA.length]};
+export function alturaDoMapa(aba: Aba = ui.aba): number | null {
+  const escolhido = ui.mapa[aba];
+  return typeof escolhido === 'number' ? escolhido : null;
+}
+
+function guardarMapa(valor: TamanhoDoMapa | number) {
+  ui.mapa = {...ui.mapa, [ui.aba]: valor};
   guarda.gravar(CHAVES.mapa, ui.mapa);
   loja.mudou(false);
+}
+
+export function alternarMapa() {
+  guardarMapa(VOLTA[(VOLTA.indexOf(tamanhoDoMapa()) + 1) % VOLTA.length]);
+}
+
+export function arrastarMapa(vh: number) {
+  guardarMapa(Math.round(Math.min(ALTURA_MAX, Math.max(ALTURA_MIN, vh))));
 }
 
 export function irPara(aba: typeof ui.aba) {

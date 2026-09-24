@@ -10,6 +10,28 @@ import {useLoja, type Aba} from './loja';
 import {nuvem} from './servicos/nuvem';
 
 const Mapa = lazy(() => import('./componentes/Mapa'));
+
+// Na Rota o mapa fica embaixo do cartão, e 28% da tela é pouco para se achar. A barra puxa ele
+// para cima até onde ele quiser, e a altura fica guardada nessa aba. O botão ⤢ continua para
+// quem só quer os três tamanhos.
+function BarraDoMapa() {
+  const arrastando = useRef(0);
+  const comeco = useRef({y: 0, vh: 0});
+  const daTela = (px: number) => px / window.innerHeight * 100;
+  return <div id="pegaMapa" role="separator" aria-label="Arraste para mudar o tamanho do mapa"
+    onPointerDown={ev => {
+      arrastando.current = ev.pointerId;
+      comeco.current = {y: ev.clientY, vh: A.alturaDoMapa() ?? daTela(document.getElementById('map')?.getBoundingClientRect().height || 0)};
+      (ev.target as HTMLElement).setPointerCapture(ev.pointerId);
+    }}
+    onPointerMove={ev => {
+      if (arrastando.current !== ev.pointerId) return;
+      // o mapa está embaixo: puxar a barra para cima aumenta ele
+      A.arrastarMapa(comeco.current.vh + daTela(comeco.current.y - ev.clientY));
+    }}
+    onPointerUp={ev => { arrastando.current = 0; (ev.target as HTMLElement).releasePointerCapture(ev.pointerId); }}
+  ><i /></div>;
+}
 const TelaAdmin = lazy(() => import('./componentes/Admin').then(m => ({default: m.TelaAdmin})));
 
 class EscudoDoMapa extends Component<{children: ReactNode}, {caiu: boolean}> {
@@ -67,15 +89,21 @@ function App() {
   const abas: [Aba, string][] = pf?.papel === 'admin' ? [...ABAS, ['admin', '⚙️ Admin']] : ABAS;
   const escolhido = A.tamanhoDoMapa();
   const tamanhoMapa = largo && escolhido === 'fechado' ? 'normal' : escolhido;
+  const altura = largo ? null : A.alturaDoMapa();
+  const comBarra = !largo && ui.aba === 'rota' && tamanhoMapa !== 'fechado';
   return <>
-    <div id="app" className={`mapa-${tamanhoMapa}${ui.aba === 'rota' ? ' mapa-embaixo' : ''}`}>
+    <div id="app" className={`mapa-${tamanhoMapa}${ui.aba === 'rota' ? ' mapa-embaixo' : ''}`}
+      style={altura ? ({'--mapa-h': altura + 'vh'} as React.CSSProperties) : undefined}>
       <div className="mapwrap">
+        {comBarra && <BarraDoMapa />}
         {/* fechado é não desenhar, não desenhar com altura zero: senão o mapa e o aviso de falha
             ficam no DOM meio visíveis, e o Leaflet trabalha à toa numa aba que não o usa */}
         {tamanhoMapa !== 'fechado'
           && <EscudoDoMapa><Suspense fallback={null}>{comMapa && <Mapa />}</Suspense></EscudoDoMapa>}
         <button id="btnMapa" className="btn peq" onClick={A.alternarMapa}
           title="Toque para fechar, voltar ao normal ou ampliar o mapa desta aba">⤢ Mapa</button>
+        {ui.aba === 'rota' && tamanhoMapa !== 'fechado'
+          && <button id="btnEu" className="btn peq" onClick={A.centralizarEmMim} title="Centralizar onde você está">◎</button>}
       </div>
       <div id="painel">
         <nav>{abas.map(([id, nome]) => <button key={id} className={ui.aba === id ? 'on' : ''} onClick={() => A.irPara(id)}>{nome}</button>)}</nav>

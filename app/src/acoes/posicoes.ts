@@ -176,21 +176,56 @@ Levar todas para o ponto novo junto com esta?`)) juntas.push(...irmas);
 
 export const GPS_PRECISO = 50;
 
-export function estouAqui(p: Parada) {
-  if (!navigator.geolocation) { status('Este navegador não dá acesso ao GPS.', 4000); return; }
-  status('Pegando sua localização…');
-  navigator.geolocation.getCurrentPosition(pos => {
-    const margem = Math.round(pos.coords.accuracy);
-    if (margem > GPS_PRECISO && !confirm(`O GPS está impreciso agora (±${margem} m). Usar mesmo assim como posição desta entrega?
+// Na porta, posição de dez segundos atrás ainda é a porta. Mais velha que isso, não.
+const NA_PORTA = 10000;
+
+function marcarNaPorta(p: Parada, lat: number, lng: number, precisao: number) {
+  const margem = Math.round(precisao);
+  if (margem > GPS_PRECISO && !confirm(`O GPS está impreciso agora (±${margem} m). Usar mesmo assim como posição desta entrega?
 
 Se puder, espere uns segundos ao ar livre e tente de novo.`)) {
-      status('Posição não alterada.', 3000);
-      return;
-    }
-    corrigirPosicao(p, pos.coords.latitude, pos.coords.longitude, 'Local corrigido pela sua localização', `Sua localização na porta (±${margem} m)`);
-  }, err => {
-    status('Não consegui o GPS: ' + (err.code === 1 ? 'permissão negada. Libere a localização para este site.' : err.message), 5000);
-  }, {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
+    status('Posição não alterada.', 3000);
+    return;
+  }
+  corrigirPosicao(p, lat, lng, 'Local corrigido pela sua localização', `Sua localização na porta (±${margem} m)`);
+}
+
+export function estouAqui(p: Parada) {
+  // Com o mapa da Rota aberto a posição já vem chegando sozinha: aproveitar a que acabou de
+  // chegar poupa o motorista de esperar o GPS de novo na porta — e, com uma vigia ligada, um
+  // pedido novo pode ficar sem resposta até estourar o prazo.
+  const meu = ui.euAqui;
+  if (meu && Date.now() - meu.quando < NA_PORTA) { marcarNaPorta(p, meu.lat, meu.lng, meu.precisao); return; }
+  if (!navigator.geolocation) { status('Este navegador não dá acesso ao GPS.', 4000); return; }
+  status('Pegando sua localização…');
+  navigator.geolocation.getCurrentPosition(
+    pos => marcarNaPorta(p, pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
+    err => {
+      status('Não consegui o GPS: ' + (err.code === 1 ? 'permissão negada. Libere a localização para este site.' : err.message), 5000);
+    }, {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
+}
+
+// O rumo só vale quando ele está andando: parado, o GPS devolve lixo ou nada, e uma seta que
+// gira sozinha na esquina é pior do que seta nenhuma.
+const ANDANDO = 0.8;
+
+export function seguirMinhaPosicao(): () => void {
+  if (!navigator.geolocation) return () => {};
+  const vigia = navigator.geolocation.watchPosition(pos => {
+    const {latitude, longitude, accuracy, heading, speed} = pos.coords;
+    ui.euAqui = {
+      lat: latitude, lng: longitude, precisao: accuracy, quando: Date.now(),
+      rumo: heading != null && Number.isFinite(heading) && (speed || 0) > ANDANDO ? heading : (ui.euAqui?.rumo ?? null),
+    };
+    loja.mudou(false);
+  }, () => {}, {enableHighAccuracy: true, maximumAge: 5000, timeout: 20000});
+  return () => navigator.geolocation.clearWatch(vigia);
+}
+
+export function centralizarEmMim() {
+  if (!ui.euAqui) { status('Ainda não sei onde você está. Deixe o GPS pegar uns segundos.', 4000); return; }
+  ui.irParaMim++;
+  loja.mudou(false);
 }
 
 export function focar(id: string) {
