@@ -251,6 +251,13 @@ describe('extrairEnderecos (texto de print ou PDF)', () => {
   it('horário da janela de entrega não vira número da parada', () => {
     expect(extrairEnderecos('13:30h a 17:40h\nAvenida das Mangueiras 3580')).toEqual(['Avenida das Mangueiras 3580']);
   });
+  // Gravação de 26/09: com a faixa colada, a chave da rua virava "vereador lucilo costa pinto sn
+  // 10 15h a 13 20h" e a parada foi a única do dia a ficar sem posição nenhuma.
+  it('a janela colada no fim do endereço sai do nome da rua', () => {
+    expect(extrairEnderecos('22\nAlameda Vereador Lucilo da Costa Pinto SN 10:15h a 13:20h'))
+      .toEqual(['22 Alameda Vereador Lucilo da Costa Pinto SN']);
+    expect(extrairEnderecos('Rua Lúcio Mota 95 Habilita as 11:45 h')).toEqual(['Rua Lúcio Mota 95']);
+  });
   it('continua ignorando ruído que começa parecido com rua', () => {
     expect(extrairEnderecos('R$ 12,00\nBR 101 km 5\nR 12\nRua x\nRua B')).toEqual([]);
     expect(analisarLinha('BR 101, 200')).toMatchObject({ml: null, texto: 'BR 101, 200'});

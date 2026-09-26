@@ -17,8 +17,13 @@ const PALAVRAS_VAZIAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'doutor', 
 const ABREVIACOES: Record<string, string> = {poe: 'poeta', eng: 'engenheiro', des: 'desembargador', alm: 'almirante', mal: 'marechal', cap: 'capitao', ten: 'tenente', sgt: 'sargento', mons: 'monsenhor', pref: 'prefeito', jorn: 'jornalista', ver: 'vereador'};
 const TIPO_VIA: Record<string, string> = {r: 'rua', rua: 'rua', av: 'avenida', avenida: 'avenida', tv: 'travessa', trav: 'travessa', travessa: 'travessa', al: 'alameda', alameda: 'alameda', pc: 'praca', praca: 'praca', rod: 'rodovia', rodovia: 'rodovia', est: 'estrada', estrada: 'estrada'};
 
+// A janela de horário do Mercado Livre ("10:15h a 13:20h", "Habilita as 14:25 h"). Numa parada de
+// cartão fechado ela fica na mesma altura da rua e sai colada no endereço — e colada vira parte do
+// nome da rua, que então não casa com nada e a parada fica sem posição nenhuma.
+const FAIXA_DE_HORARIO = /\b(?:habilita\s+[àa]s\s+)?\d{1,2}:\d{2}\s*h?\s*(?:a|[àa]s)\s*\d{1,2}:\d{2}\s*h?|\bhabilita\s+[àa]s\s+\d{1,2}:\d{2}\s*h?/gi;
+
 export const limparRuido = (l: string): string =>
-  l.replace(/[|©®✔✓]/g, ' ').replace(/\s+/g, ' ').trim()
+  l.replace(/[|©®✔✓]/g, ' ').replace(FAIXA_DE_HORARIO, ' ').replace(/\s+/g, ' ').trim()
     .replace(/(\d)\s+[^\s\d,]{1,2}$/, '$1')
     // o selo de "verificado" do app de entrega sai como um símbolo solto no fim do nome da rua
     .replace(/([a-zà-ÿ])\s+[^\sa-zà-ÿ\d]{1,2}$/i, '$1');
@@ -312,7 +317,10 @@ export function extrairEnderecos(bruto: string): string[] {
     numeroSolto = mn && !TEM_CEP.test(l) && !/^\d{1,2}:\d{2}/.test(l) ? mn[1] : null;
   }
   return out
-    .filter(e => (/\s\d{1,5}\b/.test(e.texto) || TEM_CEP.test(e.texto)) && pareceEndereco(e.texto))
+    // Sem número e sem CEP normalmente é sobra de leitura. Mas "S/N" é endereço de verdade — o
+    // Mercado Livre manda assim — e sumir com a parada é pior que mostrá-la só com a rua: some
+    // da tela e ninguém procura o que não sabe que existe.
+    .filter(e => (/\s\d{1,5}\b/.test(e.texto) || TEM_CEP.test(e.texto) || SEM_NUMERO.test(e.texto)) && pareceEndereco(e.texto))
     .map(e => (e.ml ? e.ml + ' ' : '') + e.texto.replace(/\s[O0](?=\s)/g, '') + (e.unidades ? ` · ${e.unidades} unid` : '') + (e.comercial ? ' · comercial' : ''));
 }
 
