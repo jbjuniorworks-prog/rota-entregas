@@ -371,3 +371,36 @@ describe('endereço colado com o local do mapa', () => {
     expect(enviadas).toEqual(['49025100|184']);
   });
 });
+
+// Ele foi buscar as portas no Google e colou de volta. O título que o Google copia traz o CEP e a
+// linha lida do cartão fechado do Meli não traz, então a chave inteira não bate — o que bate é a
+// rua e o número. Sem isso, colar as cinco portas da avenida criava cinco paradas a mais.
+describe('colar a porta de uma parada que já está na lista', () => {
+  const LINK = 'https://www.google.com/maps/place/x/@-10.94,-37.06,17z/data=!3m1!4b1!8m2!3d-10.9436218!4d-37.0527487';
+
+  it('arruma a parada em vez de criar outra', () => {
+    const e = estadoVazio();
+    adicionarLinhas(e, ['Avenida Deputado Sílvio Teixeira 184']);
+    expect(e.paradas).toHaveLength(1);
+    const r = adicionarLinhas(e, [`Av. Deputado Sílvio Teixeira, 184 - Jardins, Aracaju - SE, 49025-100 ${LINK}`]);
+    expect(r).toMatchObject({novas: 0, arrumadas: 1});
+    expect(e.paradas, 'não pode virar duas paradas').toHaveLength(1);
+    expect(e.paradas[0].lat).toBeCloseTo(-10.9436218, 6);
+    expect(e.paradas[0]).toMatchObject({precisao: 'manual', fonte: 'link do mapa'});
+  });
+
+  it('duas entregas na mesma porta são arrumadas juntas', () => {
+    const e = estadoVazio();
+    adicionarLinhas(e, ['Rua A Longa 215, Loja Um', 'Rua A Longa 215, Loja Dois']);
+    expect(e.paradas).toHaveLength(2);
+    const r = adicionarLinhas(e, [`Rua A Longa, 215 - Jardins ${LINK}`]);
+    expect(r).toMatchObject({arrumadas: 2, novas: 0});
+    expect(e.paradas.every(p => p.precisao === 'manual')).toBe(true);
+  });
+
+  it('porta de rua que não está na lista continua entrando como parada nova', () => {
+    const e = estadoVazio();
+    const r = adicionarLinhas(e, [`Rua Que Nao Estava 90, Jardins ${LINK}`]);
+    expect(r).toMatchObject({novas: 1, arrumadas: 0});
+  });
+});

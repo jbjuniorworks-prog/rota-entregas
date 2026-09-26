@@ -448,6 +448,25 @@ describe('a chave da rua', () => {
       'Rua Cento e Dezessete', 'Rua Cem', 'Avenida Duzentos e Dez', 'Rua Cento e Vinte e Cinco',
     ];
     for (const n of nomes) expect([n, ferramenta.chaveRua(n)]).toEqual([n, chaveRua(n)]);
+    // e a chave do lugar, que a ferramenta que grava portas no banco também calcula
+    for (const n of nomes) expect([n, ferramenta.ruaCompleta(n)]).toEqual([n, ruaCompleta(n)]);
+    const caso = {rua: 'Avenida Deputado Sílvio Teixeira', numero: '184', bairro: 'Jardins', cidade: 'Aracaju, SE'};
+    expect(ferramenta.chavesDoLugar({...caso, cep: '49025100'}))
+      .toEqual(['49025100|184', chaveLugar('Avenida Deputado Sílvio Teixeira 184', 'Jardins', 'Aracaju, SE')]);
+    expect(ferramenta.chavesDoLugar(caso))
+      .toEqual([chaveLugar('Avenida Deputado Sílvio Teixeira 184', 'Jardins', 'Aracaju, SE')]);
+    expect(ferramenta.chavesDoLugar({...caso, numero: 'sn'}))
+      .toEqual([chaveLugar('Avenida Deputado Sílvio Teixeira SN', 'Jardins', 'Aracaju, SE')]);
+
+    // O Google escreve "Ver." e o Meli escreve "Vereador". A chave do lugar guarda o nome inteiro
+    // e não normaliza abreviação, então a ferramenta grava as duas grafias — senão a porta
+    // gravada por ela nunca seria achada pelo app.
+    const doApp = chaveLugar('Alameda Vereador Lucilo da Costa Pinto SN', 'Jardins', 'Aracaju, SE');
+    const doGoogle = ferramenta.grafiasDaRua('Alameda Ver. Lucilo da Costa Pinto')
+      .flatMap((rua: string) => ferramenta.chavesDoLugar({rua, numero: 'sn', bairro: 'Jardins', cidade: 'Aracaju, SE'}));
+    expect(doGoogle).toContain(doApp);
+    // e nome sem abreviação nenhuma continua dando uma grafia só
+    expect(ferramenta.grafiasDaRua('Avenida Deputado Sílvio Teixeira')).toHaveLength(1);
   });
 });
 

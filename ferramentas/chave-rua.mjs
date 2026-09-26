@@ -50,3 +50,41 @@ export const chaveRua = nome => comNumeros(normal(nome).replace(TIPOS, '').repla
 const TIPO_VIA = {r: 'rua', rua: 'rua', av: 'avenida', avenida: 'avenida', tv: 'travessa', trav: 'travessa', travessa: 'travessa', al: 'alameda', alameda: 'alameda', pc: 'praca', praca: 'praca', rod: 'rodovia', rodovia: 'rodovia', est: 'estrada', estrada: 'estrada', viela: 'viela', beco: 'beco', largo: 'largo', passagem: 'passagem', conjunto: 'conjunto', loteamento: 'loteamento'};
 
 export const tipoDaRua = nome => TIPO_VIA[normal(nome).replace(/[^a-z0-9 ]/g, ' ').split(' ')[0]] || '';
+
+// Espelho de `ruaCompleta` do app (app/src/logica/texto.ts). A chave do lugar é calculada nos dois
+// lugares, como a chave da rua: mudar um sem o outro faz a porta gravada aqui não ser achada lá.
+// Há teste comparando as duas.
+export const ruaCompleta = rua => {
+  const w = normal(rua).replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(Boolean);
+  if (w.length && TIPO_VIA[w[0]]) w[0] = TIPO_VIA[w[0]];
+  return w.join(' ');
+};
+
+// As duas formas de chave que o app usa para o mesmo lugar: pelo CEP, quando a linha tem CEP, e
+// pela rua + bairro, quando não tem. Grava-se nas duas, porque a linha do Meli chega ora com CEP
+// (cartão aberto) ora sem (cartão fechado).
+export const chavesDoLugar = ({rua, numero, cep, bairro, cidade}) => {
+  const n = String(numero || '').trim().toLowerCase();
+  if (!n) return [];
+  const saida = [];
+  if (cep && !/000$/.test(cep)) saida.push(cep + '|' + n);
+  const r = ruaCompleta(rua), b = normal(bairro || '');
+  if (r && b) saida.push(['r', r, n, b, normal(cidade)].join('|'));
+  return saida;
+};
+
+// O Google escreve "Ver." onde o Meli escreve "Vereador", e a chave do lugar não normaliza
+// abreviação (ela guarda o nome inteiro). Para a porta gravada aqui ser achada lá, grava-se a
+// chave das duas grafias. Enquanto `ruaCompleta` não normalizar — o que exige re-chavear o que
+// já está no banco —, é isto que segura.
+const TITULOS = {ver: 'vereador', dep: 'deputado', dr: 'doutor', dra: 'doutora', pe: 'padre',
+  prof: 'professor', profa: 'professora', gov: 'governador', cel: 'coronel', gen: 'general',
+  eng: 'engenheiro', des: 'desembargador', alm: 'almirante', mal: 'marechal', cap: 'capitao',
+  ten: 'tenente', sgt: 'sargento', mons: 'monsenhor', pref: 'prefeito', jorn: 'jornalista',
+  sen: 'senador', min: 'ministro', pres: 'presidente', poe: 'poeta', sto: 'santo', sta: 'santa'};
+
+export const grafiasDaRua = rua => {
+  const base = ruaCompleta(rua);
+  const aberto = base.split(' ').map(w => TITULOS[w] || w).join(' ');
+  return aberto === base ? [base] : [base, aberto];
+};

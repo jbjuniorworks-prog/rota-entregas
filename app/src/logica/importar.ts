@@ -83,10 +83,11 @@ export function resumoPlanilha(r: ResumoPlanilha): string {
     + (r.semPosicao ? ` ${r.semPosicao} sem posição, buscando no mapa…` : '');
 }
 
-export function adicionarLinhas(e: Estado, linhas: string[]): {novas: number; repetidas: number; coladas: Parada[]} {
+export function adicionarLinhas(e: Estado, linhas: string[]): {novas: number; repetidas: number; arrumadas: number; coladas: Parada[]} {
   const existentes = new Set(e.paradas.map(x => chaveEndereco(x.texto)));
   const porNumero = new Map(e.paradas.filter(x => x.ml).map(x => [x.ml!, chaveEndereco(x.texto).split('|').slice(0, 2).join('|')]));
-  let novas = 0, repetidas = 0;
+  const soRuaNumero = (x: string) => chaveEndereco(x).split('|').slice(0, 2).join('|');
+  let novas = 0, repetidas = 0, arrumadas = 0;
   const coladas: Parada[] = [];
   for (const l of linhas) {
     // Endereço colado junto com um link do mapa: a coordenada é a resposta, não um palpite a
@@ -96,6 +97,23 @@ export function adicionarLinhas(e: Estado, linhas: string[]): {novas: number; re
     if (!texto) continue;
     const chave = chaveEndereco(texto);
     const semComplemento = chave.split('|').slice(0, 2).join('|');
+    // Colar a porta de uma parada que já está na lista é conserto, não parada nova. O título que o
+    // Google copia vem com CEP e a linha lida do cartão fechado do Meli não vem, então a chave
+    // inteira não bate — o que bate é a rua e o número. Sem isto, colar as cinco portas de uma
+    // avenida criava cinco paradas a mais em vez de arrumar as cinco que já estavam lá.
+    if (coord && semComplemento.replace(/\|/g, '')) {
+      const mesmas = e.paradas.filter(x => !x.entregue && soRuaNumero(x.texto) === semComplemento);
+      if (mesmas.length) {
+        for (const x of mesmas) {
+          Object.assign(x, {lat: coord.lat, lng: coord.lng, precisao: 'manual',
+            fonte: 'link do mapa', exibido: 'Local que você colou do mapa', candidatos: []});
+          delete x.sugestao;
+          coladas.push(x);
+        }
+        arrumadas += mesmas.length;
+        continue;
+      }
+    }
     if (existentes.has(chave) || (ml && porNumero.get(ml) === semComplemento)) { repetidas++; continue; }
     existentes.add(chave);
     if (ml) porNumero.set(ml, semComplemento);
@@ -108,6 +126,6 @@ export function adicionarLinhas(e: Estado, linhas: string[]): {novas: number; re
     if (coord) coladas.push(p);
     novas++;
   }
-  if (novas) { marcarIsoladas(e.paradas); if (e.rota) e.rota.desatualizada = true; }
-  return {novas, repetidas, coladas};
+  if (novas || arrumadas) { marcarIsoladas(e.paradas); if (e.rota) e.rota.desatualizada = true; }
+  return {novas, repetidas, arrumadas, coladas};
 }

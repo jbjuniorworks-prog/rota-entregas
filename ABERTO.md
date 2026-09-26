@@ -29,6 +29,12 @@ Atualizado em 26/09/2026.
   "Avenida Deputado Sílvio Teixeira 184" viram chaves diferentes, e a porta marcada numa não acha
   a outra. O `chaveRua` já resolve isso (as duas dão "silvio teixeira"). Consertar aqui muda o
   formato de chave que já está gravado em `correcoes`, `observacoes` e `pacotes` — é a mesma
+  tarefa que o `rechavear`, com ferramenta e migração, não um remendo solto. Enquanto isso, o
+  `npm run portas` grava a porta nas duas grafias (`grafiasDaRua`), que é remendo declarado. `chaveLugar` usa `ruaCompleta`, que troca só o
+  tipo da via ("av" → "avenida") e deixa o resto como veio: "Av. Dep. Sílvio Teixeira 184" e
+  "Avenida Deputado Sílvio Teixeira 184" viram chaves diferentes, e a porta marcada numa não acha
+  a outra. O `chaveRua` já resolve isso (as duas dão "silvio teixeira"). Consertar aqui muda o
+  formato de chave que já está gravado em `correcoes`, `observacoes` e `pacotes` — é a mesma
   tarefa que o `rechavear`, com ferramenta e migração, não um remendo solto.
 - **Entrega sem CEP em rua que o censo não cobre cai num ponto só, junto com as outras da mesma
   rua.** Tela do Luan em 26/09: 184, 200, 260, 536 e 600 da Sílvio Teixeira no mesmo pino — quase
