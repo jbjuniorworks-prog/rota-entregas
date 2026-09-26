@@ -84,20 +84,26 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 
 ## Ideias, não compromissos
 
-- **Estimar o número da porta entre duas portas conhecidas do censo.** Medido no arquivo de
-  Aracaju, deixa-um-de-fora em 127.816 portas de ruas com 5 ou mais. A comparação que importa não
-  é contra a perfeição, é contra o pino de hoje — um ponto só para a rua inteira:
+- **Estimar o número da porta entre duas portas conhecidas do censo.** Deixa-um-de-fora em
+  127.816 portas do arquivo de Aracaju (ruas com 5 ou mais). As quatro linhas usam **os mesmos
+  alvos**, e quem não consegue interpolar cai no pino da rua, como cairia em produção:
 
-  | | mediana | p90 | até 30 m | acima de 150 m |
-  |---|---|---|---|---|
-  | um pino para a rua (hoje) | 88 m | 406 m | 21% | 34% |
-  | interpolando | 11 m | 159 m | 76% | 10% |
-  | interpolando, âncoras limpas | 8 m | 94 m | 83% | 8% |
+  | | mediana | p90 | até 30 m | acima de 150 m | respondeu |
+  |---|---|---|---|---|---|
+  | um pino para a rua (hoje) | 88 m | 405 m | 21% | 33% | 100% |
+  | interpolando | 12 m | 183 m | 73% | 11% | 94% |
+  | + âncoras em ordem | 10 m | 188 m | 75% | 12% | 88% |
+  | + ordem por lado par/ímpar | 8 m | 167 m | 77% | 11% | 90% |
 
-  "Âncoras limpas" = descartar a porta do censo que quebra a ordem (número sobe, posição volta),
-  projetando no eixo da rua. São 38% das portas — o censo erra bastante, e a 735 da Sílvio
-  Teixeira é uma delas. Se entrar, entra como "aproximado" (laranja, "confira na porta"), nunca
-  como porta achada, e interpolando pelo traçado da rua, não pela reta entre as âncoras.
+  O ganho está em interpolar, não em limpar: 88 m → 12 m de mediana, e um terço das portas acima
+  de 150 m vira um décimo. Descartar âncora que quebra a ordem melhora a mediana e **piora a
+  cauda**, porque responde menos e cai no pino velho — separar por lado par/ímpar recupera parte
+  (o descarte cai de 38% para 24%), mas é refinamento, não o ganho. Se entrar, entra na forma
+  simples, laranja ("confira na porta"), nunca como porta achada, e a porta marcada pelo motorista
+  continua mandando. Vale para as paradas que hoje caem no pino da rua: **14 das 63** da gravação
+  de 26/09, com internet.
+  (Uma tabela anterior aqui dizia 8 m e 8% para a versão limpa. Estava otimista: só contava os
+  casos em que a limpeza conseguia responder.)
 - **Google como reforço, não como troca.** Hoje `geocodificar` faz `googleKey ? geoGoogle :
   geoOSM`: pôr a chave desliga o censo e a nossa base inteiros. Se um dia for usado, tem de ser só
   para o que sobrou "aproximado". E os termos do Google não deixam guardar a coordenada deles —
