@@ -565,3 +565,25 @@ describe('o cadeado da tarja de horário não é número de parada', () => {
     expect(extrairEnderecos('45\nAvenida Marieta Leite 51')).toEqual(['45 Avenida Marieta Leite 51']);
   });
 });
+
+// O crachá do Meli é único por parada. Quando o mesmo número sai em duas, foi o leitor errando o
+// escudo colorido — e esse número vira o rótulo do cartão e entra na ordenação da rota.
+describe('numero de parada repetido não é numero de parada', () => {
+  it('o repetido cai, e a parada fica com a posição na leitura', () => {
+    const r = juntarQuadros([[
+      '3 Avenida Franklin de Campos Sobral 1630',
+      '3 Rua Deputado Zeca Pereira 60',
+      '46 Avenida Marieta Leite 64',
+    ]]);
+    expect(r).toEqual([
+      'Avenida Franklin de Campos Sobral 1630',
+      'Rua Deputado Zeca Pereira 60',
+      '46 Avenida Marieta Leite 64',
+    ]);
+  });
+
+  it('a mesma parada lida em dois quadros não conta como repetição', () => {
+    const r = juntarQuadros([['45 Avenida Marieta Leite 51'], ['45 Avenida Marieta Leite 51']]);
+    expect(r).toEqual(['45 Avenida Marieta Leite 51']);
+  });
+});

@@ -156,7 +156,11 @@ test('se refazer sair sem as ruas, dá para voltar para a rota de antes', async 
   await carregar(page, ROTA_B);
   await montar(page);
   await expect(page.locator('.resumo')).not.toContainText('aproximado');
-  const pelasRuas = await page.locator('.resumo').innerText();
+  // O resumo termina com "fim ~16:10", que sai do relógio. Guardar o texto inteiro e comparar
+  // depois quebrava sozinho quando o minuto virava no meio do teste: o que este teste afirma é a
+  // distância e o tempo da rota que voltou, não a hora em que ela acabaria.
+  const semFim = (s: string) => s.replace(/\s*·\s*fim\s*~\s*\d{1,2}:\d{2}\s*$/, '');
+  const pelasRuas = semFim(await page.locator('.resumo').innerText());
 
   ruas = false;
   await montar(page);
@@ -165,7 +169,7 @@ test('se refazer sair sem as ruas, dá para voltar para a rota de antes', async 
 
   await page.getByRole('button', {name: '↺ Desfazer'}).click();
   await expect(aviso(page)).toContainText('A rota de antes voltou');
-  await expect(page.locator('.resumo')).toHaveText(pelasRuas);
+  await expect.poll(async () => semFim(await page.locator('.resumo').innerText())).toBe(pelasRuas);
 });
 
 test('dá para pedir a rota na ordem do app de entrega, e o app diz o que isso custa', async ({page}) => {

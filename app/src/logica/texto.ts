@@ -349,7 +349,7 @@ export function juntarQuadros(quadros: string[][]): string[] {
     }
   }
   const itens = [...vistos.values()].map(v => ({...v, d: decompor(analisarLinha(v.e).texto)}));
-  return itens.filter(x => !itens.some(y => y !== x && (
+  const saida = itens.filter(x => !itens.some(y => y !== x && (
     // "37" que na verdade era "37A": o número saiu cortado num quadro e inteiro em outro
     (!!x.d.numero && !!y.d.numero && y.n >= x.n && y.d.numero.length > x.d.numero.length
       && y.d.numero.startsWith(x.d.numero) && normal(y.d.rua) === normal(x.d.rua))
@@ -365,6 +365,19 @@ export function juntarQuadros(quadros: string[][]): string[] {
     || (!!x.d.numero && x.d.numero === y.d.numero && !x.d.cep && !!y.d.cep && !x.d.resto.length
       && semLetraTapada(x.d.rua) === semLetraTapada(y.d.rua))
   ))).map(x => x.e);
+  // Número de parada repetido não é número de parada: no app do Meli ele é único. Quando o mesmo
+  // sai em duas paradas diferentes, foi o leitor errando o crachá — e esse número vira o rótulo
+  // do cartão e entra na ordenação da rota. Sem ele, a parada fica com a posição na leitura, que
+  // é a ordem da lista do Meli e não depende de ler escudo colorido nenhum.
+  const quantas = new Map<string, number>();
+  for (const e of saida) {
+    const m = analisarLinha(e).ml;
+    if (m) quantas.set(m, (quantas.get(m) || 0) + 1);
+  }
+  return saida.map(e => {
+    const m = analisarLinha(e).ml;
+    return m && quantas.get(m)! > 1 ? e.replace(/^\d{1,3}\s+/, '') : e;
+  });
 }
 
 const quantasDiferentes = (lista: string[]) => new Set(lista.map(chaveEndereco)).size;
