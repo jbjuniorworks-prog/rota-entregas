@@ -178,7 +178,13 @@ export interface AchadoDeRua extends AchadoIbge {
 export function procurarRua(t: Tabela, rua: string, numero: number, perto: Ponto | null, bairro = ''): AchadoDeRua | null {
   // A chave ignora o tipo, então "Rua Principal" casa com "Avenida Principal": são ruas diferentes.
   const tipo = tipoDaRua(rua);
-  const mesmos = (indicePorNome(t).get(chaveRua(rua)) || []).filter(i => !tipo || tipoDaRua(t.ruas[i]) === tipo);
+  const todas = indicePorNome(t).get(chaveRua(rua)) || [];
+  const doTipo = tipo ? todas.filter(i => tipoDaRua(t.ruas[i]) === tipo) : todas;
+  // Mas quando ninguém na cidade tem esse nome com esse tipo, e o censo só conhece o nome com um
+  // tipo só, não há o que confundir: é a mesma via com cadastro diferente. O Mercado Livre manda
+  // "Rua Antônio de Pádua Araújo" e o IBGE tem "Alameda Antônio de Pádua Araújo", com as quatro
+  // portas da entrega — recusar por causa da palavra deixava as quatro sem pino nenhum.
+  const mesmos = doTipo.length ? doTipo : new Set(todas.map(i => tipoDaRua(t.ruas[i]))).size === 1 ? todas : [];
   const iRuas = new Set(mesmos);
   if (!iRuas.size || !Number.isFinite(numero) || numero <= 0) return null;
   const melhorNoBairro = new Map<number, {i: number; salto: number}>();
@@ -203,17 +209,15 @@ export function procurarRua(t: Tabela, rua: string, numero: number, perto: Ponto
   };
 }
 
-export async function ruaDoIbge(rua: string, numero: string, cidade: string,
-  perto: Ponto | null, bairro = ''): Promise<Candidato | null> {
-  const t = await tabela(cidade);
-  if (!t) return null;
-  const daCidade = normal(String(cidade || '').split(/[,\-\/]/)[0]);
-  if (daCidade && daCidade !== t.cidade) return null;
-  const pedido = parseInt(numero, 10);
-  const achado = procurarRua(t, rua, pedido, perto, bairro);
-  // Nome que só existe num bairro a nossa base resolve sozinha, e ela aprende com os motoristas.
-  // O censo só entra onde ela não tem como saber: o mesmo nome de rua em bairros diferentes.
-  if (!achado || achado.bairros < 2) return null;
+// Quando o que o censo achou vira resposta. Separado de `ruaDoIbge` porque é a regra, e regra se
+// testa sem arquivo e sem rede.
+export function candidatoDaRua(achado: AchadoDeRua | null, pedido: number): Candidato | null {
+  // Nome repetido em vários bairros só o censo desempata, e aí ele responde mesmo aproximando o
+  // número. Nome de um bairro só a nossa base de ruas já resolve — mas ela responde a rua, não a
+  // porta. Então aqui o censo ainda entra, com uma condição: só com o número exato, medido na
+  // porta pelo recenseador. Medido na gravação de 26/09: 24 paradas ficavam com pino de rua do
+  // OpenStreetMap, a 75 m da porta na mediana e a 922 m na pior.
+  if (!achado || (achado.bairros < 2 && achado.salto !== 0)) return null;
   const nome = bonito(achado.rua);
   const ressalva = achado.salto ? ` (o IBGE tem o nº ${achado.numero}, o mais perto daqui)` : '';
   return {
@@ -221,6 +225,16 @@ export async function ruaDoIbge(rua: string, numero: string, cidade: string,
     exibido: `${nome}, ${pedido} — ${bonito(achado.bairro)}${ressalva}`,
     precisao: achado.salto ? 'rua' : 'bom', rua: nome, fonte: 'IBGE',
   };
+}
+
+export async function ruaDoIbge(rua: string, numero: string, cidade: string,
+  perto: Ponto | null, bairro = ''): Promise<Candidato | null> {
+  const t = await tabela(cidade);
+  if (!t) return null;
+  const daCidade = normal(String(cidade || '').split(/[,\-\/]/)[0]);
+  if (daCidade && daCidade !== t.cidade) return null;
+  const pedido = parseInt(numero, 10);
+  return candidatoDaRua(procurarRua(t, rua, pedido, perto, bairro), pedido);
 }
 
 // Âncora: onde fica, grosso modo, o bairro (ou o setor do CEP) daquele endereço. Serve de piso —

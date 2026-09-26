@@ -1,8 +1,13 @@
 import {test, expect, abrir, aba, linhaDe} from './apoio';
 
-const ARACAJU = {lat: '-10.9472', lon: '-37.0731', display_name: 'Aracaju, Sergipe', category: 'place', addresstype: 'city', address: {city: 'Aracaju', state: 'Sergipe'}};
-const EM_SAO_PAULO = {lat: '-23.5505', lon: '-46.6333', display_name: 'Rua Lúcio Mota, São Paulo', category: 'highway', addresstype: 'road', address: {road: 'Rua Lúcio Mota', city: 'São Paulo', state: 'São Paulo'}};
-const NA_CIDADE = {lat: '-10.9401', lon: '-37.0620', display_name: 'Rua Lúcio Mota, Aracaju', category: 'highway', addresstype: 'road', address: {road: 'Rua Lúcio Mota', city: 'Aracaju', state: 'Sergipe'}};
+// Todos os testes daqui são sobre o que acontece QUANDO O CENSO NÃO RESPONDE: o filtro de região,
+// a queda para o bairro, o nome antigo da rua, a nossa base de ruas. Por isso a rua usada é a
+// Construtora Cunha — rua de verdade de Aracaju que não está no arquivo do IBGE (medido na
+// gravação de 26/09). Trocar por uma que o censo conheça faz o censo responder primeiro e estes
+// testes param de testar o que dizem testar. Há teste em `ibge.test.ts` travando essa ausência.
+const ARACAJU ={lat: '-10.9472', lon: '-37.0731', display_name: 'Aracaju, Sergipe', category: 'place', addresstype: 'city', address: {city: 'Aracaju', state: 'Sergipe'}};
+const EM_SAO_PAULO = {lat: '-23.5505', lon: '-46.6333', display_name: 'Rua Construtora Cunha, São Paulo', category: 'highway', addresstype: 'road', address: {road: 'Rua Construtora Cunha', city: 'São Paulo', state: 'São Paulo'}};
+const NA_CIDADE = {lat: '-10.9401', lon: '-37.0620', display_name: 'Rua Construtora Cunha, Aracaju', category: 'highway', addresstype: 'road', address: {road: 'Rua Construtora Cunha', city: 'Aracaju', state: 'Sergipe'}};
 
 async function mapaFalso(page: any, ruaEncontrada: object) {
   const buscas: string[] = [];
@@ -19,10 +24,10 @@ test('rua de mesmo nome em outro estado não entra na rota', async ({page}) => {
   const buscas = await mapaFalso(page, EM_SAO_PAULO);
   await abrir(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
-  await page.getByLabel(/Endereços da área/).fill('Rua Lúcio Mota 114');
+  await page.getByLabel(/Endereços da área/).fill('Rua Construtora Cunha 114');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
   await expect(page.getByText(/❗ 1 para conferir/)).toBeVisible({timeout: 30_000});
-  await expect(linhaDe(page, 'Rua Lúcio Mota 114', 'Marcar no mapa')).toContainText('Não encontrado');
+  await expect(linhaDe(page, 'Rua Construtora Cunha 114', 'Marcar no mapa')).toContainText('Não encontrado');
   await expect(page.getByText('São Paulo')).toHaveCount(0);
   expect(buscas.some(b => b.includes('bounded=1') && b.includes('viewbox='))).toBe(true);
   await aba(page, '1. Endereços');
@@ -34,7 +39,7 @@ test('rua que o mapa não tem vai para o bairro certo, e a rua trocada fica só 
   const BAIRRO = {lat: '-10.9350', lon: '-37.0550', display_name: 'Jardins, Aracaju', category: 'place', addresstype: 'suburb', address: {suburb: 'Jardins', city: 'Aracaju'}};
   await page.route('**://viacep.com.br/**', r => r.fulfill({
     status: 200, contentType: 'application/json', headers: {'access-control-allow-origin': '*'},
-    body: JSON.stringify([{cep: '49025-530', logradouro: 'Rua Orlando Magalhães Maia', bairro: 'Jardins', localidade: 'Aracaju', uf: 'SE'}]),
+    body: JSON.stringify([{cep: '49025-530', logradouro: 'Rua Construtora Cunha', bairro: 'Jardins', localidade: 'Aracaju', uf: 'SE'}]),
   }));
   await page.route('**://nominatim.openstreetmap.org/**', r => {
     const q = new URL(r.request().url()).searchParams.get('q') || '';
@@ -43,12 +48,12 @@ test('rua que o mapa não tem vai para o bairro certo, e a rua trocada fica só 
   });
   await abrir(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
-  await page.getByLabel(/Endereços da área/).fill('Rua Orlando Magalhães Maia 1520');
+  await page.getByLabel(/Endereços da área/).fill('Rua Construtora Cunha 1520');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
-  const linha = linhaDe(page, 'Rua Orlando Magalhães Maia 1520', 'Marcar no mapa');
+  const linha = linhaDe(page, 'Rua Construtora Cunha 1520', 'Marcar no mapa');
   await expect(linha).toContainText('o mapa não tem esta rua: posição pelo bairro Jardins', {timeout: 30_000});
   await expect(linha).toContainText('Posição pelo bairro — confira no local');
-  await page.locator('[data-item]').filter({hasText: 'Orlando Magalhães Maia'}).getByRole('button', {name: 'Ver', exact: true}).click();
+  await page.locator('[data-item]').filter({hasText: 'Construtora Cunha'}).getByRole('button', {name: 'Ver', exact: true}).click();
   await expect(page.getByRole('button', {name: /Acrísio Moreira Siqueira/})).toBeVisible();
 });
 
@@ -56,14 +61,14 @@ test('rua que mudou de nome é reconhecida pelo nome antigo, e o app mostra os d
   const MESMA_RUA = {
     lat: '-10.9401', lon: '-37.0620', display_name: 'Rua Acrísio Moreira Siqueira, Aracaju', category: 'highway', addresstype: 'road',
     address: {road: 'Rua Acrísio Moreira Siqueira', suburb: 'Jardins', city: 'Aracaju'},
-    namedetails: {name: 'Rua Acrísio Moreira Siqueira', alt_name: 'Rua Orlando Magalhaes Maia'},
+    namedetails: {name: 'Rua Acrísio Moreira Siqueira', alt_name: 'Rua Construtora Cunha'},
   };
   await mapaFalso(page, MESMA_RUA);
   await abrir(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
-  await page.getByLabel(/Endereços da área/).fill('Rua Orlando Magalhães Maia 1520');
+  await page.getByLabel(/Endereços da área/).fill('Rua Construtora Cunha 1520');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
-  const linha = linhaDe(page, 'Rua Orlando Magalhães Maia 1520', 'Marcar no mapa');
+  const linha = linhaDe(page, 'Rua Construtora Cunha 1520', 'Marcar no mapa');
   await expect(linha).toContainText('Rua certa, número aproximado', {timeout: 30_000});
   await expect(linha).toContainText('no mapa: Rua Acrísio Moreira Siqueira');
 });
@@ -72,22 +77,22 @@ test('a mesma rua dentro da região entra normalmente', async ({page}) => {
   await mapaFalso(page, NA_CIDADE);
   await abrir(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
-  await page.getByLabel(/Endereços da área/).fill('Rua Lúcio Mota 114');
+  await page.getByLabel(/Endereços da área/).fill('Rua Construtora Cunha 114');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
-  await expect(linhaDe(page, 'Rua Lúcio Mota 114', 'Marcar no mapa')).toContainText('Rua Lúcio Mota — Aracaju', {timeout: 30_000});
+  await expect(linhaDe(page, 'Rua Construtora Cunha 114', 'Marcar no mapa')).toContainText('Rua Construtora Cunha — Aracaju', {timeout: 30_000});
 });
 
 test('com a rua na nossa base, o app nem precisa perguntar ao mapa de fora', async ({page, nuvem}) => {
   nuvem.tabelas = {ruas: [
-    {nome: 'Rua Lúcio Mota', nome_chave: 'lucio mota', cidade: 'Aracaju', lat: -10.9401, lng: -37.062, linha: [[-10.9401, -37.062], [-10.9405, -37.0625]]},
-    {nome: 'Rua Lúcio Mota', nome_chave: 'lucio mota', cidade: 'São Paulo', lat: -23.55, lng: -46.63, linha: [[-23.55, -46.63]]},
+    {nome: 'Rua Construtora Cunha', nome_chave: 'construtora cunha', cidade: 'Aracaju', lat: -10.9401, lng: -37.062, linha: [[-10.9401, -37.062], [-10.9405, -37.0625]]},
+    {nome: 'Rua Construtora Cunha', nome_chave: 'construtora cunha', cidade: 'São Paulo', lat: -23.55, lng: -46.63, linha: [[-23.55, -46.63]]},
   ]};
   const buscas = await mapaFalso(page, ARACAJU);
   await abrir(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
-  await page.getByLabel(/Endereços da área/).fill('Rua Lúcio Mota 114');
+  await page.getByLabel(/Endereços da área/).fill('Rua Construtora Cunha 114');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
-  const linha = linhaDe(page, 'Rua Lúcio Mota 114', 'Marcar no mapa');
+  const linha = linhaDe(page, 'Rua Construtora Cunha 114', 'Marcar no mapa');
   await expect(linha).toContainText('pela nossa base de ruas', {timeout: 30_000});
   await expect(linha).toContainText('Rua certa, número aproximado');
   expect(buscas.filter(b => !b.includes('Aracaju%2C+SE') && !b.includes('Aracaju%2C%20SE'))).toEqual([]);

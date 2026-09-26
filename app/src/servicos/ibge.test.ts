@@ -1,7 +1,7 @@
 import {readFileSync, readdirSync} from 'node:fs';
 import {describe, expect, it} from 'vitest';
 import {montar} from '../../../ferramentas/cnefe.mjs';
-import {acharAncoraDoBairro, apelidoDaCidade, lerTabela, procurar, procurarRua} from './ibge';
+import {acharAncoraDoBairro, apelidoDaCidade, candidatoDaRua, lerTabela, procurar, procurarRua} from './ibge';
 import {chaveRua} from '../logica/texto';
 
 const CABECA = 'COD_UNICO_ENDERECO;COD_UF;COD_MUNICIPIO;COD_DISTRITO;COD_SUBDISTRITO;COD_SETOR;NUM_QUADRA;'
@@ -9,9 +9,9 @@ const CABECA = 'COD_UNICO_ENDERECO;COD_UF;COD_MUNICIPIO;COD_DISTRITO;COD_SUBDIST
   + 'NOM_COMP_ELEM1;VAL_COMP_ELEM1;NOM_COMP_ELEM2;VAL_COMP_ELEM2;NOM_COMP_ELEM3;VAL_COMP_ELEM3;NOM_COMP_ELEM4;'
   + 'VAL_COMP_ELEM4;NOM_COMP_ELEM5;VAL_COMP_ELEM5;LATITUDE;LONGITUDE;NV_GEO_COORD;COD_ESPECIE';
 
-function linha(cep: string, rua: string, numero: number, lat: number, lng: number, comp = '', bairro = 'ARUANA') {
+function linha(cep: string, rua: string, numero: number, lat: number, lng: number, comp = '', bairro = 'ARUANA', tipo = 'RUA') {
   const c = new Array(29).fill('');
-  c[8] = cep; c[9] = bairro; c[10] = 'RUA'; c[12] = rua; c[13] = String(numero);
+  c[8] = cep; c[9] = bairro; c[10] = tipo; c[12] = rua; c[13] = String(numero);
   if (comp) { c[15] = comp; c[16] = '101'; }
   c[25] = String(lat); c[26] = String(lng); c[27] = '1'; c[28] = '1';
   return c.join(';');
@@ -149,6 +149,59 @@ describe('mesma rua em vários bairros, sem CEP', () => {
   });
 });
 
+// Medido na gravação de 26/09 (58 paradas do Mercado Livre, Jardins e Grageru).
+describe('o tipo da via escrito diferente do censo', () => {
+  // O Meli manda "Rua Antônio de Pádua Araújo"; o IBGE tem "Alameda Antônio de Pádua Araújo",
+  // com as quatro portas da entrega. Recusar pelo tipo deixava as quatro sem pino nenhum —
+  // o OpenStreetMap também não tem essa via.
+  const alameda = () => tabelaDe([
+    linha('49027050', 'ANTONIO DE PADUA ARAUJO', 100, -10.9440, -37.0640, '', 'GRAGERU', 'ALAMEDA'),
+    linha('49027050', 'ANTONIO DE PADUA ARAUJO', 200, -10.9442, -37.0642, '', 'GRAGERU', 'ALAMEDA'),
+    linha('49027050', 'ANTONIO DE PADUA ARAUJO', 300, -10.9444, -37.0644, '', 'GRAGERU', 'ALAMEDA'),
+  ]);
+
+  it('acha a porta quando o censo só conhece o nome com um tipo só', () => {
+    const a = procurarRua(alameda(), 'Rua Antônio de Pádua Araújo', 200, null);
+    expect(a).not.toBeNull();
+    expect(a!.numero).toBe(200);
+    expect(a!.salto).toBe(0);
+    expect(a!.rua).toBe('ALAMEDA ANTONIO DE PADUA ARAUJO');
+  });
+
+  it('mas continua sem chutar quando o tipo é o que separa duas vias de mesmo nome', () => {
+    const duas = tabelaDe([
+      linha('49000001', 'PRINCIPAL', 100, -10.93, -37.07, '', 'ARUANA', 'RUA'),
+      linha('49000002', 'PRINCIPAL', 100, -10.99, -37.11, '', 'SANTA MARIA', 'AVENIDA'),
+    ]);
+    // pedindo uma terceira: existem duas com esse nome e tipos diferentes, não dá para escolher
+    expect(procurarRua(duas, 'Travessa Principal', 100, {lat: -10.93, lng: -37.07})).toBeNull();
+    // e pedindo pelo tipo certo, continua indo na certa
+    expect(procurarRua(duas, 'Avenida Principal', 100, null)!.bairro).toBe('SANTA MARIA');
+  });
+});
+
+describe('rua de um bairro só: a porta do censo vale mais que o meio da rua', () => {
+  const um = (salto = 0) => ({
+    lat: -10.944, lng: -37.064, bairro: 'GRAGERU', rua: 'RUA LUCIO MOTA', numero: 100 + salto,
+    predio: false, salto, bairros: 1,
+  });
+
+  it('com o número exato, responde — é porta medida pelo recenseador', () => {
+    const c = candidatoDaRua(um(0), 100);
+    expect(c).not.toBeNull();
+    expect(c!.precisao).toBe('bom');
+    expect(c!.fonte).toBe('IBGE');
+  });
+
+  it('sem o número exato, não responde: aí o pino da nossa base de ruas serve igual', () => {
+    expect(candidatoDaRua(um(6), 100)).toBeNull();
+  });
+
+  it('em vários bairros continua respondendo mesmo aproximando o número', () => {
+    expect(candidatoDaRua({...um(6), bairros: 3}, 100)!.precisao).toBe('rua');
+  });
+});
+
 // A entrega que falhou na rua, contra o censo de verdade que vai junto no app.
 describe('a Rua 25 da Jabotiana, no arquivo que o app leva', () => {
   const perto = {lat: -10.952, lng: -37.090};
@@ -172,6 +225,14 @@ describe('a Rua 25 da Jabotiana, no arquivo que o app leva', () => {
     expect(nomes).toContain('RUA VINTE E CINCO');
     // e continua separando o que é de verdade outra rua
     expect(chaveRua('Rua 25')).not.toBe(chaveRua('Rua 24'));
+  });
+
+  // `testes/e2e/regiao.spec.ts` só testa o que ele testa enquanto o censo ficar calado nessa rua:
+  // se ela entrar no arquivo, o censo responde primeiro e aqueles cinco testes viram enfeite.
+  // Falhar aqui é o aviso para trocar a rua de lá, não para afrouxar isto.
+  it('a rua que o regiao.spec.ts usa continua fora do censo', () => {
+    const chaves = new Set(censo().ruas.map(n => chaveRua(n)));
+    expect(chaves.has(chaveRua('Rua Construtora Cunha'))).toBe(false);
   });
 });
 
