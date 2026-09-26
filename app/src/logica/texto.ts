@@ -321,7 +321,7 @@ export function extrairEnderecos(bruto: string): string[] {
     // Mercado Livre manda assim — e sumir com a parada é pior que mostrá-la só com a rua: some
     // da tela e ninguém procura o que não sabe que existe.
     .filter(e => (/\s\d{1,5}\b/.test(e.texto) || TEM_CEP.test(e.texto) || SEM_NUMERO.test(e.texto)) && pareceEndereco(e.texto))
-    .map(e => (e.ml ? e.ml + ' ' : '') + e.texto.replace(/\s[O0](?=\s)/g, '') + (e.unidades ? ` · ${e.unidades} unid` : '') + (e.comercial ? ' · comercial' : ''));
+    .map(e => (e.ml ? e.ml + ' ' : '') + e.texto.replace(/\s[Oo0](?=\s)/g, '') + (e.unidades ? ` · ${e.unidades} unid` : '') + (e.comercial ? ' · comercial' : ''));
 }
 
 // Tira do fim do nome da rua a letra solta que sobrou onde o número estava tapado. Só quando
@@ -349,6 +349,12 @@ export function juntarQuadros(quadros: string[][]): string[] {
     // quadro seguinte, com a lista rolada, o mesmo endereço aparece inteiro — e virava uma
     // segunda parada, no mesmo lugar, que o motorista ia tentar entregar.
     || (!x.d.numero && !!y.d.numero && !SEM_NUMERO.test(x.e) && !!x.d.cep && x.d.cep === y.d.cep
+      && semLetraTapada(x.d.rua) === semLetraTapada(y.d.rua))
+    // O cartão cortado pela borda do quadro dá só "Rua Tal 680"; no quadro seguinte ele aparece
+    // inteiro, com o condomínio e o CEP. É a mesma porta, e a versão pelada virava uma parada a
+    // mais, sem posição. Duas entregas de verdade na mesma porta vêm com os dois cartões
+    // completos — e, se vierem iguais, já viram uma só lá em cima, pela chave.
+    || (!!x.d.numero && x.d.numero === y.d.numero && !x.d.cep && !!y.d.cep && !x.d.resto.length
       && semLetraTapada(x.d.rua) === semLetraTapada(y.d.rua))
   ))).map(x => x.e);
 }

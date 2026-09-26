@@ -524,3 +524,28 @@ describe('a mesma parada lida em dois quadros', () => {
     expect(r[0]).toContain('37A');
   });
 });
+
+// Gravação de 26/09, tela do Luan: "Rua Monsenhor Olívio o Teixeira 680" ao lado da mesma parada
+// inteira. A letra solta que sobra onde o botão do mapa tapou o texto já era limpa quando saía
+// como "O" maiúsculo ou zero; minúscula passava, e virava outra rua.
+describe('a mesma parada lida duas vezes no vídeo', () => {
+  it('letra solta minúscula no meio do nome não cria outra rua', () => {
+    expect(extrairEnderecos('Rua Monsenhor Olívio o Teixeira 680, CEP 49026225'))
+      .toEqual(['Rua Monsenhor Olívio Teixeira 680, CEP 49026225']);
+  });
+
+  it('o cartão cortado pela borda do quadro não vira uma parada a mais', () => {
+    const cortado = ['Rua Monsenhor Olívio Teixeira 680'];
+    const inteiro = ['Rua Monsenhor Olívio Teixeira 680, Condomínio Terrazzo Verdetto, CEP 49026225'];
+    expect(juntarQuadros([cortado, inteiro])).toEqual(inteiro);
+    expect(juntarQuadros([inteiro, cortado])).toEqual(inteiro);
+  });
+
+  it('mas duas entregas de verdade na mesma porta continuam sendo duas', () => {
+    const q = [
+      'Avenida Ministro Geraldo Barreto Sobral 215, Loja Shopping Jardins, CEP 49026010',
+      'Avenida Ministro Geraldo Barreto Sobral 215, Loja Tamystossemijoias, CEP 49026010',
+    ];
+    expect(juntarQuadros([q])).toHaveLength(2);
+  });
+});

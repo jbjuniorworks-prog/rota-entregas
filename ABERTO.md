@@ -41,14 +41,28 @@ Atualizado em 26/09/2026.
   ali devolvem a MESMA coordenada — foi o que juntou a Oviêdo Teixeira com a Sílvio Teixeira no
   cruzamento. Usar o meio do trecho escolhido separaria as duas, mas só depois de medir o tamanho
   dos trechos que a nossa base guarda.
-- **A leitura repete parada quando o cartão aparece em dois quadros.** Na gravação de 26/09 saíram
-  63 linhas para 58 paradas. Os seis fantasmas são pares em que o nome da rua saiu cortado ou
-  trocado num dos quadros — "Franklin de Camp Sobral" ao lado de "Franklin de Campos Sobral",
-  "Deputado A Batista" ao lado de "Deputado Dilson Batista" — sempre com o mesmo número. O
-  `juntarQuadros` só junta quando a chave bate, e essas não batem. Não inventei regra: juntar duas
-  ruas de nome diferente e mesmo número pode comer parada de verdade, e uma gravação só não diz
-  onde fica o limite. Custo hoje: ~10% de paradas a mais na tela, todas sem posição — o que pelo
-  menos as deixa visíveis.
+- **Nome de rua lido errado não tem segunda chance.** Gravação de 26/09, três paradas que não
+  chegaram perto: "Avenida Marieta **site** 904" (o censo tem "AVENIDA MARIETA LEITE", a **2**
+  letras de distância), "Rua Rafael Pereira Rodrigues **ÁRFA** 5" (o censo tem a rua, a 5 de
+  distância, com lixo grudado no fim) e "Alameda Vereador Lucilo da Costa Pinto SN" (essa não
+  está no censo nem no OpenStreetMap — não há o que achar). Quando a chave exata falha, o censo
+  não tenta mais nada, e o `cabeNoNome` da nossa base exige que **toda** palavra pedida esteja no
+  nome achado, então "site" e "arfa" derrubam a busca.
+
+  Aceitar nome quase igual foi medido nos 2.808 nomes de rua de Aracaju. A régua tem de excluir
+  as ruas numeradas de conjunto, que diferem por um dígito:
+
+  | regra | pares de ruas de verdade que passariam a se confundir |
+  |---|---|
+  | distância ≤ 2 | 1.492 |
+  | ≤ 2, nome com 12+ letras | 129 |
+  | ≤ 2, 12+ letras, **mesmos números** | 50 |
+  | ≤ 2, 14+ letras, mesmos números | **34** |
+
+  Com 34 pares em 1.744 nomes, a regra fecha exigindo que o parecido seja **único**: perto de dois
+  nomes, não escolhe. O que sobra é o "cicero soares dantas ~ cicero soares santos" da vida, e a
+  tela já sabe avisar ("no mapa: outro nome"). Não construído — decisão de mandar entrega para
+  outra rua não se toma no detalhe.
 - **O número da parada às vezes vem da tarja de horário, não do cartão.** Três linhas da mesma
   gravação saíram com "8" na frente, e 8 não é o número de nenhuma delas: nos quadros dá para ler
   41, 33 e outros. Esse número vira o `#` do cartão e entra na ordenação da rota (`montagem.ts`).
