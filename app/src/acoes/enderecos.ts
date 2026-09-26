@@ -52,12 +52,12 @@ export async function buscarParada(p: Parada) {
     // bairro, `chaveLugar` devolve null e a marcação que o motorista faz na porta não tem onde
     // ser guardada nem como chegar aos outros. Quem achou o endereço sabe o bairro — a parada
     // adota ele, e aí a porta marcada uma vez vale para sempre.
-    if (!p.bairro && cands[0] && cands[0].bairro) {
-      p.bairro = cands[0].bairro;
+    if (cands[0]) {
+      if (!p.bairro && cands[0].bairro) p.bairro = cands[0].bairro;
       // E aqui a memória é consultada DE NOVO. Sem isto, amanhã a mesma linha crua chega sem
       // bairro, a chave volta a dar null lá em cima e o app guarda a porta todo dia sem nunca
       // usá-la — a marcação dele valeria só para o dia em que foi feita.
-      if (memoria.aplicar(p)) return;
+      if (memoria.aplicar(p, cands[0])) return;
     }
     if (cands.length) Object.assign(p, {lat: cands[0].lat, lng: cands[0].lng, exibido: cands[0].exibido, precisao: cands[0].precisao, fonte: cands[0].fonte});
     else Object.assign(p, {lat: null, lng: null, exibido: '', precisao: 'nao', fonte: 'nao achou'});

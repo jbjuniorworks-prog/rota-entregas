@@ -1,4 +1,4 @@
-import {haversine} from '../logica/geo';
+import {haversine, LONGE_DA_ANCORA} from '../logica/geo';
 import {RANK} from '../logica/rotulos';
 import {conjuntoDoEndereco, decompor, mesmaRua, normal} from '../logica/texto';
 import type {Candidato, Ponto, Precisao, Regiao} from '../logica/tipos';
@@ -219,9 +219,7 @@ async function geoGoogle(txt: string, cidade: string, chave: string): Promise<Ca
   });
 }
 
-// Piso de sanidade. Medido em 527 entregas reais: deixa passar 99,6% das posições boas e ainda
-// pega o erro que motivou isto (6,2 km, Jabotiana lida como Cidade Nova).
-export const LONGE_DA_ANCORA = 3000;
+export {LONGE_DA_ANCORA};
 
 export const limiteDaAncora = (a: Ancora) => Math.max(LONGE_DA_ANCORA, a.raio * 2);
 

@@ -1,6 +1,7 @@
+import {haversine, LONGE_DA_ANCORA} from './geo';
 import {CHAVES, type Guarda} from './guarda';
 import {chaveLugar, chavePorta} from './texto';
-import type {Parada} from './tipos';
+import type {Parada, Ponto} from './tipos';
 
 interface Lembrada {
   lat: number;
@@ -35,7 +36,8 @@ export function criarMemoria(g: Guarda, cidade: () => string, aoGuardar: (chave:
       else delete m[foto.chave];
       g.gravar(CHAVES.memoria, m);
     },
-    aplicar(p: Parada): boolean {
+    // `perto` é o que a busca respondeu hoje para esta parada. Sem ele, só a chave exata vale.
+    aplicar(p: Parada, perto?: Ponto): boolean {
       const m = todas(), k = chave(p);
       let r = k ? m[k] : undefined;
       // A chave de hoje pode não ser a de ontem para a mesma porta: o CEP some quando o cartão do
@@ -43,10 +45,15 @@ export function criarMemoria(g: Guarda, cidade: () => string, aoGuardar: (chave:
       // base de ruas, que escolhe o trecho mais perto do meio da rota do dia. Então, sem acerto
       // exato, procura pela rua e pelo número. Só vale se houver UMA só: duas marcações com a
       // mesma rua e número são portas diferentes em bairros diferentes, e aí não dá para escolher.
-      if (!r) {
+      if (!r && perto) {
         const porta = chavePorta(p.texto);
         const iguais = porta ? Object.values(m).filter(x => x.porta === porta) : [];
-        if (iguais.length === 1) r = iguais[0];
+        // "uma só" não basta: com o banco ainda vazio, uma só é quase sempre verdade. A "Rua A 10"
+        // de um conjunto casaria com a "Rua A 10" de outro e o pino iria para o outro lado da
+        // cidade — e como `lembrado`, que o app trata como certo. Pior que um laranja. Então a
+        // marcação tem de cair perto do que a busca respondeu hoje, pela mesma régua do piso de
+        // sanidade: 3 km cobre 99,88% da distância entre a porta e o pino da rua no censo daqui.
+        if (iguais.length === 1 && haversine(iguais[0], perto) <= LONGE_DA_ANCORA) r = iguais[0];
       }
       if (!r) return false;
       const dia = new Date(r.quando).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});

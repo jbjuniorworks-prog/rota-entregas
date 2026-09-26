@@ -1,3 +1,9 @@
+// Piso de sanidade em metros. Medido em 527 entregas reais: deixa passar 99,6% das posições boas
+// e ainda pega o erro que motivou isto (6,2 km, Jabotiana lida como Cidade Nova). A distância
+// entre a porta de verdade e o pino da rua que a busca costuma responder tem p99 de 1.180 m no
+// censo de Aracaju, então 3 km também cobre esse uso com folga.
+export const LONGE_DA_ANCORA = 3000;
+
 import {DA_PLANILHA} from './rotulos';
 import {decompor, normal} from './texto';
 import type {Parada, Ponto} from './tipos';

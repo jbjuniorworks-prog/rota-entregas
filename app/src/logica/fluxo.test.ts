@@ -66,30 +66,50 @@ describe('memória de posições', () => {
   it('acha a porta marcada mesmo quando a chave de hoje não é a de ontem', () => {
     const g = guardaNaMemoria();
     const mem = criarMemoria(g, () => 'Aracaju', () => {});
+    const NA_RUA = {lat: -10.9395, lng: -37.0610};
     const ontem = {texto: 'Avenida Deputado Sílvio Teixeira 184', bairro: 'Grageru', lat: -10.9391, lng: -37.0604} as never;
     expect(mem.lembrar(ontem, new Date(2026, 8, 26).getTime())).toBe(true);
 
-    // hoje a busca respondeu outro bairro
+    // hoje a busca respondeu outro bairro, e o pino dela caiu na mesma avenida
     const hoje = {texto: 'Avenida Deputado Sílvio Teixeira 184', bairro: 'Jardins'} as never;
-    expect(mem.aplicar(hoje)).toBe(true);
+    expect(mem.aplicar(hoje, NA_RUA)).toBe(true);
     expect(hoje).toMatchObject({lat: -10.9391, precisao: 'lembrado'});
 
     // e hoje o cartão veio aberto, com CEP, que dá outra chave ainda
     const comCep = {texto: 'Avenida Deputado Sílvio Teixeira 184, CEP 49027-000', bairro: ''} as never;
-    expect(mem.aplicar(comCep)).toBe(true);
+    expect(mem.aplicar(comCep, NA_RUA)).toBe(true);
     expect(comCep).toMatchObject({lat: -10.9391});
+
+    // sem saber onde a busca caiu hoje, não há como conferir: só a chave exata vale
+    expect(mem.aplicar({texto: 'Avenida Deputado Sílvio Teixeira 184', bairro: 'Jardins'} as never)).toBe(false);
+  });
+
+  // A trava que faltava: "uma marcação só" é quase sempre verdade com o banco ainda vazio, e sem
+  // conferir a distância a Rua A 10 de um conjunto viraria a Rua A 10 de outro — como `lembrado`,
+  // que o app trata como posição certa. Errar assim é pior que um laranja.
+  it('não aplica a porta de uma rua de mesmo nome do outro lado da cidade', () => {
+    const g = guardaNaMemoria();
+    const mem = criarMemoria(g, () => 'Aracaju', () => {});
+    expect(mem.lembrar({texto: 'Rua A 10', bairro: 'Aruana', lat: -10.9800, lng: -37.0500} as never)).toBe(true);
+    // a busca de hoje diz que esta Rua A 10 fica a uns 8 km dali
+    const longe = {texto: 'Rua A 10', bairro: 'Santa Maria'} as never;
+    expect(mem.aplicar(longe, {lat: -11.0300, lng: -37.1100})).toBe(false);
+    expect(longe).not.toHaveProperty('lat');
+    // e a mesma porta, com a busca caindo na vizinhança, continua valendo
+    const perto = {texto: 'Rua A 10', bairro: 'Santa Maria'} as never;
+    expect(mem.aplicar(perto, {lat: -10.9810, lng: -37.0505})).toBe(true);
   });
 
   it('duas portas de mesma rua e número em bairros diferentes não se confundem', () => {
     const g = guardaNaMemoria();
     const mem = criarMemoria(g, () => 'Aracaju', () => {});
     expect(mem.lembrar({texto: 'Rua A 100', bairro: 'Grageru', lat: -10.93, lng: -37.06} as never)).toBe(true);
-    expect(mem.lembrar({texto: 'Rua A 100', bairro: 'Jardins', lat: -10.99, lng: -37.11} as never)).toBe(true);
+    expect(mem.lembrar({texto: 'Rua A 100', bairro: 'Jardins', lat: -10.9305, lng: -37.0605} as never)).toBe(true);
     // com duas candidatas, escolher seria chutar: só o acerto exato do bairro vale
-    expect(mem.aplicar({texto: 'Rua A 100', bairro: 'Aruana'} as never)).toBe(false);
+    expect(mem.aplicar({texto: 'Rua A 100', bairro: 'Aruana'} as never, {lat: -10.93, lng: -37.06})).toBe(false);
     const certa = {texto: 'Rua A 100', bairro: 'Jardins'} as never;
-    expect(mem.aplicar(certa)).toBe(true);
-    expect(certa).toMatchObject({lat: -10.99});
+    expect(mem.aplicar(certa, {lat: -10.93, lng: -37.06})).toBe(true);
+    expect(certa).toMatchObject({lat: -10.9305});
   });
 
   it('escolher um palpite do mapa fica só neste celular, sem virar correção dos outros', () => {

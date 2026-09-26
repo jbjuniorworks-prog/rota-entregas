@@ -11,10 +11,12 @@ Atualizado em 26/09/2026.
   gravação de 26/09, a mesma avenida voltou "Grageru" em quatro números e "Jardins" no outro. E
   não é só o Nominatim: o `escolherTrecho` da nossa base escolhe o trecho mais perto do **meio da
   rota do dia**, então numa avenida que cruza dois bairros o bairro pode trocar conforme a rota.
-  O `memoria.aplicar` já aguenta isso (procura pela rua e pelo número quando a chave exata falha,
-  e só aceita se houver uma só), mas o `posicoes` da nuvem ainda casa por chave exata — a
-  marcação de um motorista pode não chegar no outro por esse caminho. Cache do Nominatim ajuda no
-  que é a mesma consulta, não em consultas de texto diferente.
+  O `memoria.aplicar` já aguenta isso: sem acerto exato ele procura pela rua e pelo número, aceita
+  só se houver uma marcação e só se ela cair a menos de 3 km do que a busca respondeu hoje. Mas o
+  `posicoes` da nuvem ainda casa por **chave exata** — a marcação de um motorista pode não chegar
+  no outro por esse caminho, e basta a linha de um vir com CEP e a do outro sem. É a mesma
+  identidade que já está no celular, com a mesma trava, e é menor que o cache. Cache do Nominatim
+  ajuda no que é a mesma consulta, não em consultas de texto diferente.
 - **A chave do lugar não normaliza abreviação.** `chaveLugar` usa `ruaCompleta`, que troca só o
   tipo da via ("av" → "avenida") e deixa o resto como veio: "Av. Dep. Sílvio Teixeira 184" e
   "Avenida Deputado Sílvio Teixeira 184" viram chaves diferentes, e a porta marcada numa não acha
