@@ -32,6 +32,11 @@ Atualizado em 26/09/2026.
   Meli manda "Rua Antônio de Pádua Araújo" e o IBGE tem "Alameda", com as quatro portas da
   entrega. Depois: **45 na porta, 13 na rua, 4 em lugar nenhum** — e as quatro são fantasmas de
   leitura, não paradas. Sem sinal: **18 de 63 → 44**.
+- **Duas entregas de endereços diferentes no mesmo pino não davam para separar.** Caso do Luan em
+  26/09: o restaurante e a casa do lado, no mesmo ponto. O balão tinha um "Arrumar aqui" só, que
+  mexia calado na primeira da pilha, e a pergunta de "virarem uma parada só" voltava a cada
+  tentativa, porque a zero metro a vizinha está sempre colada. Agora cada entrega tem o seu botão,
+  com o número dela, e quem já está no mesmo pino não recebe convite para juntar.
 - **A janela de entrega colava no nome da rua.** Cartão fechado do Meli põe "10:15h a 13:20h" na
   mesma altura do endereço e o leitor junta os dois: a chave da rua virava "vereador lucilo costa
   pinto sn 10 15h a 13 20h". Tirar a janela sozinho piorava: sem número e sem CEP a parada saía da
