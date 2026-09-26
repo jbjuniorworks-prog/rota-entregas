@@ -161,15 +161,19 @@ async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: 
       exibido: `${logradouro || d.rua}${d.numero ? ', ' + d.numero : ''} — pelas entregas já feitas neste CEP. Confira o número na porta.`};
     if (!foraDaRegiao(c)) cands.push(c);
   }
-  const naBase = logradouro ? await ruaNaBase(logradouro, cep ? `${cep.cidade}, ${cep.uf}` : cidade, perto, lugares) : null;
-  // A nossa base continua na frente; o CEP vai junto como opção. Se a base cair fora do bairro,
-  // a trava lá em cima rebaixa ela e quem assume é o CEP.
-  if (naBase && !foraDaRegiao(naBase)) return [naBase, ...cands];
-  // segunda tentativa: o CEP pode ter corrigido o número acima
+  // Porta vizinha no mesmo CEP, medida pelo recenseador, vale mais que um ponto qualquer da rua:
+  // a nossa base responde "a rua" e devolve o MESMO ponto para todo número dela — o trecho mais
+  // perto do meio da rota. Foi assim que a Oviêdo Teixeira 935 (o censo tem o 949) foi parar no
+  // cruzamento junto com cinco entregas da Sílvio Teixeira, num pino só.
+  // O número aqui já pode ter sido corrigido pelo CEP, logo acima.
   if (d.cep && d.numero) {
     const ibge = await enderecoDoIbge(d.cep, d.numero, cep ? cep.cidade : cidade);
     if (ibge && !foraDaRegiao(ibge)) return [ibge];
   }
+  const naBase = logradouro ? await ruaNaBase(logradouro, cep ? `${cep.cidade}, ${cep.uf}` : cidade, perto, lugares) : null;
+  // A base vem antes do CEP solto; o CEP vai junto como opção. Se a base cair fora do bairro,
+  // a trava lá em cima rebaixa ela e quem assume é o CEP.
+  if (naBase && !foraDaRegiao(naBase)) return [naBase, ...cands];
   const bom = () => cands.some(c => c.precisao === 'exato' || c.precisao === 'bom');
   const naRua = () => cands.some(c => c.precisao === 'exato' || c.precisao === 'bom' || c.precisao === 'rua');
 

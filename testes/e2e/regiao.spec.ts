@@ -141,3 +141,24 @@ test('rua que nenhum mapa tem cai onde já entregamos naquele CEP', async ({page
   expect(pedido, 'o app tem de perguntar pelos CEPs da rota').toBeTruthy();
   expect((pedido!.corpo as {ceps: string[]}).ceps).toContain('49096270');
 });
+
+// 26/09, tela do Luan: seis entregas de duas avenidas diferentes num pino só, no cruzamento.
+// A Oviêdo Teixeira 935 perdia para a nossa base de ruas, que responde "a rua" e devolve o mesmo
+// ponto para todo número dela — o trecho mais perto do meio da rota. O censo tem o 949, a 14
+// números dali. Porta medida na calçada vale mais que um ponto qualquer da rua.
+test('porta vizinha do censo ganha do ponto solto da nossa base de ruas', async ({page, nuvem}) => {
+  nuvem.tabelas = {ruas: [
+    {nome: 'Avenida Oviêdo Teixeira', nome_chave: 'oviedo teixeira', cidade: 'Aracaju',
+      lat: -10.9390, lng: -37.0610, linha: [[-10.9390, -37.0610], [-10.9395, -37.0615]]},
+  ]};
+  await mapaFalso(page, ARACAJU);
+  await abrir(page);
+  await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+  await page.getByLabel(/Endereços da área/).fill('Avenida Oviêdo Teixeira 935, CEP 49026100');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  const linha = linhaDe(page, 'Avenida Oviêdo Teixeira 935', 'Marcar no mapa');
+  await expect(linha).toContainText('o IBGE tem o nº 949', {timeout: 30_000});
+  await expect(linha).not.toContainText('pela nossa base de ruas');
+  // e ela não se anuncia como prédio achado: 14 números de distância é rua certa, número não
+  await expect(linha).toContainText('Rua certa, número aproximado');
+});

@@ -7,6 +7,17 @@ Atualizado em 26/09/2026.
 
 ## Falha viva
 
+- **Entrega sem CEP em rua que o censo não cobre cai num ponto só, junto com as outras da mesma
+  rua.** Tela do Luan em 26/09: 184, 200, 260, 536 e 600 da Sílvio Teixeira no mesmo pino — quase
+  meio quilômetro de avenida num ponto. A nossa base de ruas responde "a rua" e devolve sempre o
+  mesmo ponto: o vértice do trecho mais perto do meio da rota. Interpolar pelo censo foi medido e
+  **não dá**: aquela avenida tem 12 portas no arquivo, e elas não sobem ao longo dela (a 10 e a
+  1345 ficam a 93 m uma da outra; a 735 fica a 670 m das duas). Enquanto isso, quem resolve é o
+  motorista: marcando na porta uma vez, a posição fica guardada e vai para os outros.
+  Candidato ainda não medido: `pontoDoTrecho` mira no meio da rota, então duas ruas que se cruzam
+  ali devolvem a MESMA coordenada — foi o que juntou a Oviêdo Teixeira com a Sílvio Teixeira no
+  cruzamento. Usar o meio do trecho escolhido separaria as duas, mas só depois de medir o tamanho
+  dos trechos que a nossa base guarda.
 - **A leitura repete parada quando o cartão aparece em dois quadros.** Na gravação de 26/09 saíram
   63 linhas para 58 paradas. Os seis fantasmas são pares em que o nome da rua saiu cortado ou
   trocado num dos quadros — "Franklin de Camp Sobral" ao lado de "Franklin de Campos Sobral",

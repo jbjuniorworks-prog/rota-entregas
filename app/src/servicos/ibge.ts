@@ -148,7 +148,9 @@ export async function enderecoDoIbge(cep: string, numero: string, cidade: string
   return {
     lat: achado.lat, lng: achado.lng,
     exibido: `${rua}, ${pedido} — ${bonito(achado.bairro)}${ressalva}`,
-    precisao: 'bom', rua, fonte: 'IBGE',
+    // porta vizinha não é a porta: "Prédio encontrado" aqui era o app dando certeza que não tem.
+    // Mesma régua do `candidatoDaRua`.
+    precisao: achado.salto ? 'rua' : 'bom', rua, fonte: 'IBGE',
   };
 }
 
