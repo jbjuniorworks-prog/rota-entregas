@@ -7,6 +7,14 @@ Atualizado em 26/09/2026.
 
 ## Falha viva
 
+- **O bairro da chave vem de quem respondeu a busca, e pode mudar de um dia para o outro.** Na
+  gravação de 26/09, a mesma avenida voltou "Grageru" em quatro números e "Jardins" no outro. E
+  não é só o Nominatim: o `escolherTrecho` da nossa base escolhe o trecho mais perto do **meio da
+  rota do dia**, então numa avenida que cruza dois bairros o bairro pode trocar conforme a rota.
+  O `memoria.aplicar` já aguenta isso (procura pela rua e pelo número quando a chave exata falha,
+  e só aceita se houver uma só), mas o `posicoes` da nuvem ainda casa por chave exata — a
+  marcação de um motorista pode não chegar no outro por esse caminho. Cache do Nominatim ajuda no
+  que é a mesma consulta, não em consultas de texto diferente.
 - **A chave do lugar não normaliza abreviação.** `chaveLugar` usa `ruaCompleta`, que troca só o
   tipo da via ("av" → "avenida") e deixa o resto como veio: "Av. Dep. Sílvio Teixeira 184" e
   "Avenida Deputado Sílvio Teixeira 184" viram chaves diferentes, e a porta marcada numa não acha

@@ -59,6 +59,39 @@ describe('memória de posições', () => {
     mem.esquecer();
     expect(mem.quantas()).toBe(0);
   });
+  // A chave do lugar usa CEP, ou rua + número + bairro. Nenhum dos dois é estável entre um dia e
+  // outro: o CEP só aparece quando o cartão do Meli está aberto, e o bairro vem de quem respondeu
+  // a busca — a mesma avenida voltou "Grageru" num número e "Jardins" no outro, e a nossa base de
+  // ruas escolhe o trecho pelo meio da rota do dia. Sem isto, o Luan marcava a mesma porta sempre.
+  it('acha a porta marcada mesmo quando a chave de hoje não é a de ontem', () => {
+    const g = guardaNaMemoria();
+    const mem = criarMemoria(g, () => 'Aracaju', () => {});
+    const ontem = {texto: 'Avenida Deputado Sílvio Teixeira 184', bairro: 'Grageru', lat: -10.9391, lng: -37.0604} as never;
+    expect(mem.lembrar(ontem, new Date(2026, 8, 26).getTime())).toBe(true);
+
+    // hoje a busca respondeu outro bairro
+    const hoje = {texto: 'Avenida Deputado Sílvio Teixeira 184', bairro: 'Jardins'} as never;
+    expect(mem.aplicar(hoje)).toBe(true);
+    expect(hoje).toMatchObject({lat: -10.9391, precisao: 'lembrado'});
+
+    // e hoje o cartão veio aberto, com CEP, que dá outra chave ainda
+    const comCep = {texto: 'Avenida Deputado Sílvio Teixeira 184, CEP 49027-000', bairro: ''} as never;
+    expect(mem.aplicar(comCep)).toBe(true);
+    expect(comCep).toMatchObject({lat: -10.9391});
+  });
+
+  it('duas portas de mesma rua e número em bairros diferentes não se confundem', () => {
+    const g = guardaNaMemoria();
+    const mem = criarMemoria(g, () => 'Aracaju', () => {});
+    expect(mem.lembrar({texto: 'Rua A 100', bairro: 'Grageru', lat: -10.93, lng: -37.06} as never)).toBe(true);
+    expect(mem.lembrar({texto: 'Rua A 100', bairro: 'Jardins', lat: -10.99, lng: -37.11} as never)).toBe(true);
+    // com duas candidatas, escolher seria chutar: só o acerto exato do bairro vale
+    expect(mem.aplicar({texto: 'Rua A 100', bairro: 'Aruana'} as never)).toBe(false);
+    const certa = {texto: 'Rua A 100', bairro: 'Jardins'} as never;
+    expect(mem.aplicar(certa)).toBe(true);
+    expect(certa).toMatchObject({lat: -10.99});
+  });
+
   it('escolher um palpite do mapa fica só neste celular, sem virar correção dos outros', () => {
     const g = guardaNaMemoria(), enviadas: string[] = [];
     const mem = criarMemoria(g, () => 'Aracaju', k => enviadas.push(k));

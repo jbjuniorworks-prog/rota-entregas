@@ -497,6 +497,15 @@ export function ruaCompleta(rua: string): string {
   return w.join(' ');
 }
 
+// Rua e número, sem CEP e sem bairro. É a única parte do endereço que não muda entre um dia e
+// outro: o CEP aparece ou não conforme o cartão do Meli esteja aberto, e o bairro vem de quem
+// respondeu a busca — a mesma avenida voltou "Grageru" num número e "Jardins" no outro.
+export function chavePorta(texto: string): string | null {
+  const d = decompor(analisarLinha(texto).texto);
+  const rua = ruaCompleta(d.rua);
+  return d.numero && rua ? rua + '|' + d.numero : null;
+}
+
 export function chaveLugar(texto: string, bairro: string | undefined, cidade: string): string | null {
   const d = decompor(analisarLinha(texto).texto);
   if (!d.numero) return null;
