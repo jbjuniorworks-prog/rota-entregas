@@ -1,4 +1,4 @@
-import {chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, normal, pistasDeLugar, ruaCompleta} from './texto';
+import {coordenadaNoTexto, semLink, chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, normal, pistasDeLugar, ruaCompleta} from './texto';
 
 describe('mesmo condomínio, endereços diferentes', () => {
   const p = (texto: string, bairro = 'Jardins') => ({texto, bairro});
@@ -585,5 +585,30 @@ describe('numero de parada repetido não é numero de parada', () => {
   it('a mesma parada lida em dois quadros não conta como repetição', () => {
     const r = juntarQuadros([['45 Avenida Marieta Leite 51'], ['45 Avenida Marieta Leite 51']]);
     expect(r).toEqual(['45 Avenida Marieta Leite 51']);
+  });
+});
+
+// O dono chega com a porta na mão, copiada do Google Maps, porque o censo não tem aquela rua.
+// No link de lugar do Google o `!3d!4d` é a porta e o `@` é o enquadramento do mapa: em dois
+// links reais da Sílvio Teixeira os dois diferiam 250 m, então a ordem importa.
+describe('coordenada colada junto com o endereço', () => {
+  const LINK = 'https://www.google.com/maps/place/Av.+Deputado+S%C3%ADlvio+Teixeira,+184/@-10.9400000,-37.0600000,17z/data=!3m1!4b1!4m6!3m5!1s0x71ab3ee76a1245d!8m2!3d-10.9436218!4d-37.0527487!16s%2Fg%2F11c2hrbs46';
+
+  it('pega a porta do link, não o enquadramento do mapa', () => {
+    const c = coordenadaNoTexto(LINK)!;
+    expect(c.lat).toBeCloseTo(-10.9436218, 6);
+    expect(c.lng).toBeCloseTo(-37.0527487, 6);
+  });
+
+  it('aceita o link de compartilhar e o par solto', () => {
+    expect(coordenadaNoTexto('https://maps.google.com/?q=-10.9436218,-37.0527487')).toMatchObject({lat: -10.9436218});
+    expect(coordenadaNoTexto('Rua X 100, -10.943622, -37.052749')).toMatchObject({lng: -37.052749});
+    expect(coordenadaNoTexto('Rua X 100, Jardins, CEP 49025-100')).toBeNull();
+  });
+
+  it('o endereço sobra limpo, sem o link', () => {
+    expect(semLink(`Av. Deputado Sílvio Teixeira, 184 - Jardins, Aracaju - SE, 49025-100 ${LINK}`))
+      .toBe('Av. Deputado Sílvio Teixeira, 184 - Jardins, Aracaju - SE, 49025-100');
+    expect(semLink('Rua X 100, -10.943622, -37.052749')).toBe('Rua X 100');
   });
 });

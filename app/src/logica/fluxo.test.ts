@@ -36,7 +36,7 @@ describe('importar planilha', () => {
   });
   it('texto colado ignora repetidos, inclusive pelo número do app', () => {
     const e = estadoVazio();
-    expect(adicionarLinhas(e, ['18 Rua A, 10', '18 Rua A, 10', 'Rua B Longa, 20'])).toEqual({novas: 2, repetidas: 1});
+    expect(adicionarLinhas(e, ['18 Rua A, 10', '18 Rua A, 10', 'Rua B Longa, 20'])).toMatchObject({novas: 2, repetidas: 1});
     expect(e.paradas[0]).toMatchObject({ml: '18', precisao: 'pendente'});
   });
 });
@@ -342,5 +342,32 @@ describe('desfazer correção já enviada', () => {
     expect(f.desfazerCorrecao('k|1', -11.5, -37.5)).toBe('apagar');
     await f.enviar(c);
     expect(chamadas).toEqual(['correcao k|1', 'apagar k|1 -11.5']);
+  });
+});
+
+describe('endereço colado com o local do mapa', () => {
+  it('a coordenada colada vira a posição, e o endereço fica sem o link', () => {
+    const e = estadoVazio();
+    const r = adicionarLinhas(e, [
+      'Av. Deputado Sílvio Teixeira, 184 - Jardins, Aracaju - SE, 49025-100 https://www.google.com/maps/place/x/@-10.94,-37.06,17z/data=!3m1!4b1!8m2!3d-10.9436218!4d-37.0527487',
+      'Rua Sem Link 50, Jardins',
+    ]);
+    expect(r.novas).toBe(2);
+    expect(r.coladas).toHaveLength(1);
+    expect(e.paradas[0]).toMatchObject({precisao: 'manual', fonte: 'link do mapa'});
+    expect(e.paradas[0].lat).toBeCloseTo(-10.9436218, 6);
+    expect(e.paradas[0].texto).toBe('Av. Deputado Sílvio Teixeira, 184 - Jardins, Aracaju - SE, 49025-100');
+    // a que veio sem link continua indo para a busca
+    expect(e.paradas[1]).toMatchObject({precisao: 'pendente', lat: null});
+  });
+
+  it('o local colado é guardado e vai para os outros motoristas', () => {
+    const g = guardaNaMemoria(), enviadas: string[] = [];
+    const mem = criarMemoria(g, () => 'Aracaju', k => enviadas.push(k));
+    const e = estadoVazio();
+    const {coladas} = adicionarLinhas(e, ['Av. Deputado Sílvio Teixeira, 184, Jardins, CEP 49025-100 https://maps.google.com/?q=-10.9436218,-37.0527487']);
+    expect(coladas).toHaveLength(1);
+    expect(mem.lembrar(coladas[0])).toBe(true);
+    expect(enviadas).toEqual(['49025100|184']);
   });
 });

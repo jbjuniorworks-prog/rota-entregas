@@ -36,6 +36,29 @@ export const limparRuido = (l: string): string => {
     .replace(/([a-zà-ÿ])\s+[^\sa-zà-ÿ\d]{1,2}$/i, '$1');
 };
 
+// Coordenada colada junto com o endereço: link do Google Maps, link de compartilhar, ou o par
+// solto. A ordem importa. No link de lugar do Google o `!3d!4d` é a PORTA e o `@` é só o
+// enquadramento do mapa — em dois links reais da Sílvio Teixeira os dois diferiam 250 m, então o
+// `@` só entra quando não há mais nada.
+const COORD = /(-?\d{1,3}\.\d{4,})[,\s]+(-?\d{1,3}\.\d{4,})/;
+const PORTA_DO_GOOGLE = /!3d(-?\d{1,3}\.\d{4,})!4d(-?\d{1,3}\.\d{4,})/;
+const CONSULTA = /[?&](?:q|query|destination|ll)=(-?\d{1,3}\.\d{4,})(?:,|%2C)(-?\d{1,3}\.\d{4,})/i;
+const ENQUADRAMENTO = /@(-?\d{1,3}\.\d{4,}),(-?\d{1,3}\.\d{4,})/;
+const LINK = /https?:\/\/\S+/g;
+
+export function coordenadaNoTexto(texto: string): {lat: number; lng: number} | null {
+  for (const re of [PORTA_DO_GOOGLE, CONSULTA, ENQUADRAMENTO]) {
+    const m = texto.match(re);
+    if (m) return {lat: +m[1], lng: +m[2]};
+  }
+  // par solto só fora de link, senão pega pedaço de URL
+  const m = texto.replace(LINK, ' ').match(COORD);
+  return m ? {lat: +m[1], lng: +m[2]} : null;
+}
+
+export const semLink = (texto: string): string =>
+  texto.replace(LINK, ' ').replace(COORD, ' ').replace(/\s*[,;]\s*(?=[,;]|$)/g, '').replace(/\s+/g, ' ').trim().replace(/[\s,;]+$/, '');
+
 export interface LinhaAnalisada {
   ml: string | null;
   texto: string;

@@ -198,10 +198,17 @@ export async function processarCompartilhado() {
 export async function adicionarTexto(texto: string) {
   const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
   if (!linhas.length) { status('Cole pelo menos um endereço.', 2500); return false; }
-  const {novas, repetidas} = adicionarLinhas(e(), linhas);
+  const {novas, repetidas, coladas} = adicionarLinhas(e(), linhas);
+  // O local colado do mapa é correção, não palpite: fica guardado neste aparelho e vai para os
+  // outros motoristas, como se ele tivesse marcado na porta.
+  let guardadas = 0;
+  for (const p of coladas) if (memoria.lembrar(p)) guardadas++;
   ui.aba = 'conferir';
   loja.mudou();
-  status(`${novas} adicionada(s)${repetidas ? `, ${repetidas} repetida(s) ignorada(s)` : ''}.`, 2500);
+  const doMapa = coladas.length
+    ? ` ${coladas.length} com local colado do mapa${guardadas < coladas.length ? ' (sem CEP nem bairro na linha, não deu para guardar para as próximas rotas)' : ', guardado para as próximas rotas'}.`
+    : '';
+  status(`${novas} adicionada(s)${repetidas ? `, ${repetidas} repetida(s) ignorada(s)` : ''}.${doMapa}`, doMapa ? 9000 : 2500);
   await buscarPendentes();
   return true;
 }

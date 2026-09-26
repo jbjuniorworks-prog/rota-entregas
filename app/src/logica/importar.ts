@@ -1,6 +1,6 @@
 import {marcarIsoladas, marcarNumerosIncoerentes, moverPeloBairro} from './geo';
 import type {ItemPlanilha} from './planilha';
-import {analisarLinha, chaveEndereco} from './texto';
+import {analisarLinha, coordenadaNoTexto, semLink, chaveEndereco} from './texto';
 import type {Estado, Parada} from './tipos';
 
 export const novoId = () => Math.random().toString(36).slice(2, 10);
@@ -83,21 +83,31 @@ export function resumoPlanilha(r: ResumoPlanilha): string {
     + (r.semPosicao ? ` ${r.semPosicao} sem posição, buscando no mapa…` : '');
 }
 
-export function adicionarLinhas(e: Estado, linhas: string[]): {novas: number; repetidas: number} {
+export function adicionarLinhas(e: Estado, linhas: string[]): {novas: number; repetidas: number; coladas: Parada[]} {
   const existentes = new Set(e.paradas.map(x => chaveEndereco(x.texto)));
   const porNumero = new Map(e.paradas.filter(x => x.ml).map(x => [x.ml!, chaveEndereco(x.texto).split('|').slice(0, 2).join('|')]));
   let novas = 0, repetidas = 0;
+  const coladas: Parada[] = [];
   for (const l of linhas) {
-    const {ml, texto, unidades, comercial} = analisarLinha(l);
+    // Endereço colado junto com um link do mapa: a coordenada é a resposta, não um palpite a
+    // conferir. O censo não tem a porta de toda rua, e o dono às vezes chega com ela na mão.
+    const coord = coordenadaNoTexto(l);
+    const {ml, texto, unidades, comercial} = analisarLinha(coord ? semLink(l) : l);
     if (!texto) continue;
     const chave = chaveEndereco(texto);
     const semComplemento = chave.split('|').slice(0, 2).join('|');
     if (existentes.has(chave) || (ml && porNumero.get(ml) === semComplemento)) { repetidas++; continue; }
     existentes.add(chave);
     if (ml) porNumero.set(ml, semComplemento);
-    e.paradas.push({id: novoId(), area: e.areaAtual, ml, texto, unidades, comercial, lat: null, lng: null, exibido: '', precisao: 'pendente', candidatos: [], entregue: false});
+    const p: Parada = {id: novoId(), area: e.areaAtual, ml, texto, unidades, comercial,
+      lat: coord ? coord.lat : null, lng: coord ? coord.lng : null,
+      exibido: coord ? 'Local que você colou do mapa' : '',
+      precisao: coord ? 'manual' : 'pendente', fonte: coord ? 'link do mapa' : undefined,
+      candidatos: [], entregue: false};
+    e.paradas.push(p);
+    if (coord) coladas.push(p);
     novas++;
   }
   if (novas) { marcarIsoladas(e.paradas); if (e.rota) e.rota.desatualizada = true; }
-  return {novas, repetidas};
+  return {novas, repetidas, coladas};
 }
