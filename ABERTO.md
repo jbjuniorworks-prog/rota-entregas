@@ -7,9 +7,38 @@ Atualizado em 26/09/2026.
 
 ## Falha viva
 
-- Nenhuma no momento.
+- **A leitura repete parada quando o cartão aparece em dois quadros.** Na gravação de 26/09 saíram
+  63 linhas para 58 paradas. Os seis fantasmas são pares em que o nome da rua saiu cortado ou
+  trocado num dos quadros — "Franklin de Camp Sobral" ao lado de "Franklin de Campos Sobral",
+  "Deputado A Batista" ao lado de "Deputado Dilson Batista" — sempre com o mesmo número. O
+  `juntarQuadros` só junta quando a chave bate, e essas não batem. Não inventei regra: juntar duas
+  ruas de nome diferente e mesmo número pode comer parada de verdade, e uma gravação só não diz
+  onde fica o limite. Custo hoje: ~10% de paradas a mais na tela, todas sem posição — o que pelo
+  menos as deixa visíveis.
+- **O número da parada às vezes vem da tarja de horário, não do cartão.** Três linhas da mesma
+  gravação saíram com "8" na frente, e 8 não é o número de nenhuma delas: nos quadros dá para ler
+  41, 33 e outros. Esse número vira o `#` do cartão e entra na ordenação da rota (`montagem.ts`).
+  Tirar a janela de horário do texto já levou metade deles embora; o resto falta confirmar com o
+  texto cru do leitor antes de mexer.
 
 ## Fechado com medição
+
+- **O censo recusava a porta em rua de um bairro só** — e era a maior perda do dia. Medido na
+  gravação de 26/09 (58 paradas do Meli, Jardins e Grageru): com internet, 18 paradas na porta,
+  36 só na rua e 9 em lugar nenhum. O `ruaDoIbge` só respondia quando o nome da rua se repetia em
+  mais de um bairro, apostando que a nossa base de ruas resolvia o resto — e ela resolve, mas
+  responde a rua, não a porta, e sem sinal não responde nada. Agora ele responde também para rua
+  de um bairro só, com o número exato. Junto com isso, o tipo da via deixou de ser absoluto: o
+  Meli manda "Rua Antônio de Pádua Araújo" e o IBGE tem "Alameda", com as quatro portas da
+  entrega. Depois: **45 na porta, 13 na rua, 4 em lugar nenhum** — e as quatro são fantasmas de
+  leitura, não paradas. Sem sinal: **18 de 63 → 44**.
+- **A janela de entrega colava no nome da rua.** Cartão fechado do Meli põe "10:15h a 13:20h" na
+  mesma altura do endereço e o leitor junta os dois: a chave da rua virava "vereador lucilo costa
+  pinto sn 10 15h a 13 20h". Tirar a janela sozinho piorava: sem número e sem CEP a parada saía da
+  lista inteira, e parada que some é pior que parada com pino errado — ninguém procura o que não
+  sabe que existe. "S/N" agora passa no filtro com a rua só. Essa parada continua sem pino, porque
+  nem o censo nem o OpenStreetMap têm essa alameda; a diferença é que agora ela aparece, e o pino
+  que ele puser fica guardado e vai para os outros motoristas.
 
 - **A leitura da lista do Mercado Livre** não era "lê quase nada": lia quase tudo e perdia na
   montagem do endereço. Medido contra a gravação de 22/09 (rota em 33 de 38, 5 paradas na tela):
