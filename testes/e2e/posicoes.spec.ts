@@ -271,4 +271,25 @@ test('endereço sem CEP nem bairro guarda a porta marcada, com o bairro que a bu
   await clicarMapa(page, -10.94395, -37.06460);
   await expect(aviso(page)).toContainText('guardado para as próximas rotas');
   await expect(aviso(page)).not.toContainText('Sem CEP nem bairro');
+
+  // E agora a volta, que é o que decide se o trabalho dele vale: outro dia, a mesma linha crua,
+  // de novo sem CEP nem bairro. A memória é consultada antes da busca, quando a chave ainda é
+  // null — se ninguém consultar de novo depois que o bairro chega, o app guarda todo dia e nunca
+  // usa, e o Luan marca a mesma porta a vida inteira.
+  page.on('dialog', d => d.accept());
+  await aba(page, '1. Endereços');
+  await page.getByRole('button', {name: /Resetar rota/}).click();
+  await page.getByLabel(/Endereços da área/).fill('Rua Lúcio Mota 114');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await expect(aviso(page)).toContainText('Pronto!', {timeout: 30_000});
+  await aba(page, '2. Conferir');
+  const linha = linhaDe(page, 'Rua Lúcio Mota 114', 'Marcar no mapa');
+  await expect(linha).toContainText('Posição que você corrigiu em');
+  await expect(linha).toContainText('Corrigida por você antes');
+  const onde = await page.evaluate(() => {
+    const ps = JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas || [];
+    return {lat: ps[0].lat, lng: ps[0].lng};
+  });
+  expect(onde.lat).toBeCloseTo(-10.94395, 5);
+  expect(onde.lng).toBeCloseTo(-37.06460, 5);
 });

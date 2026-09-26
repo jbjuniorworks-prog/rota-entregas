@@ -85,12 +85,19 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 ## Ideias, não compromissos
 
 - **Estimar o número da porta entre duas portas conhecidas do censo.** Medido no arquivo de
-  Aracaju, deixa-um-de-fora em 127.715 portas de ruas com 5 ou mais: erro **mediana 11 m**, 3 em 4
-  abaixo de 30 m — mas **1 em 10 erra mais de 150 m**, e apertar o vão entre as âncoras não
-  melhora (o erro vem de rua com porta mal geocodificada, não de vão grande). Renderia as cinco da
-  Sílvio Teixeira espalhadas na ordem certa da avenida em vez de um pino só. Se entrar, entra como
-  "aproximado" (laranja, "confira na porta"), nunca como porta achada, e interpolando pelo traçado
-  da rua, não pela reta entre as duas âncoras.
+  Aracaju, deixa-um-de-fora em 127.816 portas de ruas com 5 ou mais. A comparação que importa não
+  é contra a perfeição, é contra o pino de hoje — um ponto só para a rua inteira:
+
+  | | mediana | p90 | até 30 m | acima de 150 m |
+  |---|---|---|---|---|
+  | um pino para a rua (hoje) | 88 m | 406 m | 21% | 34% |
+  | interpolando | 11 m | 159 m | 76% | 10% |
+  | interpolando, âncoras limpas | 8 m | 94 m | 83% | 8% |
+
+  "Âncoras limpas" = descartar a porta do censo que quebra a ordem (número sobe, posição volta),
+  projetando no eixo da rua. São 38% das portas — o censo erra bastante, e a 735 da Sílvio
+  Teixeira é uma delas. Se entrar, entra como "aproximado" (laranja, "confira na porta"), nunca
+  como porta achada, e interpolando pelo traçado da rua, não pela reta entre as âncoras.
 - **Google como reforço, não como troca.** Hoje `geocodificar` faz `googleKey ? geoGoogle :
   geoOSM`: pôr a chave desliga o censo e a nossa base inteiros. Se um dia for usado, tem de ser só
   para o que sobrou "aproximado". E os termos do Google não deixam guardar a coordenada deles —
