@@ -9,6 +9,9 @@ export interface Candidato extends Ponto {
   exibido: string;
   precisao: Precisao;
   rua?: string;
+  // O bairro que a resposta conhece. A parada adota ele quando chega sem bairro nenhum: sem CEP
+  // e sem bairro, `chaveLugar` devolve null e a marcação do motorista não tem onde ser guardada.
+  bairro?: string;
   nomes?: string[];
   fonte: string;
 }

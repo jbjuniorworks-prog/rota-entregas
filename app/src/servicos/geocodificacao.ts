@@ -27,7 +27,7 @@ function candidatoOSM(r: any): Candidato {
   const nd = r.namedetails || {};
   const nomes = [a.road, r.name, nd.name, nd['alt_name'], nd['old_name'], nd['official_name'], nd['short_name']]
     .flatMap((n: string | undefined) => (n || '').split(';')).map((n: string) => n.trim()).filter(Boolean);
-  return {lat: +r.lat, lng: +r.lon, exibido: [rua, bairro, cidade].filter(Boolean).join(' — ') || r.display_name, precisao, rua: a.road || (r.category === 'highway' ? r.name : ''), nomes: [...new Set(nomes)], fonte: 'OpenStreetMap'};
+  return {lat: +r.lat, lng: +r.lon, exibido: [rua, bairro, cidade].filter(Boolean).join(' — ') || r.display_name, precisao, rua: a.road || (r.category === 'highway' ? r.name : ''), bairro, nomes: [...new Set(nomes)], fonte: 'OpenStreetMap'};
 }
 
 let regiaoAtual: Regiao | null = null;
@@ -157,7 +157,7 @@ async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: 
   // qualquer chute pelo nome. Só entra confirmado por mais de uma marcação e se for apertado.
   const doCep = ancoraDeCep(d.cep);
   if (doCep && doCep.marcas >= 2 && doCep.raio <= 400) {
-    const c: Candidato = {lat: doCep.lat, lng: doCep.lng, precisao: 'rua', fonte: 'entregas',
+    const c: Candidato = {lat: doCep.lat, lng: doCep.lng, precisao: 'rua', fonte: 'entregas', bairro: cep ? cep.bairro : '',
       exibido: `${logradouro || d.rua}${d.numero ? ', ' + d.numero : ''} — pelas entregas já feitas neste CEP. Confira o número na porta.`};
     if (!foraDaRegiao(c)) cands.push(c);
   }
@@ -194,7 +194,7 @@ async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: 
     const lugar = cep && cep.bairro ? {bairro: cep.bairro, cidade: cep.cidade} : await ruaNosCorreios(logradouro, cidade);
     const centro = lugar ? await centroDoBairro(lugar.bairro, lugar.cidade) : null;
     if (centro) {
-      cands.unshift({...centro, precisao: 'bairro', rua: logradouro, fonte: 'CEP',
+      cands.unshift({...centro, precisao: 'bairro', rua: logradouro, fonte: 'CEP', bairro: lugar!.bairro,
         exibido: `${logradouro}${d.numero ? ', ' + d.numero : ''} — o mapa não tem esta rua: posição pelo bairro ${lugar!.bairro}`});
     }
   }

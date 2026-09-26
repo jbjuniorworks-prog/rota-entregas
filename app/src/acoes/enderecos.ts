@@ -48,6 +48,11 @@ export async function buscarParada(p: Parada) {
   try {
     const cands = await geocodificar(p.texto, {cidade: e().cidade, googleKey: e().googleKey, perto: centroDasEntregas(), bairro: p.bairro || ''});
     p.candidatos = cands;
+    // A linha do Mercado Livre com o cartão fechado vem só "Avenida Tal 184": sem CEP e sem
+    // bairro, `chaveLugar` devolve null e a marcação que o motorista faz na porta não tem onde
+    // ser guardada nem como chegar aos outros. Quem achou o endereço sabe o bairro — a parada
+    // adota ele, e aí a porta marcada uma vez vale para sempre.
+    if (!p.bairro && cands[0] && cands[0].bairro) p.bairro = cands[0].bairro;
     if (cands.length) Object.assign(p, {lat: cands[0].lat, lng: cands[0].lng, exibido: cands[0].exibido, precisao: cands[0].precisao, fonte: cands[0].fonte});
     else Object.assign(p, {lat: null, lng: null, exibido: '', precisao: 'nao', fonte: 'nao achou'});
   } catch (err) {

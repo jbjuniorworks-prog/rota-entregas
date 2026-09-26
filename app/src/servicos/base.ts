@@ -148,7 +148,7 @@ export async function ruaNaBase(rua: string, cidade: string, perto: Ponto | null
     const titulo = outroNome ? `${rua} (no mapa: ${t.nome})` : (t.nome || rua);
     const onde = [t.conjunto, t.bairro, t.cidade].filter(Boolean).join(' — ');
     const pelo = lugar ? `na frente do ${lugar.nome}, pela nossa base de ruas` : 'pela nossa base de ruas';
-    return {...p, precisao: 'rua', rua: t.nome || rua, fonte: 'nossa base', exibido: `${titulo} — ${onde} (${pelo})`};
+    return {...p, precisao: 'rua', rua: t.nome || rua, bairro: t.bairro || '', fonte: 'nossa base', exibido: `${titulo} — ${onde} (${pelo})`};
   } catch {
     return null;
   }

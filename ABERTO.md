@@ -7,6 +7,12 @@ Atualizado em 26/09/2026.
 
 ## Falha viva
 
+- **A chave do lugar não normaliza abreviação.** `chaveLugar` usa `ruaCompleta`, que troca só o
+  tipo da via ("av" → "avenida") e deixa o resto como veio: "Av. Dep. Sílvio Teixeira 184" e
+  "Avenida Deputado Sílvio Teixeira 184" viram chaves diferentes, e a porta marcada numa não acha
+  a outra. O `chaveRua` já resolve isso (as duas dão "silvio teixeira"). Consertar aqui muda o
+  formato de chave que já está gravado em `correcoes`, `observacoes` e `pacotes` — é a mesma
+  tarefa que o `rechavear`, com ferramenta e migração, não um remendo solto.
 - **Entrega sem CEP em rua que o censo não cobre cai num ponto só, junto com as outras da mesma
   rua.** Tela do Luan em 26/09: 184, 200, 260, 536 e 600 da Sílvio Teixeira no mesmo pino — quase
   meio quilômetro de avenida num ponto. A nossa base de ruas responde "a rua" e devolve sempre o
@@ -77,6 +83,18 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
   `Editar`, os dois são um fluxo só e podem virar um botão.
 
 ## Ideias, não compromissos
+
+- **Estimar o número da porta entre duas portas conhecidas do censo.** Medido no arquivo de
+  Aracaju, deixa-um-de-fora em 127.715 portas de ruas com 5 ou mais: erro **mediana 11 m**, 3 em 4
+  abaixo de 30 m — mas **1 em 10 erra mais de 150 m**, e apertar o vão entre as âncoras não
+  melhora (o erro vem de rua com porta mal geocodificada, não de vão grande). Renderia as cinco da
+  Sílvio Teixeira espalhadas na ordem certa da avenida em vez de um pino só. Se entrar, entra como
+  "aproximado" (laranja, "confira na porta"), nunca como porta achada, e interpolando pelo traçado
+  da rua, não pela reta entre as duas âncoras.
+- **Google como reforço, não como troca.** Hoje `geocodificar` faz `googleKey ? geoGoogle :
+  geoOSM`: pôr a chave desliga o censo e a nossa base inteiros. Se um dia for usado, tem de ser só
+  para o que sobrou "aproximado". E os termos do Google não deixam guardar a coordenada deles —
+  então serviria para o pino do dia, nunca para a base de portas.
 
 - **Um lugar só do admin**, para o que hoje precisa de terminal ou não aparece em tela nenhuma.
   O Admin já lista as rotas de 14 dias com entregues/pacotes, ativa e desativa motorista, mostra

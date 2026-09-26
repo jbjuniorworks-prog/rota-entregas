@@ -254,3 +254,21 @@ test.describe('a entrega marcada na porta vira posição para a base', () => {
     expect(nuvem.pedidos.filter(p => p.caminho === 'observacoes')).toHaveLength(1);
   });
 });
+
+// A linha do Mercado Livre com o cartão fechado vem só "Avenida Tal 184", sem CEP e sem bairro.
+// A chave do lugar precisa de um dos dois, senão a porta que o motorista marca vale só para hoje:
+// não fica no aparelho nem chega no Pedro, no João e na Leudy. Quem achou o endereço sabe o
+// bairro, e agora a parada adota ele.
+test('endereço sem CEP nem bairro guarda a porta marcada, com o bairro que a busca achou', async ({page}) => {
+  await abrir(page);
+  await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+  await page.getByLabel(/Endereços da área/).fill('Rua Lúcio Mota 114');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  // espera a busca terminar: é dela que vem o bairro que a parada adota
+  await expect(aviso(page)).toContainText('Pronto!', {timeout: 30_000});
+  await aba(page, '2. Conferir');
+  await linhaDe(page, 'Rua Lúcio Mota 114', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+  await clicarMapa(page, -10.94395, -37.06460);
+  await expect(aviso(page)).toContainText('guardado para as próximas rotas');
+  await expect(aviso(page)).not.toContainText('Sem CEP nem bairro');
+});
