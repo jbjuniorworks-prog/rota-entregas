@@ -131,6 +131,18 @@ export async function zoom(page: Page, z: number) {
   await page.evaluate(z2 => (window as any).rotaTeste.zoom(z2), z);
 }
 
+// Leva o mapa até um ponto. Pino fora da tela existe no DOM mas não tem texto nenhum, então
+// procurar pilha pelo rótulo só funciona olhando para onde ela está.
+export async function verNoMapa(page: Page, lat: number, lng: number, z = 18) {
+  await page.waitForFunction(() => !!(window as any).rotaTeste);
+  // confere que pegou: o mapa pode reenquadrar sozinho logo depois de montar
+  await expect.poll(async () => {
+    await page.evaluate(([a, b, c]) => (window as any).rotaTeste.irPara(a, b, c), [lat, lng, z]);
+    const c = await page.evaluate(() => (window as any).rotaTeste.centro());
+    return Math.abs(c.lat - lat) < 1e-4 && Math.abs(c.lng - lng) < 1e-4;
+  }, {timeout: 10_000}).toBe(true);
+}
+
 export async function clicarMapa(page: Page, lat: number, lng: number) {
   await page.waitForFunction(() => !!(window as any).rotaTeste);
   await page.evaluate(([a, b]) => (window as any).rotaTeste.clicarMapa(a, b), [lat, lng]);

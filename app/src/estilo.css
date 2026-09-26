@@ -112,6 +112,9 @@ details.feitas summary{color:var(--mut);font-size:14px;font-weight:600}
 .popacoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .popacoes button{flex:1 1 auto;border:0;border-radius:9px;padding:9px 10px;font:inherit;font-size:14px;font-weight:600;background:#e5e7eb;color:var(--tx);cursor:pointer}
 .popacoes button[data-acao=entregue]{background:var(--ok);color:#fff}
+/* com mais de uma entrega no mesmo pino, cada uma ganha o seu botão, pelo número da rota */
+.popacoes .popum{flex:1 1 100%;margin-top:2px;font-size:13px;font-weight:600;color:var(--mut)}
+.popacoes .popum~button{flex:0 0 auto;min-width:52px}
 .leaflet-tooltip.balao{background:#111827;color:#fff;border:0;border-radius:6px;padding:1px 5px;font-size:11px;font-weight:700;box-shadow:none}
 .leaflet-tooltip.balao::before{border-top-color:#111827}
 .pino span{transform:rotate(45deg);color:#fff;font-weight:700;font-size:11px}

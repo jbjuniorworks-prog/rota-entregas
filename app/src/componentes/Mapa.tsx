@@ -82,12 +82,16 @@ export default function Mapa() {
     });
     m.on('zoomend', () => setZoom(m.getZoom()));
     mapa.current = m;
-    (window as any).rotaTeste = {
+    const daqui = {
       clicarMapa: (lat: number, lng: number) => m.fire('click', {latlng: L.latLng(lat, lng)}),
       zoom: (z: number) => m.setZoom(z),
+      irPara: (lat: number, lng: number, z: number) => m.setView([lat, lng], z),
       centro: () => { const c = m.getCenter(); return {lat: +c.lat.toFixed(5), lng: +c.lng.toFixed(5)}; },
     };
-    return () => { m.remove(); };
+    (window as any).rotaTeste = daqui;
+    // Fechar e reabrir o mapa monta outro: sem tirar este daqui, o teste continuava mandando
+    // ordem para um mapa já morto e elas sumiam sem erro nenhum.
+    return () => { m.remove(); if ((window as any).rotaTeste === daqui) delete (window as any).rotaTeste; };
   }, []);
 
   useEffect(() => {
@@ -142,10 +146,17 @@ export default function Mapa() {
         ].filter(Boolean).join(' · ');
         const uma = (x: Parada) => `<b>${esc(naRota(x))} · ${esc(x.texto)}</b>${noApp(x) ? `<br><small>no app do entregador: ${noApp(x)}</small>` : ''}`;
         const pendentes = g.ps.filter(x => !x.entregue);
+        // Com duas entregas no mesmo ponto, um botão só teria de escolher uma por conta própria —
+        // e escolhia a primeira, calado. Quando são de endereços diferentes que só caíram juntos,
+        // é justo a outra que ele quer mexer. Então cada uma ganha o seu botão, com o número dela.
+        const arrumar = so
+          ? `<button data-acao="arrumar" data-ids="${esc(p.id)}">📍 Arrumar aqui</button>`
+          : `<span class="popum">📍 Arrumar só a:</span>${g.ps.map(x =>
+            `<button data-acao="arrumar" data-ids="${esc(x.id)}">${esc(rotuloDe(x))}</button>`).join('')}`;
         const acoes = ui.aba === 'rota'
           ? `<div class="popacoes">${pendentes.length
             ? `<button data-acao="entregue" data-ids="${esc(chave)}">✓ Entreguei${pendentes.length > 1 ? ` as ${pendentes.length}` : ''}</button>`
-            : ''}<button data-acao="arrumar" data-ids="${esc(chave)}">📍 Arrumar aqui</button></div>`
+            : ''}${arrumar}</div>`
           : '<br><small>Para corrigir: 2. Conferir → Marcar no mapa.</small>';
         const popup = (so
           ? `${uma(p)}<br><small>${esc(p.exibido)}</small>`

@@ -123,9 +123,16 @@ export function irmasDoMesmoEndereco(p: Parada): Parada[] {
     && mesmoEndereco([q.texto, p.texto]) && haversine(q as Ponto, p as Ponto) <= JUNTO_DAQUI);
 }
 
+// Duas entregas de endereços diferentes que já estão no mesmo pino não têm o que juntar: quem
+// mexe numa delas está separando as duas. Perguntar "virarem uma parada só" ali é o contrário do
+// que ele pediu — e prendia o par, porque a zero metro a pergunta voltava a cada tentativa.
+const JA_NO_MESMO_PINO = 5;
+
 export function vizinhaJaMarcada(p: Parada, lat: number, lng: number): {q: Parada; metros: number; forte: boolean} | null {
+  const empilhada = (q: Parada) => p.lat != null && p.lng != null && haversine(p as Ponto, q as Ponto) <= JA_NO_MESMO_PINO;
   const perto = e().paradas
-    .filter(q => q !== p && !q.entregue && q.lat != null && q.lng != null && !mesmoEndereco([q.texto, p.texto]))
+    .filter(q => q !== p && !q.entregue && q.lat != null && q.lng != null
+      && !mesmoEndereco([q.texto, p.texto]) && !empilhada(q))
     .map(q => ({q, metros: haversine({lat, lng}, q as Ponto), forte: CONFIAVEL.has(q.precisao)}))
     .filter(x => x.metros > 0 && x.metros <= COLAR_ATE)
     .sort((a, b) => a.metros - b.metros);

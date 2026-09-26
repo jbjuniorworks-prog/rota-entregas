@@ -142,3 +142,70 @@ test.describe('agir pelo pino, na aba Rota', () => {
     await expect(aviso(page)).toContainText('Toque no mapa, no local da entrega');
   });
 });
+
+// O caso do Luan, 26/09: "Rua Diamante Negro 320" e "Rua Wilson Almeida Santana 31" caíram no
+// mesmo pino. São portas diferentes — uma é o restaurante, a outra é "próx. ao restaurante". Ele
+// tentou separar e o app ofereceu juntar de novo, porque a zero metro a vizinha está sempre
+// colada. E o botão "Arrumar aqui" mexia sempre na primeira da pilha, sem dizer qual era.
+test.describe('duas entregas no mesmo pino, de endereços diferentes', () => {
+  test.use({viewport: {width: 412, height: 915}});
+
+  const JUNTAS = [-10.9640, -37.0430] as const;
+  const QUASE = [-10.96401, -37.04301] as const;
+  const AO_LADO = [-10.96411, -37.04310] as const;
+
+  test('dá para arrumar só uma, e arrumar não junta as duas de volta', async ({page}) => {
+    const {carregar, montar, aviso, garantirMapa, clicarMapa, linhaDe, verNoMapa, ROTA_A} = await import('./apoio');
+    const perguntas: string[] = [];
+    page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });
+    await abrir(page);
+    await carregar(page, ROTA_A);
+
+    // põe as duas no mesmo ponto, que é como elas chegam na mão dele
+    await aba(page, '2. Conferir');
+    await linhaDe(page, 'Avenida Central, 1500', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+    await clicarMapa(page, ...JUNTAS);
+    await linhaDe(page, 'Travessa Um, 45', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+    await clicarMapa(page, ...QUASE);
+    expect(perguntas.at(-1), 'a montagem do caso depende dessa pergunta').toContain('virarem uma parada só');
+
+    await montar(page);
+    await garantirMapa(page);
+    // de perto e em cima delas: enquadrado na rota inteira todo pino vira pilha, e pino fora
+    // da tela não tem rótulo para procurar
+    await verNoMapa(page, ...JUNTAS);
+    // a planilha tem outra pilha legítima (os dois blocos do mesmo prédio), então a nossa é a
+    // que está no meio do mapa, que é onde acabamos de centralizar
+    const caixa = (await page.locator('#map').boundingBox())!;
+    const meio = {x: caixa.x + caixa.width / 2, y: caixa.y + caixa.height / 2};
+    const pilhas = page.locator('.leaflet-marker-icon .pino').filter({hasText: '+1'});
+    const longes = await Promise.all((await pilhas.all()).map(async l => {
+      const b = (await l.boundingBox())!;
+      return Math.hypot(b.x - meio.x, b.y - meio.y);
+    }));
+    await pilhas.nth(longes.indexOf(Math.min(...longes))).click();
+    await expect(page.locator('.leaflet-popup')).toContainText('2 entregas neste ponto');
+    await expect(page.locator('.leaflet-popup')).toContainText('Travessa Um');
+
+    // um botão por entrega, com o número dela — e não um só, escolhendo calado
+    const arrumar = page.locator('.leaflet-popup [data-acao=arrumar]');
+    await expect(arrumar).toHaveCount(2);
+    await expect(page.locator('.leaflet-popup')).toContainText('Arrumar só a');
+
+    perguntas.length = 0;
+    await arrumar.nth(1).click();
+    await expect(aviso(page)).toContainText('Toque no mapa, no local da entrega');
+    await clicarMapa(page, ...AO_LADO);
+
+    expect(perguntas, 'separar duas que já estão no mesmo pino não é pergunta de juntar').toEqual([]);
+
+    // andou a segunda, e só ela: a primeira ficou onde estava
+    const onde = await page.evaluate(() => {
+      const paradas = JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas || [];
+      const pega = (t: string) => paradas.find((p: any) => p.texto.includes(t));
+      return {central: pega('Avenida Central'), travessa: pega('Travessa Um')};
+    });
+    expect(onde.central.lat).toBeCloseTo(JUNTAS[0], 5);
+    expect(onde.travessa.lat).toBeCloseTo(AO_LADO[0], 5);
+  });
+});
