@@ -74,10 +74,28 @@ Atualizado em 26/09/2026.
   ```
 
   A parte que **inventava** número está consertada (a tarja do horário não deixa mais dígito para
-  a linha de baixo). Falta a que **perde**: ler a coluna dos crachás. Seria uma segunda passada do
-  leitor só naquela faixa da esquerda, com lista de caracteres restrita a dígitos, casando por
-  altura com a linha do endereço. Não medido ainda — dá para medir contando quantos dos 58 crachás
-  saem certos hoje e quantos sairiam assim.
+  a linha de baixo). Hoje saem **15 números em 62 linhas**, e alguns errados — um `67` que não
+  existe, um `3` e um `5` repetidos.
+
+  **Ler a coluna dos crachás foi testado e recusado.** Segunda passada do leitor só na faixa da
+  esquerda, ampliada 3×, binarizada, com os caracteres restritos a dígitos:
+
+  | quadro | crachás na tela | o que saiu |
+  |---|---|---|
+  | t=48, escudos amarelos | 40, 41, 38, 39, 44 | `40 41 38 44` — 4 de 5 |
+  | t=36, escudos amarelos | 45, 46, 47, 29, 33 | `3 145 29 133` — 2 aproveitáveis |
+  | t=66, losangos rosa | 61, 62, 63, 64, 66 | `5` — nenhum |
+
+  Quatro limiares de contraste testados (100, 140, 180 e sem binarizar); nenhum salva os losangos.
+  Uns 40% de acerto, e crachá lido errado é pior que não lido, porque esse número entra na
+  ordenação da rota (`montagem.ts`). Voltar a isso só com segmentação por forma, que é visão
+  computacional dentro de um app que tem de rodar sem sinal.
+
+  **O caminho barato depende de uma resposta do dono:** se a lista do Meli puder ser exibida na
+  ordem da sequência, com os números 1, 2, 3… na ordem em que aparecem, então a **posição na
+  leitura já é o número** — o app lê os quadros em ordem de tempo e preserva a ordem da lista, e o
+  acerto vira 100% sem OCR nenhum. Se a numeração continuar embaralhada (no vídeo de 26/09 os
+  crachás vinham 45, 46, 47, 29, 33, e iam até 66 para 58 paradas), não há caminho barato.
 
 ## Fechado com medição
 
