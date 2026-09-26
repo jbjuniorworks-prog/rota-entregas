@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 24/09/2026.
+Atualizado em 26/09/2026.
 
 ## Falha viva
 
@@ -32,6 +32,18 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
   `Editar`, os dois são um fluxo só e podem virar um botão.
 
 ## Ideias, não compromissos
+
+- **Um lugar só do admin**, para o que hoje precisa de terminal ou não aparece em tela nenhuma.
+  O Admin já lista as rotas de 14 dias com entregues/pacotes, ativa e desativa motorista, mostra
+  as correções e o uso dos botões. Falta:
+  - **Criar conta de entregador.** Hoje é `npm run motoristas -- criar email Nome`. Criar usuário
+    exige a chave de serviço, e ela dentro de um app público entrega o banco inteiro a qualquer
+    um — então não é "mover o botão para a tela": seria um RPC que só admin chama, com o convite
+    saindo por e-mail do próprio Supabase.
+  - **"Teve problema nesta rota?"** O dado já está gravado desde `011_registro.sql`:
+    `rotas.sem_ruas` diz se a sequência saiu em linha reta e por quê, e `pacotes.fonte` /
+    `precisao` dizem de onde veio cada posição. A tela do Admin não mostra nenhum dos três —
+    é trabalho de tela, não de banco.
 
 - `ruas.nome_chave2` (apelido vindo do OpenStreetMap) ainda tem chave no formato velho: o texto do
   apelido não é guardado, então só se acerta no próximo `npm run ruas`. Não dá resposta errada —
