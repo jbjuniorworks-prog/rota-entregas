@@ -12,7 +12,14 @@ Atualizado em 26/09/2026.
   não é só o Nominatim: o `escolherTrecho` da nossa base escolhe o trecho mais perto do **meio da
   rota do dia**, então numa avenida que cruza dois bairros o bairro pode trocar conforme a rota.
   O `memoria.aplicar` já aguenta isso: sem acerto exato ele procura pela rua e pelo número, aceita
-  só se houver uma marcação e só se ela cair a menos de 3 km do que a busca respondeu hoje. Mas o
+  só se houver uma marcação, só se o nome da rua identificar alguma coisa (nem "Rua A" nem "sem
+  denominação") e só se ela cair a menos de 3 km do que a busca respondeu hoje. A trava de 3 km
+  foi medida dos dois lados: deixa passar 99,88% das portas certas, e **não pega 0,55%** das
+  portas cujo nome e número se repetem em dois lugares de 200 m a 3 km (era 1,09% antes de
+  descartar os nomes genéricos; o que sobra é quase todo "Acesso 8", "Acesso 25"). Cair nessa
+  faixa ainda exige que o motorista tenha marcado aquela mesma rua e número em outro lugar antes.
+  Vale apertar antes de levar esta regra para a nuvem, onde um erro chega a todos de uma vez: o
+  critério medido seria aceitar só nome cujos trechos são contíguos. Mas o
   `posicoes` da nuvem ainda casa por **chave exata** — a marcação de um motorista pode não chegar
   no outro por esse caminho, e basta a linha de um vir com CEP e a do outro sem. É a mesma
   identidade que já está no celular, com a mesma trava, e é menor que o cache. Cache do Nominatim

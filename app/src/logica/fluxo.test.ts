@@ -90,24 +90,37 @@ describe('memória de posições', () => {
   it('não aplica a porta de uma rua de mesmo nome do outro lado da cidade', () => {
     const g = guardaNaMemoria();
     const mem = criarMemoria(g, () => 'Aracaju', () => {});
-    expect(mem.lembrar({texto: 'Rua A 10', bairro: 'Aruana', lat: -10.9800, lng: -37.0500} as never)).toBe(true);
-    // a busca de hoje diz que esta Rua A 10 fica a uns 8 km dali
-    const longe = {texto: 'Rua A 10', bairro: 'Santa Maria'} as never;
+    expect(mem.lembrar({texto: 'Rua dos Náufragos 10', bairro: 'Aruana', lat: -10.9800, lng: -37.0500} as never)).toBe(true);
+    // a busca de hoje diz que esta Rua dos Náufragos 10 fica a uns 8 km dali
+    const longe = {texto: 'Rua dos Náufragos 10', bairro: 'Santa Maria'} as never;
     expect(mem.aplicar(longe, {lat: -11.0300, lng: -37.1100})).toBe(false);
     expect(longe).not.toHaveProperty('lat');
     // e a mesma porta, com a busca caindo na vizinhança, continua valendo
-    const perto = {texto: 'Rua A 10', bairro: 'Santa Maria'} as never;
+    const perto = {texto: 'Rua dos Náufragos 10', bairro: 'Santa Maria'} as never;
     expect(mem.aplicar(perto, {lat: -10.9810, lng: -37.0505})).toBe(true);
+  });
+
+  // "Rua A" existe em conjunto atrás de conjunto, e a trava de 3 km não separa vizinhos. Nome
+  // assim não vira identidade: só a chave exata.
+  it('nome que não identifica rua nenhuma não serve de identidade', () => {
+    const g = guardaNaMemoria();
+    const mem = criarMemoria(g, () => 'Aracaju', () => {});
+    expect(mem.lembrar({texto: 'Rua A 10', bairro: 'Aruana', lat: -10.98, lng: -37.05} as never)).toBe(true);
+    // o conjunto vizinho, a 1 km: a trava de distância deixaria passar, o nome é que barra
+    expect(mem.aplicar({texto: 'Rua A 10', bairro: 'Santa Maria'} as never, {lat: -10.989, lng: -37.055})).toBe(false);
+    // mesma coisa para "sem denominação"
+    expect(mem.lembrar({texto: 'Rua Sem Denominação 30', bairro: 'Aruana', lat: -10.98, lng: -37.05} as never)).toBe(true);
+    expect(mem.aplicar({texto: 'Rua Sem Denominação 30', bairro: 'Santa Maria'} as never, {lat: -10.989, lng: -37.055})).toBe(false);
   });
 
   it('duas portas de mesma rua e número em bairros diferentes não se confundem', () => {
     const g = guardaNaMemoria();
     const mem = criarMemoria(g, () => 'Aracaju', () => {});
-    expect(mem.lembrar({texto: 'Rua A 100', bairro: 'Grageru', lat: -10.93, lng: -37.06} as never)).toBe(true);
-    expect(mem.lembrar({texto: 'Rua A 100', bairro: 'Jardins', lat: -10.9305, lng: -37.0605} as never)).toBe(true);
+    expect(mem.lembrar({texto: 'Rua das Flores 100', bairro: 'Grageru', lat: -10.93, lng: -37.06} as never)).toBe(true);
+    expect(mem.lembrar({texto: 'Rua das Flores 100', bairro: 'Jardins', lat: -10.9305, lng: -37.0605} as never)).toBe(true);
     // com duas candidatas, escolher seria chutar: só o acerto exato do bairro vale
-    expect(mem.aplicar({texto: 'Rua A 100', bairro: 'Aruana'} as never, {lat: -10.93, lng: -37.06})).toBe(false);
-    const certa = {texto: 'Rua A 100', bairro: 'Jardins'} as never;
+    expect(mem.aplicar({texto: 'Rua das Flores 100', bairro: 'Aruana'} as never, {lat: -10.93, lng: -37.06})).toBe(false);
+    const certa = {texto: 'Rua das Flores 100', bairro: 'Jardins'} as never;
     expect(mem.aplicar(certa, {lat: -10.93, lng: -37.06})).toBe(true);
     expect(certa).toMatchObject({lat: -10.9305});
   });

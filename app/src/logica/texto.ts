@@ -503,7 +503,13 @@ export function ruaCompleta(rua: string): string {
 export function chavePorta(texto: string): string | null {
   const d = decompor(analisarLinha(texto).texto);
   const rua = ruaCompleta(d.rua);
-  return d.numero && rua ? rua + '|' + d.numero : null;
+  if (!d.numero || !rua) return null;
+  // Nome que não identifica rua nenhuma não serve de identidade: "Rua A" e "sem denominação" se
+  // repetem por conjuntos vizinhos, e a trava de distância não separa dois conjuntos a 1 km.
+  // Medido no censo de Aracaju: a mesma rua e número em dois lugares de 200 m a 3 km são 1,09%
+  // das portas, e tirando os nomes genéricos caem para 0,55%.
+  if (palavrasRua(d.rua).join('').length <= 2 || /denomina[cç]/i.test(d.rua)) return null;
+  return rua + '|' + d.numero;
 }
 
 export function chaveLugar(texto: string, bairro: string | undefined, cidade: string): string | null {
