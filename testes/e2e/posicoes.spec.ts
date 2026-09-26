@@ -293,3 +293,29 @@ test('endereço sem CEP nem bairro guarda a porta marcada, com o bairro que a bu
   expect(onde.lat).toBeCloseTo(-10.94395, 5);
   expect(onde.lng).toBeCloseTo(-37.06460, 5);
 });
+
+// O dono chega com a porta copiada do Google Maps porque o censo não tem aquela rua. Consertar
+// uma parada que já está na lista é pelo "Editar" — colar o link ali tinha de valer igual.
+test('colar o link do mapa no Editar põe a parada na porta, e guarda', async ({page}) => {
+  page.on('dialog', d => d.accept('Avenida Deputado Sílvio Teixeira 200, Jardins, CEP 49025-400 '
+    + 'https://www.google.com/maps/place/x/@-10.9436597,-37.0553986,17z/data=!3m1!4b1!8m2!3d-10.943665!4d-37.0528237'));
+  await abrir(page);
+  await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+  await page.getByLabel(/Endereços da área/).fill('Avenida Deputado Sílvio Teixeira 200');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  // sem rede no teste, essa rua não tem como ser achada — é justamente o caso do link colado
+  await expect(aviso(page)).toContainText(/Pronto!|falharam/, {timeout: 30_000});
+  await aba(page, '2. Conferir');
+  await linhaDe(page, 'Sílvio Teixeira 200', 'Editar').getByRole('button', {name: 'Editar'}).click();
+  await expect(aviso(page)).toContainText('Local colado do mapa');
+  await expect(aviso(page)).toContainText('guardado para as próximas rotas');
+  const onde = await page.evaluate(() => {
+    const ps = JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas || [];
+    return {lat: ps[0].lat, lng: ps[0].lng, texto: ps[0].texto, precisao: ps[0].precisao};
+  });
+  // a porta do link (!3d!4d), não o enquadramento do mapa (@), que ali está a 270 m
+  expect(onde.lat).toBeCloseTo(-10.943665, 6);
+  expect(onde.lng).toBeCloseTo(-37.0528237, 6);
+  expect(onde.precisao).toBe('manual');
+  expect(onde.texto, 'o link sai do endereço').not.toContain('http');
+});

@@ -564,11 +564,17 @@ export function chavePorta(texto: string): string | null {
 
 export function chaveLugar(texto: string, bairro: string | undefined, cidade: string): string | null {
   const d = decompor(analisarLinha(texto).texto);
-  if (!d.numero) return null;
-  if (d.cep && !/000$/.test(d.cep)) return d.cep + '|' + d.numero;
-  const rua = ruaCompleta(d.rua), b = normal(bairro || '');
+  // "S/N" é endereço de verdade, e justamente o que fonte nenhuma acha — é o que mais precisa
+  // ficar guardado depois que alguém marca. Antes ele caía fora por não ter número, e a marcação
+  // valia só para o dia. Chave nova onde não havia nenhuma: não mexe no que já está gravado.
+  const numero = d.numero || (SEM_NUMERO.test(texto) ? 'sn' : null);
+  if (!numero) return null;
+  if (d.cep && !/000$/.test(d.cep)) return d.cep + '|' + numero;
+  // sem número, o "S/N" fica grudado no nome da rua: tira, senão "SN" e "S/N" viram chaves
+  // diferentes para a mesma porta
+  const rua = ruaCompleta(numero === 'sn' ? d.rua.replace(SEM_NUMERO, ' ') : d.rua), b = normal(bairro || '');
   if (!rua || !b) return null;
-  return ['r', rua, d.numero, b, normal(cidade)].join('|');
+  return ['r', rua, numero, b, normal(cidade)].join('|');
 }
 
 // Os bairros e as ruas de Aracaju aparecem dos dois jeitos: a planilha escreve "17 de Março"

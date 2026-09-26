@@ -143,26 +143,25 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 
 ## Ideias, não compromissos
 
-- **Estimar o número da porta entre duas portas conhecidas do censo.** Deixa-um-de-fora em
-  127.816 portas do arquivo de Aracaju (ruas com 5 ou mais). As quatro linhas usam **os mesmos
-  alvos**, e quem não consegue interpolar cai no pino da rua, como cairia em produção:
+- **Interpolar entre as portas que os motoristas marcaram** — e **não** entre as do censo. Medido
+  contra cinco portas de verdade da Avenida Deputado Sílvio Teixeira, tiradas do Google Maps pelo
+  dono (184, 200, 260, 536, 600, cobrindo 297 m de avenida). Deixa-um-de-fora:
 
-  | | mediana | p90 | até 30 m | acima de 150 m | respondeu |
-  |---|---|---|---|---|---|
-  | um pino para a rua (hoje) | 88 m | 405 m | 21% | 33% | 100% |
-  | interpolando | 12 m | 183 m | 73% | 11% | 94% |
-  | + âncoras em ordem | 10 m | 188 m | 75% | 12% | 88% |
-  | + ordem por lado par/ímpar | 8 m | 167 m | 77% | 11% | 90% |
+  | | erro |
+  |---|---|
+  | pino de hoje (um ponto para a avenida toda) | 693 a 975 m |
+  | interpolando pelas portas do **censo** | 516 m |
+  | interpolando pelas portas **marcadas** | **16 a 57 m** |
 
-  O ganho está em interpolar, não em limpar: 88 m → 12 m de mediana, e um terço das portas acima
-  de 150 m vira um décimo. Descartar âncora que quebra a ordem melhora a mediana e **piora a
-  cauda**, porque responde menos e cai no pino velho — separar por lado par/ímpar recupera parte
-  (o descarte cai de 38% para 24%), mas é refinamento, não o ganho. Se entrar, entra na forma
-  simples, laranja ("confira na porta"), nunca como porta achada, e a porta marcada pelo motorista
-  continua mandando. Vale para as paradas que hoje caem no pino da rua: **14 das 63** da gravação
-  de 26/09, com internet.
-  (Uma tabela anterior aqui dizia 8 m e 8% para a versão limpa. Estava otimista: só contava os
-  casos em que a limpeza conseguia responder.)
+  As pontas da rua (a menor e a maior marcada) não têm vizinha dos dois lados e continuam com o
+  pino de hoje. A medição anterior, que usava o censo como fonte **e** como gabarito, dizia que
+  interpolar valia em geral; contra porta de verdade ela não se sustenta, porque a numeração do
+  censo naquela avenida não tem relação com a rua. O que vale é a porta marcada.
+
+  Para isso valer **para os outros motoristas** falta o caminho na nuvem: hoje a marcação viaja
+  por endereço (o `posicoes` casa chave exata), então marcar 184 e 260 conserta essas duas e não
+  ajuda a 200 no celular do Luan. Precisa de um RPC que devolva as portas conhecidas de uma rua —
+  a `observacoes` já guarda `rua_chave`, `lat` e `lng`. Migração que o dono roda.
 - **Google como reforço, não como troca.** Hoje `geocodificar` faz `googleKey ? geoGoogle :
   geoOSM`: pôr a chave desliga o censo e a nossa base inteiros. Se um dia for usado, tem de ser só
   para o que sobrou "aproximado". E os termos do Google não deixam guardar a coordenada deles —

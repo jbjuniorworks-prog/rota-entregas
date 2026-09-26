@@ -612,3 +612,24 @@ describe('coordenada colada junto com o endereço', () => {
     expect(semLink('Rua X 100, -10.943622, -37.052749')).toBe('Rua X 100');
   });
 });
+
+// "S/N" é endereço de verdade e é justamente o que fonte nenhuma acha — a Alameda Vereador
+// Lucilo da Costa Pinto não está no censo nem no OpenStreetMap. Sem chave, a posição que alguém
+// marcasse nela valia só para o dia.
+describe('endereço sem número também precisa de chave', () => {
+  it('S/N com CEP vira chave, como qualquer porta', () => {
+    expect(chaveLugar('Alameda Vereador Lucilo da Costa Pinto SN, CEP 49025-100', '', 'Aracaju, SE'))
+      .toBe('49025100|sn');
+    expect(chaveLugar('Alameda Vereador Lucilo da Costa Pinto S/N', 'Jardins', 'Aracaju, SE'))
+      .toBe('r|alameda vereador lucilo da costa pinto|sn|jardins|aracaju, se');
+    // e os dois jeitos de escrever caem na mesma chave
+    expect(chaveLugar('Alameda Vereador Lucilo da Costa Pinto SN', 'Jardins', 'Aracaju, SE'))
+      .toBe(chaveLugar('Alameda Vereador Lucilo da Costa Pinto S/N', 'Jardins', 'Aracaju, SE'));
+  });
+
+  it('e sem CEP nem bairro continua sem chave, como antes', () => {
+    expect(chaveLugar('Alameda Vereador Lucilo da Costa Pinto SN', '', 'Aracaju, SE')).toBeNull();
+    // e o que nem S/N tem segue de fora
+    expect(chaveLugar('Alameda Vereador Lucilo da Costa Pinto, CEP 49025-100', '', 'Aracaju')).toBeNull();
+  });
+});

@@ -2,14 +2,14 @@ import {operacoesDaPlanilha} from '../logica/fila';
 import {haversine, marcarIsoladas, mediana, moverParaOBairro} from '../logica/geo';
 import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from '../logica/importar';
 import {CORES, DA_PLANILHA} from '../logica/rotulos';
-import {decompor, extrairEnderecos} from '../logica/texto';
+import {coordenadaNoTexto, decompor, extrairEnderecos, semLink} from '../logica/texto';
 import type {Parada} from '../logica/tipos';
 import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
 import {carregarAncorasDeCep} from '../servicos/base';
 import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from '../servicos/geocodificacao';
 import {desatualizarRota, e, enviarFila, fila, invalidarRota, irPara, memoria, ui} from './base';
-import {avisoCompartilhadas, consultarCompartilhadas, focar} from './posicoes';
+import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, focar} from './posicoes';
 import {registrarComoFicou} from './registro';
 import {montarRota} from './rota';
 
@@ -214,8 +214,19 @@ export async function adicionarTexto(texto: string) {
 }
 
 export async function editar(p: Parada) {
-  const novo = prompt('Corrija o endereço:', p.texto);
+  const novo = prompt('Corrija o endereço (dá para colar o link do mapa junto):', p.texto);
   if (novo == null || !novo.trim()) return;
+  // Consertar uma parada que já está na lista é por aqui, não por "Adicionar": colar o link no
+  // Editar tinha de valer igual, senão a coordenada que ele foi buscar no mapa não tem porta de
+  // entrada nenhuma para o que já foi lido.
+  const coord = coordenadaNoTexto(novo);
+  if (coord) {
+    p.texto = semLink(novo).trim();
+    loja.mudou();
+    corrigirPosicao(p, coord.lat, coord.lng, 'Local colado do mapa', 'Local que você colou do mapa');
+    focar(p.id);
+    return;
+  }
   p.texto = novo.trim();
   p.precisao = 'pendente';
   desatualizarRota(true);
