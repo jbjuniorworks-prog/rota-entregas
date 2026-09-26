@@ -63,11 +63,21 @@ Atualizado em 26/09/2026.
   nomes, não escolhe. O que sobra é o "cicero soares dantas ~ cicero soares santos" da vida, e a
   tela já sabe avisar ("no mapa: outro nome"). Não construído — decisão de mandar entrega para
   outra rua não se toma no detalhe.
-- **O número da parada às vezes vem da tarja de horário, não do cartão.** Três linhas da mesma
-  gravação saíram com "8" na frente, e 8 não é o número de nenhuma delas: nos quadros dá para ler
-  41, 33 e outros. Esse número vira o `#` do cartão e entra na ordenação da rota (`montagem.ts`).
-  Tirar a janela de horário do texto já levou metade deles embora; o resto falta confirmar com o
-  texto cru do leitor antes de mexer.
+- **O número da parada do Meli quase não é lido.** Ele é o que o dono usa para falar com o Meli e
+  achar o pacote, e o texto cru do leitor (gravação de 26/09) mostra por que ele some: o crachá é
+  um escudo colorido com o número dentro, e o Tesseract devolve `'(32)'` num quadro, `'Rs)'` no
+  outro e **nada** no da Marieta Leite 51 — que na tela é o 45:
+
+  ```
+  '8 Habilita as 11:45 h'          <- o cadeado lido como digito
+  '   Avenida Marieta Leite 51'    <- o 45 nao aparece: so espacos
+  ```
+
+  A parte que **inventava** número está consertada (a tarja do horário não deixa mais dígito para
+  a linha de baixo). Falta a que **perde**: ler a coluna dos crachás. Seria uma segunda passada do
+  leitor só naquela faixa da esquerda, com lista de caracteres restrita a dígitos, casando por
+  altura com a linha do endereço. Não medido ainda — dá para medir contando quantos dos 58 crachás
+  saem certos hoje e quantos sairiam assim.
 
 ## Fechado com medição
 

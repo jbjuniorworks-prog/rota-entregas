@@ -22,11 +22,19 @@ const TIPO_VIA: Record<string, string> = {r: 'rua', rua: 'rua', av: 'avenida', a
 // nome da rua, que então não casa com nada e a parada fica sem posição nenhuma.
 const FAIXA_DE_HORARIO = /\b(?:habilita\s+[àa]s\s+)?\d{1,2}:\d{2}\s*h?\s*(?:a|[àa]s)\s*\d{1,2}:\d{2}\s*h?|\bhabilita\s+[àa]s\s+\d{1,2}:\d{2}\s*h?/gi;
 
-export const limparRuido = (l: string): string =>
-  l.replace(/[|©®✔✓]/g, ' ').replace(FAIXA_DE_HORARIO, ' ').replace(/\s+/g, ' ').trim()
+export const limparRuido = (l: string): string => {
+  const limpo = l.replace(/[|©®✔✓]/g, ' ').replace(/\s+/g, ' ').trim();
+  const semHorario = limpo.replace(FAIXA_DE_HORARIO, ' ').replace(/\s+/g, ' ').trim();
+  // A tarja "🔒 Habilita as 11:45 h" sai do leitor com o cadeado virado dígito: "8 Habilita as
+  // 11:45 h". Tirado o horário sobra só o 8, que o app tomava como o número da parada seguinte —
+  // e seis paradas de uma gravação saíram com o mesmo "#8", que entra na ordenação da rota.
+  // Linha que era só a tarja não é linha.
+  if (semHorario !== limpo && !/[a-zà-ÿ]/i.test(semHorario)) return '';
+  return semHorario
     .replace(/(\d)\s+[^\s\d,]{1,2}$/, '$1')
     // o selo de "verificado" do app de entrega sai como um símbolo solto no fim do nome da rua
     .replace(/([a-zà-ÿ])\s+[^\sa-zà-ÿ\d]{1,2}$/i, '$1');
+};
 
 export interface LinhaAnalisada {
   ml: string | null;

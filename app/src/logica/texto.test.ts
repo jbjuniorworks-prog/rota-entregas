@@ -549,3 +549,19 @@ describe('a mesma parada lida duas vezes no vídeo', () => {
     expect(juntarQuadros([q])).toHaveLength(2);
   });
 });
+
+// Texto cru do leitor, gravação de 26/09: a tarja do horário sai como "8 Habilita as 11:45 h",
+// com o cadeado lido como dígito. Esse 8 virava o número da parada seguinte, e o número da parada
+// entra na ordenação da rota — seis paradas do mesmo dia saíram como "#8".
+describe('o cadeado da tarja de horário não é número de parada', () => {
+  it('a tarja sozinha não deixa número para a linha de baixo', () => {
+    expect(analisarLinha('8 Habilita as 11:45 h')).toMatchObject({texto: '', ml: null});
+    expect(extrairEnderecos('8 Habilita as 11:45 h\n   Avenida Marieta Leite 51'))
+      .toEqual(['Avenida Marieta Leite 51']);
+  });
+
+  it('e o número de parada de verdade continua entrando', () => {
+    expect(extrairEnderecos('(32)   Rua Construtora Cunha 145')).toEqual(['32 Rua Construtora Cunha 145']);
+    expect(extrairEnderecos('45\nAvenida Marieta Leite 51')).toEqual(['45 Avenida Marieta Leite 51']);
+  });
+});
