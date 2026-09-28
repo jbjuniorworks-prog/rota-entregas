@@ -16,6 +16,8 @@ export function comoFoiConfirmada(r: PosicaoCompartilhada): string {
   if (r.minha) return 'Posição que você mesmo arrumou aqui';
   if (r.fonte === 'entrega') return `Posição confirmada por ${r.entregas} entrega(s) feitas aqui`;
   if (r.fonte === 'admin' || (!r.fonte && r.motoristas <= 1)) return 'Posição confirmada por quem administra';
+  // uma correção só não chega aqui como confirmada: precisa de uma entrega feita no mesmo ponto
+  if (r.motoristas <= 1) return 'Posição confirmada por outro motorista, na porta';
   return `Posição confirmada por ${r.motoristas} motoristas`;
 }
 

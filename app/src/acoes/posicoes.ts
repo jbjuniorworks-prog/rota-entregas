@@ -48,6 +48,14 @@ export function guardarNome(p: Parada, lat: number, lng: number) {
   });
 }
 
+function enfileirarPassagem(p: Parada, chave: string, lat: number, lng: number, precisao: number) {
+  const rua = decompor(p.texto).rua;
+  fila.enfileirar({
+    tipo: 'observacao', chave, lat: +lat.toFixed(6), lng: +lng.toFixed(6), precisao: Math.round(precisao),
+    endereco: p.texto.slice(0, 300), rua: rua.slice(0, 200), ruaChave: chaveRua(rua).slice(0, 200),
+  });
+}
+
 export function guardarPassagens(ps: Parada[]) {
   if (!navigator.geolocation) return;
   const alvos = ps.map(p => ({p, chave: chaveLugar(p.texto, p.bairro, e().cidade)})).filter((x): x is {p: Parada; chave: string} => !!x.chave);
@@ -57,11 +65,7 @@ export function guardarPassagens(ps: Parada[]) {
     if (accuracy > GPS_PASSAGEM || foraDaRegiao({lat: latitude, lng: longitude})) return;
     for (const {p, chave} of alvos) {
       guardarNome(p, latitude, longitude);
-      const rua = decompor(p.texto).rua;
-      fila.enfileirar({
-        tipo: 'observacao', chave, lat: +latitude.toFixed(6), lng: +longitude.toFixed(6), precisao: Math.round(accuracy),
-        endereco: p.texto.slice(0, 300), rua: rua.slice(0, 200), ruaChave: chaveRua(rua).slice(0, 200),
-      });
+      enfileirarPassagem(p, chave, latitude, longitude, accuracy);
     }
     enviarFila();
   }, () => {}, {enableHighAccuracy: true, timeout: 10000, maximumAge: 5000});
@@ -197,19 +201,49 @@ Se puder, espere uns segundos ao ar livre e tente de novo.`)) {
   corrigirPosicao(p, lat, lng, 'Local corrigido pela sua localização', `Sua localização na porta (±${margem} m)`);
 }
 
-export function estouAqui(p: Parada) {
+export function comMinhaPosicao(
+  usar: (lat: number, lng: number, precisao: number) => void,
+  semGps: (motivo: string) => void = motivo => status('Não consegui o GPS: ' + motivo, 5000),
+  esperando = 'Pegando sua localização…',
+) {
   // Com o mapa da Rota aberto a posição já vem chegando sozinha: aproveitar a que acabou de
   // chegar poupa o motorista de esperar o GPS de novo na porta — e, com uma vigia ligada, um
   // pedido novo pode ficar sem resposta até estourar o prazo.
   const meu = ui.euAqui;
-  if (meu && Date.now() - meu.quando < NA_PORTA) { marcarNaPorta(p, meu.lat, meu.lng, meu.precisao); return; }
-  if (!navigator.geolocation) { status('Este navegador não dá acesso ao GPS.', 4000); return; }
-  status('Pegando sua localização…');
+  if (meu && Date.now() - meu.quando < NA_PORTA) { usar(meu.lat, meu.lng, meu.precisao); return; }
+  if (!navigator.geolocation) { semGps('este navegador não dá acesso ao GPS.'); return; }
+  status(esperando);
   navigator.geolocation.getCurrentPosition(
-    pos => marcarNaPorta(p, pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
-    err => {
-      status('Não consegui o GPS: ' + (err.code === 1 ? 'permissão negada. Libere a localização para este site.' : err.message), 5000);
-    }, {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
+    pos => usar(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
+    err => semGps(err.code === 1 ? 'permissão negada. Libere a localização para este site.' : err.message),
+    {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
+}
+
+export function estouAqui(p: Parada) {
+  comMinhaPosicao((lat, lng, precisao) => marcarNaPorta(p, lat, lng, precisao));
+}
+
+// A porta vista por quem acabou de entregar nela. Correção e passagem saem da MESMA leitura, e é
+// esse par no mesmo ponto que a `posicoes` da nuvem aceita como confirmação: o próximo motorista
+// já recebe a porta confirmada, sem esperar um segundo motorista passar lá. Sem as perguntas de
+// juntar do `corrigirPosicao`: estas já saíram da rota, não há parada para juntar com elas.
+export function portaDaEntrega(ps: Parada[], lat: number, lng: number, precisao: number): {guardou: boolean; desfazer: () => void} {
+  const longe = ps.some(x => x.lat != null && x.lng != null && haversine(x as Ponto, {lat, lng}) > MUDOU_MUITO);
+  const desfazers = ps.map(prepararDesfazer);
+  let guardou = false;
+  for (const p of ps) {
+    delete p.sugestao;
+    Object.assign(p, {lat, lng, precisao: 'manual', exibido: `Sua localização na porta (±${Math.round(precisao)} m)`, fonte: 'motorista'});
+    guardou = memoria.lembrar(p) || guardou;
+    guardarNome(p, lat, lng);
+    const chave = chaveLugar(p.texto, p.bairro, e().cidade);
+    if (chave) enfileirarPassagem(p, chave, lat, lng, precisao);
+  }
+  if (ps.some(p => p.adiada)) marcarIsoladas(e().paradas);
+  else desatualizarRota(longe);
+  enviarFila();
+  loja.mudou();
+  return {guardou, desfazer: () => desfazers.forEach(f => f())};
 }
 
 // O rumo só vale quando ele está andando: parado, o GPS devolve lixo ou nada, e uma seta que

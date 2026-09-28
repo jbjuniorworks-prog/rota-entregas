@@ -80,7 +80,8 @@ export function TelaAdmin() {
   </>;
 }
 
-const NOME_DO_BOTAO: Record<string, string> = {ver: 'Ver', mapa: 'Marcar no mapa', aqui: '📍 Estou aqui', editar: 'Editar', remover: 'Remover'};
+const NOME_DO_BOTAO: Record<string, string> = {ver: 'Ver', mapa: 'Marcar no mapa', aqui: '📍 Estou aqui', editar: 'Editar', remover: 'Remover',
+  'balao-aqui': '📍 Entreguei aqui (balão do pino)', 'balao-entreguei': '✓ Entreguei (balão do pino)'};
 
 // Para parar de decidir no chute quais botões ficam na frente do cartão. Mostra quanto cada um
 // é usado e qual costuma vir depois de qual — dois botões que andam sempre juntos são, na

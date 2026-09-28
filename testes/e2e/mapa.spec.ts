@@ -132,7 +132,7 @@ test.describe('agir pelo pino, na aba Rota', () => {
     const feitasAntes = await page.locator('.resumo').innerText();
 
     await page.locator('.pino.alvo').click();
-    await page.getByRole('button', {name: /Entreguei/}).first().click();
+    await page.locator('.leaflet-popup [data-acao=entregue]').click();
     await expect.poll(async () => (await page.locator('.resumo').innerText()) !== feitasAntes, {timeout: 10_000}).toBe(true);
     await expect(page.locator('#painel')).toContainText('3. Rota');
 
@@ -140,6 +140,122 @@ test.describe('agir pelo pino, na aba Rota', () => {
     await page.locator('.leaflet-marker-icon .pino').first().click();
     await page.getByRole('button', {name: /Arrumar aqui/}).click();
     await expect(aviso(page)).toContainText('Toque no mapa, no local da entrega');
+  });
+
+  // Print de 28/09: pino arrumado na Conferir e, na Rota, o balão ainda dizia "Para corrigir:
+  // 2. Conferir", sem o Entreguei. O balão só era refeito quando alguma parada mudava — trocar
+  // de aba não contava.
+  test('o balão montado na Conferir ganha os botões ao voltar para a Rota', async ({page}) => {
+    const {carregar, montar, garantirMapa, clicarMapa, linhaDe, ROTA_A} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await aba(page, '2. Conferir');
+    // mexer num pino aqui refaz todos os balões, do jeito da Conferir
+    await linhaDe(page, 'Rua D, 49', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+    await clicarMapa(page, -10.9605, -37.0455);
+    await aba(page, '3. Rota');
+    await garantirMapa(page);
+    await page.locator('.pino.alvo').click();
+    await expect(page.locator('.leaflet-popup [data-acao=entregue]')).toBeVisible();
+    await expect(page.locator('.leaflet-popup')).not.toContainText('Para corrigir');
+  });
+});
+
+// Na porta, com o pacote na mão: "Estou aqui" num cartão e "Entreguei" em outro eram dois toques,
+// cada um lendo o GPS de novo. O par que a nuvem aceita como porta confirmada é correção e
+// passagem no mesmo ponto — então as duas têm de sair da mesma leitura.
+test.describe('entreguei aqui, pelo balão do pino', () => {
+  // o GPS só é ligado depois de montar: com ele, o marcador da saída cai em cima da entrega
+  test.use({viewport: {width: 412, height: 915}});
+  const PORTA = {latitude: -10.9605, longitude: -37.0455};
+
+  const paradas = (page, ids: string[]) => page.evaluate(ids2 => {
+    const ps = JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas || [];
+    return ps.filter((p: any) => ids2.includes(p.id)).map((p: any) => ({entregue: !!p.entregue, lat: p.lat, lng: p.lng, precisao: p.precisao}));
+  }, ids);
+  const enviados = (nuvem, caminho: string) => nuvem.pedidos.filter(p => p.caminho === caminho && p.metodo === 'POST')
+    .flatMap(p => Array.isArray(p.corpo) ? p.corpo : [p.corpo]);
+
+  // de perto, que é como ele está na porta
+  async function abrirBalaoDaProxima(page) {
+    const {verNoMapa} = await import('./apoio');
+    const texto = await page.locator('.proxima .endereco').innerText();
+    const [lat, lng] = await page.evaluate(t => {
+      const p = (JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas || []).find((x: any) => x.texto === t);
+      return [p.lat, p.lng];
+    }, texto);
+    await verNoMapa(page, lat, lng, 18);
+    await page.locator('.pino.alvo').click();
+  }
+
+  async function tocarAqui(page, context, precisao: number) {
+    const {carregar, montar, garantirMapa, ROTA_A} = await import('./apoio');
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await garantirMapa(page);
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation({...PORTA, accuracy: precisao});
+    await abrirBalaoDaProxima(page);
+    const botao = page.locator('.leaflet-popup [data-acao=aqui]').first();
+    const ids = (await botao.getAttribute('data-ids'))!.split('+');
+    const antes = await paradas(page, ids);
+    await botao.click();
+    return {ids, antes};
+  }
+
+  test('um toque entrega, põe o pino na porta e manda o par que confirma; desfazer volta tudo', async ({page, context, nuvem}) => {
+    const {aviso} = await import('./apoio');
+    const {ids, antes} = await tocarAqui(page, context, 8);
+    await expect(aviso(page)).toContainText('com a porta marcada aqui (±8 m)');
+    await expect(aviso(page)).toContainText('Vai para os outros motoristas como porta confirmada');
+    expect(await paradas(page, ids)).toEqual(ids.map(() => ({entregue: true, lat: PORTA.latitude, lng: PORTA.longitude, precisao: 'manual'})));
+
+    await expect.poll(() => enviados(nuvem, 'correcoes').length, {timeout: 20_000}).toBeGreaterThan(0);
+    await expect.poll(() => enviados(nuvem, 'observacoes').length, {timeout: 20_000}).toBeGreaterThan(0);
+    const [correcao] = enviados(nuvem, 'correcoes') as any[], [passagem] = enviados(nuvem, 'observacoes') as any[];
+    expect(correcao).toMatchObject({lat: PORTA.latitude, lng: PORTA.longitude});
+    // é isto que a `posicoes` cruza: mesma chave, mesmo ponto, e GPS bom o bastante para a passagem
+    expect(passagem).toMatchObject({chave_lugar: correcao.chave_lugar, lat: correcao.lat, lng: correcao.lng, precisao_m: 8});
+
+    await page.getByRole('button', {name: '↺ Desfazer'}).click();
+    await expect(aviso(page)).toContainText('a entrega voltou para a lista e o pino para onde estava');
+    expect(await paradas(page, ids)).toEqual(antes);
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'correcoes' && p.metodo === 'DELETE').length, {timeout: 20_000}).toBeGreaterThan(0);
+  });
+
+  test('com GPS ruim, entrega mas não mexe no pino nem manda porta para a nuvem', async ({page, context, nuvem}) => {
+    const {aviso} = await import('./apoio');
+    const {ids, antes} = await tocarAqui(page, context, 200);
+    await expect(aviso(page)).toContainText('O GPS está impreciso agora (±200 m). O pino ficou onde estava.');
+    expect(await paradas(page, ids)).toEqual(antes.map(p => ({...p, entregue: true})));
+    await page.waitForTimeout(1500);
+    expect(enviados(nuvem, 'correcoes')).toEqual([]);
+    expect(enviados(nuvem, 'observacoes')).toEqual([]);
+  });
+
+  // Pilha é coisa da tela. Com as 80 paradas enquadradas, a próxima junta 24 entregas de ruas
+  // diferentes num pino só, e um "Entreguei aqui" por endereço ali era um toque errado de dar
+  // como entregue, e com a porta aqui, o pacote de outra rua.
+  test('com o mapa afastado, a pilha de ruas diferentes não oferece o Entreguei aqui', async ({page}) => {
+    const {carregar, montar, garantirMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-d.xlsx');
+    await montar(page);
+    await garantirMapa(page);
+    await page.locator('.pino.alvo').click();
+    const balao = page.locator('.leaflet-popup');
+    await expect(balao, 'o caso depende de a próxima estar empilhada com outras').toContainText('entregas neste ponto');
+    await expect(balao.locator('[data-acao=aqui]')).toHaveCount(0);
+    await expect(balao).toContainText('Aproxime o mapa');
+    // e o "Entreguei" de antes continua lá, com a pergunta que ele sempre fez
+    await expect(balao.locator('[data-acao=entregue]')).toBeVisible();
+
+    await page.locator('.leaflet-popup-close-button').click();
+    await abrirBalaoDaProxima(page);
+    await expect(page.locator('.leaflet-popup [data-acao=aqui]').first()).toBeVisible();
   });
 });
 

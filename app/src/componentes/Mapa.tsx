@@ -1,11 +1,13 @@
 import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {entregarTodas, marcarEntregue, posicionar, seguirMinhaPosicao, tocouNoMapa} from '../acoes';
+import {contar, entregarTodas, entregueAqui, marcarEntregue, posicionar, seguirMinhaPosicao, tocouNoMapa} from '../acoes';
+import {haversine, RAIO_BLOCO} from '../logica/geo';
+import {agruparPorEndereco} from '../logica/otimizacao';
 import {empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
-import type {Parada} from '../logica/tipos';
+import type {Parada, Ponto} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]!));
@@ -75,7 +77,9 @@ export default function Mapa() {
       const ps = (b.dataset.ids || '').split('+').map(loja.parada).filter((p): p is Parada => !!p);
       if (!ps.length) return;
       m.closePopup();
-      if (b.dataset.acao !== 'entregue') { posicionar(ps[0].id); return; }
+      if (b.dataset.acao === 'arrumar') { posicionar(ps[0].id); return; }
+      contar(b.dataset.acao === 'aqui' ? 'balao-aqui' : 'balao-entreguei');
+      if (b.dataset.acao === 'aqui') { entregueAqui(ps); return; }
       const pendentes = ps.filter(p => !p.entregue);
       if (pendentes.length > 1) entregarTodas(pendentes);
       else if (pendentes.length === 1) marcarEntregue(pendentes[0], true);
@@ -101,6 +105,7 @@ export default function Mapa() {
     if (e.inicio) limites.push([e.inicio.lat, e.inicio.lng]);
     if (e.fim) limites.push([e.fim.lat, e.fim.lng]);
     const marcasAdmin = ui.aba === 'admin' && ui.marcas ? ui.marcas : null;
+    const naRotaDeHoje = ui.aba === 'rota';
 
     const z = m.getZoom();
     const pilhas = empilhar(comLocal, q => m.project([q.lat, q.lng], z), q => ondeNaRota(q.id) ?? 1e6);
@@ -111,6 +116,9 @@ export default function Mapa() {
       e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0)).join('|'),
       e.areas.map(a => a.id + a.cor).join(','),
       marcasAdmin ? 'admin' + marcasAdmin.vez : '',
+      // Os botões do balão dependem da aba. Sem ela aqui, o balão montado na Conferir seguia
+      // para a Rota sem o "Entreguei" e mandando ir para a Conferir (print de 28/09).
+      naRotaDeHoje ? 'rota' : '',
     ].join('#');
 
     if (desenho !== desenhado.current) {
@@ -152,9 +160,23 @@ export default function Mapa() {
         const arrumar = so
           ? `<button data-acao="arrumar" data-ids="${esc(p.id)}">📍 Arrumar aqui</button>`
           : `<span class="popum">📍 Arrumar só a:</span>${g.ps.map(x =>
-            `<button data-acao="arrumar" data-ids="${esc(x.id)}">${esc(rotuloDe(x))}</button>`).join('')}`;
-        const acoes = ui.aba === 'rota'
-          ? `<div class="popacoes">${pendentes.length
+            `<button class="so" data-acao="arrumar" data-ids="${esc(x.id)}">${esc(rotuloDe(x))}</button>`).join('')}`;
+        // Na porta, o botão que ele quer: entrega e porta num toque só. A porta é uma por
+        // endereço — num pino com o restaurante e a casa do lado, cada um ganha o seu.
+        const enderecos = agruparPorEndereco(pendentes);
+        const ids = (xs: Parada[]) => esc(xs.map(x => x.id).join('+'));
+        // Pilha é coisa da tela: com o mapa afastado, a próxima juntava 24 entregas de ruas
+        // diferentes. Um toque errado ali dava como entregue — e com a porta aqui — o pacote de
+        // outra rua. Só oferece quando elas estão juntas no chão, pela régua da "mesma parada".
+        const noChao = pendentes.every(x => haversine(x as Ponto, pendentes[0] as Ponto) <= RAIO_BLOCO);
+        const aqui = !enderecos.length ? ''
+          : !noChao ? '<span class="popum">Aproxime o mapa para o 📍 Entreguei aqui.</span>'
+          : enderecos.length === 1
+            ? `<button data-acao="aqui" data-ids="${ids(pendentes)}">📍 Entreguei aqui${pendentes.length > 1 ? ` as ${pendentes.length}` : ''}</button>`
+            : `<span class="popum">📍 Entreguei aqui, só a:</span>${enderecos.map(en =>
+              `<button class="so" data-acao="aqui" data-ids="${ids(en.ps)}">${esc(en.ps.map(rotuloDe).join('+'))}</button>`).join('')}`;
+        const acoes = naRotaDeHoje
+          ? `<div class="popacoes">${aqui}${pendentes.length
             ? `<button data-acao="entregue" data-ids="${esc(chave)}">✓ Entreguei${pendentes.length > 1 ? ` as ${pendentes.length}` : ''}</button>`
             : ''}${arrumar}</div>`
           : '<br><small>Para corrigir: 2. Conferir → Marcar no mapa.</small>';

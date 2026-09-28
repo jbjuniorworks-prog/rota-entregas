@@ -23,6 +23,13 @@ describe('posições de outros motoristas', () => {
     expect(p.exibido).toBe('Posição confirmada por 2 entrega(s) feitas aqui');
     expect(p.precisao).toBe('confirmado');
   });
+  // O "📍 Entreguei aqui" do balão manda correção e passagem no mesmo ponto, e a nuvem confirma
+  // com um motorista só. Para quem recebe, isso tem de ler como gente, não "por 1 motoristas".
+  it('confirmada por um motorista na porta, com a entrega feita ali', () => {
+    const p = parada('a|1');
+    aplicar([p], [pos('a|1', 'confirmado', {fonte: 'correcao', motoristas: 1, entregas: 1})]);
+    expect(p.exibido).toBe('Posição confirmada por outro motorista, na porta');
+  });
   it('correção do administrador vale como confirmada', () => {
     const p = parada('a|1');
     aplicar([p], [pos('a|1', 'confirmado', {motoristas: 1})]);

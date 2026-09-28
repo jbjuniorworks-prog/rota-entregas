@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 26/09/2026.
+Atualizado em 28/09/2026.
 
 ## Falha viva
 
@@ -146,8 +146,21 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
   Conferir for baixo, confirma.
 - **O cartão inteiro talvez deva ser tocável como "Ver".** Se `Ver` é quase sempre seguido de
   `Editar`, os dois são um fluxo só e podem virar um botão.
+- **"📍 Entreguei aqui" no balão do pino (28/09)** conta como `balao-aqui`, e o "✓ Entreguei" do
+  balão como `balao-entreguei`. Se o da porta ganhar, o "📍 Estou aqui" do cartão da próxima
+  entrega vira redundante na Rota. Se quase ninguém usar, o balão volta a ter dois botões.
+- **Uma porta confirmada agora custa um toque de um motorista só.** A regra da `posicoes` não
+  mudou (correção + passagem no mesmo ponto já confirmava), mas antes eram dois toques em lugares
+  diferentes e quase ninguém fazia os dois. Acompanhar no Admin se aparecem portas confirmadas
+  erradas. Se aparecerem, o aperto é exigir passagem de **outro** motorista, e aí a porta volta
+  a esperar um segundo motorista passar por lá.
 
 ## Ideias, não compromissos
+
+- **A porta confirmada chega no outro motorista quando ele carrega a rota**, não no meio do dia.
+  A consulta (`consultarCompartilhadas`) roda ao buscar os endereços e ao entrar na conta. Se os
+  dois tiverem o mesmo endereço no mesmo dia, quem já carregou não recebe. Não medido quanto
+  isso acontece. Pedido de 28/09 era "se tiver o mesmo endereço novamente", que é outro dia.
 
 - **Interpolar entre as portas que os motoristas marcaram** — e **não** entre as do censo. Medido
   contra cinco portas de verdade da Avenida Deputado Sílvio Teixeira, tiradas do Google Maps pelo

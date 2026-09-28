@@ -108,13 +108,17 @@ details.feitas summary{color:var(--mut);font-size:14px;font-weight:600}
 /* o pino da próxima parada: halo, para achar de relance no meio de quarenta pinos iguais.
    Nome "alvo" e não "proxima" porque .proxima já é o cartão da próxima entrega na aba Rota. */
 .pino.alvo{box-shadow:0 0 0 5px rgba(29,78,216,.5),0 1px 4px rgba(0,0,0,.45);z-index:1}
-/* os dois botões do balão, na aba Rota: ele age sem sair do mapa */
+/* os botões do balão, na aba Rota: ele age sem sair do mapa. O da porta é o principal — na
+   porta, entregar e marcar onde ela fica é um gesto só; o "Entreguei" sozinho é para quando ele
+   já saiu dali, e não pode levar a porta junto. */
 .popacoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .popacoes button{flex:1 1 auto;border:0;border-radius:9px;padding:9px 10px;font:inherit;font-size:14px;font-weight:600;background:#e5e7eb;color:var(--tx);cursor:pointer}
-.popacoes button[data-acao=entregue]{background:var(--ok);color:#fff}
+.popacoes button[data-acao=aqui]{background:var(--ok);color:#fff}
+.popacoes button[data-acao=aqui]:not(.so){flex-basis:100%;padding:12px 10px;font-size:15px}
+.popacoes button[data-acao=entregue]{background:#fff;color:var(--ok);box-shadow:inset 0 0 0 2px var(--ok)}
 /* com mais de uma entrega no mesmo pino, cada uma ganha o seu botão, pelo número da rota */
 .popacoes .popum{flex:1 1 100%;margin-top:2px;font-size:13px;font-weight:600;color:var(--mut)}
-.popacoes .popum~button{flex:0 0 auto;min-width:52px}
+.popacoes button.so{flex:0 0 auto;min-width:52px}
 .leaflet-tooltip.balao{background:#111827;color:#fff;border:0;border-radius:6px;padding:1px 5px;font-size:11px;font-weight:700;box-shadow:none}
 .leaflet-tooltip.balao::before{border-top-color:#111827}
 .pino span{transform:rotate(45deg);color:#fff;font-weight:700;font-size:11px}

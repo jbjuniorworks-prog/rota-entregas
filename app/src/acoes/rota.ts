@@ -5,9 +5,10 @@ import {linkWaze} from '../logica/otimizacao';
 import {CORES} from '../logica/rotulos';
 import type {Parada} from '../logica/tipos';
 import {guarda, loja, status} from '../loja';
+import {foraDaRegiao} from '../servicos/geocodificacao';
 import {linhaDaRota, matriz} from '../servicos/ruas';
 import {desatualizarRota, e, enviarFila, fila, ui} from './base';
-import {guardarPassagem, guardarPassagens} from './posicoes';
+import {comMinhaPosicao, GPS_PASSAGEM, guardarPassagem, guardarPassagens, portaDaEntrega} from './posicoes';
 import {registrarComoFicou} from './registro';
 
 // Quando vale a posição que o mapa já vem seguindo, em vez de pedir uma nova ao GPS.
@@ -136,6 +137,46 @@ ${faltando.length} entrega(s), ${pacotes} pacote(s).`)) return;
   faltando.forEach((p, i) => marcarEntregue(p, true, i === faltando.length - 1, false));
   guardarPassagens(faltando);
   status(`${faltando.length} entrega(s) marcada(s) aqui. Se sobrou alguma, toque no ↺ dela.`, 6000);
+}
+
+// O botão da porta, no balão do pino. Eram dois toques em lugares diferentes — "Estou aqui" no
+// cartão, "Entreguei" no outro — e cada um lia o GPS de novo: bastava a segunda leitura vir ruim
+// para a porta chegar nos outros motoristas só como sugestão.
+export function entregueAqui(ps: Parada[]) {
+  const alvo = ps.filter(p => !p.entregue);
+  if (!alvo.length) return;
+  const pacotes = alvo.reduce((n, p) => n + (p.unidades || 1), 0);
+  if (alvo.length > 1 && !confirm(`Marcar como entregue tudo deste endereço, com a porta aqui onde você está?
+
+${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
+  // A entrega é fato e não espera o GPS, que parado na porta pode levar uns segundos.
+  alvo.forEach(p => marcarEntregue(p, true, false, false));
+  const quantas = alvo.length > 1 ? ` as ${alvo.length}` : '';
+  const desfazerEntrega = () => alvo.forEach(p => marcarEntregue(p, false, false, false));
+  const soEntregue = (motivo: string) => status(`✓ Entregue${quantas}. ${motivo} O pino ficou onde estava.`, 8000, () => {
+    desfazerEntrega();
+    status('Entrega desfeita.', 3000);
+  });
+  comMinhaPosicao((lat, lng, precisao) => {
+    // desfeita ou resetada enquanto o GPS respondia: a porta já não é desta entrega
+    const vivas = alvo.filter(p => p.entregue && loja.parada(p.id) === p);
+    if (!vivas.length) return;
+    const margem = Math.round(precisao);
+    // Com margem maior que a da passagem, a nuvem fica só com a correção, e correção sozinha chega
+    // nos outros como sugestão. Mexer no pino assim não é o que o botão promete.
+    if (precisao > GPS_PASSAGEM) { soEntregue(`O GPS está impreciso agora (±${margem} m).`); return; }
+    if (foraDaRegiao({lat, lng})) { soEntregue('O GPS deu um ponto fora da região das entregas.'); return; }
+    const {guardou, desfazer} = portaDaEntrega(vivas, lat, lng, precisao);
+    status(`✓ Entregue${quantas}, com a porta marcada aqui (±${margem} m).` + (guardou
+      ? ' Vai para os outros motoristas como porta confirmada.'
+      : ' Sem CEP nem bairro, a porta vale só para hoje.'), 10000, () => {
+      // nesta ordem: a volta da posição recalcula as isoladas, e parada entregue não entra na
+      // conta — desfazendo a posição primeiro, o aviso de "longe" sumia de quem voltou para a lista
+      desfazerEntrega();
+      desfazer();
+      status('Desfeito: a entrega voltou para a lista e o pino para onde estava.', 4000);
+    });
+  }, motivo => soEntregue(`Não consegui o GPS: ${motivo}`), `✓ Entregue${quantas}. Marcando a porta pelo GPS…`);
 }
 
 export function deixarParaDepois(p: Parada) {
