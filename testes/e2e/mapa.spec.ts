@@ -283,7 +283,7 @@ test.describe('o que os outros motoristas já sabem do endereço', () => {
     await aba(page, '2. Conferir');
     const cartao = page.locator(`[data-item="${xarope.id}"]`);
     await expect(cartao).toContainText('Endereço verificado: já entregaram aqui');
-    await expect(cartao.locator('[data-xarope]')).toContainText('Cliente xarope: já reclamou de deixar com vizinho');
+    await expect(cartao.locator('[data-xarope]')).toContainText('Cliente xarope: alguém que comprou neste endereço já reclamou de deixar com vizinho');
 
     await garantirMapa(page);
     await verNoMapa(page, xarope.lat, xarope.lng, 18);
@@ -291,6 +291,22 @@ test.describe('o que os outros motoristas já sabem do endereço', () => {
     await expect(pino, 'o pino chega com outra cor, antes de tocar').toHaveCount(1);
     await pino.click();
     await expect(page.locator('.leaflet-popup [data-xarope]')).toContainText('Cliente xarope');
+  });
+
+  // "Tem que saber a diferença quando for em condomínio" (28/09): o xarope do apartamento 101
+  // não é o do prédio inteiro.
+  test('no condomínio, a reclamação do apartamento não passa para o vizinho de prédio', async ({page, nuvem}) => {
+    const {carregar, aba, ROTA_A} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await aba(page, '2. Conferir');
+    const a101 = page.locator('[data-item]').filter({hasText: 'Bloco A ap 101'});
+    const b202 = page.locator('[data-item]').filter({hasText: 'Bloco B ap 202'});
+    await a101.getByRole('button', {name: 'Ver', exact: true}).click();
+    await a101.locator('[data-marcar-xarope]').getByRole('button', {name: /deixar com vizinho/}).click();
+    await expect(a101.locator('[data-xarope]')).toContainText('Cliente xarope');
+    await expect(b202.locator('[data-xarope]')).toHaveCount(0);
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'reclamacoes' && p.metodo === 'POST').length, {timeout: 20_000}).toBe(1);
   });
 
   test('entregou e depois soube da reclamação: marca na entrega feita, vai para a nuvem, e desfaz', async ({page, nuvem}) => {

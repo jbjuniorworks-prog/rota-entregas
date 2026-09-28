@@ -1,5 +1,5 @@
 ﻿import {aplicarCompartilhadas} from '../logica/compartilhadas';
-import {aplicarReclamacoes} from '../logica/reclamacoes';
+import {aplicarReclamacoes, chaveCliente} from '../logica/reclamacoes';
 import {haversine, marcarIsoladas} from '../logica/geo';
 import {avisoGuardou} from '../logica/memoria';
 import {chaveCidade, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
@@ -21,8 +21,11 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
     if (saida.confirmadas || saida.minhas) desatualizarRota();
   } catch {}
   // Separada da de cima: sem a 018 rodada ela falha, e as posições têm de chegar mesmo assim.
+  // Chave própria: num condomínio a reclamação é do apartamento, não do prédio.
   try {
-    saida.xaropes = aplicarReclamacoes(e().paradas, await c.reclamacoes(chaves), chaveDe);
+    const clienteDe = (p: Parada) => chaveCliente(p.texto, p.bairro, e().cidade);
+    const clientes = [...new Set(e().paradas.filter(p => !p.entregue).map(clienteDe).filter((k): k is string => !!k))];
+    if (clientes.length) saida.xaropes = aplicarReclamacoes(e().paradas, await c.reclamacoes(clientes), clienteDe);
   } catch {}
   loja.mudou();
   return saida;

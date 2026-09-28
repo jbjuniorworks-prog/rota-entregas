@@ -1,4 +1,4 @@
-import {aplicarReclamacoes, avisoXarope, type ReclamacaoDaNuvem} from './reclamacoes';
+import {aplicarReclamacoes, avisoXarope, chaveCliente, type ReclamacaoDaNuvem} from './reclamacoes';
 import type {Parada} from './tipos';
 
 let n = 0;
@@ -33,9 +33,36 @@ describe('cliente xarope', () => {
     expect(a.reclamacoes).toBeUndefined();
   });
 
+  // Pedido de 28/09: fica "no endereço", para qualquer pessoa que pedir dali — mas num condomínio
+  // é de um apartamento, não do prédio inteiro.
+  describe('de quem é a reclamação', () => {
+    const k = (t: string) => chaveCliente(t, undefined, 'Aracaju');
+    it('a mesma casa, escrita com ou sem "Casa", é o mesmo cliente', () => {
+      // os #54 e #55 de 28/09: "Casa" sozinho não é unidade — antes virava "casa aero"
+      expect(k('Rua Manoel Bispo dos Santos, 132, Casa, Aeroporto, CEP 49037-146'))
+        .toBe(k('Rua Manoel Bispo dos Santos, 132, Aeroporto, CEP 49037-146'));
+    });
+    it('no condomínio, cada apartamento é um', () => {
+      const a101 = k('Rua dos Ipês, 300, Bloco A ap 101, CEP 49000-103');
+      expect(a101).not.toBe(k('Rua dos Ipês, 300, Bloco B ap 202, CEP 49000-103'));
+      expect(a101).not.toBe(k('Rua dos Ipês, 300, Bloco A ap 102, CEP 49000-103'));
+      expect(a101, 'o prédio sem apartamento não herda a reclamação de um').not.toBe(k('Rua dos Ipês, 300, CEP 49000-103'));
+      expect(a101, 'o mesmo apartamento escrito de outro jeito').toBe(k('Rua dos Ipês, 300, Bl A Apto 101, CEP 49000-103'));
+    });
+    it('na vila, cada casa numerada é uma', () => {
+      expect(k('Travessa Um, 45, Casa 2, CEP 49000-104')).not.toBe(k('Travessa Um, 45, Casa 3, CEP 49000-104'));
+      expect(k('Travessa Um, 45, Casa 03, CEP 49000-104')).toBe(k('Travessa Um, 45, casa 3, CEP 49000-104'));
+    });
+    it('sem número não tem de quem ser', () => {
+      expect(k('Rua Sem Número Nenhum, Aeroporto')).toBeNull();
+    });
+  });
+
   it('o aviso diz o que fazer, na língua deles', () => {
     expect(avisoXarope(undefined)).toBeNull();
     expect(avisoXarope([{motivo: 'vizinho', quando: '', minha: false}]))
-      .toBe('Cliente xarope: já reclamou de deixar com vizinho — não deixe com vizinho.');
+      .toBe('Cliente xarope: alguém que comprou neste endereço já reclamou de deixar com vizinho — não deixe com vizinho.');
+    expect(avisoXarope([{motivo: 'jogado', quando: '', minha: false}, {motivo: 'vizinho', quando: '', minha: true}]))
+      .toBe('Cliente xarope: alguém que comprou neste endereço já reclamou de pacote jogado e de deixar com vizinho — entregue em mãos, não deixe com vizinho.');
   });
 });

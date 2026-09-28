@@ -1,15 +1,14 @@
-import {MOTIVOS} from '../logica/reclamacoes';
-import {chaveLugar} from '../logica/texto';
+import {chaveCliente, MOTIVOS} from '../logica/reclamacoes';
 import type {MotivoReclamacao, Parada} from '../logica/tipos';
 import {loja, status} from '../loja';
 import {e, enviarFila, fila, ui} from './base';
 
-// Marca pelo endereço, não pela entrega: é o cliente daquela porta que reclamou, e as outras
-// entregas dele na mesma rota têm de mostrar o mesmo aviso.
+// Marca pelo endereço (com o apartamento, num condomínio), não pela entrega: as outras entregas
+// para a mesma porta na rota de hoje têm de mostrar o mesmo aviso.
 function doMesmoEndereco(p: Parada): {chave: string; ps: Parada[]} | null {
-  const chave = chaveLugar(p.texto, p.bairro, e().cidade);
+  const chave = chaveCliente(p.texto, p.bairro, e().cidade);
   if (!chave) return null;
-  return {chave, ps: e().paradas.filter(q => chaveLugar(q.texto, q.bairro, e().cidade) === chave)};
+  return {chave, ps: e().paradas.filter(q => chaveCliente(q.texto, q.bairro, e().cidade) === chave)};
 }
 
 export function abrirXarope(p: Parada) {
@@ -26,7 +25,7 @@ export function marcarXarope(p: Parada, motivo: MotivoReclamacao) {
   fila.enfileirar({tipo: 'reclamacao', chave: alvo.chave, motivo});
   enviarFila();
   loja.mudou();
-  status(`⚠️ Cliente xarope marcado: ${MOTIVOS[motivo].aviso}. Os outros motoristas vão ver no pino.`, 10000, () => tirarXarope(p, motivo));
+  status(`⚠️ Cliente xarope marcado: reclamou ${MOTIVOS[motivo].reclamou}. Quem entregar neste endereço vai ver no pino.`, 10000, () => tirarXarope(p, motivo));
 }
 
 export function tirarXarope(p: Parada, motivo: MotivoReclamacao) {
