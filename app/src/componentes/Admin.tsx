@@ -1,7 +1,9 @@
-import {useEffect, useState} from 'react';
+﻿import {useEffect, useState} from 'react';
 import {haversine} from '../logica/geo';
+import {CHAVES} from '../logica/guarda';
 import {fmtKm} from '../logica/otimizacao';
-import {loja, status, useLoja, type Marca} from '../loja';
+import {porQuePrecisaDeVoce, situacaoDoLugar, triar} from '../logica/triagem';
+import {guarda, loja, status, useLoja, type Marca} from '../loja';
 import * as Adm from '../servicos/admin';
 import {nuvem} from '../servicos/nuvem';
 
@@ -47,6 +49,9 @@ export function TelaAdmin() {
   const [rotas, setRotas] = useState<Adm.RotaResumo[] | null>(null);
   const [lugares, setLugares] = useState<Adm.LugarCorrigido[] | null>(null);
   const [erro, setErro] = useState('');
+  // A visita anterior, lida uma vez ao abrir: o "novo" continua na tela enquanto ele está aqui,
+  // e a hora desta visita só é gravada depois que as marcações chegaram de verdade.
+  const [visto] = useState(() => guarda.ler<number | null>(CHAVES.adminVisto, null));
 
   const [lendo, setLendo] = useState(false);
   const carregar = async () => {
@@ -56,6 +61,7 @@ export function TelaAdmin() {
     try {
       const [m, r, l] = await Promise.all([Adm.listarMotoristas(), Adm.listarRotas(), Adm.listarCorrecoes()]);
       setMotoristas(m); setRotas(r); setLugares(l);
+      guarda.gravar(CHAVES.adminVisto, Date.now());
     } catch (err) {
       setErro((err as Error).message);
     } finally {
@@ -66,17 +72,32 @@ export function TelaAdmin() {
 
   if (nuvem.perfil?.papel !== 'admin') return <div className="info">Só quem administra vê esta tela.</div>;
   const corDe = (id: string) => CORES_MOTORISTA[Math.max(0, (motoristas || []).findIndex(m => m.id === id)) % CORES_MOTORISTA.length];
+  const t = lugares ? triar(lugares, Date.now(), visto) : null;
+  const doLugar = {corDe, recarregar: carregar, novo: t ? t.novo : () => false};
 
+  // O que os motoristas mexeram vem primeiro: ficava no fim da página, depois de 14 dias de
+  // rotas, e o que esperava decisão dele tinha de ser procurado. O que é de vez em quando
+  // (motoristas, base de ruas, medição dos botões) fica fechado, a um toque.
   return <>
     <h2>Administração</h2>
     <div className="linha" style={{marginTop: 0}}><button className="btn" onClick={carregar} disabled={lendo}>{lendo ? 'Buscando…' : '↻ Atualizar'}</button></div>
     {erro && <div className="aviso">Não consegui carregar: {erro}</div>}
     {!motoristas && !erro && <div className="info">Carregando…</div>}
+    {t && <div className={t.decidir.length ? 'aviso laranja' : 'info'} data-resumo>
+      {t.decidir.length ? <b>📌 {t.decidir.length} esperando você.</b> : '✓ Nada esperando você.'}
+      {visto != null && (t.novas
+        ? ` 🆕 ${t.novas} marcação(ões) nova(s) desde ${dataHora(new Date(visto).toISOString())}.`
+        : ` Nada novo desde ${dataHora(new Date(visto).toISOString())}.`)}
+    </div>}
+    {t && <Lugares titulo={`📌 Precisa de você (${t.decidir.length})`} lista={t.decidir} aberta decidir {...doLugar}
+      vazio="Nenhuma marcação esperando decisão." />}
+    {t && <Lugares titulo={`🆕 Marcadas pelos motoristas nos últimos 7 dias (${t.recentes.length})`} lista={t.recentes} aberta {...doLugar}
+      vazio="Nenhuma porta marcada nos últimos 7 dias." />}
+    {rotas && <Rotas lista={rotas} />}
+    {t && t.outras.length > 0 && <Lugares titulo={`Marcações mais antigas (${t.outras.length})`} lista={t.outras} {...doLugar} vazio="" />}
     {motoristas && <Motoristas lista={motoristas} recarregar={carregar} />}
     <BaseDeRuas />
     <UsoDosBotoes />
-    {rotas && <Rotas lista={rotas} />}
-    {lugares && <Correcoes lista={lugares} corDe={corDe} recarregar={carregar} />}
   </>;
 }
 
@@ -129,7 +150,7 @@ function BaseDeRuas() {
       : 'Nenhuma rua nova ainda: é preciso ter entregado em duas portas diferentes da mesma rua.', 8000);
     ver();
   };
-  return <details open>
+  return <details>
     <summary>Nossa base de ruas</summary>
     {erro && <div className="aviso">Falta rodar o SQL da base de ruas: {erro}</div>}
     {c && <>
@@ -152,7 +173,7 @@ function Motoristas({lista, recarregar}: {lista: Adm.Motorista[]; recarregar: ()
     await correr(m.id, () => Adm.mudarAtivo(m.id, !m.ativo), m.ativo ? `${m.nome} desativado(a).` : `${m.nome} ativado(a).`);
     recarregar();
   };
-  return <details open>
+  return <details>
     <summary>Motoristas ({lista.filter(m => m.papel === 'motorista').length})</summary>
     {lista.map(m => <div className="item" key={m.id} data-motorista={m.nome} style={{display: 'flex', alignItems: 'center', gap: 8}}>
       <div className="txt"><b>{m.nome}</b>{m.papel === 'admin' ? ' · administrador' : ''}
@@ -200,10 +221,18 @@ function Rotas({lista}: {lista: Adm.RotaResumo[]}) {
   </details>;
 }
 
-function Correcoes({lista, corDe, recarregar}: {lista: Adm.LugarCorrigido[]; corDe: (id: string) => string; recarregar: () => void}) {
-  const [soSugestoes, setSoSugestoes] = useState(false);
-  const mostrados = soSugestoes ? lista.filter(l => l.situacao !== 'confirmado') : lista;
-  const sugestoes = lista.filter(l => l.situacao !== 'confirmado').length;
+interface PropsDosLugares {
+  titulo: string;
+  lista: Adm.LugarCorrigido[];
+  vazio: string;
+  aberta?: boolean;
+  decidir?: boolean;
+  novo: (l: Adm.LugarCorrigido) => boolean;
+  corDe: (id: string) => string;
+  recarregar: () => void;
+}
+
+function Lugares({titulo, lista, vazio, aberta, decidir, novo, corDe, recarregar}: PropsDosLugares) {
   const {ocupado, correr, fazendo} = useTrabalho();
   const confirmar = async (l: Adm.LugarCorrigido, m: Adm.Marcacao) => {
     await correr('ok' + l.chave + m.motorista_id, () => Adm.confirmarPosicao(l.chave, m.lat, m.lng), 'Posição confirmada: agora vale para todos os motoristas.');
@@ -214,30 +243,35 @@ function Correcoes({lista, corDe, recarregar}: {lista: Adm.LugarCorrigido[]; cor
     await correr('x' + l.chave + m.motorista_id, () => Adm.apagarMarcacao(l.chave, m.motorista_id), 'Marcação apagada.');
     recarregar();
   };
-  return <details open>
-    <summary>Pinos corrigidos pelos motoristas ({lista.length})</summary>
-    <div className="info">Com 2 motoristas no mesmo ponto (até 30 m), ou com a sua confirmação, a posição vale para todos. Com 1 só, aparece como sugestão.</div>
-    <div className="linha"><button className="btn peq" onClick={() => setSoSugestoes(!soSugestoes)}>{soSugestoes ? 'Mostrar todos' : `Só as sugestões (${sugestoes})`}</button></div>
-    {mostrados.map(l => <div className="item" key={l.chave} data-lugar={l.chave}>
-      <div className="orig">{l.endereco || l.chave}</div>
-      <div className="achado">{l.bairro}</div>
-      <span className="tag" style={{background: l.situacao === 'confirmado' ? '#16a34a' : '#d97706'}}>{l.situacao === 'confirmado' ? 'Confirmada' : 'Sugestão'}</span>
-      {l.marcacoes.map(m => {
-        const escolhida = l.escolhida && haversine(l.escolhida, m) < 1;
-        const longe = l.escolhida && !escolhida ? haversine(l.escolhida, m) : 0;
-        return <div className="parada" key={m.motorista_id} data-marcacao={m.nome}>
-          <div className="dot" style={{'--c': corDe(m.motorista_id)} as any} />
-          <div className="txt">
-            <div><b>{m.nome}</b>{m.papel === 'admin' ? ' (você)' : ''}{escolhida ? ' · ✓ a que vale' : ''}</div>
-            <div className="achado">{dataHora(m.criado_em)}{m.vezes > 1 ? ` · corrigiu ${m.vezes}x` : ''}{longe ? ` · a ${fmtKm(longe)} da que vale` : ''}</div>
-          </div>
-          {!(escolhida && l.situacao === 'confirmado') && <button className="btn peq pri" onClick={() => confirmar(l, m)} disabled={!!ocupado}>{fazendo('ok' + l.chave + m.motorista_id) ? 'Confirmando…' : 'Confirmar'}</button>}
-          <button className="btn peq" onClick={() => apagar(l, m)} disabled={!!ocupado}>{fazendo('x' + l.chave + m.motorista_id) ? 'Apagando…' : 'Apagar'}</button>
-        </div>;
-      })}
-      <div className="linha"><button className="btn peq" onClick={() => mostrarNoMapa(l.marcacoes.map(m => ({
-        lat: m.lat, lng: m.lng, rotulo: m.nome.slice(0, 2), texto: `${m.nome} · ${l.endereco || l.chave}`, cor: corDe(m.motorista_id),
-      })))}>Ver no mapa</button></div>
-    </div>)}
+  return <details open={aberta} data-secao={titulo.replace(/\s*\(\d+\)$/, '')}>
+    <summary>{titulo}</summary>
+    {decidir && <div className="info">Uma porta vale para todos quando dois motoristas marcam no mesmo ponto (até 30 m), quando um marca e alguém entrega ali, ou quando você confirma.</div>}
+    {!lista.length && vazio && <div className="info">{vazio}</div>}
+    {lista.map(l => {
+      const s = situacaoDoLugar(l);
+      const motivo = porQuePrecisaDeVoce(l);
+      return <div className="item" key={l.chave} data-lugar={l.chave}>
+        <div className="orig">{novo(l) && <span className="tag" style={{background: '#1d4ed8', marginRight: 6}}>novo</span>}{l.endereco || l.chave}</div>
+        <div className="achado">{l.bairro}</div>
+        <span className="tag" style={{background: s.cor}}>{s.texto}</span>
+        {decidir && motivo && <div className="aviso laranja" style={{margin: '6px 0'}}>{motivo}</div>}
+        {l.marcacoes.map(m => {
+          const escolhida = l.escolhida && haversine(l.escolhida, m) < 1;
+          const longe = l.escolhida && !escolhida ? haversine(l.escolhida, m) : 0;
+          return <div className="parada" key={m.motorista_id} data-marcacao={m.nome}>
+            <div className="dot" style={{'--c': corDe(m.motorista_id)} as any} />
+            <div className="txt">
+              <div><b>{m.nome}</b>{m.papel === 'admin' ? ' (você)' : ''}{escolhida ? ' · ✓ a que vale' : ''}</div>
+              <div className="achado">{dataHora(m.criado_em)}{m.vezes > 1 ? ` · corrigiu ${m.vezes}x` : ''}{longe ? ` · a ${fmtKm(longe)} da que vale` : ''}</div>
+            </div>
+            {!(escolhida && l.situacao === 'confirmado') && <button className="btn peq pri" onClick={() => confirmar(l, m)} disabled={!!ocupado}>{fazendo('ok' + l.chave + m.motorista_id) ? 'Confirmando…' : 'Confirmar'}</button>}
+            <button className="btn peq" onClick={() => apagar(l, m)} disabled={!!ocupado}>{fazendo('x' + l.chave + m.motorista_id) ? 'Apagando…' : 'Apagar'}</button>
+          </div>;
+        })}
+        <div className="linha"><button className="btn peq" onClick={() => mostrarNoMapa(l.marcacoes.map(m => ({
+          lat: m.lat, lng: m.lng, rotulo: m.nome.slice(0, 2), texto: `${m.nome} · ${l.endereco || l.chave}`, cor: corDe(m.motorista_id),
+        })))}>Ver no mapa</button></div>
+      </div>;
+    })}
   </details>;
 }

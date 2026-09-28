@@ -186,6 +186,9 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
   para o que sobrou "aproximado". E os termos do Google não deixam guardar a coordenada deles —
   então serviria para o pino do dia, nunca para a base de portas.
 
+- **Selo na aba ⚙️ Admin com o número "esperando você".** Desde 28/09 o Admin abre com o que
+  espera decisão em cima (`logica/triagem.ts`), mas só quem abre a aba vê. O selo pediria uma
+  consulta à nuvem ao abrir o app, antes de ele ir ao Admin.
 - **Um lugar só do admin**, para o que hoje precisa de terminal ou não aparece em tela nenhuma.
   O Admin já lista as rotas de 14 dias com entregues/pacotes, ativa e desativa motorista, mostra
   as correções e o uso dos botões. Falta:

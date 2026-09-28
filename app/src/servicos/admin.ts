@@ -45,6 +45,10 @@ export interface LugarCorrigido {
   marcacoes: Marcacao[];
   situacao: 'confirmado' | 'sugestao' | null;
   escolhida: {lat: number; lng: number} | null;
+  // de onde veio a confirmação: 'admin', 'correcao' (motoristas) ou 'entrega' (só passagens)
+  fonte?: string | null;
+  motoristas?: number;
+  entregas?: number;
 }
 
 function cliente(): SupabaseClient {
@@ -125,7 +129,7 @@ export async function listarCorrecoes(limite = 500): Promise<LugarCorrigido[]> {
     falhou(e1);
     for (const p of (pos || []) as any[]) {
       const l = lugares.get(p.chave_lugar);
-      if (l) { l.situacao = p.situacao; l.escolhida = {lat: p.lat, lng: p.lng}; }
+      if (l) Object.assign(l, {situacao: p.situacao, escolhida: {lat: p.lat, lng: p.lng}, fonte: p.fonte, motoristas: p.motoristas, entregas: p.entregas});
     }
     const {data: pac, error: e2} = await s.from('pacotes').select('chave_lugar, endereco, bairro').in('chave_lugar', parte).order('criado_em', {ascending: false}).limit(1000);
     falhou(e2);

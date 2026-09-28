@@ -113,6 +113,7 @@ test.describe('correções compartilhadas @nuvem', () => {
     expect(await correcoesDe(ADM.id)).toEqual([{...marcadaPorA}]);
     await expect(lugar).toContainText('Confirmada');
 
+    await adm.getByText(/^Motoristas \(\d+\)$/).click();
     await adm.locator(`[data-motorista="${C.nome}"]`).getByRole('button', {name: 'Desativar'}).click();
     await expect(aviso(adm)).toContainText('desativado(a)');
     expect((await api(`/rest/v1/perfis?id=eq.${C.id}&select=ativo`)).corpo[0].ativo).toBe(false);

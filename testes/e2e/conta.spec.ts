@@ -64,6 +64,7 @@ test.describe('administrador', () => {
     await page.getByRole('button', {name: '⚙️ Admin'}).click();
     await expect(page.getByText('Motoristas (2)')).toBeVisible();
 
+    await page.getByText('Nossa base de ruas').click();
     await expect(page.getByText(/3548 ruas com nome · 970 trechos ainda sem nome/)).toBeVisible();
     await expect(page.getByText(/130 entregas marcadas na porta, em 96 endereços · 21 já com posição confirmada/)).toBeVisible();
     await page.getByRole('button', {name: 'Nomear ruas com as entregas'}).click();
@@ -77,7 +78,7 @@ test.describe('administrador', () => {
     await rota.getByRole('button', {name: 'Ver no mapa'}).click();
     await expect(page.locator('.leaflet-marker-icon')).toHaveCount(2);
 
-    const lugar = page.locator(`[data-lugar="${CHAVE}"]`);
+    const lugar = page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${CHAVE}"]`);
     await expect(lugar).toContainText('Rua B, 20');
     await expect(lugar).toContainText('Sugestão');
     await expect(lugar.locator('[data-marcacao="Luan"]')).toContainText('✓ a que vale');
@@ -103,11 +104,75 @@ test.describe('administrador', () => {
     const apagou = nuvem.pedidos.find(p => p.metodo === 'DELETE' && p.caminho === 'correcoes')!;
     expect(decodeURIComponent(apagou.busca)).toContain('motorista_id=eq.m2');
 
+    await page.getByText('Motoristas (2)').click();
     await page.locator('[data-motorista="Pedro"]').getByRole('button', {name: 'Desativar'}).click();
     await expect(aviso(page)).toContainText('Pedro desativado(a).');
     const mudou = nuvem.pedidos.find(p => p.metodo === 'PATCH' && p.caminho === 'perfis')!;
     expect(mudou.corpo).toEqual({ativo: false});
     expect(mudou.busca).toContain('id=eq.m2');
     await expect(page.locator('[data-motorista="Você Teste"]').getByRole('button')).toHaveCount(0);
+  });
+
+  // Pedido de 28/09: "não faz sentido eu ter que procurar as mudanças que eles pedirem". As
+  // marcações ficavam no fim da página, depois de 14 dias de rotas, todas misturadas.
+  test.describe('no celular', () => {
+    test.use({viewport: {width: 412, height: 915}});
+
+    test('o que espera decisão aparece antes de tudo, e o novo desde a última visita vem marcado', async ({page, nuvem, context}) => {
+      const hora = 3600e3, dia = 864e5, antes = (ms: number) => new Date(Date.now() - ms).toISOString();
+      const [DECIDIR, PORTA, VELHA] = ['49000100|20', '49000100|30', '49000100|40'];
+      const luan = {motorista_id: 'm1', perfis: {nome: 'Luan', papel: 'motorista'}};
+      const pedro = {motorista_id: 'm2', perfis: {nome: 'Pedro', papel: 'motorista'}};
+      nuvem.tabelas = {
+        perfis: [{id: 'm1', nome: 'Luan', papel: 'motorista', ativo: true}, {id: 'm2', nome: 'Pedro', papel: 'motorista', ativo: true}],
+        rotas: [],
+        pacotes: [
+          {chave_lugar: DECIDIR, endereco: 'Rua B, 20', bairro: 'Centro'},
+          {chave_lugar: PORTA, endereco: 'Rua C, 30', bairro: 'Centro'},
+          {chave_lugar: VELHA, endereco: 'Rua D, 40', bairro: 'Centro'},
+        ],
+        correcoes: [
+          {chave_lugar: PORTA, lat: -10.93, lng: -37.07, criado_em: antes(hora), ...pedro},
+          {chave_lugar: DECIDIR, lat: -10.92, lng: -37.06, criado_em: antes(dia), ...luan},
+          {chave_lugar: VELHA, lat: -10.94, lng: -37.08, criado_em: antes(20 * dia), ...luan},
+          {chave_lugar: VELHA, lat: -10.94, lng: -37.08, criado_em: antes(20 * dia), ...pedro},
+        ],
+      };
+      nuvem.rpc = {posicoes: [
+        {chave_lugar: DECIDIR, lat: -10.92, lng: -37.06, situacao: 'sugestao', motoristas: 1, entregas: 0, fonte: 'correcao', minha: false},
+        {chave_lugar: PORTA, lat: -10.93, lng: -37.07, situacao: 'confirmado', motoristas: 1, entregas: 1, fonte: 'correcao', minha: false},
+        {chave_lugar: VELHA, lat: -10.94, lng: -37.08, situacao: 'confirmado', motoristas: 2, entregas: 0, fonte: 'correcao', minha: false},
+      ]};
+      // a última vez que ele abriu o Admin foi há 12 horas
+      await context.addInitScript(t => { if (!localStorage.getItem('rota-entregas-admin-visto')) localStorage.setItem('rota-entregas-admin-visto', t); }, String(Date.now() - 12 * hora));
+
+      await abrir(page);
+      await page.getByRole('button', {name: '⚙️ Admin'}).click();
+      await expect(page.locator('[data-resumo]')).toContainText('📌 1 esperando você.');
+      await expect(page.locator('[data-resumo]')).toContainText('🆕 1 marcação(ões) nova(s) desde');
+
+      // na ordem da tela: primeiro o que espera decisão, depois o que chegou, e o resto por último
+      const secoes = await page.locator('#conteudo details > summary').allInnerTexts();
+      expect(secoes.slice(0, 2)).toEqual(['📌 Precisa de você (1)', '🆕 Marcadas pelos motoristas nos últimos 7 dias (1)']);
+      expect(secoes.indexOf('Marcações mais antigas (1)')).toBeGreaterThan(secoes.findIndex(s => s.startsWith('Rotas')));
+
+      const decidir = page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${DECIDIR}"]`);
+      await expect(decidir).toContainText('Só Luan marcou, e ninguém entregou nesse ponto ainda.');
+      await expect(decidir.getByRole('button', {name: 'Confirmar'})).toBeVisible();
+      await expect(decidir).not.toContainText('novo');
+
+      const porta = page.locator(`[data-secao="🆕 Marcadas pelos motoristas nos últimos 7 dias"] [data-lugar="${PORTA}"]`);
+      await expect(porta).toContainText('Confirmada na porta, com a entrega');
+      await expect(porta).toContainText('novo');
+      // a antiga existe, mas guardada: não disputa a vista com o que é de hoje
+      await expect(page.locator(`[data-lugar="${VELHA}"]`)).toBeHidden();
+
+      // voltando depois, o que ele já viu deixa de ser novo
+      await page.getByRole('button', {name: '1. Endereços'}).click();
+      await page.getByRole('button', {name: '⚙️ Admin'}).click();
+      await expect(page.locator('[data-resumo]')).toContainText('Nada novo desde');
+      await expect(porta).toBeVisible();
+      await expect(porta).not.toContainText('novo');
+    });
   });
 });
