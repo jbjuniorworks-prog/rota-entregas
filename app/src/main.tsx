@@ -116,7 +116,8 @@ function App() {
           && <button id="btnEu" className="btn peq" onClick={A.centralizarEmMim} title="Centralizar onde você está">◎</button>}
       </div>
       <div id="painel">
-        <nav>{abas.map(([id, nome]) => <button key={id} className={ui.aba === id ? 'on' : ''} onClick={() => A.irPara(id)}>{nome}</button>)}</nav>
+        <nav>{abas.map(([id, nome]) => <button key={id} className={ui.aba === id ? 'on' : ''} onClick={() => A.irPara(id)}>{nome}
+          {id === 'admin' && ui.esperandoAdmin > 0 && <span className="selo" data-selo aria-label={`${ui.esperandoAdmin} esperando você`}>{ui.esperandoAdmin}</span>}</button>)}</nav>
         <div id="status" className={ui.aviso ? 'on' : ''}>{ui.aviso}
           {ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>↺ Desfazer</button></>}</div>
         <div id="conteudo" ref={conteudo} onScroll={ev => { rolagem.current[ui.aba] = (ev.target as HTMLDivElement).scrollTop; }}>

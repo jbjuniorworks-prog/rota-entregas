@@ -1,4 +1,4 @@
-import type {ReactNode} from 'react';
+﻿import type {ReactNode} from 'react';
 import * as A from '../acoes';
 import {agruparPorEndereco, blocos, fmtKm, fmtMin, gruposNoMapa, linkMaps, linkMapsVarios, linkWaze, porPerto, trechos} from '../logica/otimizacao';
 import {previsoes} from '../logica/previsao';
@@ -147,7 +147,10 @@ export function TelaRota() {
         {todos.length > 1 && <div className="info" style={{marginTop: i ? 10 : 0, fontWeight: 600}}>📍 {g.titulo} · {g.pacotes} pacote(s) aqui</div>}
         {g.ps.map(p => <LinhaParada key={p.id} p={p} comWaze={juntas} />)}
       </div>)}</div>}
-      <div className="info linha-peq">Pino errado? <button className="btn peq" onClick={() => A.estouAqui(alvo)}>📍 Estou aqui</button>
+      {/* porta confirmada não se arruma na rua: pedido deles, contra o toque sem querer */}
+      <div className="info linha-peq">{alvo.precisao === 'confirmado'
+        ? <span data-confirmada>🤝 Porta confirmada. Se estiver errada, arrume em 2. Conferir.</span>
+        : <>Pino errado? <button className="btn peq" onClick={() => A.estouAqui(alvo)}>📍 Estou aqui</button></>}
         <a className="btn peq" href={linkMaps(alvo as Ponto)} target="_blank" rel="noopener">Google Maps</a>
         {agora.b.length === 1 && <button className="btn peq" onClick={() => A.deixarParaDepois(alvo)}>⏸ Depois</button>}</div>
       {trechoAtual.length > 1 && <div className="linha"><a className="btn peq pri" href={linkMapsVarios(trechoAtual.map(x => x.alvo))} target="_blank" rel="noopener">

@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react';
+﻿import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {contar, entregarTodas, entregueAqui, marcarEntregue, posicionar, seguirMinhaPosicao, tocouNoMapa} from '../acoes';
@@ -154,31 +154,38 @@ export default function Mapa() {
         ].filter(Boolean).join(' · ');
         const uma = (x: Parada) => `<b>${esc(naRota(x))} · ${esc(x.texto)}</b>${noApp(x) ? `<br><small>no app do entregador: ${noApp(x)}</small>` : ''}`;
         const pendentes = g.ps.filter(x => !x.entregue);
+        // Pedido deles, 28/09: o que já foi entregue e a porta que já está confirmada não têm o
+        // que arrumar na rua — botão ali é só toque errado esperando acontecer. Porta confirmada
+        // errada se arruma na Conferir, com pergunta. Cliente que se mudou não cai aqui: o
+        // endereço novo é outra chave e chega sem confirmação, com os botões de sempre.
+        const abertas = pendentes.filter(x => x.precisao !== 'confirmado');
+        const ids = (xs: Parada[]) => esc(xs.map(x => x.id).join('+'));
         // Com duas entregas no mesmo ponto, um botão só teria de escolher uma por conta própria —
         // e escolhia a primeira, calado. Quando são de endereços diferentes que só caíram juntos,
         // é justo a outra que ele quer mexer. Então cada uma ganha o seu botão, com o número dela.
-        const arrumar = so
-          ? `<button data-acao="arrumar" data-ids="${esc(p.id)}">📍 Arrumar aqui</button>`
-          : `<span class="popum">📍 Arrumar só a:</span>${g.ps.map(x =>
+        const arrumar = !abertas.length ? ''
+          : so ? `<button data-acao="arrumar" data-ids="${esc(p.id)}">📍 Arrumar aqui</button>`
+          : `<span class="popum">📍 Arrumar só a:</span>${abertas.map(x =>
             `<button class="so" data-acao="arrumar" data-ids="${esc(x.id)}">${esc(rotuloDe(x))}</button>`).join('')}`;
         // Na porta, o botão que ele quer: entrega e porta num toque só. A porta é uma por
         // endereço — num pino com o restaurante e a casa do lado, cada um ganha o seu.
-        const enderecos = agruparPorEndereco(pendentes);
-        const ids = (xs: Parada[]) => esc(xs.map(x => x.id).join('+'));
+        const enderecos = agruparPorEndereco(abertas);
         // Pilha é coisa da tela: com o mapa afastado, a próxima juntava 24 entregas de ruas
         // diferentes. Um toque errado ali dava como entregue — e com a porta aqui — o pacote de
         // outra rua. Só oferece quando elas estão juntas no chão, pela régua da "mesma parada".
-        const noChao = pendentes.every(x => haversine(x as Ponto, pendentes[0] as Ponto) <= RAIO_BLOCO);
+        const noChao = abertas.every(x => haversine(x as Ponto, abertas[0] as Ponto) <= RAIO_BLOCO);
         const aqui = !enderecos.length ? ''
           : !noChao ? '<span class="popum">Aproxime o mapa para o 📍 Entreguei aqui.</span>'
           : enderecos.length === 1
-            ? `<button data-acao="aqui" data-ids="${ids(pendentes)}">📍 Entreguei aqui${pendentes.length > 1 ? ` as ${pendentes.length}` : ''}</button>`
+            ? `<button data-acao="aqui" data-ids="${ids(abertas)}">📍 Entreguei aqui${abertas.length > 1 ? ` as ${abertas.length}` : ''}</button>`
             : `<span class="popum">📍 Entreguei aqui, só a:</span>${enderecos.map(en =>
               `<button class="so" data-acao="aqui" data-ids="${ids(en.ps)}">${esc(en.ps.map(rotuloDe).join('+'))}</button>`).join('')}`;
+        const confirmada = abertas.length < pendentes.length ? '<span class="popum">🤝 Porta confirmada. Se estiver errada, arrume em 2. Conferir.</span>' : '';
+        const botoes = !pendentes.length ? '' : aqui
+          + `<button data-acao="entregue" data-ids="${esc(chave)}">✓ Entreguei${pendentes.length > 1 ? ` as ${pendentes.length}` : ''}</button>`
+          + arrumar + confirmada;
         const acoes = naRotaDeHoje
-          ? `<div class="popacoes">${aqui}${pendentes.length
-            ? `<button data-acao="entregue" data-ids="${esc(chave)}">✓ Entreguei${pendentes.length > 1 ? ` as ${pendentes.length}` : ''}</button>`
-            : ''}${arrumar}</div>`
+          ? botoes && `<div class="popacoes">${botoes}</div>`
           : '<br><small>Para corrigir: 2. Conferir → Marcar no mapa.</small>';
         const popup = (so
           ? `${uma(p)}<br><small>${esc(p.exibido)}</small>`

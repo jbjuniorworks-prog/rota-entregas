@@ -171,6 +171,47 @@ test.describe('corrigir pela localização do motorista', () => {
     await expect(page.getByText(/❗ 1 para conferir/)).toBeVisible();
   });
 
+  // Pedido deles, 28/09: "esse endereço já foi confirmado, tem certeza que deseja arrumar?". A
+  // correção nova de um motorista substitui a dele na nuvem: quem confirmou e arruma sem querer
+  // tira a confirmação de todo mundo.
+  test('porta confirmada pergunta antes de arrumar; recusando, nada muda', async ({page}) => {
+    let aceitar = false;
+    const perguntas: string[] = [];
+    page.on('dialog', d => { perguntas.push(d.message()); aceitar ? d.accept() : d.dismiss(); });
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    const antes = await page.evaluate(t => {
+      const s = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
+      const p = s.paradas.find((x: any) => x.texto.includes(t));
+      Object.assign(p, {precisao: 'confirmado', exibido: 'Posição confirmada por 2 entrega(s) feitas aqui'});
+      localStorage.setItem('rota-entregas-v2', JSON.stringify(s));
+      return {lat: p.lat, lng: p.lng};
+    }, RUA_D);
+    await page.reload();
+    await abrir(page);
+    await aba(page, '2. Conferir');
+    const cartao = page.locator('[data-item]').filter({hasText: RUA_D});
+    const onde = () => page.evaluate(t => {
+      const p = JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.includes(t));
+      return {lat: p.lat, lng: p.lng};
+    }, RUA_D);
+
+    await cartao.getByRole('button', {name: '📍 Estou aqui'}).click();
+    expect(perguntas.at(-1)).toContain('Este endereço já está confirmado');
+    expect(perguntas.at(-1)).toContain('Posição confirmada por 2 entrega(s) feitas aqui');
+    expect(perguntas.at(-1)).toContain('Tem certeza que quer arrumar?');
+    await page.waitForTimeout(500);
+    expect(await onde()).toEqual(antes);
+
+    await cartao.getByRole('button', {name: 'Marcar no mapa'}).click();
+    expect(perguntas).toHaveLength(2);
+    await expect(cartao.getByRole('button', {name: 'Marcar no mapa'}), 'recusou: não entra no modo de marcar').toBeVisible();
+
+    aceitar = true;
+    await cartao.getByRole('button', {name: 'Marcar no mapa'}).click();
+    await expect(cartao.getByRole('button', {name: 'Toque no mapa…'}), 'aceitou: arruma como antes').toBeVisible();
+  });
+
   test('com GPS impreciso, pergunta antes; recusando, nada muda', async ({page, context}) => {
     const perguntas: string[] = [];
     page.on('dialog', d => { perguntas.push(d.message()); d.dismiss(); });

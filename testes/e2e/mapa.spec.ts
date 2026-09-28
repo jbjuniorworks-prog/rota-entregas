@@ -136,9 +136,10 @@ test.describe('agir pelo pino, na aba Rota', () => {
     await expect.poll(async () => (await page.locator('.resumo').innerText()) !== feitasAntes, {timeout: 10_000}).toBe(true);
     await expect(page.locator('#painel')).toContainText('3. Rota');
 
-    // e o outro botão começa a correção ali mesmo
-    await page.locator('.leaflet-marker-icon .pino').first().click();
-    await page.getByRole('button', {name: /Arrumar aqui/}).click();
+    // e o outro botão começa a correção ali mesmo — na próxima, que ainda não foi entregue
+    await page.locator('.pino.alvo').click();
+    // sozinha é "Arrumar aqui"; empilhada, "Arrumar só a:" com o número de cada uma
+    await page.locator('.leaflet-popup [data-acao=arrumar]').first().click();
     await expect(aviso(page)).toContainText('Toque no mapa, no local da entrega');
   });
 
@@ -256,6 +257,71 @@ test.describe('entreguei aqui, pelo balão do pino', () => {
     await page.locator('.leaflet-popup-close-button').click();
     await abrirBalaoDaProxima(page);
     await expect(page.locator('.leaflet-popup [data-acao=aqui]').first()).toBeVisible();
+  });
+});
+
+// Pedido deles, 28/09: entregue e porta confirmada não têm o que arrumar na rua. Botão ali é só
+// toque errado esperando acontecer; quem precisa mudar (cliente se mudou) vai na Conferir.
+test.describe('na rua, sem arrumar o que já está certo', () => {
+  test.use({viewport: {width: 412, height: 915}});
+
+  const daProxima = (page) => page.locator('.proxima .endereco').innerText().then(t => page.evaluate(t2 => {
+    const p = (JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas || []).find((x: any) => x.texto === t2);
+    return {id: p.id as string, lat: p.lat as number, lng: p.lng as number};
+  }, t));
+
+  // o pino mais perto do meio do mapa, depois de centralizar nele
+  async function abrirBalaoEm(page, lat: number, lng: number) {
+    const {verNoMapa} = await import('./apoio');
+    await verNoMapa(page, lat, lng, 18);
+    const caixa = (await page.locator('#map').boundingBox())!;
+    const meio = {x: caixa.x + caixa.width / 2, y: caixa.y + caixa.height / 2};
+    const pinos = await page.locator('.leaflet-marker-icon .pino').all();
+    const longes = await Promise.all(pinos.map(async l => { const b = (await l.boundingBox())!; return Math.hypot(b.x + b.width / 2 - meio.x, b.y + b.height - meio.y); }));
+    await pinos[longes.indexOf(Math.min(...longes))].click();
+    await expect(page.locator('.leaflet-popup')).toBeVisible();
+  }
+
+  test('o pino já entregue não oferece botão nenhum', async ({page}) => {
+    const {carregar, montar, garantirMapa, ROTA_A} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await garantirMapa(page);
+    const alvo = await daProxima(page);
+    await abrirBalaoEm(page, alvo.lat, alvo.lng);
+    await page.locator('.leaflet-popup [data-acao=entregue]').click();
+    await expect(page.locator('.proxima .endereco')).not.toHaveText(await page.evaluate(id =>
+      (JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas || []).find((x: any) => x.id === id).texto, alvo.id));
+
+    await abrirBalaoEm(page, alvo.lat, alvo.lng);
+    await expect(page.locator('.leaflet-popup'), 'o balão tem de ser o da entregue').toContainText('✓ ·');
+    await expect(page.locator('.leaflet-popup [data-acao]')).toHaveCount(0);
+  });
+
+  test('porta confirmada: sem "Estou aqui" nem "Arrumar" na Rota, e o caminho dito', async ({page}) => {
+    const {carregar, montar, garantirMapa, ROTA_A} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const alvo = await daProxima(page);
+    // a próxima entrega volta confirmada, como vem da nuvem quando o endereço já foi entregue antes
+    await page.evaluate(id => {
+      const s = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
+      Object.assign(s.paradas.find((x: any) => x.id === id), {precisao: 'confirmado', exibido: 'Posição confirmada por 2 motoristas'});
+      localStorage.setItem('rota-entregas-v2', JSON.stringify(s));
+    }, alvo.id);
+    await page.reload();
+    await abrir(page);
+    await expect(page.locator('.proxima [data-confirmada]')).toContainText('Porta confirmada');
+    await expect(page.locator('.proxima').getByRole('button', {name: '📍 Estou aqui'})).toHaveCount(0);
+
+    await garantirMapa(page);
+    await abrirBalaoEm(page, alvo.lat, alvo.lng);
+    const balao = page.locator('.leaflet-popup');
+    await expect(balao.locator('[data-acao=entregue]')).toBeVisible();
+    await expect(balao.locator('[data-acao=aqui], [data-acao=arrumar]')).toHaveCount(0);
+    await expect(balao).toContainText('Se estiver errada, arrume em 2. Conferir');
   });
 });
 

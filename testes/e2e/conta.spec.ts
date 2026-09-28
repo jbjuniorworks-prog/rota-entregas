@@ -147,6 +147,8 @@ test.describe('administrador', () => {
       await context.addInitScript(t => { if (!localStorage.getItem('rota-entregas-admin-visto')) localStorage.setItem('rota-entregas-admin-visto', t); }, String(Date.now() - 12 * hora));
 
       await abrir(page);
+      // o aviso chega antes de ele entrar no Admin: o número fica na própria aba
+      await expect(page.getByRole('button', {name: '⚙️ Admin'}).locator('[data-selo]')).toHaveText('1');
       await page.getByRole('button', {name: '⚙️ Admin'}).click();
       await expect(page.locator('[data-resumo]')).toContainText('📌 1 esperando você.');
       await expect(page.locator('[data-resumo]')).toContainText('🆕 1 marcação(ões) nova(s) desde');

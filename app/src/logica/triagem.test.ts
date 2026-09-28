@@ -24,7 +24,19 @@ describe('o que precisa do administrador', () => {
 
   it('a palavra mais nova da rua contra a posição que vale', () => {
     const l = lugar('a', [marca('Luan', 0.5, OUTRA), marca('Pedro', 3)]);
-    expect(porQuePrecisaDeVoce(l)).toBe('Luan marcou por último em outro lugar, a 111 m da que vale.');
+    expect(porQuePrecisaDeVoce(l)).toBe('Luan tentou mudar uma porta confirmada: marcou a 111 m dela. Para os outros, continua valendo a de antes.');
+  });
+
+  // Pedido de 28/09: porta confirmada por mais de um motorista que outro tenta mudar, mesmo sem
+  // querer, tem de chegar no administrador dizendo o que estava em jogo.
+  it('diz por quem a porta tinha sido confirmada', () => {
+    const marcas = [marca('Luan', 0.5, OUTRA), marca('Pedro', 3), marca('João', 4)];
+    expect(porQuePrecisaDeVoce(lugar('a', marcas, {fonte: 'correcao', motoristas: 2})))
+      .toBe('Luan tentou mudar uma porta confirmada por 2 motoristas: marcou a 111 m dela. Para os outros, continua valendo a de antes.');
+    expect(porQuePrecisaDeVoce(lugar('b', marcas, {fonte: 'correcao', motoristas: 1, entregas: 2})))
+      .toContain('uma porta confirmada na entrega');
+    expect(porQuePrecisaDeVoce(lugar('c', [marca('Luan', 0.5, OUTRA), marca('Você', 1, PORTA, 'admin')], {fonte: 'admin'})))
+      .toContain('uma porta que você confirmou');
   });
 
   // Marcação velha que já perdeu para uma mais nova não é pergunta: a rua já respondeu.
@@ -37,7 +49,7 @@ describe('o que precisa do administrador', () => {
     const decidido = lugar('a', [marca('Luan', 3, OUTRA), marca('Você', 1, PORTA, 'admin')], {fonte: 'admin'});
     expect(porQuePrecisaDeVoce(decidido)).toBeNull();
     const depois = lugar('b', [marca('Luan', 0.5, OUTRA), marca('Você', 1, PORTA, 'admin')], {fonte: 'admin'});
-    expect(porQuePrecisaDeVoce(depois)).toContain('Luan marcou por último em outro lugar');
+    expect(porQuePrecisaDeVoce(depois)).toContain('Luan tentou mudar uma porta que você confirmou');
   });
 
   it('porta confirmada no mesmo ponto não pede nada', () => {

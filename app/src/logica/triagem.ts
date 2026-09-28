@@ -50,7 +50,15 @@ export function porQuePrecisaDeVoce(l: LugarParaTriar): string | null {
   const suaUltima = Math.max(0, ...l.marcacoes.filter(m => m.papel === 'admin').map(quando));
   if (!l.escolhida || quando(nova) <= suaUltima) return null;
   const d = haversine(nova, l.escolhida);
-  return d > MESMO_PONTO ? `${nova.nome} marcou por último em outro lugar, a ${fmtKm(d)} da que vale.` : null;
+  if (d <= MESMO_PONTO) return null;
+  // Aqui a porta está confirmada e a marcação nova ficou de fora dela: a nuvem continua dando a
+  // de antes para os outros, e a decisão de mudar é dele — pedido de 28/09, "pra não alterar
+  // sem motivo". Dizer o que estava em jogo é o que separa engano de cliente que se mudou.
+  const qual = l.fonte === 'admin' ? 'que você confirmou'
+    : (l.motoristas || 0) >= 2 ? `confirmada por ${l.motoristas} motoristas`
+    : (l.entregas || 0) >= 1 ? 'confirmada na entrega'
+    : 'confirmada';
+  return `${nova.nome} tentou mudar uma porta ${qual}: marcou a ${fmtKm(d)} dela. Para os outros, continua valendo a de antes.`;
 }
 
 export function situacaoDoLugar(l: LugarParaTriar): {texto: string; cor: string} {

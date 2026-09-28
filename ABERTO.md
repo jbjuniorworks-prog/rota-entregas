@@ -186,9 +186,13 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
   para o que sobrou "aproximado". E os termos do Google não deixam guardar a coordenada deles —
   então serviria para o pino do dia, nunca para a base de portas.
 
-- **Selo na aba ⚙️ Admin com o número "esperando você".** Desde 28/09 o Admin abre com o que
-  espera decisão em cima (`logica/triagem.ts`), mas só quem abre a aba vê. O selo pediria uma
-  consulta à nuvem ao abrir o app, antes de ele ir ao Admin.
+- **Aviso que toca no celular do dono, com o app fechado.** Desde 28/09 o número "esperando
+  você" fica na aba ⚙️ Admin, conferido ao abrir o app e ao voltar para ele
+  (`verPendenciasDoAdmin`). Porta confirmada que um motorista tenta mudar entra ali como "tentou
+  mudar uma porta confirmada por N motoristas", e para os outros a de antes continua valendo.
+  Mas com o app fechado ele não fica sabendo. Notificação de verdade (push) pede chave VAPID, a
+  inscrição do celular dele guardada no banco e uma função no Supabase que dispare quando entra
+  uma correção em porta confirmada. É projeto próprio, com migração que ele roda.
 - **Um lugar só do admin**, para o que hoje precisa de terminal ou não aparece em tela nenhuma.
   O Admin já lista as rotas de 14 dias com entregues/pacotes, ativa e desativa motorista, mostra
   as correções e o uso dos botões. Falta:

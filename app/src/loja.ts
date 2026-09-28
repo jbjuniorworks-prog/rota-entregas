@@ -32,6 +32,8 @@ export interface Ui {
   // ele: sem se ver no meio deles não dá para saber para que lado sair da esquina.
   euAqui: {lat: number; lng: number; precisao: number; rumo: number | null; quando: number} | null;
   irParaMim: number;
+  // quantas marcações esperam decisão de quem administra: o número na aba ⚙️ Admin
+  esperandoAdmin: number;
 }
 
 export const guarda = guardaEm(localStorage);
@@ -39,7 +41,7 @@ let estado = carregarEstado(guarda);
 const ui: Ui = {
   aba: estado.paradas.length ? (estado.rota ? 'rota' : 'conferir') : 'enderecos',
   posicionando: null, selecionada: null, soDuvidas: false, ocupado: false, mapa: guarda.ler(CHAVES.mapa, {}), aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
-  euAqui: null, irParaMim: 0,
+  euAqui: null, irParaMim: 0, esperandoAdmin: 0,
 };
 
 let versao = 0;

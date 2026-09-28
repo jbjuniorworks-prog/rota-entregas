@@ -1,4 +1,4 @@
-import {aplicarCompartilhadas} from '../logica/compartilhadas';
+﻿import {aplicarCompartilhadas} from '../logica/compartilhadas';
 import {haversine, marcarIsoladas} from '../logica/geo';
 import {avisoGuardou} from '../logica/memoria';
 import {chaveCidade, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
@@ -73,7 +73,23 @@ export function guardarPassagens(ps: Parada[]) {
 
 export const guardarPassagem = (p: Parada) => guardarPassagens([p]);
 
+// Pedido deles, 28/09: porta confirmada só se arruma de propósito. E não é só o toque errado
+// com a mão ocupada: a correção nova de um motorista substitui a anterior dele na nuvem, então
+// quem confirmou a porta na entrega e depois arruma sem querer tira a confirmação de todo mundo.
+// Cliente que se muda não passa por aqui: o endereço novo é outra chave e chega sem confirmação
+// (lembrete do Luan). Arrumar uma confirmada é só para porta que está errada.
+export function podeMexer(p: Parada): boolean {
+  if (p.precisao !== 'confirmado') return true;
+  return confirm(`Este endereço já está confirmado:
+
+${p.exibido}
+
+Tem certeza que quer arrumar? Faça isso só se a porta estiver errada. Quem administra vai ver a mudança.`);
+}
+
 export function posicionar(alvo: string) {
+  const p = alvo === 'fim' || ui.posicionando === alvo ? null : loja.parada(alvo);
+  if (p && !podeMexer(p)) return;
   ui.posicionando = ui.posicionando === alvo ? null : alvo;
   loja.mudou(false);
   if (ui.posicionando) {
@@ -220,6 +236,7 @@ export function comMinhaPosicao(
 }
 
 export function estouAqui(p: Parada) {
+  if (!podeMexer(p)) return;
   comMinhaPosicao((lat, lng, precisao) => marcarNaPorta(p, lat, lng, precisao));
 }
 
@@ -277,6 +294,7 @@ export function focar(id: string) {
 }
 
 export function escolherCandidato(p: Parada, k: number) {
+  if (!podeMexer(p)) return;
   const c = p.candidatos[k];
   const longe = p.lat != null && p.lng != null && haversine(p as Ponto, c) > MUDOU_MUITO;
   const desfazer = prepararDesfazer(p);

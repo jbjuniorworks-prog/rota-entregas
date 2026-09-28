@@ -62,6 +62,9 @@ export function TelaAdmin() {
       const [m, r, l] = await Promise.all([Adm.listarMotoristas(), Adm.listarRotas(), Adm.listarCorrecoes()]);
       setMotoristas(m); setRotas(r); setLugares(l);
       guarda.gravar(CHAVES.adminVisto, Date.now());
+      // o número da aba acompanha o que ele acabou de confirmar ou apagar
+      loja.ui.esperandoAdmin = triar(l, Date.now(), null).decidir.length;
+      loja.mudou(false);
     } catch (err) {
       setErro((err as Error).message);
     } finally {
