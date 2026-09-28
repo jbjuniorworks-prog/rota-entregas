@@ -164,6 +164,11 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 
 ## Ideias, não compromissos
 
+- **Tirar o "Esquecer todas" de Endereços > Posições que você corrigiu** (proposto em 28/09,
+  esperando o dono). Ele apaga só a memória do celular, sem desfazer, e as correções voltam da
+  nuvem na próxima rota carregada com internet: hoje quase não faz o que diz. O texto ao lado
+  ainda fala em "arrastar o pino", e os pinos não arrastam mais.
+
 - **A porta confirmada chega no outro motorista quando ele carrega a rota**, não no meio do dia.
   A consulta (`consultarCompartilhadas`) roda ao buscar os endereços e ao entrar na conta. Se os
   dois tiverem o mesmo endereço no mesmo dia, quem já carregou não recebe. Não medido quanto
