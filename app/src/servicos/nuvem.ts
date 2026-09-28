@@ -94,9 +94,11 @@ export function clienteNuvem(): ClienteNuvem | null {
       const {error} = await s.from('correcoes').delete().eq('chave_lugar', chave).eq('lat', lat).eq('lng', lng);
       if (error) throw erro(error);
     },
-    async inserirObservacao({chave, lat, lng, precisao, endereco, rua, ruaChave}) {
+    async inserirObservacao({chave, lat, lng, precisao, endereco, rua, ruaChave, noPino}) {
+      // `no_pino` só vai quando é verdade: se a 017 ainda não rodou, o banco recusa o campo e a
+      // fila descarta calada — assim ao menos as passagens longe do pino continuam chegando.
       const {error} = await s.from('observacoes').upsert(
-        {chave_lugar: chave, lat, lng, precisao_m: precisao, endereco, rua, rua_chave: ruaChave},
+        {chave_lugar: chave, lat, lng, precisao_m: precisao, endereco, rua, rua_chave: ruaChave, ...(noPino ? {no_pino: true} : {})},
         {onConflict: 'chave_lugar,motorista_id,dia', ignoreDuplicates: true});
       if (error) throw erro(error);
     },
@@ -128,6 +130,25 @@ export function clienteNuvem(): ClienteNuvem | null {
       const saida = [];
       for (let i = 0; i < chaves.length; i += 400) {
         const {data, error} = await s.rpc('posicoes', {chaves: chaves.slice(i, i + 400)});
+        if (error) throw erro(error);
+        saida.push(...(data || []));
+      }
+      return saida;
+    },
+    async inserirReclamacao(chave, motivo) {
+      const {error} = await s.from('reclamacoes').upsert({chave_lugar: chave, motivo},
+        {onConflict: 'chave_lugar,motivo,motorista_id', ignoreDuplicates: true});
+      if (error) throw erro(error);
+    },
+    async tirarReclamacao(chave, motivo) {
+      // só a dele: quem administra também passa por aqui, e não pode levar junto a dos outros
+      const {error} = await s.from('reclamacoes').delete().eq('chave_lugar', chave).eq('motivo', motivo).eq('motorista_id', uid);
+      if (error) throw erro(error);
+    },
+    async reclamacoes(chaves) {
+      const saida = [];
+      for (let i = 0; i < chaves.length; i += 400) {
+        const {data, error} = await s.rpc('reclamacoes_dos_lugares', {chaves: chaves.slice(i, i + 400)});
         if (error) throw erro(error);
         saida.push(...(data || []));
       }

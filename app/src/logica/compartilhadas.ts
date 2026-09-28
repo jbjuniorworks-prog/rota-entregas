@@ -1,4 +1,4 @@
-import {haversine} from './geo';
+﻿import {haversine} from './geo';
 import type {Parada} from './tipos';
 
 export interface PosicaoCompartilhada {
@@ -12,13 +12,15 @@ export interface PosicaoCompartilhada {
   minha: boolean;
 }
 
+// "Endereço verificado" é o nome que eles já conhecem do Mercado Livre (pedido de 28/09): alguém
+// entregou ali, dá para ir com certeza.
 export function comoFoiConfirmada(r: PosicaoCompartilhada): string {
-  if (r.minha) return 'Posição que você mesmo arrumou aqui';
-  if (r.fonte === 'entrega') return `Posição confirmada por ${r.entregas} entrega(s) feitas aqui`;
-  if (r.fonte === 'admin' || (!r.fonte && r.motoristas <= 1)) return 'Posição confirmada por quem administra';
+  if (r.minha) return r.situacao === 'confirmado' ? 'Endereço verificado (marcado por você)' : 'Posição que você mesmo arrumou aqui';
+  if (r.fonte === 'entrega') return (r.entregas || 0) > 1 ? `Endereço verificado: ${r.entregas} entregas feitas aqui` : 'Endereço verificado: já entregaram aqui';
+  if (r.fonte === 'admin' || (!r.fonte && r.motoristas <= 1)) return 'Endereço verificado por quem administra';
   // uma correção só não chega aqui como confirmada: precisa de uma entrega feita no mesmo ponto
-  if (r.motoristas <= 1) return 'Posição confirmada por outro motorista, na porta';
-  return `Posição confirmada por ${r.motoristas} motoristas`;
+  if (r.motoristas <= 1) return 'Endereço verificado por outro motorista, na porta';
+  return `Endereço verificado por ${r.motoristas} motoristas`;
 }
 
 // 'manual' é o motorista arrastando o pino agora, neste aparelho: ninguém passa na frente disso.
@@ -39,9 +41,13 @@ export function aplicarCompartilhadas(
     // O que o próprio motorista arrumou volta para ele em qualquer aparelho, mesmo sem
     // ninguém mais ter confirmado: arrumar uma entrega só faz sentido se fica arrumada.
     if (r.situacao === 'confirmado' || r.minha) {
-      if (perto && p.precisao === 'confirmado') continue;
+      // Só o que alguém entregou ali é verificado. A correção dele que ninguém confirmou volta
+      // como "corrigida por você antes", igual à memória do aparelho: chamar de verificada
+      // travava os botões de arrumar na Rota por uma posição que ninguém entregou.
+      const precisao = r.situacao === 'confirmado' ? 'confirmado' : 'lembrado';
+      if (perto && p.precisao === precisao) continue;
       if (p.lat != null && p.lng != null) p.candidatos = [{lat: p.lat, lng: p.lng, exibido: 'Posição de antes (planilha ou busca)', precisao: p.precisao, fonte: 'original'}, ...p.candidatos.filter(c => c.fonte !== 'original')];
-      Object.assign(p, {lat: r.lat, lng: r.lng, precisao: 'confirmado', exibido: comoFoiConfirmada(r),
+      Object.assign(p, {lat: r.lat, lng: r.lng, precisao, exibido: comoFoiConfirmada(r),
         fonte: r.minha ? 'minha correcao' : 'outro motorista'});
       delete p.sugestao;
       if (r.minha) minhas++; else confirmadas++;

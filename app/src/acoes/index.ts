@@ -2,4 +2,5 @@ export {fila, memoria, uso, contar, alternarMapa, arrastarMapa, tamanhoDoMapa, a
 export * from './conta';
 export * from './enderecos';
 export * from './posicoes';
+export * from './reclamacoes';
 export * from './rota';

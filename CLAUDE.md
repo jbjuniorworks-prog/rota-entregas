@@ -26,7 +26,8 @@ O repositório é **público**.
   planilha fora de `testes/planilhas`, `.txt` solto, `.env`, chave, e-mail de pessoa real, código
   de pacote e telefone. Nunca imprima o conteúdo do `.env`.
 - **Migração quem roda é ele**, no SQL Editor do Supabase. Escreva `supabase/0NN_nome.sql`,
-  acrescente ao fim de `000_rodar_tudo.sql`, e peça para rodar.
+  acrescente ao fim de `000_rodar_tudo.sql` **e** de `banco-inteiro.sql` (o de montar projeto
+  novo, que ficou parado no 009 de 20/09 a 28/09 por só um dos dois estar aqui), e peça para rodar.
 - Antes de encerrar, atualize o [ABERTO.md](ABERTO.md).
 
 ## Armadilhas que já custaram caro

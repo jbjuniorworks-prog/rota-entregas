@@ -1,7 +1,8 @@
 import * as A from '../acoes';
 import {fmtKm} from '../logica/otimizacao';
+import {avisoXarope, MOTIVOS} from '../logica/reclamacoes';
 import {COR_PRECISAO, ROTULO} from '../logica/rotulos';
-import type {Parada} from '../logica/tipos';
+import type {MotivoReclamacao, Parada} from '../logica/tipos';
 import {useLoja} from '../loja';
 
 export const Tag = ({p}: {p: {precisao: Parada['precisao']}}) =>
@@ -20,6 +21,27 @@ export function Sugestao({p}: {p: Parada}) {
   const d = p.sugestao.distancia;
   return <div className="aviso">💡 Outro motorista marcou este endereço em outro lugar{d != null ? `, a ${fmtKm(d)} daqui` : ''}.{' '}
     <button className="btn peq pri" onClick={() => A.usarSugestao(p)}>Usar a posição dele</button></div>;
+}
+
+export function AvisoXarope({p}: {p: Parada}) {
+  const t = avisoXarope(p.reclamacoes);
+  return t ? <div className="aviso xarope" data-xarope>⚠️ {t}</div> : null;
+}
+
+// Pedido de 28/09: a reclamação costuma chegar depois da entrega, então isto aparece também
+// para entrega já feita. Só a própria marcação se tira: a do outro motorista o banco não deixa.
+export function MarcarXarope({p}: {p: Parada}) {
+  const motivos = Object.keys(MOTIVOS) as MotivoReclamacao[];
+  return <div className="marcar-xarope" data-marcar-xarope>
+    <div className="info">⚠️ Cliente xarope? O próximo motorista vê no pino.</div>
+    <div className="linha">{motivos.map(m => {
+      const r = p.reclamacoes?.find(x => x.motivo === m);
+      if (r && !r.minha) return <span key={m} className="etiqueta">{MOTIVOS[m].marcar} · já marcado</span>;
+      return r
+        ? <button key={m} className="btn peq" onClick={() => A.tirarXarope(p, m)}>✓ {MOTIVOS[m].marcar} · tirar</button>
+        : <button key={m} className="btn peq" onClick={() => A.marcarXarope(p, m)}>{MOTIVOS[m].marcar}</button>;
+    })}</div>
+  </div>;
 }
 
 export function BotaoResetar() {

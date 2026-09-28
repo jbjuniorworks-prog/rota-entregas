@@ -260,6 +260,65 @@ test.describe('entreguei aqui, pelo balão do pino', () => {
   });
 });
 
+// Pedidos de 28/09: "endereço verificado, igual o Mercado Livre" e "cliente xarope" — o cliente
+// que já reclamou de pacote jogado ou deixado com vizinho. Os dois chegam da nuvem ao carregar a
+// rota, e o xarope se marca depois da entrega, que é quando a reclamação costuma aparecer.
+test.describe('o que os outros motoristas já sabem do endereço', () => {
+  test.use({viewport: {width: 412, height: 915}});
+
+  test('endereço verificado e cliente xarope chegam ao carregar, no cartão e no pino', async ({page}) => {
+    const {carregar, garantirMapa, verNoMapa, aba, ROTA_A} = await import('./apoio');
+    const primeira = (r) => (r.request().postDataJSON() as {chaves: string[]}).chaves[0];
+    const cors = {'access-control-allow-origin': '*'};
+    await page.route('**/rest/v1/rpc/posicoes', r => r.fulfill({contentType: 'application/json', headers: cors, body: JSON.stringify([
+      {chave_lugar: primeira(r), lat: -10.9605, lng: -37.0455, situacao: 'confirmado', motoristas: 0, entregas: 1, fonte: 'entrega', minha: false}])}));
+    await page.route('**/rest/v1/rpc/reclamacoes_dos_lugares', r => r.fulfill({contentType: 'application/json', headers: cors, body: JSON.stringify([
+      {chave_lugar: primeira(r), motivo: 'vizinho', quando: '2026-09-20T12:00:00Z', minha: false}])}));
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await expect(page.locator('#status')).toContainText('1 de cliente xarope');
+    const xarope = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.reclamacoes?.length));
+    expect(xarope.precisao, 'a mesma parada é a verificada: as duas respostas vieram para a mesma chave').toBe('confirmado');
+
+    await aba(page, '2. Conferir');
+    const cartao = page.locator(`[data-item="${xarope.id}"]`);
+    await expect(cartao).toContainText('Endereço verificado: já entregaram aqui');
+    await expect(cartao.locator('[data-xarope]')).toContainText('Cliente xarope: já reclamou de deixar com vizinho');
+
+    await garantirMapa(page);
+    await verNoMapa(page, xarope.lat, xarope.lng, 18);
+    const pino = page.locator('.leaflet-marker-icon .pino.xarope');
+    await expect(pino, 'o pino chega com outra cor, antes de tocar').toHaveCount(1);
+    await pino.click();
+    await expect(page.locator('.leaflet-popup [data-xarope]')).toContainText('Cliente xarope');
+  });
+
+  test('entregou e depois soube da reclamação: marca na entrega feita, vai para a nuvem, e desfaz', async ({page, nuvem}) => {
+    const {carregar, montar, ROTA_A} = await import('./apoio');
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const texto = await page.locator('.proxima .endereco').innerText();
+    await page.locator('.proxima').getByRole('button', {name: /Entreguei/}).first().click();
+
+    await page.getByText(/entregue\(s\) nesta área/).first().click();
+    const linha = page.locator('.parada.feito').filter({hasText: texto});
+    await linha.getByRole('button', {name: 'Cliente xarope'}).click();
+    await page.locator('[data-marcar-xarope]').getByRole('button', {name: /deixar com vizinho/}).click();
+    await expect(page.locator('#status')).toContainText('Cliente xarope marcado');
+    await expect(linha).toContainText('⚠️ Cliente xarope');
+
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'reclamacoes' && p.metodo === 'POST').length, {timeout: 20_000}).toBe(1);
+    const corpo = nuvem.pedidos.find(p => p.caminho === 'reclamacoes')!.corpo as any;
+    expect(Array.isArray(corpo) ? corpo[0] : corpo).toMatchObject({motivo: 'vizinho'});
+
+    await page.getByRole('button', {name: '↺ Desfazer'}).click();
+    await expect(linha).not.toContainText('Cliente xarope');
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'reclamacoes' && p.metodo === 'DELETE').length, {timeout: 20_000}).toBe(1);
+  });
+});
+
 // Pedido deles, 28/09: entregue e porta confirmada não têm o que arrumar na rua. Botão ali é só
 // toque errado esperando acontecer; quem precisa mudar (cliente se mudou) vai na Conferir.
 test.describe('na rua, sem arrumar o que já está certo', () => {
@@ -308,12 +367,12 @@ test.describe('na rua, sem arrumar o que já está certo', () => {
     // a próxima entrega volta confirmada, como vem da nuvem quando o endereço já foi entregue antes
     await page.evaluate(id => {
       const s = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
-      Object.assign(s.paradas.find((x: any) => x.id === id), {precisao: 'confirmado', exibido: 'Posição confirmada por 2 motoristas'});
+      Object.assign(s.paradas.find((x: any) => x.id === id), {precisao: 'confirmado', exibido: 'Endereço verificado por 2 motoristas'});
       localStorage.setItem('rota-entregas-v2', JSON.stringify(s));
     }, alvo.id);
     await page.reload();
     await abrir(page);
-    await expect(page.locator('.proxima [data-confirmada]')).toContainText('Porta confirmada');
+    await expect(page.locator('.proxima [data-confirmada]')).toContainText('Endereço verificado');
     await expect(page.locator('.proxima').getByRole('button', {name: '📍 Estou aqui'})).toHaveCount(0);
 
     await garantirMapa(page);
@@ -321,7 +380,7 @@ test.describe('na rua, sem arrumar o que já está certo', () => {
     const balao = page.locator('.leaflet-popup');
     await expect(balao.locator('[data-acao=entregue]')).toBeVisible();
     await expect(balao.locator('[data-acao=aqui], [data-acao=arrumar]')).toHaveCount(0);
-    await expect(balao).toContainText('Se estiver errada, arrume em 2. Conferir');
+    await expect(balao).toContainText('Se estiver errado, arrume em 2. Conferir');
   });
 });
 

@@ -149,6 +149,13 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 - **"📍 Entreguei aqui" no balão do pino (28/09)** conta como `balao-aqui`, e o "✓ Entreguei" do
   balão como `balao-entreguei`. Se o da porta ganhar, o "📍 Estou aqui" do cartão da próxima
   entrega vira redundante na Rota. Se quase ninguém usar, o balão volta a ter dois botões.
+- **Endereço verificado com uma entrega só (017, 28/09).** A trava é o GPS da entrega cair a até
+  30 m do pino (`no_pino`). Acompanhar no Admin se aparecem endereços verificados no lugar
+  errado; se sim, o próximo aperto é exigir de novo duas entregas, e o pedido deles perde o sentido.
+- **Passagens perdidas com o mapa da Rota aberto (consertado em 28/09).** A passagem pedia um GPS
+  novo, e com o mapa seguindo o motorista esse pedido podia ficar sem resposta: a entrega saía
+  sem passagem, calada. Achado no teste, não medido em produção. Para medir: o "N entregas marcadas
+  na porta" do Admin > Nossa base de ruas tem de passar a crescer junto com as entregas do dia.
 - **Uma porta confirmada agora custa um toque de um motorista só.** A regra da `posicoes` não
   mudou (correção + passagem no mesmo ponto já confirmava), mas antes eram dois toques em lugares
   diferentes e quase ninguém fazia os dois. Acompanhar no Admin se aparecem portas confirmadas

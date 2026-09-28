@@ -22,6 +22,8 @@ export interface ResumoPlanilha {
   numeros: number;
   confirmadas: number;
   sugestoes: number;
+  // endereços de cliente que já reclamou (018), vindos da nuvem depois da busca
+  xaropes?: number;
 }
 
 export function adicionarDaPlanilha(
@@ -75,8 +77,9 @@ export function adicionarDaPlanilha(
 export function resumoPlanilha(r: ResumoPlanilha): string {
   return `${r.novas} parada(s) da planilha${r.juntas ? `, ${r.juntas} pacote(s) somado(s) a um mesmo endereço` : ''}${r.repetidas ? `, ${r.repetidas} já existia(m)` : ''}.`
     + (r.lembradas ? ` 📌 ${r.lembradas} com a posição que você já tinha corrigido.` : '')
-    + (r.confirmadas ? ` 🤝 ${r.confirmadas} com posição confirmada por outros motoristas.` : '')
+    + (r.confirmadas ? ` ✓ ${r.confirmadas} com endereço verificado por outros motoristas.` : '')
     + (r.sugestoes ? ` 💡 ${r.sugestoes} com sugestão de outro motorista: veja em Conferir.` : '')
+    + (r.xaropes ? ` ⚠️ ${r.xaropes} de cliente xarope: veja o pino antes de entregar.` : '')
     + (r.longe ? ` ⚠️ ${r.longe} com posição longe das outras entregas: ${r.noBairro === r.longe ? 'levada(s) para o bairro certo, confira no local.' : r.noBairro ? `${r.noBairro} levada(s) para o bairro certo, confira o pino das outras.` : 'confira o pino antes de sair.'}` : '')
     + (r.aproximadas ? ` ⚠️ ${r.aproximadas} com posição aproximada na planilha: confira o pino.` : '')
     + (r.numeros ? ` ⚠️ ${r.numeros} com número que não bate com a posição: confira.` : '')

@@ -183,7 +183,7 @@ test.describe('corrigir pela localização do motorista', () => {
     const antes = await page.evaluate(t => {
       const s = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
       const p = s.paradas.find((x: any) => x.texto.includes(t));
-      Object.assign(p, {precisao: 'confirmado', exibido: 'Posição confirmada por 2 entrega(s) feitas aqui'});
+      Object.assign(p, {precisao: 'confirmado', exibido: 'Endereço verificado: 2 entregas feitas aqui'});
       localStorage.setItem('rota-entregas-v2', JSON.stringify(s));
       return {lat: p.lat, lng: p.lng};
     }, RUA_D);
@@ -197,8 +197,8 @@ test.describe('corrigir pela localização do motorista', () => {
     }, RUA_D);
 
     await cartao.getByRole('button', {name: '📍 Estou aqui'}).click();
-    expect(perguntas.at(-1)).toContain('Este endereço já está confirmado');
-    expect(perguntas.at(-1)).toContain('Posição confirmada por 2 entrega(s) feitas aqui');
+    expect(perguntas.at(-1)).toContain('Este endereço já está verificado');
+    expect(perguntas.at(-1)).toContain('Endereço verificado: 2 entregas feitas aqui');
     expect(perguntas.at(-1)).toContain('Tem certeza que quer arrumar?');
     await page.waitForTimeout(500);
     expect(await onde()).toEqual(antes);
@@ -287,12 +287,32 @@ test.describe('a entrega marcada na porta vira posição para a base', () => {
     expect(passagem.metodo).toBe('POST');
     expect(passagem.corpo).toMatchObject({lat: -10.9605, lng: -37.0455, precisao_m: 12});
     expect(String((passagem.corpo as any).chave_lugar).length).toBeGreaterThan(3);
+    // a próxima desta rota está a km daqui: entrega marcada longe do pino não verifica nada
+    expect(passagem.corpo).not.toHaveProperty('no_pino');
 
     await context.setGeolocation({latitude: -10.9605, longitude: -37.0455, accuracy: 300});
     await page.waitForTimeout(5500);
     await page.locator('.proxima').getByRole('button', {name: 'Entregue'}).first().click();
     await page.waitForTimeout(1500);
     expect(nuvem.pedidos.filter(p => p.caminho === 'observacoes')).toHaveLength(1);
+  });
+
+  // "Igual o Mercado Livre faz, endereço verificado" (28/09): entregou no pino, o pino estava
+  // certo, e essa entrega sozinha já verifica o endereço para os outros (017 no banco).
+  test('entrega marcada no pino vai como "no pino", que verifica o endereço', async ({page, context, nuvem}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const alvo = await page.locator('.proxima .endereco').innerText().then(t => page.evaluate(t2 => {
+      const p = JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto === t2);
+      return {lat: p.lat, lng: p.lng};
+    }, t));
+    // uns 10 m do pino, e o GPS velho do teste não pode valer mais
+    await context.setGeolocation({latitude: alvo.lat + 0.00009, longitude: alvo.lng, accuracy: 8});
+    await page.waitForTimeout(5500);
+    await page.locator('.proxima').getByRole('button', {name: 'Entregue'}).first().click();
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'observacoes').length, {timeout: 20_000}).toBe(1);
+    expect(nuvem.pedidos.find(p => p.caminho === 'observacoes')!.corpo).toMatchObject({no_pino: true, precisao_m: 8});
   });
 });
 

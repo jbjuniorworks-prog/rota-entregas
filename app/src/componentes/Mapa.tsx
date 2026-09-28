@@ -5,6 +5,7 @@ import {contar, entregarTodas, entregueAqui, marcarEntregue, posicionar, seguirM
 import {haversine, RAIO_BLOCO} from '../logica/geo';
 import {agruparPorEndereco} from '../logica/otimizacao';
 import {empilhar} from '../logica/pinos';
+import {avisoXarope} from '../logica/reclamacoes';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import type {Parada, Ponto} from '../logica/tipos';
@@ -110,7 +111,8 @@ export default function Mapa() {
     const z = m.getZoom();
     const pilhas = empilhar(comLocal, q => m.project([q.lat, q.lng], z), q => ondeNaRota(q.id) ?? 1e6);
     const desenho = [
-      pilhas.map(g => g.ps.map(p => [p.id, p.lat, p.lng, p.entregue, p.adiada, p.precisao, p.area, p.stop, p.adicional, p.unidades, rotuloDe(p), p.texto, p.exibido, p.ml].join(',')).join(';')).join('/'),
+      pilhas.map(g => g.ps.map(p => [p.id, p.lat, p.lng, p.entregue, p.adiada, p.precisao, p.area, p.stop, p.adicional, p.unidades, rotuloDe(p), p.texto, p.exibido, p.ml,
+        (p.reclamacoes || []).map(r => r.motivo).join('+')].join(',')).join(';')).join('/'),
       e.inicio && [e.inicio.lat, e.inicio.lng, e.inicio.exibido].join(','),
       e.fim && [e.fim.lat, e.fim.lng, e.fim.exibido].join(','),
       e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0)).join('|'),
@@ -146,7 +148,9 @@ export default function Mapa() {
         const so = g.ps.length === 1;
         const rotulo = (p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p)) + (so ? '' : `+${g.ps.length - 1}`);
         const duvidosa = g.ps.some(x => DUVIDA.has(x.precisao)) ? 'duvida' : g.ps.some(x => QUASE.has(x.precisao)) ? 'quase' : '';
-        const borda = [duvidosa, proxima && g.ps.some(x => x.id === proxima) ? 'alvo' : ''].filter(Boolean).join(' ');
+        // "Cliente xarope" (pedido de 28/09): o pino já chega com outra cor, antes de ele tocar
+        const xarope = g.ps.some(x => !x.entregue && x.reclamacoes?.length);
+        const borda = [duvidosa, proxima && g.ps.some(x => x.id === proxima) ? 'alvo' : '', xarope ? 'xarope' : ''].filter(Boolean).join(' ');
         const naRota = (x: Parada) => x.entregue ? '✓' : x.adiada ? '⏸' : rotuloDe(x);
         const noApp = (x: Parada) => [
           x.stop ? `parada <b>${esc(x.stop)}</b>` : x.adicional ? 'sem parada (<b>ADS</b>, adicional)' : '',
@@ -180,21 +184,24 @@ export default function Mapa() {
             ? `<button data-acao="aqui" data-ids="${ids(abertas)}">📍 Entreguei aqui${abertas.length > 1 ? ` as ${abertas.length}` : ''}</button>`
             : `<span class="popum">📍 Entreguei aqui, só a:</span>${enderecos.map(en =>
               `<button class="so" data-acao="aqui" data-ids="${ids(en.ps)}">${esc(en.ps.map(rotuloDe).join('+'))}</button>`).join('')}`;
-        const confirmada = abertas.length < pendentes.length ? '<span class="popum">🤝 Porta confirmada. Se estiver errada, arrume em 2. Conferir.</span>' : '';
+        const confirmada = abertas.length < pendentes.length ? '<span class="popum">✓ Endereço verificado. Se estiver errado, arrume em 2. Conferir.</span>' : '';
         const botoes = !pendentes.length ? '' : aqui
           + `<button data-acao="entregue" data-ids="${esc(chave)}">✓ Entreguei${pendentes.length > 1 ? ` as ${pendentes.length}` : ''}</button>`
           + arrumar + confirmada;
         const acoes = naRotaDeHoje
           ? botoes && `<div class="popacoes">${botoes}</div>`
           : '<br><small>Para corrigir: 2. Conferir → Marcar no mapa.</small>';
-        const popup = (so
+        // tocou no pino de outra cor: a primeira coisa do balão é por quê
+        const xaropes = [...new Set(g.ps.filter(x => x.reclamacoes?.length).map(x =>
+          `<div class="popxarope" data-xarope>⚠️ ${so ? '' : esc(rotuloDe(x)) + ' · '}${esc(avisoXarope(x.reclamacoes))}</div>`))].join('');
+        const popup = xaropes + (so
           ? `${uma(p)}<br><small>${esc(p.exibido)}</small>`
           : `<b>${g.ps.length} entregas neste ponto</b><br>${g.ps.map(x => uma(x)).join('<br>')}`) + acoes;
-        const balao = balaoDoGrupo({
+        const balao = ((xarope ? '⚠️ ' : '') + balaoDoGrupo({
           stops: [...new Set(pendentes.map(x => x.stop).filter(Boolean) as string[])].sort((a, b) => +a - +b),
           adicionais: pendentes.filter(x => x.adicional).length,
           pacotes: pendentes.reduce((n, x) => n + (x.unidades || 1), 0),
-        });
+        })).trim();
         const sig = [p.lat, p.lng, rotulo, cor, apagado, borda, popup, balao].join('|');
         const antes = pinos.current[chave];
         if (antes && antes.sig === sig) continue;

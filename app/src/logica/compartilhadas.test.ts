@@ -14,13 +14,20 @@ describe('posições de outros motoristas', () => {
   it('confirmada por 2 motoristas: aplica sozinha e guarda a de antes como opção', () => {
     const p = parada('a|1');
     expect(aplicar([p], [pos('a|1', 'confirmado')])).toEqual({confirmadas: 1, sugestoes: 0, minhas: 0});
-    expect(p).toMatchObject({lat: -11.04, lng: -37.10, precisao: 'confirmado', exibido: 'Posição confirmada por 2 motoristas'});
+    expect(p).toMatchObject({lat: -11.04, lng: -37.10, precisao: 'confirmado', exibido: 'Endereço verificado por 2 motoristas'});
     expect(p.candidatos[0]).toMatchObject({lat: -10.90, precisao: 'planilha', fonte: 'original'});
   });
   it('posição confirmada pelas entregas feitas no local diz de onde veio', () => {
     const p = parada('a|1');
     aplicar([p], [pos('a|1', 'confirmado', {fonte: 'entrega', motoristas: 0, entregas: 2})]);
-    expect(p.exibido).toBe('Posição confirmada por 2 entrega(s) feitas aqui');
+    expect(p.exibido).toBe('Endereço verificado: 2 entregas feitas aqui');
+    expect(p.precisao).toBe('confirmado');
+  });
+  // Pedido de 28/09, "igual o Mercado Livre faz": uma entrega feita no pino já verifica o endereço.
+  it('uma entrega só, feita no pino, já verifica o endereço', () => {
+    const p = parada('a|1');
+    aplicar([p], [pos('a|1', 'confirmado', {fonte: 'entrega', motoristas: 0, entregas: 1})]);
+    expect(p.exibido).toBe('Endereço verificado: já entregaram aqui');
     expect(p.precisao).toBe('confirmado');
   });
   // O "📍 Entreguei aqui" do balão manda correção e passagem no mesmo ponto, e a nuvem confirma
@@ -28,12 +35,12 @@ describe('posições de outros motoristas', () => {
   it('confirmada por um motorista na porta, com a entrega feita ali', () => {
     const p = parada('a|1');
     aplicar([p], [pos('a|1', 'confirmado', {fonte: 'correcao', motoristas: 1, entregas: 1})]);
-    expect(p.exibido).toBe('Posição confirmada por outro motorista, na porta');
+    expect(p.exibido).toBe('Endereço verificado por outro motorista, na porta');
   });
   it('correção do administrador vale como confirmada', () => {
     const p = parada('a|1');
     aplicar([p], [pos('a|1', 'confirmado', {motoristas: 1})]);
-    expect(p.exibido).toBe('Posição confirmada por quem administra');
+    expect(p.exibido).toBe('Endereço verificado por quem administra');
   });
   it('de 1 motorista só: não move, vira sugestão com a distância', () => {
     const p = parada('a|1');
@@ -67,18 +74,21 @@ describe('posições de outros motoristas', () => {
 });
 
 describe('a posição que o próprio motorista arrumou', () => {
-  it('volta para ele em outro aparelho, mesmo sem ninguém mais ter confirmado', () => {
+  // Volta, mas não como "verificado": ninguém entregou ali. Chamar de verificada travava os
+  // botões de arrumar na Rota e fazia a Conferir perguntar "já está verificado?" à toa.
+  it('volta para ele em outro aparelho, mesmo sem ninguém mais ter confirmado, como corrigida por ele', () => {
     const p = parada('a|1');
     const r = aplicar([p], [pos('a|1', 'sugestao', {minha: true})]);
     expect(r).toEqual({confirmadas: 0, sugestoes: 0, minhas: 1});
-    expect(p).toMatchObject({lat: -11.04, lng: -37.10, precisao: 'confirmado', exibido: 'Posição que você mesmo arrumou aqui'});
+    expect(p).toMatchObject({lat: -11.04, lng: -37.10, precisao: 'lembrado', exibido: 'Posição que você mesmo arrumou aqui'});
     expect(p.sugestao).toBeUndefined();
   });
 
   it('não vira recado de "outro motorista confirmou"', () => {
     const p = parada('a|1');
     aplicar([p], [pos('a|1', 'confirmado', {minha: true})]);
-    expect(p.exibido).toBe('Posição que você mesmo arrumou aqui');
+    expect(p.exibido).toBe('Endereço verificado (marcado por você)');
+    expect(p.precisao).toBe('confirmado');
   });
 
   it('a de outro motorista continua sendo só sugestão enquanto não confirma', () => {

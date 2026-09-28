@@ -119,6 +119,7 @@ async function importarPlanilhas(files: Blob[]) {
   const comp = await consultarCompartilhadas();
   resumo.confirmadas = comp.confirmadas;
   resumo.sugestoes = comp.sugestoes;
+  resumo.xaropes = comp.xaropes;
   return resumo;
 }
 

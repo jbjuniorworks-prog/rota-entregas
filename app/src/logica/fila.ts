@@ -1,7 +1,9 @@
-import {CHAVES, type Guarda} from './guarda';
+﻿import {CHAVES, type Guarda} from './guarda';
 import type {ItemPlanilha} from './planilha';
 import type {PosicaoCompartilhada} from './compartilhadas';
+import type {ReclamacaoDaNuvem} from './reclamacoes';
 import {chaveLugar} from './texto';
+import type {MotivoReclamacao} from './tipos';
 import type {LinhaDeUso} from './uso';
 
 export interface PacoteNuvem {
@@ -22,10 +24,12 @@ export type Operacao =
   | {tipo: 'entregue'; rota: string; tns: string[]; quando: string | null}
   | {tipo: 'correcao'; chave: string; lat: number; lng: number}
   | {tipo: 'desfazerCorrecao'; chave: string; lat: number; lng: number}
-  | {tipo: 'observacao'; chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string}
+  | {tipo: 'observacao'; chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string; noPino?: boolean}
   | {tipo: 'lugar'; nomeChave: string; nome: string; cidade: string; lat: number; lng: number; endereco: string}
   | {tipo: 'registro'; rota: string; semRuas: string | null; itens: ItemRegistro[]}
-  | {tipo: 'uso'; dia: string; linhas: LinhaDeUso[]};
+  | {tipo: 'uso'; dia: string; linhas: LinhaDeUso[]}
+  | {tipo: 'reclamacao'; chave: string; motivo: MotivoReclamacao}
+  | {tipo: 'tirarReclamacao'; chave: string; motivo: MotivoReclamacao};
 
 export interface ItemRegistro {
   tn: string;
@@ -55,12 +59,15 @@ export interface ClienteNuvem {
   marcarEntregue(rotaId: string, tns: string[], quando: string | null): Promise<void>;
   inserirCorrecao(chave: string, lat: number, lng: number): Promise<void>;
   apagarCorrecao(chave: string, lat: number, lng: number): Promise<void>;
-  inserirObservacao(o: {chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string}): Promise<void>;
+  inserirObservacao(o: {chave: string; lat: number; lng: number; precisao: number; endereco: string; rua: string; ruaChave: string; noPino?: boolean}): Promise<void>;
   inserirLugar(l: {nomeChave: string; nome: string; cidade: string; lat: number; lng: number; endereco: string}): Promise<void>;
   registrar(rotaId: string, semRuas: string | null, itens: ItemRegistro[]): Promise<void>;
   contarUso(dia: string, linhas: LinhaDeUso[]): Promise<void>;
   lugaresConhecidos(palavras: string[], cidade: string): Promise<LugarConhecido[]>;
   posicoes(chaves: string[]): Promise<PosicaoCompartilhada[]>;
+  inserirReclamacao(chave: string, motivo: MotivoReclamacao): Promise<void>;
+  tirarReclamacao(chave: string, motivo: MotivoReclamacao): Promise<void>;
+  reclamacoes(chaves: string[]): Promise<ReclamacaoDaNuvem[]>;
 }
 
 export const FILA_MAX = 3000;
@@ -110,6 +117,10 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
         await c.registrar(id, op.semRuas, op.itens);
       } else if (op.tipo === 'uso') {
         await c.contarUso(op.dia, op.linhas);
+      } else if (op.tipo === 'reclamacao') {
+        await c.inserirReclamacao(op.chave, op.motivo);
+      } else if (op.tipo === 'tirarReclamacao') {
+        await c.tirarReclamacao(op.chave, op.motivo);
       } else {
         await c.apagarCorrecao(op.chave, op.lat, op.lng);
       }

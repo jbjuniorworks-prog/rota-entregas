@@ -4,7 +4,7 @@ export const ROTULO: Record<Precisao, string> = {
   exato: 'Número encontrado',
   planilha: 'Posição da planilha',
   lembrado: 'Corrigida por você antes',
-  confirmado: 'Confirmada por outros motoristas',
+  confirmado: 'Endereço verificado',
   longe: 'Longe das outras entregas — confira o pino',
   bairro: 'Posição pelo bairro — confira no local',
   aproximada: 'Posição aproximada da planilha — confira o pino',

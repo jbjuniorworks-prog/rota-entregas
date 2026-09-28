@@ -1,4 +1,5 @@
 ﻿import {aplicarCompartilhadas} from '../logica/compartilhadas';
+import {aplicarReclamacoes} from '../logica/reclamacoes';
 import {haversine, marcarIsoladas} from '../logica/geo';
 import {avisoGuardou} from '../logica/memoria';
 import {chaveCidade, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
@@ -8,27 +9,30 @@ import {foraDaRegiao} from '../servicos/geocodificacao';
 import {clienteNuvem} from '../servicos/nuvem';
 import {desatualizarRota, e, enviarFila, fila, memoria, ui} from './base';
 
-export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number}> {
-  const zero = {confirmadas: 0, sugestoes: 0, minhas: 0};
+export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number; xaropes: number}> {
+  const saida = {confirmadas: 0, sugestoes: 0, minhas: 0, xaropes: 0};
   const c = clienteNuvem();
-  if (!c) return zero;
+  if (!c) return saida;
   const chaveDe = (p: Parada) => chaveLugar(p.texto, p.bairro, e().cidade);
   const chaves = [...new Set(e().paradas.filter(p => !p.entregue).map(chaveDe).filter((k): k is string => !!k))];
-  if (!chaves.length) return zero;
+  if (!chaves.length) return saida;
   try {
-    const r = aplicarCompartilhadas(e().paradas, await c.posicoes(chaves), chaveDe);
-    if (r.confirmadas || r.minhas) desatualizarRota();
-    loja.mudou();
-    return r;
-  } catch {
-    return zero;
-  }
+    Object.assign(saida, aplicarCompartilhadas(e().paradas, await c.posicoes(chaves), chaveDe));
+    if (saida.confirmadas || saida.minhas) desatualizarRota();
+  } catch {}
+  // Separada da de cima: sem a 018 rodada ela falha, e as posições têm de chegar mesmo assim.
+  try {
+    saida.xaropes = aplicarReclamacoes(e().paradas, await c.reclamacoes(chaves), chaveDe);
+  } catch {}
+  loja.mudou();
+  return saida;
 }
 
-export function avisoCompartilhadas(r: {confirmadas: number; sugestoes: number; minhas?: number}): string {
-  return (r.confirmadas ? ` 🤝 ${r.confirmadas} com posição confirmada por outros motoristas.` : '')
+export function avisoCompartilhadas(r: {confirmadas: number; sugestoes: number; minhas?: number; xaropes?: number}): string {
+  return (r.confirmadas ? ` ✓ ${r.confirmadas} com endereço verificado por outros motoristas.` : '')
     + (r.minhas ? ` ✍️ ${r.minhas} com a posição que você mesmo já arrumou.` : '')
-    + (r.sugestoes ? ` 💡 ${r.sugestoes} com sugestão de outro motorista: veja em Conferir.` : '');
+    + (r.sugestoes ? ` 💡 ${r.sugestoes} com sugestão de outro motorista: veja em Conferir.` : '')
+    + (r.xaropes ? ` ⚠️ ${r.xaropes} de cliente xarope: veja o pino antes de entregar.` : '');
 }
 
 export function usarSugestao(p: Parada) {
@@ -48,27 +52,35 @@ export function guardarNome(p: Parada, lat: number, lng: number) {
   });
 }
 
+// Entrega marcada com o GPS a até isto do pino que ele seguia: o pino estava certo, e a nuvem
+// dá o endereço como verificado com essa entrega só (017). É o mesmo raio de "mesmo ponto" dela.
+export const NO_PINO = 30;
+
 function enfileirarPassagem(p: Parada, chave: string, lat: number, lng: number, precisao: number) {
   const rua = decompor(p.texto).rua;
+  const noPino = p.lat != null && p.lng != null && haversine(p as Ponto, {lat, lng}) <= NO_PINO;
   fila.enfileirar({
     tipo: 'observacao', chave, lat: +lat.toFixed(6), lng: +lng.toFixed(6), precisao: Math.round(precisao),
     endereco: p.texto.slice(0, 300), rua: rua.slice(0, 200), ruaChave: chaveRua(rua).slice(0, 200),
+    ...(noPino ? {noPino: true} : {}),
   });
 }
 
 export function guardarPassagens(ps: Parada[]) {
-  if (!navigator.geolocation) return;
   const alvos = ps.map(p => ({p, chave: chaveLugar(p.texto, p.bairro, e().cidade)})).filter((x): x is {p: Parada; chave: string} => !!x.chave);
   if (!alvos.length) return;
-  navigator.geolocation.getCurrentPosition(pos => {
-    const {latitude, longitude, accuracy} = pos.coords;
-    if (accuracy > GPS_PASSAGEM || foraDaRegiao({lat: latitude, lng: longitude})) return;
+  // Pela mesma porta do "Estou aqui": com o mapa da Rota aberto o GPS já está sendo seguido, e um
+  // pedido novo pode ficar sem resposta até estourar o prazo. Pedindo sempre de novo, a passagem
+  // de quem entregava com o mapa aberto se perdia calada — achado no teste do "no pino", 28/09.
+  // Sem aviso de "Pegando sua localização": o da próxima entrega é que importa agora.
+  comMinhaPosicao((lat, lng, precisao) => {
+    if (precisao > GPS_PASSAGEM || foraDaRegiao({lat, lng})) return;
     for (const {p, chave} of alvos) {
-      guardarNome(p, latitude, longitude);
-      enfileirarPassagem(p, chave, latitude, longitude, accuracy);
+      guardarNome(p, lat, lng);
+      enfileirarPassagem(p, chave, lat, lng, precisao);
     }
     enviarFila();
-  }, () => {}, {enableHighAccuracy: true, timeout: 10000, maximumAge: 5000});
+  }, () => {}, '');
 }
 
 export const guardarPassagem = (p: Parada) => guardarPassagens([p]);
@@ -80,7 +92,7 @@ export const guardarPassagem = (p: Parada) => guardarPassagens([p]);
 // (lembrete do Luan). Arrumar uma confirmada é só para porta que está errada.
 export function podeMexer(p: Parada): boolean {
   if (p.precisao !== 'confirmado') return true;
-  return confirm(`Este endereço já está confirmado:
+  return confirm(`Este endereço já está verificado:
 
 ${p.exibido}
 
@@ -228,7 +240,7 @@ export function comMinhaPosicao(
   const meu = ui.euAqui;
   if (meu && Date.now() - meu.quando < NA_PORTA) { usar(meu.lat, meu.lng, meu.precisao); return; }
   if (!navigator.geolocation) { semGps('este navegador não dá acesso ao GPS.'); return; }
-  status(esperando);
+  if (esperando) status(esperando);
   navigator.geolocation.getCurrentPosition(
     pos => usar(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
     err => semGps(err.code === 1 ? 'permissão negada. Libere a localização para este site.' : err.message),

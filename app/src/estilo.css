@@ -120,6 +120,14 @@ details.feitas summary{color:var(--mut);font-size:14px;font-weight:600}
 /* com mais de uma entrega no mesmo pino, cada uma ganha o seu botão, pelo número da rota */
 .popacoes .popum{flex:1 1 100%;margin-top:2px;font-size:13px;font-weight:600;color:var(--mut)}
 .popacoes button.so{flex:0 0 auto;min-width:52px}
+/* "cliente xarope": um círculo escuro em volta do pino, que não é cor de área nem de dúvida
+   (vermelho) nem da próxima (azul). O aviso usa a mesma cor, para ligar um ao outro de relance. */
+.pino.xarope{box-shadow:0 0 0 3px #fff,0 0 0 7px #111827,0 1px 4px rgba(0,0,0,.4)}
+.pino.alvo.xarope{box-shadow:0 0 0 3px #fff,0 0 0 7px #111827,0 0 0 12px rgba(29,78,216,.5)}
+.aviso.xarope,.popxarope{background:#111827;color:#fff;border-color:#111827;font-weight:600}
+.popxarope{margin:0 0 6px;padding:6px 8px;border-radius:8px;font-size:13px}
+.xarope-linha{color:#111827;font-weight:700}
+.marcar-xarope{margin:6px 0 4px;padding:8px;border-radius:10px;background:#f3f4f6}
 /* o número na aba ⚙️ Admin: o que espera decisão dele, visto sem entrar lá */
 .selo{display:inline-block;min-width:18px;margin-left:5px;padding:0 5px;border-radius:99px;background:var(--bad);color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center;vertical-align:1px}
 .leaflet-tooltip.balao{background:#111827;color:#fff;border:0;border-radius:6px;padding:1px 5px;font-size:11px;font-weight:700;box-shadow:none}

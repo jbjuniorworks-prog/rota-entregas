@@ -39,6 +39,17 @@ export interface Parada {
   entregueEm?: number | null;
   adiada?: boolean;
   sugestao?: {lat: number; lng: number; distancia: number | null};
+  // "cliente xarope": já reclamou de pacote jogado ou deixado com vizinho (018)
+  reclamacoes?: Reclamacao[];
+}
+
+export type MotivoReclamacao = 'jogado' | 'vizinho';
+
+export interface Reclamacao {
+  motivo: MotivoReclamacao;
+  quando: string;
+  // só a sua dá para tirar: o banco não deixa um motorista apagar a marcação do outro
+  minha: boolean;
 }
 
 export interface Area {

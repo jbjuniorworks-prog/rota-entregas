@@ -7,7 +7,7 @@ import {mesmoEndereco} from '../logica/texto';
 import type {Area, Parada, Ponto, RotaArea} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
 import {rotuloDe} from '../logica/rotulo';
-import {BotaoResetar, hhmm, Meta, Tag} from './comuns';
+import {AvisoXarope, BotaoResetar, hhmm, MarcarXarope, Meta, Tag} from './comuns';
 
 function ConfigInicio() {
   const {e, ui} = useLoja();
@@ -46,20 +46,27 @@ function ConfigInicio() {
 }
 
 function LinhaParada({p, comWaze}: {p: Parada; comWaze: boolean}) {
+  const {ui} = useLoja();
   const a = loja.area(p.area);
-  return <div className={`parada ${p.entregue ? 'feito' : ''}`} data-item={p.id}>
-    <div className="badge" style={{background: a.cor}}>{rotuloDe(p)}</div>
-    <div className="txt" onClick={() => A.focar(p.id)}>
-      <div className="end">{p.texto}</div><Meta p={p} />
-      {(DUVIDA.has(p.precisao) || QUASE.has(p.precisao)) && <Tag p={p} />}
-      {p.sugestao && !p.entregue && <div className="achado">💡 Outro motorista sugere outro lugar: veja em 2. Conferir</div>}
+  return <>
+    <div className={`parada ${p.entregue ? 'feito' : ''}`} data-item={p.id}>
+      <div className="badge" style={{background: a.cor}}>{rotuloDe(p)}</div>
+      <div className="txt" onClick={() => A.focar(p.id)}>
+        <div className="end">{p.texto}</div><Meta p={p} />
+        {(DUVIDA.has(p.precisao) || QUASE.has(p.precisao)) && <Tag p={p} />}
+        {p.reclamacoes?.length ? <div className="achado xarope-linha">⚠️ Cliente xarope</div> : null}
+        {p.sugestao && !p.entregue && <div className="achado">💡 Outro motorista sugere outro lugar: veja em 2. Conferir</div>}
+      </div>
+      {comWaze && !p.entregue && <a className="btn peq waze" href={linkWaze(p as Ponto)} target="_blank" rel="noopener" aria-label="Waze">🧭</a>}
+      {!p.entregue && !p.adiada && loja.e.rota && <button className="btn peq" aria-label="Deixar para depois" title="Deixar para depois" onClick={() => A.deixarParaDepois(p)}>⏸</button>}
+      {/* a reclamação costuma chegar depois de entregue: é na entrega feita que se marca */}
+      {p.entregue && <button className="btn peq" aria-label="Cliente xarope" title="Cliente reclamou" onClick={() => A.abrirXarope(p)}>⚠️</button>}
+      {p.entregue
+        ? <button className="btn peq" aria-label="Desfazer" onClick={() => A.marcarEntregue(p, false)}>↺</button>
+        : <button className="btn peq ok" aria-label="Entregue" onClick={() => A.marcarEntregue(p, true)}>✓</button>}
     </div>
-    {comWaze && !p.entregue && <a className="btn peq waze" href={linkWaze(p as Ponto)} target="_blank" rel="noopener" aria-label="Waze">🧭</a>}
-    {!p.entregue && !p.adiada && loja.e.rota && <button className="btn peq" aria-label="Deixar para depois" title="Deixar para depois" onClick={() => A.deixarParaDepois(p)}>⏸</button>}
-    {p.entregue
-      ? <button className="btn peq" aria-label="Desfazer" onClick={() => A.marcarEntregue(p, false)}>↺</button>
-      : <button className="btn peq ok" aria-label="Entregue" onClick={() => A.marcarEntregue(p, true)}>✓</button>}
-  </div>;
+    {ui.xarope === p.id && <MarcarXarope p={p} />}
+  </>;
 }
 
 
@@ -135,6 +142,8 @@ export function TelaRota() {
         {pacotesAqui > 1 && <span className="etiqueta">📦 {pacotesAqui} pacotes{enderecosAqui > 1 ? ` · ${enderecosAqui} endereços` : ''}</span>}
         {juntas && <span className="etiqueta">{pend.length} entregas {mesmoEndereco(agora.b.map(id => loja.parada(id)!.texto)) ? 'no mesmo endereço' : 'aqui perto'}</span>}
       </div>
+      {/* antes dos botões: é o que ele precisa saber antes de descer da moto */}
+      <AvisoXarope p={pend.find(x => x.reclamacoes?.length) || alvo} />
       <div className="acoes">
         <a className="btn waze" href={linkWaze(alvo as Ponto)} target="_blank" rel="noopener">🧭 Waze</a>
         <button className="btn ok" onClick={() => juntas ? A.entregarTodas(pend) : A.marcarEntregue(alvo, true)}>✓ Entreguei{juntas ? ` as ${pend.length}` : ''}</button>
@@ -149,7 +158,7 @@ export function TelaRota() {
       </div>)}</div>}
       {/* porta confirmada não se arruma na rua: pedido deles, contra o toque sem querer */}
       <div className="info linha-peq">{alvo.precisao === 'confirmado'
-        ? <span data-confirmada>🤝 Porta confirmada. Se estiver errada, arrume em 2. Conferir.</span>
+        ? <span data-confirmada>✓ Endereço verificado. Se estiver errado, arrume em 2. Conferir.</span>
         : <>Pino errado? <button className="btn peq" onClick={() => A.estouAqui(alvo)}>📍 Estou aqui</button></>}
         <a className="btn peq" href={linkMaps(alvo as Ponto)} target="_blank" rel="noopener">Google Maps</a>
         {agora.b.length === 1 && <button className="btn peq" onClick={() => A.deixarParaDepois(alvo)}>⏸ Depois</button>}</div>

@@ -244,6 +244,9 @@ describe('fila da nuvem', () => {
       async registrar() {},
       async contarUso(dia, linhas) { if (falhas.recusar) throw new ErroNuvem(falhas.recusar, false); chamadas.push(`uso ${dia} ${linhas.map(l => `${l.botao}|${l.antes}=${l.vezes}`).join(' ')}`); },
       async posicoes() { return []; },
+      async inserirReclamacao(k, m) { if (falhas.recusar) throw new ErroNuvem(falhas.recusar, false); chamadas.push(`xarope ${k} ${m}`); },
+      async tirarReclamacao(k, m) { chamadas.push(`tirar xarope ${k} ${m}`); },
+      async reclamacoes() { return []; },
     };
     return {c, chamadas};
   }
@@ -321,6 +324,23 @@ describe('fila da nuvem', () => {
     await f.enviar(c);
     expect(f.erro()).toBe('');
   });
+
+  // Marcou "cliente xarope" e desfez sem sinal: as duas saem na ordem em que ele tocou, senão a
+  // marcação desfeita reapareceria para todo mundo.
+  it('marcar e tirar cliente xarope saem na ordem', async () => {
+    const f = criarFila(guardaNaMemoria()), {c, chamadas} = servidor();
+    f.enfileirar({tipo: 'reclamacao', chave: 'x|1', motivo: 'vizinho'}, {tipo: 'tirarReclamacao', chave: 'x|1', motivo: 'vizinho'});
+    await f.enviar(c);
+    expect(chamadas).toEqual(['xarope x|1 vizinho', 'tirar xarope x|1 vizinho']);
+  });
+
+  // É trabalho dele, não medição nossa: recusado (a 018 não rodou), tem de aparecer.
+  it('cliente xarope recusado pelo servidor fica registrado', async () => {
+    const f = criarFila(guardaNaMemoria()), {c} = servidor({recusar: 'relation "reclamacoes" does not exist'});
+    f.enfileirar({tipo: 'reclamacao', chave: 'x|1', motivo: 'jogado'});
+    await f.enviar(c);
+    expect(f.erro()).toContain('reclamacoes');
+  });
 });
 
 describe('desfazer correção já enviada', () => {
@@ -336,6 +356,9 @@ describe('desfazer correção já enviada', () => {
       registrar: async () => {},
       contarUso: async () => {},
       posicoes: async () => [],
+      inserirReclamacao: async () => {},
+      tirarReclamacao: async () => {},
+      reclamacoes: async () => [],
     };
     f.enfileirar({tipo: 'correcao', chave: 'k|1', lat: -11.5, lng: -37.5});
     await f.enviar(c);
