@@ -164,6 +164,11 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 
 ## Ideias, não compromissos
 
+- **"↺ Voltar para a posição de antes" no cartão da Conferir** (proposto em 29/09). Hoje o
+  desfazer de uma correção só vive 10 s na barra de aviso; depois, o motorista que arrumou o pino
+  errado tem de arrumar de novo, e a correção errada continua na nuvem até o dono apagar no Admin.
+  Guardar a posição de antes na parada, durante o dia, e voltar tirando a correção da nuvem.
+
 - **Tirar o "Esquecer todas" de Endereços > Posições que você corrigiu** (proposto em 28/09,
   esperando o dono). Ele apaga só a memória do celular, sem desfazer, e as correções voltam da
   nuvem na próxima rota carregada com internet: hoje quase não faz o que diz. O texto ao lado
