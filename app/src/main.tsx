@@ -6,7 +6,8 @@ import {TelaConferir} from './componentes/TelaConferir';
 import {TelaEnderecos} from './componentes/TelaEnderecos';
 import {TelaEntrar} from './componentes/Conta';
 import {TelaRota} from './componentes/TelaRota';
-import {useLoja, type Aba} from './loja';
+import {loja, useLoja, type Aba} from './loja';
+import {rotuloDe} from './logica/rotulo';
 import {nuvem} from './servicos/nuvem';
 
 const Mapa = lazy(() => import('./componentes/Mapa'));
@@ -62,7 +63,16 @@ function depoisDeAparecer(fazer: () => void) {
   else setTimeout(fazer, 300);
 }
 
-const ABAS: [Aba, string][] = [['enderecos', '1. Endereços'], ['conferir', '2. Conferir'], ['rota', '3. Rota']];
+// Diz qual pino o próximo toque no mapa vai mudar, até ele tocar ou cancelar.
+function Armado({alvo}: {alvo: string}) {
+  const p = alvo === 'fim' ? null : loja.parada(alvo);
+  return <div className="armado" data-armado>
+    <span>{p ? `📍 Toque no mapa, no local da entrega ${rotuloDe(p)} · ${p.texto.split(',').slice(0, 2).join(',')}.` : '📍 Toque no mapa, onde você quer terminar.'}</span>
+    <button className="btn peq" onClick={A.pararDePosicionar}>Cancelar</button>
+  </div>;
+}
+
+const ABAS: [Aba, string][] =[['enderecos', '1. Endereços'], ['conferir', '2. Conferir'], ['rota', '3. Rota']];
 
 function App() {
   const {ui} = useLoja();
@@ -118,7 +128,8 @@ function App() {
       <div id="painel">
         <nav>{abas.map(([id, nome]) => <button key={id} className={ui.aba === id ? 'on' : ''} onClick={() => A.irPara(id)}>{nome}
           {id === 'admin' && ui.esperandoAdmin > 0 && <span className="selo" data-selo aria-label={`${ui.esperandoAdmin} esperando você`}>{ui.esperandoAdmin}</span>}</button>)}</nav>
-        <div id="status" className={ui.aviso ? 'on' : ''}>{ui.aviso}
+        <div id="status" className={ui.aviso || ui.posicionando ? 'on' : ''}>
+          {ui.posicionando && <Armado alvo={ui.posicionando} />}{ui.aviso}
           {ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>↺ Desfazer</button></>}</div>
         <div id="conteudo" ref={conteudo} onScroll={ev => { rolagem.current[ui.aba] = (ev.target as HTMLDivElement).scrollTop; }}>
           {ui.aba === 'enderecos' && <TelaEnderecos />}

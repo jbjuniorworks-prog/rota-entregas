@@ -143,6 +143,58 @@ test.describe('agir pelo pino, na aba Rota', () => {
     await expect(aviso(page)).toContainText('Toque no mapa, no local da entrega');
   });
 
+  // Leudy, 29/09: tocou em Arrumar, entregou pelo ✓, e meio minuto depois um toque no mapa levou
+  // o pino da entrega feita para o mato — e a nuvem recebeu aquilo como correção dela.
+  const posicaoDaProxima = (page) => page.evaluate(() => {
+    const e = JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}');
+    const t = document.querySelector('.proxima .endereco')!.textContent;
+    const p = e.paradas.find((x: any) => x.texto === t);
+    return {id: p.id, lat: p.lat, lng: p.lng};
+  });
+  const posicaoDe = (page, id: string) => page.evaluate(i => {
+    const p = JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas.find((x: any) => x.id === i);
+    return {lat: p.lat, lng: p.lng, entregue: !!p.entregue};
+  }, id);
+
+  test('entregar depois de tocar em Arrumar desarma: o toque seguinte no mapa não leva o pino', async ({page}) => {
+    const {carregar, montar, garantirMapa, clicarMapa, ROTA_A} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await garantirMapa(page);
+    const antes = await posicaoDaProxima(page);
+
+    await page.locator('.pino.alvo').click();
+    await page.locator('.leaflet-popup [data-acao=arrumar]').first().click();
+    await page.locator('.proxima').getByRole('button', {name: /✓ Entreguei/}).click();
+    await expect.poll(async () => (await posicaoDe(page, antes.id)).entregue).toBe(true);
+    await expect(page.locator('[data-armado]')).toHaveCount(0);
+
+    await clicarMapa(page, antes.lat + 0.001, antes.lng + 0.001);
+    expect(await posicaoDe(page, antes.id)).toEqual({lat: antes.lat, lng: antes.lng, entregue: true});
+  });
+
+  test('armado, o aviso fica na tela e diz qual pino; Cancelar desarma', async ({page}) => {
+    const {carregar, montar, garantirMapa, clicarMapa, ROTA_A} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await garantirMapa(page);
+    const antes = await posicaoDaProxima(page);
+    const rua = (await page.locator('.proxima .endereco').innerText()).split(',')[0];
+
+    await page.locator('.pino.alvo').click();
+    await page.locator('.leaflet-popup [data-acao=arrumar]').first().click();
+    // o aviso antigo sumia em 4 s, e o modo seguia armado sem nada na tela
+    await page.waitForTimeout(5000);
+    await expect(page.locator('[data-armado]')).toContainText(rua);
+
+    await page.locator('[data-armado]').getByRole('button', {name: 'Cancelar'}).click();
+    await expect(page.locator('[data-armado]')).toHaveCount(0);
+    await clicarMapa(page, antes.lat + 0.001, antes.lng + 0.001);
+    expect(await posicaoDe(page, antes.id)).toEqual({lat: antes.lat, lng: antes.lng, entregue: false});
+  });
+
   // Print de 28/09: pino arrumado na Conferir e, na Rota, o balão ainda dizia "Para corrigir:
   // 2. Conferir", sem o Entreguei. O balão só era refeito quando alguma parada mudava — trocar
   // de aba não contava.

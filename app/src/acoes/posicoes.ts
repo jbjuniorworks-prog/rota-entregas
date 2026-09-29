@@ -107,10 +107,14 @@ export function posicionar(alvo: string) {
   if (p && !podeMexer(p)) return;
   ui.posicionando = ui.posicionando === alvo ? null : alvo;
   loja.mudou(false);
-  if (ui.posicionando) {
-    status(alvo === 'fim' ? 'Toque no mapa, onde você quer terminar.' : 'Toque no mapa, no local da entrega.', 4000);
-    if (window.innerWidth < 900) window.scrollTo(0, 0);
-  }
+  // O aviso de "toque no mapa" sai do próprio ui.posicionando (main.tsx), e fica enquanto o modo
+  // estiver armado: como aviso de 4 s, o modo continuava valendo sem nada na tela.
+  if (ui.posicionando && window.innerWidth < 900) window.scrollTo(0, 0);
+}
+
+export function pararDePosicionar() {
+  ui.posicionando = null;
+  loja.mudou(false);
 }
 
 export function tocouNoMapa(lat: number, lng: number) {

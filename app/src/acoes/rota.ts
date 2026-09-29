@@ -111,6 +111,10 @@ export async function montarRota() {
 export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = true, comGps = true) {
   p.entregue = entregue;
   p.entregueEm = entregue ? Date.now() : null;
+  // Tocou em Arrumar e entregou sem tocar no mapa: o modo ficava armado, e o toque seguinte no
+  // mapa, até para fechar o balão, levava o pino da entrega feita para onde o dedo caiu. Com a
+  // Leudy, 29/09: a porta que o GPS guardou na entrega foi para o mato meio minuto depois.
+  if (entregue && ui.posicionando === p.id) ui.posicionando = null;
   loja.mudou();
   if (entregue && avisarProxima && e().rota) {
     const proxima = e().rota!.areas.flatMap(a => a.ordem).map(loja.parada).find(x => x && !x.entregue && x.lat != null);
