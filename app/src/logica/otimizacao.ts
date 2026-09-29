@@ -1,5 +1,5 @@
 import {haversine, MESMO_LUGAR, PERTO_A_PE, RAIO_BLOCO, RAIO_VISITA} from './geo';
-import {chaveEndereco, mesmoEndereco, mesmoLugarNomeado} from './texto';
+import {chaveEndereco, mesmaPortaPeloNome, mesmoEndereco} from './texto';
 import type {Local, Parada, Ponto} from './tipos';
 
 export type Matriz = number[][];
@@ -96,7 +96,7 @@ export function agruparVisitas(ps: (Parada & Ponto)[], raio = RAIO_VISITA): Visi
       const d = haversine(x.ponto, p);
       if (d <= raio) return true;
       if (chave && x.chave === chave) return d <= PERTO_A_PE;
-      return d <= MESMO_LUGAR && (mesmoEndereco([x.ps[0].texto, p.texto]) || mesmoLugarNomeado(x.ps[0], p));
+      return d <= MESMO_LUGAR && (mesmoEndereco([x.ps[0].texto, p.texto]) || mesmaPortaPeloNome(x.ps[0], p));
     });
     if (v) v.ps.push(p);
     else out.push({ponto: {lat: p.lat, lng: p.lng}, chave, ps: [p]});

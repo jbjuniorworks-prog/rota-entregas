@@ -30,6 +30,16 @@ describe('empilhar pinos', () => {
     expect(ids(empilhar(ps, tela(0.1)))).toEqual([['condoA', 'condoB']]);
   });
 
+  // Pedro, 29/09: arrumou uma, entregou, e o mapa a desenhou de volta no pino da outra rua.
+  // Pausada ela aparecia no lugar certo, porque pausada não empilha com pendente.
+  it('casas do mesmo conjunto em ruas diferentes não viram um pino', () => {
+    const ps = [
+      parada('gerson', 'Rua das Acácias, 284, Conjunto Solar Verde', 0),
+      parada('rollemberg', 'Rua dos Ipês, 22, Conjunto: Solar Verde', 106),
+    ];
+    expect(ids(empilhar(ps, tela(0.5)))).toEqual([['gerson'], ['rollemberg']]);
+  });
+
   it('longe um do outro, junta quando o zoom afasta e separa quando aproxima', () => {
     const ps = [
       parada('a', 'Rua A, 10, Casa', 0),

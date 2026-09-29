@@ -486,7 +486,9 @@ const LUGAR_GENERICO = new Set([
   'sorveteria', 'papelaria', 'floricultura', 'petshop', 'conveniencia', 'estacionamento', 'condominios',
 ]);
 
-const SO_REFERENCIA = /(perto|proxim[oa]|frente|defronte|atras|referencia|ref|depois|antes|fica)/;
+// Até 29/09 os dois \b estavam gravados como o caractere de controle backspace, e a expressão não
+// casava com nada: "próximo ao cond. X" contava como morar no X, e juntava pinos de ruas diferentes.
+const SO_REFERENCIA = /\b(perto|proxim[oa]|frente|defronte|atras|referencia|ref|depois|antes|fica)\b/;
 
 export function pistasDeLugar(texto: string, bairro = ''): string[] {
   const d = decompor(analisarLinha(texto).texto);
@@ -529,6 +531,18 @@ export function mesmoLugarNomeado(a: {texto: string; bairro?: string}, b: {texto
     const na = blocoDoLugar(a.texto, w), nb = blocoDoLugar(b.texto, w);
     return !na || !nb || na === nb;
   });
+}
+
+// O nome junta a porta só com o mesmo número. Com número igual e rua diferente é o prédio de
+// esquina, ou a rua que mudou de nome (São Lourenço 3548, Champs Elysees 1500). Com número
+// diferente é outra casa do mesmo conjunto ou loteamento, que aqui tem ruas e é quase um bairro:
+// o Pedro arrumou a Francisco Rollemberg 22 e o mapa a desenhou de volta na Gerson Martins 284,
+// as duas "Conjunto Orlando Dantas" a 106 m (29/09). Medido nas planilhas de 20 a 29/09: das 60
+// junções pelo nome, as de número igual eram todas o mesmo prédio.
+export function mesmaPortaPeloNome(a: {texto: string; bairro?: string}, b: {texto: string; bairro?: string}): boolean {
+  const na = decompor(analisarLinha(a.texto).texto).numero, nb = decompor(analisarLinha(b.texto).texto).numero;
+  if (na && nb && na.replace(/\D/g, '') !== nb.replace(/\D/g, '')) return false;
+  return mesmoLugarNomeado(a, b);
 }
 
 export const semTipoDeArea = (nome: string): string => normal(nome).replace(AREA, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();

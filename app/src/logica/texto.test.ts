@@ -1,4 +1,4 @@
-import {coordenadaNoTexto, semLink, chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, normal, pistasDeLugar, ruaCompleta} from './texto';
+import {coordenadaNoTexto, semLink, chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, mesmaPortaPeloNome, normal, pistasDeLugar, ruaCompleta} from './texto';
 
 describe('mesmo condomínio, endereços diferentes', () => {
   const p = (texto: string, bairro = 'Jardins') => ({texto, bairro});
@@ -29,8 +29,22 @@ describe('mesmo condomínio, endereços diferentes', () => {
     expect(mesmoLugarNomeado(p('Rua E, 23, Franco Freire I'), p('Rua E, 264, Residencial Franco Freire 2'))).toBe(false);
   });
 
+  // A regra das referências nunca rodou até 29/09: o \b dela estava gravado como backspace.
+  it('"próximo ao condomínio X" é referência, não é morar no X', () => {
+    expect(pistasDeLugar('Rua A, 62, Proximo ao cond. Solar Verdejante', 'Jardins')).toEqual([]);
+    expect(mesmoLugarNomeado(p('Rua B, 108, Conjunto Solar Verdejante'), p('Rua A, 62, Proximo ao cond. Solar Verdejant'))).toBe(false);
+  });
+
   it('nome de comércio usado como referência não junta', () => {
     expect(mesmoLugarNomeado(p('Rua A, 741, Mercearia Kibarato'), p('Rua A, 105, perto Mercearia ki barato'))).toBe(false);
+  });
+
+  // Pedro, 29/09: duas casas do mesmo conjunto, em ruas diferentes, desenhadas num pino só.
+  it('pelo nome, só é a mesma porta com o mesmo número', () => {
+    expect(mesmaPortaPeloNome(p('Rua das Acácias, 284, Conjunto Solar Verde'), p('Rua dos Ipês, 22, Conjunto: Solar Verde'))).toBe(false);
+    expect(mesmaPortaPeloNome(p('Avenida das Flores, 1500, Ed Villa Sorrento a'), p('Rua do Poeta, 1500, Apt 704 edificio Villa Sorento'))).toBe(true);
+    // sem número de um lado, o nome é a única pista que sobra
+    expect(mesmaPortaPeloNome(p('Avenida das Flores, S/N, Ed Villa Sorrento'), p('Rua do Poeta, 1500, edificio Villa Sorento'))).toBe(true);
   });
 
   it('instrução de horário não é nome de lugar', () => {

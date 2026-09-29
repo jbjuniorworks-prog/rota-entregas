@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 28/09/2026.
+Atualizado em 29/09/2026.
 
 ## Falha viva
 
@@ -105,6 +105,13 @@ Atualizado em 28/09/2026.
 
 ## Fechado com medição
 
+- **O nome do conjunto juntava casas de ruas diferentes num pino só.** Pedro, 29/09: duas casas
+  do "Conjunto Orlando Dantas", a 106 m, desenhadas no mesmo ponto. Ele arrumava uma, e o mapa a
+  punha de volta na outra. Nas planilhas de 20 a 29/09 (1353 endereços), a regra do nome fazia
+  69 junções. Nove saíram porque a regra de "perto de / próximo a" nunca tinha rodado: o `\b` dela
+  estava gravado como backspace. Outras 25 saíram porque agora o nome só junta com o mesmo número.
+  As 35 que ficaram são todas o mesmo prédio. A única junção certa que se perdeu é a entrada dos
+  fundos de um edifício, que tem outro número e fica a 109 m, e ela é mesmo outra porta.
 - **O censo recusava a porta em rua de um bairro só** — e era a maior perda do dia. Medido na
   gravação de 26/09 (58 paradas do Meli, Jardins e Grageru): com internet, 18 paradas na porta,
   36 só na rua e 9 em lugar nenhum. O `ruaDoIbge` só respondia quando o nome da rua se repetia em
