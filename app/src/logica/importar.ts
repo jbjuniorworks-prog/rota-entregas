@@ -30,10 +30,15 @@ export function adicionarDaPlanilha(
   e: Estado, itens: ItemPlanilha[], aplicarMemoria: (p: Parada) => boolean, agora = Date.now(),
 ): {resumo: ResumoPlanilha; rotaDe: (it: ItemPlanilha) => string} {
   const existentes = new Set(e.paradas.map(x => chaveEndereco(x.texto)));
+  // O código do pacote não muda quando o endereço muda. Só pelo texto, a parada editada (ou a que
+  // o link colado deixava sem texto) não achava par na releitura e entrava de novo: dois pinos da
+  // mesma entrega, e ele teve de apagar um (29/09).
+  const pacotesNaRota = new Set(e.paradas.flatMap(x => x.pacotes || []));
   const desta = new Map<string, Parada>();
   const r: ResumoPlanilha = {novas: 0, juntas: 0, repetidas: 0, semPosicao: 0, longe: 0, lembradas: 0, noBairro: 0, aproximadas: 0, numeros: 0, confirmadas: 0, sugestoes: 0};
   const rotaDe = (it: ItemPlanilha) => it.at || `${it.arquivo}:${agora}`;
   for (const it of itens) {
+    if (it.tn && pacotesNaRota.has(it.tn)) { r.repetidas++; continue; }
     const chave = chaveEndereco(it.texto);
     const ja = desta.get(chave);
     if (ja) {

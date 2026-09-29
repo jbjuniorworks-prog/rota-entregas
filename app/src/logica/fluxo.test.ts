@@ -34,6 +34,19 @@ describe('importar planilha', () => {
     expect(resumo.novas).toBe(0);
     expect(resumo.repetidas).toBe(12);
   });
+  // 29/09: o endereço de uma parada mudou (Editar, ou o link colado que apagava o texto) e a
+  // planilha foi lida de novo. Pelo texto a linha não achava par e entrava outra vez: dois pinos
+  // da mesma entrega, e ele teve de apagar um. O código do pacote não muda com o endereço.
+  it('a mesma planilha de novo não duplica a parada cujo endereço foi editado', () => {
+    const e = estadoVazio();
+    adicionarDaPlanilha(e, A, () => false);
+    const d = e.paradas.find(p => p.texto.startsWith('Rua D, 49'))!;
+    expect(d.pacotes!.length, 'a planilha de teste traz o código do pacote').toBeGreaterThan(0);
+    d.texto = 'Rua Dê Corrigida, 49';
+    const {resumo} = adicionarDaPlanilha(e, A, () => false);
+    expect(resumo.novas).toBe(0);
+    expect(e.paradas.filter(p => p.pacotes!.some(tn => d.pacotes!.includes(tn)))).toEqual([d]);
+  });
   it('texto colado ignora repetidos, inclusive pelo número do app', () => {
     const e = estadoVazio();
     expect(adicionarLinhas(e, ['18 Rua A, 10', '18 Rua A, 10', 'Rua B Longa, 20'])).toMatchObject({novas: 2, repetidas: 1});
