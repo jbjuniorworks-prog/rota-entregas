@@ -373,13 +373,15 @@ test('colar só o link no Editar mantém o endereço, põe na porta e guarda', a
 });
 
 // O dono chega com a porta copiada do Google Maps porque o censo não tem aquela rua. Consertar
-// uma parada que já está na lista é pelo "Editar" — colar o link ali tinha de valer igual.
-test('colar o link do mapa no Editar põe a parada na porta, e guarda', async ({page}) => {
-  page.on('dialog', d => d.accept('Avenida Deputado Sílvio Teixeira 200, Jardins, CEP 49025-400 '
+// uma parada que já está na lista é pelo "Editar" — colar o link ali tinha de valer igual. E o
+// link arruma a posição, não o nome do pino (29/09): o texto que vier junto com ele não troca o
+// endereço — aqui, o título do lugar que o Google copia junto.
+test('colar o link do mapa no Editar põe a parada na porta, guarda, e não troca o endereço', async ({page}) => {
+  page.on('dialog', d => d.accept('Auto Peças Qualquer Coisa, 999 '
     + 'https://www.google.com/maps/place/x/@-10.9436597,-37.0553986,17z/data=!3m1!4b1!8m2!3d-10.943665!4d-37.0528237'));
   await abrir(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
-  await page.getByLabel(/Endereços da área/).fill('Avenida Deputado Sílvio Teixeira 200');
+  await page.getByLabel(/Endereços da área/).fill('Avenida Deputado Sílvio Teixeira 200, CEP 49025-400');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
   // sem rede no teste, essa rua não tem como ser achada — é justamente o caso do link colado
   await expect(aviso(page)).toContainText(/Pronto!|falharam/, {timeout: 30_000});
@@ -395,5 +397,5 @@ test('colar o link do mapa no Editar põe a parada na porta, e guarda', async ({
   expect(onde.lat).toBeCloseTo(-10.943665, 6);
   expect(onde.lng).toBeCloseTo(-37.0528237, 6);
   expect(onde.precisao).toBe('manual');
-  expect(onde.texto, 'o link sai do endereço').not.toContain('http');
+  expect(onde.texto, 'o endereço é o de antes, não o texto colado junto com o link').toBe('Avenida Deputado Sílvio Teixeira 200, CEP 49025-400');
 });

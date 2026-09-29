@@ -1,8 +1,8 @@
-import {operacoesDaPlanilha} from '../logica/fila';
+﻿import {operacoesDaPlanilha} from '../logica/fila';
 import {haversine, marcarIsoladas, mediana, moverParaOBairro} from '../logica/geo';
 import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from '../logica/importar';
 import {CORES, DA_PLANILHA} from '../logica/rotulos';
-import {coordenadaNoTexto, decompor, extrairEnderecos, semLink} from '../logica/texto';
+import {coordenadaNoTexto, decompor, extrairEnderecos} from '../logica/texto';
 import type {Parada} from '../logica/tipos';
 import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
@@ -215,19 +215,17 @@ export async function adicionarTexto(texto: string) {
 }
 
 export async function editar(p: Parada) {
-  const novo = prompt('Corrija o endereço (dá para colar o link do mapa junto):', p.texto);
+  const novo = prompt('Corrija o endereço, ou cole o link do mapa para arrumar só a posição:', p.texto);
   if (novo == null || !novo.trim()) return;
   // Consertar uma parada que já está na lista é por aqui, não por "Adicionar": colar o link no
   // Editar tinha de valer igual, senão a coordenada que ele foi buscar no mapa não tem porta de
   // entrada nenhuma para o que já foi lido.
   const coord = coordenadaNoTexto(novo);
   if (coord) {
-    // Colar só o link, apagando o endereço (é assim que se cola num campo de texto), deixava a
-    // parada sem nome e sem chave: a porta não ficava guardada nem ia para os outros (29/09).
-    // Sem texto além do link, o endereço de antes fica e só a posição muda.
-    const texto = semLink(novo).trim();
-    if (texto) p.texto = texto;
-    loja.mudou();
+    // O link é para arrumar a posição, não o nome do pino (29/09): o endereço fica como estava,
+    // com ou sem texto em volta do link — como já faz o link colado em Endereços. Antes o que
+    // sobrava virava o endereço, e colar só o link deixava a parada sem nome e sem chave para
+    // guardar a porta.
     corrigirPosicao(p, coord.lat, coord.lng, 'Local colado do mapa', 'Local que você colou do mapa');
     focar(p.id);
     return;
