@@ -222,7 +222,11 @@ export async function editar(p: Parada) {
   // entrada nenhuma para o que já foi lido.
   const coord = coordenadaNoTexto(novo);
   if (coord) {
-    p.texto = semLink(novo).trim();
+    // Colar só o link, apagando o endereço (é assim que se cola num campo de texto), deixava a
+    // parada sem nome e sem chave: a porta não ficava guardada nem ia para os outros (29/09).
+    // Sem texto além do link, o endereço de antes fica e só a posição muda.
+    const texto = semLink(novo).trim();
+    if (texto) p.texto = texto;
     loja.mudou();
     corrigirPosicao(p, coord.lat, coord.lng, 'Local colado do mapa', 'Local que você colou do mapa');
     focar(p.id);

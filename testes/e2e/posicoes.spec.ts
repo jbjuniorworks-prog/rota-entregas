@@ -355,6 +355,23 @@ test('endereço sem CEP nem bairro guarda a porta marcada, com o bairro que a bu
   expect(onde.lng).toBeCloseTo(-37.06460, 5);
 });
 
+// Print de 29/09: no Editar ele apagou o endereço e colou só o link, que é o jeito natural de colar
+// num campo de texto. A parada ficou sem nome — "#70 ·" e mais nada — e, sem endereço, sem chave:
+// a porta que ele foi buscar no mapa não ficou guardada nem foi para os outros motoristas.
+test('colar só o link no Editar mantém o endereço, põe na porta e guarda', async ({page}) => {
+  const LINK = 'https://www.google.com/maps/place/x/@-10.90,-37.10,13z/data=!3m1!4b1!8m2!3d-10.9571234!4d-37.0512345';
+  page.on('dialog', d => d.type() === 'prompt' ? d.accept(LINK) : d.dismiss());
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await aba(page, '2. Conferir');
+  await linhaDe(page, RUA_D, 'Editar').getByRole('button', {name: 'Editar'}).click();
+  await expect(aviso(page)).toContainText('Local colado do mapa');
+  await expect(aviso(page)).toContainText('guardado para as próximas rotas');
+  const p = await page.evaluate(t => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.startsWith(t)), RUA_D);
+  expect(p, 'o endereço continua na parada').toBeTruthy();
+  expect({lat: p.lat, lng: p.lng, precisao: p.precisao}).toEqual({lat: -10.9571234, lng: -37.0512345, precisao: 'manual'});
+});
+
 // O dono chega com a porta copiada do Google Maps porque o censo não tem aquela rua. Consertar
 // uma parada que já está na lista é pelo "Editar" — colar o link ali tinha de valer igual.
 test('colar o link do mapa no Editar põe a parada na porta, e guarda', async ({page}) => {
