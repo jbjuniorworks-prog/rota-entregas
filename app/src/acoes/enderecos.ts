@@ -1,5 +1,5 @@
 ﻿import {operacoesDaPlanilha} from '../logica/fila';
-import {haversine, marcarIsoladas, mediana, moverParaOBairro} from '../logica/geo';
+import {discordaDoCenso, haversine, marcarDiscordaDoCenso, marcarIsoladas, mediana, moverParaOBairro} from '../logica/geo';
 import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from '../logica/importar';
 import {CORES, DA_PLANILHA} from '../logica/rotulos';
 import {coordenadaNoTexto, decompor, extrairEnderecos} from '../logica/texto';
@@ -8,6 +8,7 @@ import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
 import {carregarAncorasDeCep} from '../servicos/base';
 import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from '../servicos/geocodificacao';
+import {enderecoDoIbge} from '../servicos/ibge';
 import {desatualizarRota, e, enviarFila, fila, invalidarRota, irPara, memoria, ui} from './base';
 import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, focar} from './posicoes';
 import {registrarComoFicou} from './registro';
@@ -110,12 +111,28 @@ async function levarAoBairroPeloMapa(): Promise<number> {
   return n;
 }
 
+// Antes da nuvem: a porta que alguém já entregou passa por cima deste aviso.
+async function conferirComOCenso(): Promise<number> {
+  let n = 0;
+  for (const p of e().paradas) {
+    if (p.precisao !== 'planilha' || p.entregue) continue;
+    const d = decompor(p.texto);
+    if (!d.cep || !d.numero) continue;
+    let censo = null;
+    try { censo = await enderecoDoIbge(d.cep, d.numero, e().cidade, true); } catch {}
+    const metros = discordaDoCenso(p, censo);
+    if (metros != null) { marcarDiscordaDoCenso(p as Parada & {lat: number; lng: number}, censo!, metros); n++; }
+  }
+  return n;
+}
+
 async function importarPlanilhas(files: Blob[]) {
   const itens = await lerPlanilhas(files);
   const {resumo, rotaDe} = adicionarDaPlanilha(e(), itens, p => memoria.aplicar(p));
   fila.enfileirar(...operacoesDaPlanilha(itens, rotaDe, e().cidade));
   enviarFila();
   resumo.noBairro += await levarAoBairroPeloMapa();
+  resumo.censo = await conferirComOCenso();
   const comp = await consultarCompartilhadas();
   resumo.confirmadas = comp.confirmadas;
   resumo.sugestoes = comp.sugestoes;

@@ -5,8 +5,8 @@
 export const LONGE_DA_ANCORA = 3000;
 
 import {DA_PLANILHA} from './rotulos';
-import {decompor, normal} from './texto';
-import type {Parada, Ponto} from './tipos';
+import {decompor, mesmaRua, normal} from './texto';
+import type {Candidato, Parada, Ponto} from './tipos';
 
 export const RAIO_BLOCO = 10;
 export const RAIO_VISITA = 25;
@@ -81,6 +81,30 @@ export function marcarNumerosIncoerentes(paradas: Parada[]): number {
   }
   marcadas.forEach(p => { p.precisao = 'numero'; });
   return marcadas.size;
+}
+
+// A planilha às vezes erra a porta por centenas de metros, sem nada que a denuncie: dentro do
+// bairro, perto das outras entregas (Luan, 01/10: 168 m e 773 m). O censo é a segunda opinião,
+// e também erra. Medido em 196 portas confirmadas na entrega com o número exato no censo:
+// com a rua do censo batendo e os dois a mais de 80 m, 10 avisos, que pegam os 6 erros da
+// planilha acima de 100 m. Em 4 o errado era o censo, então nada é trocado sozinho.
+export const CENSO_DISCORDA = 80;
+
+export function discordaDoCenso(p: Parada, censo: Candidato | null): number | null {
+  if (!censo || p.precisao !== 'planilha' || p.entregue || !comPosicao(p)) return null;
+  if (!censo.rua || !mesmaRua(decompor(p.texto).rua, censo.rua)) return null;
+  const d = haversine(p, censo);
+  return d > CENSO_DISCORDA ? d : null;
+}
+
+export function marcarDiscordaDoCenso(p: Parada & Ponto, censo: Candidato, metros: number) {
+  p.precisaoAntes = p.precisao;
+  p.precisao = 'censo';
+  p.exibido = `Posição da planilha: o censo do IBGE põe este número a ${Math.round(metros)} m daqui`;
+  p.candidatos = [
+    {lat: p.lat, lng: p.lng, exibido: 'Deixar onde a planilha pôs (onde o pino está agora)', precisao: 'planilha', fonte: 'planilha'},
+    {...censo, exibido: `Censo do IBGE: ${censo.exibido}`},
+  ];
 }
 
 export function proximaAPe(feita: Parada, proxima: Parada | undefined): number | null {

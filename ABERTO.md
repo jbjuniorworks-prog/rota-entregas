@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 29/09/2026.
+Atualizado em 01/10/2026.
 
 ## Falha viva
 
@@ -168,6 +168,12 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
   diferentes e quase ninguém fazia os dois. Acompanhar no Admin se aparecem portas confirmadas
   erradas. Se aparecerem, o aperto é exigir passagem de **outro** motorista, e aí a porta volta
   a esperar um segundo motorista passar por lá.
+- **Aviso de planilha e censo discordando (01/10).** Medido em 196 portas confirmadas: 10 avisos,
+  com os 6 erros da planilha acima de 100 m entre eles, e 4 em que o errado era o censo. Daqui a
+  uma semana, conferir nas portas entregues dos avisos qual dos dois estava certo, e com que
+  frequência o motorista escolhe o ponto do censo em 2. Conferir. Se o censo acertar quase sempre
+  com a rua batendo, dá para ele virar o pino e a planilha virar a opção. Se o aviso só gerar
+  trabalho, sobe o limite de 80 m.
 
 ## Ideias, não compromissos
 

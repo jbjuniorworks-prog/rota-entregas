@@ -1,9 +1,10 @@
 import {readFileSync} from 'node:fs';
 import XLSX from 'xlsx';
 import {estadoVazio} from './guarda';
-import {marcarIsoladas} from './geo';
+import {discordaDoCenso, marcarDiscordaDoCenso, marcarIsoladas} from './geo';
 import {adicionarDaPlanilha, resumoPlanilha} from './importar';
 import {coordenadaDaPlanilha, itensDaPlanilha} from './planilha';
+import type {Candidato, Parada, Precisao} from './tipos';
 
 const C = (() => {
   const wb = XLSX.read(readFileSync('testes/planilhas/rota-c.xlsx'), {type: 'buffer'});
@@ -62,5 +63,31 @@ describe('planilha com posições fracas (caso do Robalo, 19/09)', () => {
     const {resumo: r} = adicionarDaPlanilha(e2, C.filter(it => !it.texto.includes('Robalo, ') && !/Rua (Norte|Sul) do Robalo/.test(it.texto)), () => false);
     expect(r).toMatchObject({longe: 1, noBairro: 0});
     expect(achar(e2, 'Rua do Robalo Errado').precisao).toBe('longe');
+  });
+});
+
+// Luan, 01/10: a planilha pôs duas portas a 168 m e a 773 m, e o censo tinha as duas certas.
+describe('planilha e censo do IBGE discordando', () => {
+  const parada = (precisao: Precisao = 'planilha') => ({id: 'p', area: 'a', ml: null, texto: 'Rua das Acácias, 109, Jardins, CEP 49000-100',
+    unidades: null, comercial: false, lat: -10.94, lng: -37.06, exibido: 'Posição da planilha', precisao, candidatos: [], entregue: false}) as Parada;
+  const censo = (norte: number, rua = 'Rua das Acácias') => ({lat: -10.94 + norte / 111320, lng: -37.06,
+    exibido: `${rua}, 109 — Jardins`, precisao: 'bom', rua, bairro: 'Jardins', fonte: 'IBGE'}) as Candidato;
+
+  it('avisa e oferece o ponto do censo, sem tirar o pino da planilha', () => {
+    const p = parada();
+    const d = discordaDoCenso(p, censo(170));
+    expect(Math.round(d!)).toBe(170);
+    marcarDiscordaDoCenso(p as Parada & {lat: number; lng: number}, censo(170), d!);
+    expect(p).toMatchObject({lat: -10.94, lng: -37.06, precisao: 'censo'});
+    expect(p.exibido).toContain('170 m');
+    expect(p.candidatos.map(c => c.fonte)).toEqual(['planilha', 'IBGE']);
+  });
+
+  it('perto, com o número em outra rua, ou com posição que não veio só da planilha, não avisa', () => {
+    expect(discordaDoCenso(parada(), censo(60))).toBeNull();
+    // o censo também erra: quando acha o número numa rua de outro nome, não é segunda opinião
+    expect(discordaDoCenso(parada(), censo(500, 'Avenida Beira Mar'))).toBeNull();
+    for (const pr of ['lembrado', 'confirmado', 'manual', 'aproximada', 'longe'] as Precisao[]) expect(discordaDoCenso(parada(pr), censo(500))).toBeNull();
+    expect(discordaDoCenso({...parada(), entregue: true}, censo(500))).toBeNull();
   });
 });
