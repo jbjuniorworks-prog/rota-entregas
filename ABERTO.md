@@ -168,12 +168,12 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
   diferentes e quase ninguém fazia os dois. Acompanhar no Admin se aparecem portas confirmadas
   erradas. Se aparecerem, o aperto é exigir passagem de **outro** motorista, e aí a porta volta
   a esperar um segundo motorista passar por lá.
-- **Aviso de planilha e censo discordando (01/10).** Medido em 196 portas confirmadas: 10 avisos,
-  com os 6 erros da planilha acima de 100 m entre eles, e 4 em que o errado era o censo. Daqui a
-  uma semana, conferir nas portas entregues dos avisos qual dos dois estava certo, e com que
-  frequência o motorista escolhe o ponto do censo em 2. Conferir. Se o censo acertar quase sempre
-  com a rua batendo, dá para ele virar o pino e a planilha virar a opção. Se o aviso só gerar
-  trabalho, sobe o limite de 80 m.
+- **Pino levado da planilha para a porta do censo (01/10).** Isso acontece quando a planilha põe o
+  pino a mais de 80 m do número e a mais de 60 m de qualquer porta da rua no censo. Os dois
+  limites saíram de 10 casos: 6 consertados e 1 que piora (planilha certa, censo errado a 150 m).
+  Os pacotes levados ficam com `precisao = 'censo'` no banco. Daqui a uma semana, comparar a
+  posição deles com a porta onde foram entregues: se piorar mais de 1 em 7, apertar os limites.
+  Também vale olhar quantas vezes o motorista volta para a posição da planilha em 2. Conferir.
 
 ## Ideias, não compromissos
 

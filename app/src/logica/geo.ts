@@ -85,26 +85,29 @@ export function marcarNumerosIncoerentes(paradas: Parada[]): number {
 
 // A planilha às vezes erra a porta por centenas de metros, sem nada que a denuncie: dentro do
 // bairro, perto das outras entregas (Luan, 01/10: 168 m e 773 m). O censo é a segunda opinião,
-// e também erra. Medido em 196 portas confirmadas na entrega com o número exato no censo:
-// com a rua do censo batendo e os dois a mais de 80 m, 10 avisos, que pegam os 6 erros da
-// planilha acima de 100 m. Em 4 o errado era o censo, então nada é trocado sozinho.
+// e também erra, então quem desempata é a rua: as outras portas dela no censo. Medido em 196
+// portas confirmadas na entrega com o número exato no censo e a rua batendo. Com planilha e
+// censo a mais de 80 m, foram 10 casos. Nos 6 em que a planilha errava (91 a 754 m da porta),
+// ela estava a 71 m ou mais de qualquer porta da rua: tinha posto o pino fora dela. Em 3 dos 4 em
+// que a planilha acertava, ela estava a até 50 m de uma porta da rua, e quem errava o número era o
+// censo. Errado com esta regra sobra um: planilha certa a 152 m da porta mais perto no censo.
+// Os dois limites saíram desses 10 casos; o ABERTO.md pede medir de novo.
 export const CENSO_DISCORDA = 80;
+export const FORA_DA_RUA = 60;
 
-export function discordaDoCenso(p: Parada, censo: Candidato | null): number | null {
-  if (!censo || p.precisao !== 'planilha' || p.entregue || !comPosicao(p)) return null;
-  if (!censo.rua || !mesmaRua(decompor(p.texto).rua, censo.rua)) return null;
-  const d = haversine(p, censo);
-  return d > CENSO_DISCORDA ? d : null;
+export function planilhaForaDaRua(p: Parada, porta: Candidato | null, rua: Ponto[]): number | null {
+  if (!porta || p.precisao !== 'planilha' || p.entregue || !comPosicao(p)) return null;
+  if (!porta.rua || !mesmaRua(decompor(p.texto).rua, porta.rua)) return null;
+  const d = haversine(p, porta);
+  if (d <= CENSO_DISCORDA) return null;
+  return Math.min(...rua.map(x => haversine(p, x))) > FORA_DA_RUA ? d : null;
 }
 
-export function marcarDiscordaDoCenso(p: Parada & Ponto, censo: Candidato, metros: number) {
-  p.precisaoAntes = p.precisao;
-  p.precisao = 'censo';
-  p.exibido = `Posição da planilha: o censo do IBGE põe este número a ${Math.round(metros)} m daqui`;
-  p.candidatos = [
-    {lat: p.lat, lng: p.lng, exibido: 'Deixar onde a planilha pôs (onde o pino está agora)', precisao: 'planilha', fonte: 'planilha'},
-    {...censo, exibido: `Censo do IBGE: ${censo.exibido}`},
-  ];
+// A planilha fica como opção em 2. Conferir: em um caso de sete quem errava era o censo.
+export function levarParaAPortaDoCenso(p: Parada & Ponto, porta: Candidato, metros: number) {
+  p.candidatos = [porta, {lat: p.lat, lng: p.lng, exibido: 'A posição que veio na planilha', precisao: 'planilha', fonte: 'planilha'}];
+  Object.assign(p, {lat: porta.lat, lng: porta.lng, precisao: 'censo', fonte: 'IBGE',
+    exibido: `Porta do censo do IBGE: a planilha punha este pino a ${Math.round(metros)} m, fora da rua`});
 }
 
 export function proximaAPe(feita: Parada, proxima: Parada | undefined): number | null {

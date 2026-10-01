@@ -9,7 +9,7 @@ export const ROTULO: Record<Precisao, string> = {
   bairro: 'Posição pelo bairro — confira no local',
   aproximada: 'Posição aproximada da planilha — confira o pino',
   numero: 'Número não bate com a posição — confira',
-  censo: 'A planilha e o censo do IBGE discordam — confira o pino',
+  censo: 'Porta do censo do IBGE',
   bom: 'Prédio encontrado',
   rua: 'Rua certa, número aproximado — confira na porta',
   ruim: 'Impreciso — confira o pino',
@@ -19,18 +19,18 @@ export const ROTULO: Record<Precisao, string> = {
 };
 
 export const COR_PRECISAO: Record<Precisao, string> = {
-  exato: '#16a34a', planilha: '#16a34a', lembrado: '#7c3aed', confirmado: '#0d9488', longe: '#dc2626', bairro: '#dc2626', aproximada: '#dc2626', numero: '#dc2626', censo: '#dc2626',
+  exato: '#16a34a', planilha: '#16a34a', lembrado: '#7c3aed', confirmado: '#0d9488', longe: '#dc2626', bairro: '#dc2626', aproximada: '#dc2626', numero: '#dc2626', censo: '#16a34a',
   bom: '#16a34a', rua: '#ea580c', ruim: '#dc2626', nao: '#dc2626', manual: '#7c3aed', pendente: '#6b7280',
 };
 
 export const RANK: Record<Precisao, number> = {
-  exato: 0, planilha: 0, lembrado: 0, confirmado: 0, manual: 0, bom: 1, rua: 2, bairro: 3, aproximada: 3, numero: 3, censo: 3, longe: 3, ruim: 3.5, nao: 4, pendente: 5,
+  exato: 0, planilha: 0, lembrado: 0, confirmado: 0, manual: 0, bom: 1, rua: 2, bairro: 3, aproximada: 3, numero: 3, censo: 1, longe: 3, ruim: 3.5, nao: 4, pendente: 5,
 };
 
-export const DUVIDA: ReadonlySet<Precisao> = new Set<Precisao>(['ruim', 'nao', 'longe', 'bairro', 'aproximada', 'numero', 'censo']);
+export const DUVIDA: ReadonlySet<Precisao> = new Set<Precisao>(['ruim', 'nao', 'longe', 'bairro', 'aproximada', 'numero']);
 export const QUASE: ReadonlySet<Precisao> = new Set<Precisao>(['rua']);
-export const NO_NUMERO: readonly Precisao[] = ['exato', 'bom', 'manual', 'planilha', 'lembrado', 'confirmado'];
-export const DA_PLANILHA: ReadonlySet<Precisao> = new Set<Precisao>(['planilha', 'aproximada', 'numero', 'censo']);
+export const NO_NUMERO: readonly Precisao[] = ['exato', 'bom', 'censo', 'manual', 'planilha', 'lembrado', 'confirmado'];
+export const DA_PLANILHA: ReadonlySet<Precisao> = new Set<Precisao>(['planilha', 'aproximada', 'numero']);
 
 export const CORES: readonly [nome: string, cor: string, emoji: string][] = [
   ['Verde', '#16a34a', '🟢'], ['Amarelo', '#ca8a04', '🟡'], ['Roxo', '#9333ea', '🟣'],

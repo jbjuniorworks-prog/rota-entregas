@@ -2,7 +2,7 @@
 // Vale menos que a correção do motorista e mais que o mapa aberto, e funciona sem internet.
 // O arquivo é gerado por `npm run cnefe`.
 import {haversine} from '../logica/geo';
-import {chaveBairro, chaveRua, jeitosDeLerBairro, normal, tipoDaRua} from '../logica/texto';
+import {chaveBairro, chaveRua, jeitosDeLerBairro, mesmaRua, normal, tipoDaRua} from '../logica/texto';
 import type {Candidato, Ponto} from '../logica/tipos';
 
 // Um arquivo por cidade: aracaju-v1.bin, nossa-senhora-do-socorro-v1.bin… O mesmo apelido que
@@ -152,6 +152,26 @@ export async function enderecoDoIbge(cep: string, numero: string, cidade: string
     // Mesma régua do `candidatoDaRua`.
     precisao: achado.salto ? 'rua' : 'bom', rua, bairro: bonito(achado.bairro), fonte: 'IBGE',
   };
+}
+
+// A porta do censo e as outras portas da mesma rua ali perto. Para julgar a posição da planilha
+// não basta a porta: a planilha que pôs o pino em cima da rua errou só o número (e às vezes quem
+// erra o número é o censo); a que pôs fora da rua errou o lugar.
+export async function portaDoIbgeComARua(cep: string, numero: string, rua: string, cidade: string):
+  Promise<{porta: Candidato; rua: Ponto[]} | null> {
+  const porta = await enderecoDoIbge(cep, numero, cidade, true);
+  const t = porta && await tabela(cidade);
+  if (!porta || !t) return null;
+  const iRuas = new Set<number>();
+  t.ruas.forEach((nome, k) => { if (mesmaRua(rua, nome)) iRuas.add(k); });
+  const portas: Ponto[] = [];
+  for (let i = 0; i < t.iRua.length; i++) {
+    if (!iRuas.has(t.iRua[i])) continue;
+    const x = {lat: t.lats[i] / 1e6, lng: t.lngs[i] / 1e6};
+    // rua de mesmo nome em outro bairro não diz nada sobre esta
+    if (haversine(x, porta) < 1500) portas.push(x);
+  }
+  return {porta, rua: portas};
 }
 
 // A mesma rua se repete em vários bairros de Aracaju ("Rua Vinte e Cinco" está em quatro).

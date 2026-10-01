@@ -1,5 +1,5 @@
 ﻿import {operacoesDaPlanilha} from '../logica/fila';
-import {discordaDoCenso, haversine, marcarDiscordaDoCenso, marcarIsoladas, mediana, moverParaOBairro} from '../logica/geo';
+import {haversine, levarParaAPortaDoCenso, marcarIsoladas, mediana, moverParaOBairro, planilhaForaDaRua} from '../logica/geo';
 import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from '../logica/importar';
 import {CORES, DA_PLANILHA} from '../logica/rotulos';
 import {coordenadaNoTexto, decompor, extrairEnderecos} from '../logica/texto';
@@ -8,7 +8,7 @@ import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
 import {carregarAncorasDeCep} from '../servicos/base';
 import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from '../servicos/geocodificacao';
-import {enderecoDoIbge} from '../servicos/ibge';
+import {portaDoIbgeComARua} from '../servicos/ibge';
 import {desatualizarRota, e, enviarFila, fila, invalidarRota, irPara, memoria, ui} from './base';
 import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, focar} from './posicoes';
 import {registrarComoFicou} from './registro';
@@ -111,7 +111,7 @@ async function levarAoBairroPeloMapa(): Promise<number> {
   return n;
 }
 
-// Antes da nuvem: a porta que alguém já entregou passa por cima deste aviso.
+// Antes da nuvem: a porta que alguém já entregou passa por cima do censo também.
 async function conferirComOCenso(): Promise<number> {
   let n = 0;
   for (const p of e().paradas) {
@@ -119,10 +119,11 @@ async function conferirComOCenso(): Promise<number> {
     const d = decompor(p.texto);
     if (!d.cep || !d.numero) continue;
     let censo = null;
-    try { censo = await enderecoDoIbge(d.cep, d.numero, e().cidade, true); } catch {}
-    const metros = discordaDoCenso(p, censo);
-    if (metros != null) { marcarDiscordaDoCenso(p as Parada & {lat: number; lng: number}, censo!, metros); n++; }
+    try { censo = await portaDoIbgeComARua(d.cep, d.numero, d.rua, e().cidade); } catch {}
+    const metros = censo && planilhaForaDaRua(p, censo.porta, censo.rua);
+    if (metros) { levarParaAPortaDoCenso(p as Parada & {lat: number; lng: number}, censo!.porta, metros); n++; }
   }
+  if (n) desatualizarRota(true);
   return n;
 }
 

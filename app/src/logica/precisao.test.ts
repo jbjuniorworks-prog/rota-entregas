@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import XLSX from 'xlsx';
 import {estadoVazio} from './guarda';
-import {discordaDoCenso, marcarDiscordaDoCenso, marcarIsoladas} from './geo';
+import {levarParaAPortaDoCenso, marcarIsoladas, planilhaForaDaRua} from './geo';
 import {adicionarDaPlanilha, resumoPlanilha} from './importar';
 import {coordenadaDaPlanilha, itensDaPlanilha} from './planilha';
 import type {Candidato, Parada, Precisao} from './tipos';
@@ -68,26 +68,35 @@ describe('planilha com posições fracas (caso do Robalo, 19/09)', () => {
 
 // Luan, 01/10: a planilha pôs duas portas a 168 m e a 773 m, e o censo tinha as duas certas.
 describe('planilha e censo do IBGE discordando', () => {
+  const NORTE = 1 / 111320, LESTE = 1 / 109300;
   const parada = (precisao: Precisao = 'planilha') => ({id: 'p', area: 'a', ml: null, texto: 'Rua das Acácias, 109, Jardins, CEP 49000-100',
     unidades: null, comercial: false, lat: -10.94, lng: -37.06, exibido: 'Posição da planilha', precisao, candidatos: [], entregue: false}) as Parada;
-  const censo = (norte: number, rua = 'Rua das Acácias') => ({lat: -10.94 + norte / 111320, lng: -37.06,
+  const porta = (norte: number, rua = 'Rua das Acácias') => ({lat: -10.94 + norte * NORTE, lng: -37.06,
     exibido: `${rua}, 109 — Jardins`, precisao: 'bom', rua, bairro: 'Jardins', fonte: 'IBGE'}) as Candidato;
+  // a rua do censo correndo de leste a oeste, 170 m ao norte da planilha
+  const ruaAoNorte = [-100, -50, 0, 50, 100].map(m => ({lat: -10.94 + 170 * NORTE, lng: -37.06 + m * LESTE}));
 
-  it('avisa e oferece o ponto do censo, sem tirar o pino da planilha', () => {
+  it('planilha fora da rua: o pino vai para a porta do censo, e a planilha fica como opção', () => {
     const p = parada();
-    const d = discordaDoCenso(p, censo(170));
+    const d = planilhaForaDaRua(p, porta(170), ruaAoNorte);
     expect(Math.round(d!)).toBe(170);
-    marcarDiscordaDoCenso(p as Parada & {lat: number; lng: number}, censo(170), d!);
-    expect(p).toMatchObject({lat: -10.94, lng: -37.06, precisao: 'censo'});
-    expect(p.exibido).toContain('170 m');
-    expect(p.candidatos.map(c => c.fonte)).toEqual(['planilha', 'IBGE']);
+    levarParaAPortaDoCenso(p as Parada & {lat: number; lng: number}, porta(170), d!);
+    expect(p).toMatchObject({lat: porta(170).lat, lng: -37.06, precisao: 'censo', fonte: 'IBGE'});
+    expect(p.exibido).toContain('170 m, fora da rua');
+    expect(p.candidatos.map(c => [c.fonte, c.lat])).toEqual([['IBGE', porta(170).lat], ['planilha', -10.94]]);
   });
 
-  it('perto, com o número em outra rua, ou com posição que não veio só da planilha, não avisa', () => {
-    expect(discordaDoCenso(parada(), censo(60))).toBeNull();
+  // nos medidos, quem estava em cima da rua e longe do número era o censo errando a numeração
+  it('planilha em cima da rua, longe do número: fica como veio', () => {
+    const ruaComAPlanilha = [...ruaAoNorte, {lat: -10.94 + 30 * NORTE, lng: -37.06}];
+    expect(planilhaForaDaRua(parada(), porta(170), ruaComAPlanilha)).toBeNull();
+  });
+
+  it('perto do número, com o número em outra rua, ou com posição que não veio só da planilha: fica como veio', () => {
+    expect(planilhaForaDaRua(parada(), porta(60), ruaAoNorte)).toBeNull();
     // o censo também erra: quando acha o número numa rua de outro nome, não é segunda opinião
-    expect(discordaDoCenso(parada(), censo(500, 'Avenida Beira Mar'))).toBeNull();
-    for (const pr of ['lembrado', 'confirmado', 'manual', 'aproximada', 'longe'] as Precisao[]) expect(discordaDoCenso(parada(pr), censo(500))).toBeNull();
-    expect(discordaDoCenso({...parada(), entregue: true}, censo(500))).toBeNull();
+    expect(planilhaForaDaRua(parada(), porta(500, 'Avenida Beira Mar'), ruaAoNorte)).toBeNull();
+    for (const pr of ['lembrado', 'confirmado', 'manual', 'aproximada', 'longe'] as Precisao[]) expect(planilhaForaDaRua(parada(pr), porta(500), ruaAoNorte)).toBeNull();
+    expect(planilhaForaDaRua({...parada(), entregue: true}, porta(500), ruaAoNorte)).toBeNull();
   });
 });
