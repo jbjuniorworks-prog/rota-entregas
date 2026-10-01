@@ -154,14 +154,13 @@ export async function enderecoDoIbge(cep: string, numero: string, cidade: string
   };
 }
 
-// A porta do censo e as outras portas da mesma rua ali perto. Para julgar a posição da planilha
-// não basta a porta: a planilha que pôs o pino em cima da rua errou só o número (e às vezes quem
-// erra o número é o censo); a que pôs fora da rua errou o lugar.
-export async function portaDoIbgeComARua(cep: string, numero: string, rua: string, cidade: string):
-  Promise<{porta: Candidato; rua: Ponto[]} | null> {
-  const porta = await enderecoDoIbge(cep, numero, cidade, true);
-  const t = porta && await tabela(cidade);
-  if (!porta || !t) return null;
+// As portas da mesma rua perto de um ponto. Para julgar a posição da planilha não basta a porta
+// do censo: a planilha que pôs o pino em cima da rua errou só o número (e às vezes quem erra o
+// número é o censo); a que pôs fora da rua errou o lugar. Varre o censo inteiro, então só é
+// chamada para quem já discorda da porta.
+export async function portasDaRuaNoIbge(rua: string, perto: Ponto, cidade: string): Promise<Ponto[]> {
+  const t = await tabela(cidade);
+  if (!t) return [];
   const iRuas = new Set<number>();
   t.ruas.forEach((nome, k) => { if (mesmaRua(rua, nome)) iRuas.add(k); });
   const portas: Ponto[] = [];
@@ -169,9 +168,9 @@ export async function portaDoIbgeComARua(cep: string, numero: string, rua: strin
     if (!iRuas.has(t.iRua[i])) continue;
     const x = {lat: t.lats[i] / 1e6, lng: t.lngs[i] / 1e6};
     // rua de mesmo nome em outro bairro não diz nada sobre esta
-    if (haversine(x, porta) < 1500) portas.push(x);
+    if (haversine(x, perto) < 1500) portas.push(x);
   }
-  return {porta, rua: portas};
+  return portas;
 }
 
 // A mesma rua se repete em vários bairros de Aracaju ("Rua Vinte e Cinco" está em quatro).

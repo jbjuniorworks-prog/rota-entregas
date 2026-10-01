@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import XLSX from 'xlsx';
 import {estadoVazio} from './guarda';
-import {levarParaAPortaDoCenso, marcarIsoladas, planilhaForaDaRua} from './geo';
+import {levarParaAPortaDoCenso, levarParaOCenso, marcarIsoladas, planilhaForaDaRua} from './geo';
 import {adicionarDaPlanilha, resumoPlanilha} from './importar';
 import {coordenadaDaPlanilha, itensDaPlanilha} from './planilha';
 import type {Candidato, Parada, Precisao} from './tipos';
@@ -98,5 +98,37 @@ describe('planilha e censo do IBGE discordando', () => {
     expect(planilhaForaDaRua(parada(), porta(500, 'Avenida Beira Mar'), ruaAoNorte)).toBeNull();
     for (const pr of ['lembrado', 'confirmado', 'manual', 'aproximada', 'longe'] as Precisao[]) expect(planilhaForaDaRua(parada(pr), porta(500), ruaAoNorte)).toBeNull();
     expect(planilhaForaDaRua({...parada(), entregue: true}, porta(500), ruaAoNorte)).toBeNull();
+  });
+
+  // Repassado em 24 planilhas reais: os que pioravam eram destes dois tipos.
+  it('rua de nome genérico e condomínio de casas ficam como vieram; prédio sozinho, não', () => {
+    const com = (texto: string) => ({...parada(), texto});
+    // "Rua B1" tem em vários loteamentos: o censo achava outra, a 1,5 km
+    expect(planilhaForaDaRua(com('Rua B1, 109, Lot. Aquarius, Jardins, CEP 49000-100'), porta(500, 'Rua B1'), ruaAoNorte)).toBeNull();
+    // no condomínio a entrega é na portaria, e o censo põe o número lá dentro
+    for (const c of ['Cond. Solar casa 18', 'Residencial Solar', 'Bloco G 002 apartamento', 'Ap301 BL10', 'Casa 21'])
+      expect(planilhaForaDaRua(com(`Rua das Acácias, 109, ${c}, Jardins, CEP 49000-100`), porta(170), ruaAoNorte)).toBeNull();
+    expect(planilhaForaDaRua(com('Rua das Acácias, 109, Edificio Solar apt 04, Jardins, CEP 49000-100'), porta(170), ruaAoNorte)).not.toBeNull();
+    expect(planilhaForaDaRua(com('Rua das Acácias, 109, Casa, Jardins, CEP 49000-100'), porta(170), ruaAoNorte)).not.toBeNull();
+  });
+
+  it('o mesmo número decide junto, e as portas da rua só são buscadas para quem discorda', async () => {
+    let ruas = 0;
+    const censo = {
+      porta: async (cep: string, numero: string) => numero === '109' ? porta(170) : {...porta(10), rua: 'Rua dos Ipês'},
+      rua: async () => { ruas++; return ruaAoNorte; },
+    };
+    const ps = [
+      {...parada(), id: 'a', texto: 'Rua das Acácias, 109, Jardins, CEP 49000-100'},
+      {...parada(), id: 'b', texto: 'Rua das Acácias, 109, Casa 3, Jardins, CEP 49000-100'},
+      {...parada(), id: 'c', texto: 'Rua dos Ipês, 20, Jardins, CEP 49000-200'},
+    ];
+    // a casa 3 diz que o 109 é um condomínio: nenhuma das duas vai, para não ficar metade em cada pino
+    expect(await levarParaOCenso(ps, 'Aracaju', censo)).toEqual([]);
+    // o 20 está a 10 m da porta do censo: não precisou das portas da rua
+    expect(ruas).toBe(0);
+    const sozinha = [{...parada(), id: 'a'}];
+    expect((await levarParaOCenso(sozinha, 'Aracaju', censo)).map(p => p.id)).toEqual(['a']);
+    expect(ruas).toBe(1);
   });
 });

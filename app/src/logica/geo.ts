@@ -5,7 +5,7 @@
 export const LONGE_DA_ANCORA = 3000;
 
 import {DA_PLANILHA} from './rotulos';
-import {decompor, mesmaRua, normal} from './texto';
+import {chaveLugar, decompor, emCondominio, mesmaRua, normal, ruaGenerica} from './texto';
 import type {Candidato, Parada, Ponto} from './tipos';
 
 export const RAIO_BLOCO = 10;
@@ -92,14 +92,27 @@ export function marcarNumerosIncoerentes(paradas: Parada[]): number {
 // que a planilha acertava, ela estava a até 50 m de uma porta da rua, e quem errava o número era o
 // censo. Errado com esta regra sobra um: planilha certa a 152 m da porta mais perto no censo.
 // Os dois limites saíram desses 10 casos; o ABERTO.md pede medir de novo.
+// Repassado depois em 24 planilhas reais (1572 paradas), contra o GPS de cada entrega. Os que
+// pioravam eram de dois tipos, e ficam de fora:
+// - rua de nome genérico, como "Rua B1" ou "Rua Onze": o censo achava outra rua de mesmo nome, e
+//   o pino pulava de 1,5 a 6 km;
+// - condomínio de casas ou blocos: veja `emCondominio`.
 export const CENSO_DISCORDA = 80;
 export const FORA_DA_RUA = 60;
 
-export function planilhaForaDaRua(p: Parada, porta: Candidato | null, rua: Ponto[]): number | null {
+// Primeira metade, sem as outras portas da rua: a planilha longe da porta que o censo dá.
+export function discordaDaPorta(p: Parada, porta: Candidato | null): number | null {
   if (!porta || p.precisao !== 'planilha' || p.entregue || !comPosicao(p)) return null;
-  if (!porta.rua || !mesmaRua(decompor(p.texto).rua, porta.rua)) return null;
+  const daPlanilha = decompor(p.texto).rua;
+  if (ruaGenerica(daPlanilha) || emCondominio(p.texto)) return null;
+  if (!porta.rua || !mesmaRua(daPlanilha, porta.rua)) return null;
   const d = haversine(p, porta);
-  if (d <= CENSO_DISCORDA) return null;
+  return d > CENSO_DISCORDA ? d : null;
+}
+
+export function planilhaForaDaRua(p: Parada, porta: Candidato | null, rua: Ponto[]): number | null {
+  const d = discordaDaPorta(p, porta);
+  if (d == null || !comPosicao(p)) return null;
   return Math.min(...rua.map(x => haversine(p, x))) > FORA_DA_RUA ? d : null;
 }
 
@@ -108,6 +121,39 @@ export function levarParaAPortaDoCenso(p: Parada & Ponto, porta: Candidato, metr
   p.candidatos = [porta, {lat: p.lat, lng: p.lng, exibido: 'A posição que veio na planilha', precisao: 'planilha', fonte: 'planilha'}];
   Object.assign(p, {lat: porta.lat, lng: porta.lng, precisao: 'censo', fonte: 'IBGE',
     exibido: `Porta do censo do IBGE: a planilha punha este pino a ${Math.round(metros)} m, fora da rua`});
+}
+
+export interface Censo {
+  porta: (cep: string, numero: string, cidade: string) => Promise<Candidato | null>;
+  // cara: varre o censo inteiro, então só vai para quem já discorda da porta
+  rua: (rua: string, perto: Ponto, cidade: string) => Promise<Ponto[]>;
+}
+
+// O mesmo número decide junto. Com complementos diferentes (o bloco, a casa), metade num pino e
+// metade no outro seria pior que qualquer um dos dois.
+export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: Censo): Promise<Parada[]> {
+  const porLugar = new Map<string, Parada[]>();
+  for (const p of paradas) {
+    if (p.precisao !== 'planilha' || p.entregue) continue;
+    const k = chaveLugar(p.texto, p.bairro, cidade);
+    if (k) porLugar.set(k, [...(porLugar.get(k) || []), p]);
+  }
+  const levadas: Parada[] = [];
+  for (const ps of porLugar.values()) {
+    if (ps.some(p => emCondominio(p.texto))) continue;
+    const d = decompor(ps[0].texto);
+    if (!d.cep || !d.numero || ruaGenerica(d.rua)) continue;
+    try {
+      const porta = await censo.porta(d.cep, d.numero, cidade);
+      if (!porta || !ps.some(p => discordaDaPorta(p, porta) != null)) continue;
+      const rua = await censo.rua(d.rua, porta, cidade);
+      for (const p of ps) {
+        const metros = planilhaForaDaRua(p, porta, rua);
+        if (metros) { levarParaAPortaDoCenso(p as Parada & Ponto, porta, metros); levadas.push(p); }
+      }
+    } catch {}
+  }
+  return levadas;
 }
 
 export function proximaAPe(feita: Parada, proxima: Parada | undefined): number | null {

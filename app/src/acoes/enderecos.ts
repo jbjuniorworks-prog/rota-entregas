@@ -1,5 +1,5 @@
 ﻿import {operacoesDaPlanilha} from '../logica/fila';
-import {haversine, levarParaAPortaDoCenso, marcarIsoladas, mediana, moverParaOBairro, planilhaForaDaRua} from '../logica/geo';
+import {haversine, levarParaOCenso, marcarIsoladas, mediana, moverParaOBairro} from '../logica/geo';
 import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from '../logica/importar';
 import {CORES, DA_PLANILHA} from '../logica/rotulos';
 import {coordenadaNoTexto, decompor, extrairEnderecos} from '../logica/texto';
@@ -8,7 +8,7 @@ import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
 import {carregarAncorasDeCep} from '../servicos/base';
 import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from '../servicos/geocodificacao';
-import {portaDoIbgeComARua} from '../servicos/ibge';
+import {enderecoDoIbge, portasDaRuaNoIbge} from '../servicos/ibge';
 import {desatualizarRota, e, enviarFila, fila, invalidarRota, irPara, memoria, ui} from './base';
 import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, focar} from './posicoes';
 import {registrarComoFicou} from './registro';
@@ -113,18 +113,10 @@ async function levarAoBairroPeloMapa(): Promise<number> {
 
 // Antes da nuvem: a porta que alguém já entregou passa por cima do censo também.
 async function conferirComOCenso(): Promise<number> {
-  let n = 0;
-  for (const p of e().paradas) {
-    if (p.precisao !== 'planilha' || p.entregue) continue;
-    const d = decompor(p.texto);
-    if (!d.cep || !d.numero) continue;
-    let censo = null;
-    try { censo = await portaDoIbgeComARua(d.cep, d.numero, d.rua, e().cidade); } catch {}
-    const metros = censo && planilhaForaDaRua(p, censo.porta, censo.rua);
-    if (metros) { levarParaAPortaDoCenso(p as Parada & {lat: number; lng: number}, censo!.porta, metros); n++; }
-  }
-  if (n) desatualizarRota(true);
-  return n;
+  const levadas = await levarParaOCenso(e().paradas, e().cidade,
+    {porta: (cep, numero, cidade) => enderecoDoIbge(cep, numero, cidade, true), rua: portasDaRuaNoIbge});
+  if (levadas.length) desatualizarRota(true);
+  return levadas.length;
 }
 
 async function importarPlanilhas(files: Blob[]) {

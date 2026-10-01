@@ -572,9 +572,18 @@ export function chavePorta(texto: string): string | null {
   // repetem por conjuntos vizinhos, e a trava de distância não separa dois conjuntos a 1 km.
   // Medido no censo de Aracaju: a mesma rua e número em dois lugares de 200 m a 3 km são 1,09%
   // das portas, e tirando os nomes genéricos caem para 0,55%.
-  if (palavrasRua(d.rua).join('').length <= 2 || /denomina[cç]/i.test(d.rua)) return null;
+  if (ruaGenerica(d.rua)) return null;
   return rua + '|' + d.numero;
 }
+
+export const ruaGenerica = (rua: string): boolean => palavrasRua(rua).join('').length <= 2 || /denomina[cç]/i.test(rua);
+
+// Condomínio de casas ou de blocos: a entrega é na portaria, e o censo põe o número lá dentro
+// (Cond. São Lourenço, a 150 m da portaria). Prédio sozinho ("Ed.", "apto") fica de fora: o censo
+// marca o prédio.
+const CONDOMINIO = /\b(cond\w*|cdm|cd|resid\w*|bloc\w*|blc|bl|bl\d+\w*|torre|casa \d+|cs \d+)\b/;
+export const emCondominio = (texto: string): boolean =>
+  CONDOMINIO.test(normal(decompor(analisarLinha(texto).texto).resto.join(' ')).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' '));
 
 export function chaveLugar(texto: string, bairro: string | undefined, cidade: string): string | null {
   const d = decompor(analisarLinha(texto).texto);

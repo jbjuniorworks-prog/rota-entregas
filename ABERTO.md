@@ -171,9 +171,16 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 - **Pino levado da planilha para a porta do censo (01/10).** Isso acontece quando a planilha põe o
   pino a mais de 80 m do número e a mais de 60 m de qualquer porta da rua no censo. Os dois
   limites saíram de 10 casos: 6 consertados e 1 que piora (planilha certa, censo errado a 150 m).
+  Ficam de fora a rua de nome genérico e o condomínio de casas ou blocos. Repassado em 24
+  planilhas reais (1572 paradas): 22 levadas. Contra a porta marcada na entrega, 5 melhoram e
+  nenhuma piora. Contra o GPS do ✓, 7 melhoram e 2 pioram.
   Os pacotes levados ficam com `precisao = 'censo'` no banco. Daqui a uma semana, comparar a
   posição deles com a porta onde foram entregues: se piorar mais de 1 em 7, apertar os limites.
   Também vale olhar quantas vezes o motorista volta para a posição da planilha em 2. Conferir.
+- **O censo também pode resolver o "número não bate com a posição".** Na planilha do Luan de
+  01/10 foram 8: duas portas de números distantes no mesmo ponto, e uma delas está errada. Hoje
+  o app só pinta de vermelho. A mesma regra (porta do censo + as portas da rua) diria qual das
+  duas mudar. Precisa medir antes, como foi feito com esta.
 
 ## Ideias, não compromissos
 
