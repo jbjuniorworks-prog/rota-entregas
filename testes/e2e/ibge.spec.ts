@@ -84,3 +84,37 @@ test('planilha fora da rua vai para a porta do censo; em cima da rua, fica como 
   await linha.getByRole('button', {name: /A posição que veio na planilha/}).click();
   expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 170')).toEqual({...FORA_DA_RUA, precisao: 'planilha'});
 });
+
+// Pedido de 01/10: a porta do censo é o lugar mais provável, não o certo. Fica laranja, "confira
+// na porta", até alguém entregar ali; com "Entreguei aqui" ela vira porta marcada e vai para a nuvem.
+test('a porta do censo fica laranja até entregarem ali', async ({page, context}) => {
+  const XLSX = (await import('xlsx')).default;
+  const {montar, garantirMapa, verNoMapa} = await import('./apoio');
+  const PORTA_170 = {lat: -10.935879, lng: -37.078077};
+  const cab = ['AT ID', 'Sequence', 'Stop', 'SPX TN', 'Destination Address', 'Bairro', 'City', 'Zipcode/Postal code', 'Latitude', 'Longitude'];
+  const ws = XLSX.utils.aoa_to_sheet([cab,
+    ['AT-TESTE', 1, 1, '', 'Rua Francisco de Assis Delmondes Pereira Freitas, 170', 'Ponto Novo', 'Aracaju', '49097-710', -10.938579, -37.078077]]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
+  page.on('dialog', d => d.accept());
+  await abrir(page);
+  await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
+  await expect(page.locator('#status')).toContainText('confira na porta', {timeout: 30_000});
+  const linha = linhaDe(page, 'Delmondes Pereira Freitas, 170', 'Ver');
+  await expect(linha).toContainText('Porta do censo do IBGE — confira na porta');
+
+  await montar(page);
+  await expect(page.locator('.proxima [data-quase]')).toContainText('entregando com "Entreguei aqui", o endereço fica verificado');
+  await garantirMapa(page);
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({latitude: PORTA_170.lat, longitude: PORTA_170.lng, accuracy: 6});
+  await verNoMapa(page, PORTA_170.lat, PORTA_170.lng, 18);
+  await expect(page.locator('.pino.alvo.quase')).toHaveCount(1);
+  await page.locator('.pino.alvo').click();
+  await page.locator('.leaflet-popup [data-acao=aqui]').first().click();
+  await expect.poll(() => page.evaluate(() => {
+    const p = JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas[0];
+    return `${p.entregue} ${p.precisao}`;
+  }), {timeout: 15_000}).toBe('true manual');
+});

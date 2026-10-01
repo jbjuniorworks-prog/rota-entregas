@@ -148,7 +148,10 @@ export function TelaRota() {
         <a className="btn waze" href={linkWaze(alvo as Ponto)} target="_blank" rel="noopener">🧭 Waze</a>
         <button className="btn ok" onClick={() => juntas ? A.entregarTodas(pend) : A.marcarEntregue(alvo, true)}>✓ Entreguei{juntas ? ` as ${pend.length}` : ''}</button>
       </div>
-      {QUASE.has(alvo.precisao) && <div className="aviso laranja">🟠 Este é o ponto mais perto que achamos: a rua está certa, o número é aproximado. Confira o número na porta.</div>}
+      {QUASE.has(alvo.precisao) && <div className="aviso laranja" data-quase>{alvo.precisao === 'censo'
+        // até alguém entregar ali, a porta do censo é o lugar mais provável, não o certo (pedido de 01/10)
+        ? 'A planilha punha este pino fora da rua, e o app trouxe para a porta do censo do IBGE. Confira na porta: entregando com "Entreguei aqui", o endereço fica verificado para todos.'
+        : '🟠 Este é o ponto mais perto que achamos: a rua está certa, o número é aproximado. Confira o número na porta.'}</div>}
       {vizinhas.length > 0 && <div className="aviso" style={{margin: '8px 0 0'}}>🚶 Aqui perto, fora desta parada: {vizinhas.slice(0, 3).map(v =>
         <span key={v.p.id}> <b onClick={() => A.focar(v.p.id)}>{v.p.ml ? `#${v.p.ml} ` : ''}{v.p.texto.split(',').slice(0, 2).join(',')}</b> (~{Math.round(v.distancia)} m){v.p.unidades ? ` · ${v.p.unidades} pacotes` : ''};</span>)}
         {vizinhas.length > 3 ? ` e mais ${vizinhas.length - 3}.` : ''}</div>}

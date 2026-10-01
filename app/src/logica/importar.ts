@@ -90,7 +90,7 @@ export function resumoPlanilha(r: ResumoPlanilha): string {
     + (r.longe ? ` ⚠️ ${r.longe} com posição longe das outras entregas: ${r.noBairro === r.longe ? 'levada(s) para o bairro certo, confira no local.' : r.noBairro ? `${r.noBairro} levada(s) para o bairro certo, confira o pino das outras.` : 'confira o pino antes de sair.'}` : '')
     + (r.aproximadas ? ` ⚠️ ${r.aproximadas} com posição aproximada na planilha: confira o pino.` : '')
     + (r.numeros ? ` ⚠️ ${r.numeros} com número que não bate com a posição: confira.` : '')
-    + (r.censo ? ` 📍 ${r.censo} levada(s) para a porta do censo do IBGE: a planilha punha fora da rua.` : '')
+    + (r.censo ? ` ${r.censo} levada(s) para a porta do censo do IBGE, porque a planilha punha fora da rua: confira na porta.` : '')
     + (r.semPosicao ? ` ${r.semPosicao} sem posição, buscando no mapa…` : '');
 }
 

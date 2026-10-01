@@ -120,7 +120,7 @@ export function planilhaForaDaRua(p: Parada, porta: Candidato | null, rua: Ponto
 export function levarParaAPortaDoCenso(p: Parada & Ponto, porta: Candidato, metros: number) {
   p.candidatos = [porta, {lat: p.lat, lng: p.lng, exibido: 'A posição que veio na planilha', precisao: 'planilha', fonte: 'planilha'}];
   Object.assign(p, {lat: porta.lat, lng: porta.lng, precisao: 'censo', fonte: 'IBGE',
-    exibido: `Porta do censo do IBGE: a planilha punha este pino a ${Math.round(metros)} m, fora da rua`});
+    exibido: `Porta do censo do IBGE: a planilha punha este pino a ${Math.round(metros)} m, fora da rua. Confira na porta`});
 }
 
 export interface Censo {

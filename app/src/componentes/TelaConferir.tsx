@@ -1,5 +1,5 @@
 import * as A from '../acoes';
-import {DUVIDA, NO_NUMERO, ROTULO} from '../logica/rotulos';
+import {DUVIDA, NO_NUMERO, QUASE, ROTULO} from '../logica/rotulos';
 import type {Parada} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
 import {rotuloDe} from '../logica/rotulo';
@@ -12,7 +12,7 @@ export function TelaConferir() {
   const duvidas = conta([...DUVIDA]), pend = conta(['pendente']), sugeridas = e.paradas.filter(p => p.sugestao && !p.entregue).length;
   return <>
     <h2>Conferir locais</h2>
-    <div className="info">✅ {conta(NO_NUMERO)} no número · 🟠 {conta(['rua'])} só na rua · ❗ {duvidas} para conferir{sugeridas ? ` · 💡 ${sugeridas} com sugestão` : ''}{pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
+    <div className="info">✅ {conta(NO_NUMERO)} no número · 🟠 {conta([...QUASE])} para conferir na porta · ❗ {duvidas} para conferir{sugeridas ? ` · 💡 ${sugeridas} com sugestão` : ''}{pend ? ` · ⏳ ${pend} sem buscar` : ''}</div>
     {conta(['rua']) > 0 && <div className="aviso laranja">Os <b>laranja</b> são o mais perto que conseguimos: a rua está certa, mas o número é aproximado. Pode dar alguns metros de diferença.</div>}
     {duvidas > 0 && <div className="aviso">Os de borda vermelha podem estar longe do lugar. Toque em <b>Ver</b> para olhar no mapa e use <b>Marcar no mapa</b> para corrigir (olhando a posição no app de entregas).</div>}
     <div className="linha">
