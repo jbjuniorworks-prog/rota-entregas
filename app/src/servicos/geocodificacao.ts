@@ -201,24 +201,6 @@ async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: 
   return cands;
 }
 
-async function geoGoogle(txt: string, cidade: string, chave: string): Promise<Candidato[]> {
-  const u = new URL('https://maps.googleapis.com/maps/api/geocode/json');
-  u.searchParams.set('address', comCidade(txt, cidade));
-  u.searchParams.set('region', 'br');
-  u.searchParams.set('language', 'pt-BR');
-  u.searchParams.set('components', 'country:BR');
-  u.searchParams.set('key', chave);
-  const j = await buscarJson(u);
-  if (j.status === 'ZERO_RESULTS') return [];
-  if (j.status !== 'OK') throw new Error('Google: ' + j.status + (j.error_message ? ' — ' + j.error_message : ''));
-  return j.results.filter((r: any) => !foraDaRegiao({lat: r.geometry.location.lat, lng: r.geometry.location.lng})).map((r: any) => {
-    const t = r.geometry.location_type;
-    let precisao: Precisao = t === 'ROOFTOP' ? 'exato' : t === 'RANGE_INTERPOLATED' ? 'bom' : (r.types || []).includes('route') ? 'rua' : 'ruim';
-    if (r.partial_match && precisao === 'exato') precisao = 'bom';
-    return {lat: r.geometry.location.lat, lng: r.geometry.location.lng, exibido: r.formatted_address, precisao, fonte: 'Google'};
-  });
-}
-
 export {LONGE_DA_ANCORA};
 
 export const limiteDaAncora = (a: Ancora) => Math.max(LONGE_DA_ANCORA, a.raio * 2);
@@ -237,8 +219,11 @@ export async function ancoraDoEndereco(txt: string, cidade: string, bairro: stri
   return null;
 }
 
-export async function geocodificar(txt: string, opcoes: {cidade: string; googleKey: string; perto?: Ponto | null; bairro?: string}): Promise<Candidato[]> {
-  let cands = opcoes.googleKey ? await geoGoogle(txt, opcoes.cidade, opcoes.googleKey) : await geoOSM(txt, opcoes.cidade, opcoes.perto || null, opcoes.bairro || '');
+// A chave do Google saiu em 02/10: com ela a busca ia só ao Google e deixava de lado o censo e a
+// nossa base de ruas, que são o que mais acerta aqui. Sem a tela dela, um celular com chave salva
+// não teria como tirá-la, então ela não é mais lida.
+export async function geocodificar(txt: string, opcoes: {cidade: string; perto?: Ponto | null; bairro?: string}): Promise<Candidato[]> {
+  let cands = await geoOSM(txt, opcoes.cidade, opcoes.perto || null, opcoes.bairro || '');
   const vistos = new Set<string>();
   cands = cands.filter(c => {
     const k = c.lat.toFixed(5) + ',' + c.lng.toFixed(5);

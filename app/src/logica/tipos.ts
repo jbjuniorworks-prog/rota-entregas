@@ -106,7 +106,6 @@ export interface Regiao {
 export interface Estado {
   cidade: string;
   regiao?: Regiao | null;
-  googleKey: string;
   tamTrecho: number;
   inicio: Local | null;
   fim?: Local | null;

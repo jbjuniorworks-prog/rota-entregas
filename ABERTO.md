@@ -189,11 +189,6 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
   errado tem de arrumar de novo, e a correção errada continua na nuvem até o dono apagar no Admin.
   Guardar a posição de antes na parada, durante o dia, e voltar tirando a correção da nuvem.
 
-- **Tirar o "Esquecer todas" de Endereços > Posições que você corrigiu** (proposto em 28/09,
-  esperando o dono). Ele apaga só a memória do celular, sem desfazer, e as correções voltam da
-  nuvem na próxima rota carregada com internet: hoje quase não faz o que diz. O texto ao lado
-  ainda fala em "arrastar o pino", e os pinos não arrastam mais.
-
 - **A porta confirmada chega no outro motorista quando ele carrega a rota**, não no meio do dia.
   A consulta (`consultarCompartilhadas`) roda ao buscar os endereços e ao entrar na conta. Se os
   dois tiverem o mesmo endereço no mesmo dia, quem já carregou não recebe. Não medido quanto
@@ -218,8 +213,8 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
   por endereço (o `posicoes` casa chave exata), então marcar 184 e 260 conserta essas duas e não
   ajuda a 200 no celular do Luan. Precisa de um RPC que devolva as portas conhecidas de uma rua —
   a `observacoes` já guarda `rua_chave`, `lat` e `lng`. Migração que o dono roda.
-- **Google como reforço, não como troca.** Hoje `geocodificar` faz `googleKey ? geoGoogle :
-  geoOSM`: pôr a chave desliga o censo e a nossa base inteiros. Se um dia for usado, tem de ser só
+- **Google como reforço, não como troca.** A chave e a tela dela saíram em 02/10 (ideia do Pedro):
+  com ela, `geocodificar` ia só ao Google e desligava o censo e a nossa base. Se um dia voltar, tem de ser só
   para o que sobrou "aproximado". E os termos do Google não deixam guardar a coordenada deles —
   então serviria para o pino do dia, nunca para a base de portas.
 

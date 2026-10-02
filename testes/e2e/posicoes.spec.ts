@@ -106,10 +106,10 @@ test('a correção fica guardada depois do reset e vale para a planilha e para t
   await page.getByRole('button', {name: /^Adicionar em/}).click();
   await expect(linhaDe(page, 'Rua D, 49', 'Marcar no mapa')).toContainText('Corrigida por você antes');
 
+  // Pedro, 02/10: as duas partes de baixo da aba não serviam a ninguém. "Esquecer todas" apagava só
+  // o celular, e a nuvem devolvia tudo na próxima rota; a chave do Google desligava o censo.
   await aba(page, '1. Endereços');
-  await page.getByText('Posições que você corrigiu (1)').click();
-  await page.getByRole('button', {name: 'Esquecer todas'}).click();
-  await expect(page.getByText(/Posições que você corrigiu/)).toHaveCount(0);
+  await expect(page.getByText(/Posições que você corrigiu|Precisão extra com Google/)).toHaveCount(0);
 });
 
 test('entrega que a planilha joga longe vai para o bairro dela, e o Maps não recebe o ponto errado', async ({page}) => {
@@ -141,8 +141,8 @@ test('os pinos não se movem ao arrastar o mapa, e uma correção errada se desf
   await expect(aviso(page)).toContainText('Posição anterior de volta.');
   await expect(page.getByText(/❗ 1 para conferir/)).toBeVisible();
   await expect(linhaDe(page, RUA_D, 'Marcar no mapa')).toContainText('Longe das outras entregas — confira o pino');
-  await aba(page, '1. Endereços');
-  await expect(page.getByText(/Posições que você corrigiu/)).toHaveCount(0);
+  // e o celular esqueceu a correção desfeita
+  expect(await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('rota-entregas-posicoes') || '{}')).length)).toBe(0);
 });
 
 test('reset cancelado não apaga nada', async ({page}) => {

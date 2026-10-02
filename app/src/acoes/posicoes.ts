@@ -328,10 +328,3 @@ export function escolherCandidato(p: Parada, k: number) {
   loja.mudou();
   focar(p.id);
 }
-
-export function esquecerPosicoes() {
-  if (!confirm('Esquecer todas as posições que você corrigiu? As paradas de hoje continuam como estão.')) return;
-  memoria.esquecer();
-  loja.mudou(false);
-  status('Posições esquecidas.', 2500);
-}

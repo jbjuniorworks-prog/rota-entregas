@@ -48,7 +48,7 @@ export async function buscarParada(p: Parada) {
   if (memoria.aplicar(p)) return;
   await garantirRegiao();
   try {
-    const cands = await geocodificar(p.texto, {cidade: e().cidade, googleKey: e().googleKey, perto: centroDasEntregas(), bairro: p.bairro || ''});
+    const cands = await geocodificar(p.texto, {cidade: e().cidade, perto: centroDasEntregas(), bairro: p.bairro || ''});
     p.candidatos = cands;
     // A linha do Mercado Livre com o cartão fechado vem só "Avenida Tal 184": sem CEP e sem
     // bairro, `chaveLugar` devolve null e a marcação que o motorista faz na porta não tem onde
@@ -282,7 +282,7 @@ async function localPorTexto(pergunta: string, atual: string | undefined, naoAch
   if (!t || !t.trim()) return null;
   status('Buscando…');
   try {
-    const c = (await geocodificar(t.trim(), {cidade: e().cidade, googleKey: e().googleKey}))[0];
+    const c = (await geocodificar(t.trim(), {cidade: e().cidade}))[0];
     if (!c) { status(naoAchou, 3000); return null; }
     return {texto: t.trim(), lat: c.lat, lng: c.lng, exibido: c.exibido};
   } catch (err) {

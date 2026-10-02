@@ -11,7 +11,6 @@ export function TelaEnderecos() {
   const {e} = useLoja();
   const [lista, setLista] = useState('');
   const a = loja.area(e.areaAtual);
-  const lembradas = A.memoria.quantas();
   const abrir = async (files: FileList | null) => {
     if (!files || !files.length) return;
     const texto = await A.lerPrints([...files], lista);
@@ -56,28 +55,9 @@ export function TelaEnderecos() {
     <div className="info" style={{marginTop: 8}}>Pode mandar vários prints de uma vez, ou <b>gravar a tela</b> rolando a lista devagar do começo ao fim e mandar o vídeo. Endereços repetidos são ignorados. O número do app na frente (ex.: <b>18</b> Avenida…) aparece no pino.</div>
     <BotaoResetar />
     {backupRecente(guarda) && <div className="aviso">Você apagou uma rota há pouco. <button className="btn peq pri" onClick={A.desfazerReset}>↺ Desfazer</button></div>}
-    {lembradas > 0 && <details>
-      <summary>Posições que você corrigiu ({lembradas})</summary>
-      <div className="info" style={{marginTop: 6}}>Quando você arrasta um pino ou marca no mapa, o local fica guardado neste celular. Se o endereço cair de novo numa rota, ele já vem no lugar certo, em roxo. Para trocar, é só corrigir de novo.</div>
-      <div className="linha"><button className="btn" onClick={A.esquecerPosicoes}>Esquecer todas</button></div>
-    </details>}
-    <ChaveGoogle />
     {/* para saber, pelo print de um motorista, se o celular dele já está com a versão nova */}
     <div className="info" data-versao style={{marginTop: 12}}>Versão do app: {__VERSAO__.quando}</div>
   </>;
-}
-
-function ChaveGoogle() {
-  const {e} = useLoja();
-  const [chave, setChave] = useState(e.googleKey);
-  return <details>
-    <summary>Precisão extra com Google (opcional)</summary>
-    <div className="info" style={{marginTop: 6}}>Sem chave, a busca usa o OpenStreetMap, que às vezes acha só a rua. Com uma chave da Geocoding API do Google o número costuma vir certo (cota grátis mensal; pede cartão para criar).</div>
-    <div className="aviso"><b>Cuidado:</b> a chave fica dentro desta página, no seu celular, e a API do Google <b>não</b> permite travar a chave por site — só por IP de servidor. Quem abrir esta página com a chave configurada pode copiá-la e gastar na sua conta. Use só no seu aparelho, ponha um <b>limite de gastos</b> no painel do Google e não configure a chave em celular de outra pessoa.</div>
-    <label htmlFor="gkey">Chave da API do Google</label>
-    <input type="password" id="gkey" value={chave} placeholder="AIza…" autoComplete="off" onChange={ev => setChave(ev.target.value)} />
-    <div className="linha"><button className="btn" onClick={() => { A.mudar(() => { e.googleKey = chave.trim(); }); }}>Salvar chave</button></div>
-  </details>;
 }
 
 function ChipArea({a, on, onClick, extra}: {a: Area; on: boolean; onClick: () => void; extra?: ReactNode}) {

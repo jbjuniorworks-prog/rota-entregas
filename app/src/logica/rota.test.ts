@@ -110,7 +110,7 @@ describe('ordem do app de entrega', () => {
     ({id, area: 'a', ml, stop, texto: `Rua ${id}, 1`, unidades: null, comercial: false, lat, lng, exibido: '', precisao: 'planilha', candidatos: [], entregue: false}) as Parada;
 
   const estado = (ordemDoApp: boolean) => ({
-    cidade: 'Aracaju', googleKey: '', tamTrecho: 9, voltar: false, ordemDoApp,
+    cidade: 'Aracaju', tamTrecho: 9, voltar: false, ordemDoApp,
     inicio: {id: 'inicio', lat: -10.9600, lng: -37.0451, exibido: 'saída'},
     areas: [{id: 'a', nome: 'Verde', cor: '#16a34a', prazo: ''}], areaAtual: 'a', areasManual: false,
     pernas: {}, rota: null,
@@ -200,7 +200,7 @@ describe('entregas no mesmo ponto viram uma visita só', () => {
 
   it('a matriz de ruas pede um ponto por visita, e as entregas do mesmo ponto ficam juntas', async () => {
     const e = {
-      cidade: 'Aracaju', googleKey: '', tamTrecho: 9, voltar: false, ordemDoApp: false,
+      cidade: 'Aracaju', tamTrecho: 9, voltar: false, ordemDoApp: false,
       inicio: {id: 'inicio', lat: -10.9600, lng: -37.0451, exibido: 'saída'},
       areas: [{id: 'a', nome: 'Verde', cor: '#16a34a', prazo: ''}], areaAtual: 'a', areasManual: false,
       pernas: {} as Record<string, {dur: number; dist: number}>, rota: null,
