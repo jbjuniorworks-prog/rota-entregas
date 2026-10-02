@@ -128,7 +128,11 @@ function App() {
       <div id="painel">
         <nav>{abas.map(([id, nome]) => <button key={id} className={ui.aba === id ? 'on' : ''} onClick={() => A.irPara(id)}>{nome}
           {id === 'admin' && ui.esperandoAdmin > 0 && <span className="selo" data-selo aria-label={`${ui.esperandoAdmin} esperando você`}>{ui.esperandoAdmin}</span>}</button>)}</nav>
-        <div id="status" className={ui.aviso || ui.posicionando || ui.versaoNova ? 'on' : ''}>
+        <div id="status" className={ui.aviso || ui.posicionando || ui.versaoNova || ui.podeInstalar ? 'on' : ''}>
+          {ui.podeInstalar && <div className="instalar" data-instalar>
+            <span>Instale o app: fica com ícone na tela inicial, abre em tela cheia, e o Compartilhar do WhatsApp manda os prints direto para cá.</span>
+            <span className="botoes"><button className="btn peq pri" onClick={A.instalarApp}>Instalar</button><button className="btn peq" onClick={A.instalarDepois}>Agora não</button></span>
+          </div>}
           {ui.versaoNova && <div className="versao-nova" data-versao-nova>
             <span>Versão nova do app, de {ui.versaoNova.quando}. A rota continua como está.</span>
             <button className="btn peq" onClick={() => A.atualizarApp(ui.versaoNova!.id)}>Atualizar</button>
@@ -146,5 +150,7 @@ function App() {
   </>;
 }
 
+// antes de desenhar: o Chrome pode avisar que dá para instalar logo que a página carrega
+A.ouvirInstalacao();
 createRoot(document.getElementById('raiz')!).render(<App />);
 if ('serviceWorker' in navigator && import.meta.env.PROD) navigator.serviceWorker.register('sw.js').catch(() => {});

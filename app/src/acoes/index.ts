@@ -5,3 +5,4 @@ export * from './posicoes';
 export * from './reclamacoes';
 export * from './rota';
 export * from './versao';
+export * from './instalar';
