@@ -36,6 +36,8 @@ export interface Ui {
   esperandoAdmin: number;
   // a entrega com a escolha de "cliente xarope" aberta
   xarope: string | null;
+  // versão publicada mais nova que a que está rodando, com rota andando: a barra de atualizar
+  versaoNova: {id: string; quando: string} | null;
 }
 
 export const guarda = guardaEm(localStorage);
@@ -43,7 +45,7 @@ let estado = carregarEstado(guarda);
 const ui: Ui = {
   aba: estado.paradas.length ? (estado.rota ? 'rota' : 'conferir') : 'enderecos',
   posicionando: null, selecionada: null, soDuvidas: false, ocupado: false, mapa: guarda.ler(CHAVES.mapa, {}), aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
-  euAqui: null, irParaMim: 0, esperandoAdmin: 0, xarope: null,
+  euAqui: null, irParaMim: 0, esperandoAdmin: 0, xarope: null, versaoNova: null,
 };
 
 let versao = 0;

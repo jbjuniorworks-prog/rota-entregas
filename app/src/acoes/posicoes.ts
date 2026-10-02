@@ -317,7 +317,9 @@ export function escolherCandidato(p: Parada, k: number) {
   const c = p.candidatos[k];
   const longe = p.lat != null && p.lng != null && haversine(p as Ponto, c) > MUDOU_MUITO;
   const desfazer = prepararDesfazer(p);
-  Object.assign(p, {lat: c.lat, lng: c.lng, exibido: c.exibido, precisao: c.precisao, fonte: 'escolhida na lista'});
+  // Escolher a posição da planilha contra o censo (ou contra o bairro) é decisão dele: como
+  // 'planilha', o censo a levaria de novo na próxima vez que o app abrisse.
+  Object.assign(p, {lat: c.lat, lng: c.lng, exibido: c.exibido, precisao: c.fonte === 'planilha' ? 'manual' : c.precisao, fonte: 'escolhida na lista'});
   const guardou = memoria.lembrar(p, Date.now(), false);
   status('Local escolhido' + (guardou
     ? ' e guardado neste celular. Para valer para os outros motoristas, arraste o pino ou toque em "📍 Estou aqui" na porta.'

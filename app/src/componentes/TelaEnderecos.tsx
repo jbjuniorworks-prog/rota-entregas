@@ -62,6 +62,8 @@ export function TelaEnderecos() {
       <div className="linha"><button className="btn" onClick={A.esquecerPosicoes}>Esquecer todas</button></div>
     </details>}
     <ChaveGoogle />
+    {/* para saber, pelo print de um motorista, se o celular dele já está com a versão nova */}
+    <div className="info" data-versao style={{marginTop: 12}}>Versão do app: {__VERSAO__.quando}</div>
   </>;
 }
 

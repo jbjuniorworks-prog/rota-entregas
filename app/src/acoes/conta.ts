@@ -2,8 +2,9 @@
 import {usarRegiao} from '../servicos/geocodificacao';
 import {entrar as entrarNaNuvem, iniciarNuvem, nuvem, sair as sairDaNuvem} from '../servicos/nuvem';
 import {e, enviarFila, ui} from './base';
-import {processarCompartilhado} from './enderecos';
+import {conferirComOCensoAoAbrir, processarCompartilhado} from './enderecos';
 import {avisoCompartilhadas, consultarCompartilhadas} from './posicoes';
+import {verVersao} from './versao';
 
 // Pedido de 28/09: um motorista mexendo numa porta confirmada tem de chegar no dono sem ele ir
 // procurar. Sem servidor de notificação, o aviso é o número na aba ⚙️ Admin, conferido quando o
@@ -35,7 +36,13 @@ export async function iniciar() {
   setInterval(enviarFila, 60000);
   if (new URLSearchParams(location.search).has('compartilhado')) processarCompartilhado();
   verPendenciasDoAdmin(true);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') verPendenciasDoAdmin(); });
+  verVersao();
+  conferirComOCensoAoAbrir();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    verPendenciasDoAdmin();
+    verVersao();
+  });
 }
 
 export async function entrar(email: string, senha: string) {

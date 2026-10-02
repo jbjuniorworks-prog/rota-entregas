@@ -119,6 +119,17 @@ async function conferirComOCenso(): Promise<number> {
   return levadas.length;
 }
 
+// A rota que já estava na tela também passa pelo censo: lida por uma versão de antes da regra, ou
+// com o censo ainda sem baixar, atualizar o app não consertava nada (Luan, 02/10). Quem já está
+// na porta do censo, ou foi escolhido por ele, não é mais 'planilha' e não volta a ser mexido.
+export async function conferirComOCensoAoAbrir() {
+  if (!e().paradas.some(p => p.precisao === 'planilha' && !p.entregue)) return;
+  const n = await conferirComOCenso();
+  if (!n) return;
+  loja.mudou();
+  status(`${n} parada(s) levada(s) para a porta do censo do IBGE, porque a planilha punha fora da rua: confira na porta.`, 8000);
+}
+
 async function importarPlanilhas(files: Blob[]) {
   const itens = await lerPlanilhas(files);
   const {resumo, rotaDe} = adicionarDaPlanilha(e(), itens, p => memoria.aplicar(p));

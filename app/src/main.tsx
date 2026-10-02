@@ -128,7 +128,11 @@ function App() {
       <div id="painel">
         <nav>{abas.map(([id, nome]) => <button key={id} className={ui.aba === id ? 'on' : ''} onClick={() => A.irPara(id)}>{nome}
           {id === 'admin' && ui.esperandoAdmin > 0 && <span className="selo" data-selo aria-label={`${ui.esperandoAdmin} esperando você`}>{ui.esperandoAdmin}</span>}</button>)}</nav>
-        <div id="status" className={ui.aviso || ui.posicionando ? 'on' : ''}>
+        <div id="status" className={ui.aviso || ui.posicionando || ui.versaoNova ? 'on' : ''}>
+          {ui.versaoNova && <div className="versao-nova" data-versao-nova>
+            <span>Versão nova do app, de {ui.versaoNova.quando}. A rota continua como está.</span>
+            <button className="btn peq" onClick={() => A.atualizarApp(ui.versaoNova!.id)}>Atualizar</button>
+          </div>}
           {ui.posicionando && <Armado alvo={ui.posicionando} />}{ui.aviso}
           {ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>↺ Desfazer</button></>}</div>
         <div id="conteudo" ref={conteudo} onScroll={ev => { rolagem.current[ui.aba] = (ev.target as HTMLDivElement).scrollTop; }}>

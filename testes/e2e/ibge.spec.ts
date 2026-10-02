@@ -82,7 +82,35 @@ test('planilha fora da rua vai para a porta do censo; em cima da rua, fica como 
   await expect(linha).toContainText('a planilha punha este pino a 300 m, fora da rua');
   await linha.getByRole('button', {name: 'Ver'}).click();
   await linha.getByRole('button', {name: /A posição que veio na planilha/}).click();
-  expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 170')).toEqual({...FORA_DA_RUA, precisao: 'planilha'});
+  // a escolha dele fica: nem abrir o app de novo leva para o censo outra vez
+  expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 170')).toEqual({...FORA_DA_RUA, precisao: 'manual'});
+  await page.reload();
+  await expect(page.getByRole('button', {name: '1. Endereços'})).toBeVisible();
+  await page.waitForTimeout(1500);
+  expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 170')).toEqual({...FORA_DA_RUA, precisao: 'manual'});
+});
+
+// Luan, 02/10: a rota lida pela versão antiga continuava errada depois de atualizar o app.
+test('ao abrir, a rota que já estava na tela também passa pelo censo', async ({page}) => {
+  const XLSX = (await import('xlsx')).default;
+  const cab = ['AT ID', 'Sequence', 'Stop', 'SPX TN', 'Destination Address', 'Bairro', 'City', 'Zipcode/Postal code', 'Latitude', 'Longitude'];
+  const ws = XLSX.utils.aoa_to_sheet([cab,
+    ['AT-TESTE', 1, 1, '', 'Rua Francisco de Assis Delmondes Pereira Freitas, 170', 'Ponto Novo', 'Aracaju', '49097-710', -10.938579, -37.078077]]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
+  await abrir(page);
+  await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
+  await expect(page.locator('#status')).toContainText('levada(s) para a porta do censo', {timeout: 30_000});
+  // como a versão de antes deixava: na posição da planilha
+  await page.evaluate(() => {
+    const e = JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}');
+    Object.assign(e.paradas[0], {lat: -10.938579, lng: -37.078077, precisao: 'planilha', exibido: 'Posição da planilha', candidatos: []});
+    localStorage.setItem('rota-entregas-v2', JSON.stringify(e));
+  });
+  await page.reload();
+  await expect(page.locator('#status')).toContainText('1 parada(s) levada(s) para a porta do censo', {timeout: 30_000});
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas[0].precisao)).toBe('censo');
 });
 
 // Pedido de 01/10: a porta do censo é o lugar mais provável, não o certo. Fica laranja, "confira

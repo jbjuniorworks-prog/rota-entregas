@@ -19,6 +19,8 @@ self.addEventListener('fetch', e => {
     return;
   }
   if (e.request.method !== 'GET') return;
+  // a versão publicada vem sempre da rede: a guardada diria que não há nada novo
+  if (url.pathname.endsWith('/versao.json')) return;
   if (url.origin !== location.origin) {
     if (!/^https:\/\/(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|tessdata\.projectnaptha\.com)$/.test(url.origin)) return;
     e.respondWith(

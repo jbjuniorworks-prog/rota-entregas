@@ -74,3 +74,7 @@ neste clone) e na publicação. Em caso de engano: `git commit --no-verify`.
   Fica fora do `npm test` para o CI não depender de rede de fora.
 - `npm run test:nuvem`: contra o banco de verdade (cria e apaga usuários de teste).
 - Cada push na `main` roda os testes no GitHub Actions e, se passarem, publica no GitHub Pages.
+- O build grava um número de versão no app e em `versao.json`. O app compara os dois quando abre e
+  quando volta para a tela. Sem entrega pendente, ele recarrega sozinho. Com rota andando, mostra a
+  barra "Versão nova do app" e espera o motorista tocar em Atualizar. A aba 1. Endereços mostra a
+  versão que está rodando, para conferir pelo print de um motorista.
