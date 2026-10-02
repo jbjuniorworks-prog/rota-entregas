@@ -1,4 +1,4 @@
-import {test, expect, abrir, linhaDe} from './apoio';
+import {test, expect, abrir, aba, colar, linhaDe} from './apoio';
 
 const ARACAJU = {lat: '-10.9472', lon: '-37.0731', display_name: 'Aracaju, Sergipe', category: 'place', addresstype: 'city', address: {city: 'Aracaju', state: 'Sergipe'}};
 const LONGE = {lat: '-10.8000', lon: '-37.2000', display_name: 'Outro canto, Aracaju', category: 'highway', addresstype: 'road', address: {road: 'Outra Rua', city: 'Aracaju', state: 'Sergipe'}};
@@ -25,10 +25,12 @@ async function espiar(page: any) {
 test('endereço que o censo conhece é resolvido sem perguntar nada para fora', async ({page}) => {
   const buscas = await espiar(page);
   await abrir(page);
+  await colar(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
   await page.getByLabel(/Endereços da área/).fill(ENDERECO);
   await page.getByRole('button', {name: /^Adicionar em/}).click();
 
+  await aba(page, '2. Conferir');
   const linha = linhaDe(page, ENDERECO, 'Marcar no mapa');
   await expect(linha).toContainText('Ponto Novo', {timeout: 30_000});
   // a prova: nem o ViaCEP nem o mapa de fora foram consultados para este endereço
@@ -38,12 +40,14 @@ test('endereço que o censo conhece é resolvido sem perguntar nada para fora', 
 test('endereço que o censo não tem continua indo pelo caminho de sempre', async ({page}) => {
   const buscas = await espiar(page);
   await abrir(page);
+  await colar(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
   await page.getByLabel(/Endereços da área/).fill('Rua Que Não Existe, 12345, 49999999');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
 
   // espera a busca terminar de verdade antes de julgar
-  await expect(page.getByText(/sem buscar/)).toBeHidden({timeout: 30_000});
+  await aba(page, '2. Conferir');
+  await expect(page.getByRole('button', {name: /sem posição/})).toBeHidden({timeout: 30_000});
   // controle negativo: sem resposta do censo, o app tem que ter perguntado para fora
   expect(buscas.length).toBeGreaterThan(0);
 });
@@ -77,15 +81,16 @@ test('planilha fora da rua vai para a porta do censo; em cima da rua, fica como 
   expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 802')).toEqual({...PORTA_170, precisao: 'planilha'});
   expect((await como('Rua Que Não Existe')).precisao).toBe('planilha');
 
-  // e a planilha continua a um toque, em 2. Conferir
-  const linha = linhaDe(page, 'Rua Francisco de Assis Delmondes Pereira Freitas, 170', 'Ver');
+  // e a planilha continua a um toque, em Conferir, abrindo o cartão
+  await aba(page, '2. Conferir');
+  const linha = linhaDe(page, 'Rua Francisco de Assis Delmondes Pereira Freitas, 170', 'Editar');
   await expect(linha).toContainText('a planilha punha este pino a 300 m, fora da rua');
-  await linha.getByRole('button', {name: 'Ver'}).click();
+  await linha.locator('.topo').click();
   await linha.getByRole('button', {name: /A posição que veio na planilha/}).click();
   // a escolha dele fica: nem abrir o app de novo leva para o censo outra vez
   expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 170')).toEqual({...FORA_DA_RUA, precisao: 'manual'});
   await page.reload();
-  await expect(page.getByRole('button', {name: '1. Endereços'})).toBeVisible();
+  await expect(page.locator('#app')).toBeVisible();
   await page.waitForTimeout(1500);
   expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 170')).toEqual({...FORA_DA_RUA, precisao: 'manual'});
 });
@@ -129,7 +134,8 @@ test('a porta do censo fica laranja até entregarem ali', async ({page, context}
   await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
   await expect(page.locator('#status')).toContainText('confira na porta', {timeout: 30_000});
-  const linha = linhaDe(page, 'Delmondes Pereira Freitas, 170', 'Ver');
+  await aba(page, '2. Conferir');
+  const linha = linhaDe(page, 'Delmondes Pereira Freitas, 170', 'Editar');
   await expect(linha).toContainText('Porta do censo do IBGE — confira na porta');
 
   await montar(page);
@@ -140,7 +146,7 @@ test('a porta do censo fica laranja até entregarem ali', async ({page, context}
   await verNoMapa(page, PORTA_170.lat, PORTA_170.lng, 18);
   await expect(page.locator('.pino.alvo.quase')).toHaveCount(1);
   await page.locator('.pino.alvo').click();
-  await page.locator('.leaflet-popup [data-acao=aqui]').first().click();
+  await page.locator('[data-folha="pino"] [data-acao=aqui]').first().click();
   await expect.poll(() => page.evaluate(() => {
     const p = JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas[0];
     return `${p.entregue} ${p.precisao}`;
@@ -170,7 +176,8 @@ test('casa perto da porta do censo vai para ela, verde; prédio fica como veio',
   await expect.poll(() => como('Rua Francisco de Assis Delmondes Pereira Freitas, 802').then(p => p?.precisao), {timeout: 30_000}).toBe('exato');
   expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 802')).toEqual({...CASA_802, precisao: 'exato'});
   expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 100')).toEqual({lat: -10.936387, lng: -37.076626, precisao: 'planilha'});
-  await expect(linhaDe(page, 'Delmondes Pereira Freitas, 802', 'Ver')).toContainText('Porta do censo do IBGE, a 40 m de onde a planilha punha');
+  await aba(page, '2. Conferir');
+  await expect(linhaDe(page, 'Delmondes Pereira Freitas, 802', 'Editar')).toContainText('Porta do censo do IBGE, a 40 m de onde a planilha punha');
   // andar 40 m não pede para refazer nada, nem avisa
   await expect(page.locator('#status')).not.toContainText('levada(s) para a porta do censo');
 });

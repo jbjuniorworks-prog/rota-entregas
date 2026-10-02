@@ -2,8 +2,7 @@ import {criarFila} from '../logica/fila';
 import {marcarIsoladas} from '../logica/geo';
 import {criarMemoria} from '../logica/memoria';
 import {criarUso} from '../logica/uso';
-import {CHAVES} from '../logica/guarda';
-import {guarda, loja, type Aba, type TamanhoDoMapa} from '../loja';
+import {guarda, loja} from '../loja';
 import {clienteNuvem} from '../servicos/nuvem';
 
 export const e = () => loja.e;
@@ -47,50 +46,6 @@ export function invalidarRota() {
   marcarIsoladas(e().paradas);
   e().rota = null;
   e().pernas = {};
-}
-
-// Padrão por aba, não um número só para todas. Em Endereços o mapa fica fechado enquanto não
-// há o que mostrar, e abre sozinho quando as paradas ganham posição — que é quando ele começa a
-// servir, denunciando o endereço que foi parar em outro bairro.
-const PADRAO: Record<string, TamanhoDoMapa> = {enderecos: 'fechado', conferir: 'grande', rota: 'normal', admin: 'fechado'};
-const VOLTA: TamanhoDoMapa[] = ['fechado', 'normal', 'grande'];
-
-// Três tamanhos no botão ⤢ resolvem o caso comum; arrastar a barra guarda a altura exata, em vh.
-// Quem arrasta uma vez quer aquele tamanho, não o mais próximo dos três.
-export const ALTURA_MIN = 18;
-export const ALTURA_MAX = 82;
-
-export function tamanhoDoMapa(aba: Aba = ui.aba): TamanhoDoMapa {
-  const escolhido = ui.mapa[aba];
-  if (typeof escolhido === 'number') return 'normal';
-  if (escolhido) return escolhido;
-  if (aba === 'enderecos' && e().paradas.some(p => p.lat != null)) return 'normal';
-  return PADRAO[aba] || 'normal';
-}
-
-export function alturaDoMapa(aba: Aba = ui.aba): number | null {
-  const escolhido = ui.mapa[aba];
-  return typeof escolhido === 'number' ? escolhido : null;
-}
-
-function guardarMapa(valor: TamanhoDoMapa | number) {
-  ui.mapa = {...ui.mapa, [ui.aba]: valor};
-  guarda.gravar(CHAVES.mapa, ui.mapa);
-  loja.mudou(false);
-}
-
-export function alternarMapa() {
-  guardarMapa(VOLTA[(VOLTA.indexOf(tamanhoDoMapa()) + 1) % VOLTA.length]);
-}
-
-export function arrastarMapa(vh: number) {
-  guardarMapa(Math.round(Math.min(ALTURA_MAX, Math.max(ALTURA_MIN, vh))));
-}
-
-export function irPara(aba: typeof ui.aba) {
-  ui.aba = aba;
-  ui.posicionando = null;
-  loja.mudou(false);
 }
 
 export function mudar(f: () => void, refazer = false) {

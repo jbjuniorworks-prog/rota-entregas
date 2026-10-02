@@ -1,4 +1,4 @@
-import {aba, abrir, carregar, expect, test} from './apoio';
+import {aba, abrir, carregar, colar, lista, montar, expect, test} from './apoio';
 
 // A tela é testada no tamanho em que ela roda, com uma rota do tamanho que ela tem: numa lista
 // de 80 cartões, o ruído que se repete por cartão é o que torna a tela cansativa de usar.
@@ -17,7 +17,7 @@ test.describe('a tela no celular', () => {
       const etiqueta = c.querySelector('.tag')?.textContent?.trim();
       if (!etiqueta) return [];
       return [...c.querySelectorAll('.achado')]
-        .map(a => (a.textContent || '').replace(/^📍\s*/, '').trim())
+        .map(a => (a.textContent || '').trim())
         .filter(texto => texto && texto === etiqueta);
     }));
     expect(repetidos, `cartões repetindo a etiqueta: ${repetidos.slice(0, 3).join(' | ')}`).toEqual([]);
@@ -32,26 +32,26 @@ test.describe('a tela no celular', () => {
     await expect(cartao.getByRole('button', {name: /Remover/})).toHaveCount(0);
 
     // só aparece para quem abriu o cartão de propósito
-    await cartao.getByRole('button', {name: 'Ver', exact: true}).click();
+    await cartao.locator('.topo').click();
     await expect(cartao.getByRole('button', {name: /Remover/})).toBeVisible();
   });
 
-  test('na Rota o endereço da próxima entrega aparece sem precisar rolar', async ({page}) => {
+  // "O mapa fica pequeno" (setembro): era uma faixa de 28% da tela embaixo do cartão. Agora ele é
+  // a tela, e o cartão da próxima cabe inteiro por cima, sem rolar, com o endereço e o botão.
+  test('na Rota o mapa ocupa a tela, e o cartão da próxima cabe inteiro', async ({page}) => {
     await abrir(page);
     await carregar(page, ROTA_GRANDE);
-    await aba(page, '3. Rota');
-    const botao = page.getByRole('button', {name: /Montar melhor sequência/});
-    if (!(await botao.isVisible())) await page.getByText('Ponto de saída / refazer rota').click();
-    await botao.click();
-    await expect(page.locator('.resumo')).toBeVisible({timeout: 90_000});
-
-    const alvo = page.locator('.proxima .endereco').first();
-    await expect(alvo).toBeVisible();
-    const daTela = await alvo.evaluate(el => {
-      const r = el.getBoundingClientRect();
-      return r.top >= 0 && r.bottom <= innerHeight;
-    });
-    expect(daTela, 'o endereço tem de caber na tela sem rolar').toBe(true);
+    await montar(page);
+    const caixa = async (seletor: string) => (await page.locator(seletor).first().boundingBox())!;
+    expect((await caixa('#map')).height, 'altura do mapa').toBeGreaterThan(915 * 0.4);
+    for (const s of ['.proxima .endereco', '.proxima [data-acao="entregue"]']) {
+      const b = await caixa(s);
+      expect(b.y >= 0 && b.y + b.height <= 915, `${s} tem de caber na tela sem rolar`).toBe(true);
+    }
+    // e a lista puxada para cima é quase a tela inteira, com uma faixa do mapa para se situar
+    await lista(page);
+    expect((await caixa('[data-folha="lista"]')).height).toBeGreaterThan(915 * 0.6);
+    expect((await caixa('#map')).height).toBeGreaterThan(60);
   });
 });
 
@@ -65,21 +65,20 @@ test.describe('fotos', () => {
 
   test('@ui fotografa as telas como o motorista vê', async ({page}, info) => {
     await abrir(page);
-    await page.screenshot({path: info.outputPath('1-vazio.png'), fullPage: true});
+    await page.screenshot({path: info.outputPath('1-inicio.png')});
+    await colar(page);
     await page.locator('#cidade').fill('Aracaju, SE');
-    await page.locator('input[type=file]').setInputFiles(ROTA);
+    await page.locator('#arquivo').setInputFiles(ROTA);
     await expect(page.locator('#status')).toContainText('parada(s) da planilha', {timeout: 60_000});
     await page.waitForTimeout(2500);
-    await page.screenshot({path: info.outputPath('2-conferir.png')});
-    await aba(page, '1. Endereços');
-    await page.screenshot({path: info.outputPath('3-enderecos.png'), fullPage: true});
-    await aba(page, '3. Rota');
-    const montar = page.getByRole('button', {name: /Montar melhor sequência/});
-    if (!(await montar.isVisible())) await page.getByText('Ponto de saída / refazer rota').click();
-    await montar.click();
-    await expect(page.locator('.resumo')).toBeVisible({timeout: 90_000});
+    await page.screenshot({path: info.outputPath('2-carregada.png')});
+    await aba(page, '2. Conferir');
+    await page.screenshot({path: info.outputPath('3-conferir.png')});
+    await montar(page);
     await page.waitForTimeout(1200);
-    await page.screenshot({path: info.outputPath('4-rota.png'), fullPage: true});
+    await page.screenshot({path: info.outputPath('4-rota.png')});
+    await lista(page);
+    await page.screenshot({path: info.outputPath('5-lista.png')});
     console.log('fotos em:', info.outputDir);
   });
 });

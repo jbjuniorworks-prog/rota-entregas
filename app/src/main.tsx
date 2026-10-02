@@ -2,47 +2,18 @@ import {createRoot} from 'react-dom/client';
 import {Component, lazy, Suspense, useEffect, useRef, useState, type ReactNode} from 'react';
 import './estilo.css';
 import * as A from './acoes';
-import {TelaConferir} from './componentes/TelaConferir';
-import {TelaEnderecos} from './componentes/TelaEnderecos';
+import {Cabecalho} from './componentes/comuns';
 import {TelaEntrar} from './componentes/Conta';
-import {TelaRota} from './componentes/TelaRota';
-import {loja, useLoja, type Aba} from './loja';
+import {MenuMais} from './componentes/MenuMais';
+import {TelaAreas, TelaSaida} from './componentes/TelaAjustes';
+import {TelaConferir} from './componentes/TelaConferir';
+import {TelaInicio} from './componentes/TelaInicio';
+import {FolhaRota, SobreOMapa, TopoRota} from './componentes/TelaRota';
+import {loja, useLoja} from './loja';
 import {rotuloDe} from './logica/rotulo';
 import {nuvem} from './servicos/nuvem';
 
 const Mapa = lazy(() => import('./componentes/Mapa'));
-
-// Na Rota o mapa fica embaixo do cartão, e 28% da tela é pouco para se achar. A barra puxa ele
-// para cima até onde ele quiser, e a altura fica guardada nessa aba. O botão ⤢ continua para
-// quem só quer os três tamanhos.
-function BarraDoMapa() {
-  const arrastando = useRef(0);
-  const comeco = useRef({y: 0, vh: 0});
-  const daTela = (px: number) => px / window.innerHeight * 100;
-  // Soltar tem de valer também quando quem solta é o navegador (pointercancel): ficar com o
-  // arrasto preso é o tipo de coisa que só aparece na mão de quem está de capacete.
-  const soltar = (ev: React.PointerEvent<HTMLDivElement>) => {
-    arrastando.current = 0;
-    if (ev.currentTarget.hasPointerCapture(ev.pointerId)) ev.currentTarget.releasePointerCapture(ev.pointerId);
-  };
-  // A faixa fica ACIMA do mapa, em espaço só dela. Por cima do mapa ela tornava intocável todo
-  // pino que caísse embaixo dela — e o primeiro teste que escrevi já bateu num.
-  return <div id="pegaMapa" role="separator" aria-label="Arraste para mudar o tamanho do mapa"
-    onPointerDown={ev => {
-      arrastando.current = ev.pointerId;
-      // mede o conjunto (faixa + mapa), que é o que a altura guardada representa
-      comeco.current = {y: ev.clientY, vh: A.alturaDoMapa() ?? daTela(document.querySelector('.mapwrap')?.getBoundingClientRect().height || 0)};
-      ev.currentTarget.setPointerCapture(ev.pointerId);
-    }}
-    onPointerMove={ev => {
-      if (arrastando.current !== ev.pointerId) return;
-      // o mapa está embaixo: puxar a barra para cima aumenta ele
-      A.arrastarMapa(comeco.current.vh + daTela(comeco.current.y - ev.clientY));
-    }}
-    onPointerUp={soltar}
-    onPointerCancel={soltar}
-  ><i /></div>;
-}
 const TelaAdmin = lazy(() => import('./componentes/Admin').then(m => ({default: m.TelaAdmin})));
 
 class EscudoDoMapa extends Component<{children: ReactNode}, {caiu: boolean}> {
@@ -67,87 +38,65 @@ function depoisDeAparecer(fazer: () => void) {
 function Armado({alvo}: {alvo: string}) {
   const p = alvo === 'fim' ? null : loja.parada(alvo);
   return <div className="armado" data-armado>
-    <span>{p ? `📍 Toque no mapa, no local da entrega ${rotuloDe(p)} · ${p.texto.split(',').slice(0, 2).join(',')}.` : '📍 Toque no mapa, onde você quer terminar.'}</span>
+    <span>{p ? `Toque no mapa, no local da entrega ${rotuloDe(p)} · ${p.texto.split(',').slice(0, 2).join(',')}.` : 'Toque no mapa, onde você quer terminar.'}</span>
     <button className="btn peq" onClick={A.pararDePosicionar}>Cancelar</button>
   </div>;
 }
 
-const ABAS: [Aba, string][] =[['enderecos', '1. Endereços'], ['conferir', '2. Conferir'], ['rota', '3. Rota']];
+function Status() {
+  const {ui} = useLoja();
+  return <div id="status" className={ui.aviso || ui.posicionando || ui.versaoNova || ui.podeInstalar ? 'on' : ''}>
+    {ui.podeInstalar && <div className="instalar" data-instalar>
+      <span>Instale o app: fica com ícone na tela inicial, abre em tela cheia, e o Compartilhar do WhatsApp manda os prints direto para cá.</span>
+      <span className="botoes"><button className="btn peq pri" onClick={A.instalarApp}>Instalar</button><button className="btn peq" onClick={A.instalarDepois}>Agora não</button></span>
+    </div>}
+    {ui.versaoNova && <div className="versao-nova" data-versao-nova>
+      <span>Versão nova do app, de {ui.versaoNova.quando}. A rota continua como está.</span>
+      <button className="btn peq" onClick={() => A.atualizarApp(ui.versaoNova!.id)}>Atualizar</button>
+    </div>}
+    {ui.posicionando && <Armado alvo={ui.posicionando} />}{ui.aviso}
+    {ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>Desfazer</button></>}
+  </div>;
+}
 
 function App() {
   const {ui} = useLoja();
-  const conteudo = useRef<HTMLDivElement>(null);
-  const rolagem = useRef<Record<string, number>>({});
-  const abaAnterior = useRef(ui.aba);
-  const [comMapa, setComMapa] = useState(false);
-  // Em tela larga o mapa fica ao lado do painel e não custa altura nenhuma — e lá o botão ⤢ Mapa
-  // nem existe. Recolher só faz sentido no celular; no computador ele fica sempre.
-  const [largo, setLargo] = useState(() => matchMedia('(min-width:900px)').matches);
-  useEffect(() => {
-    const mq = matchMedia('(min-width:900px)'), ouvir = () => setLargo(mq.matches);
-    mq.addEventListener('change', ouvir);
-    return () => mq.removeEventListener('change', ouvir);
-  }, []);
+  const [carregaMapa, setCarregaMapa] = useState(false);
+  // Aberto uma vez, o mapa fica montado e só se esconde: desmontando a cada ida à Conferir, ele
+  // voltava baixando o mapa de novo, refazendo os 80 pinos e perdendo o zoom que ele tinha dado.
+  // E não é baixado antes de alguém precisar dele — o começo do dia, sem rota, não tem mapa.
+  const jaTeveMapa = useRef(false);
   useEffect(() => { A.iniciar(); }, []);
-  useEffect(() => {
-    depoisDeAparecer(() => setComMapa(true));
-    depoisDeAparecer(() => { import('xlsx').catch(() => {}); });
-  }, []);
-  useEffect(() => {
-    const c = conteudo.current;
-    if (!c) return;
-    if (abaAnterior.current !== ui.aba) {
-      c.scrollTop = rolagem.current[ui.aba] || 0;
-      abaAnterior.current = ui.aba;
-    }
-  }, [ui.aba]);
+  // o mapa vem depois da primeira pintura: abrir o app não espera o Leaflet
+  useEffect(() => { depoisDeAparecer(() => setCarregaMapa(true)); }, []);
   const pf = nuvem.perfil;
   if ((!nuvem.sessao && !nuvem.lembrada) || (nuvem.sessao && pf && !pf.ativo)) return <>
     <TelaEntrar />
     <div id="status" className={'flutua' + (ui.aviso ? ' on' : '')}>{ui.aviso}</div>
   </>;
-  const abas: [Aba, string][] = pf?.papel === 'admin' ? [...ABAS, ['admin', '⚙️ Admin']] : ABAS;
-  const escolhido = A.tamanhoDoMapa();
-  const tamanhoMapa = largo && escolhido === 'fechado' ? 'normal' : escolhido;
-  const altura = largo ? null : A.alturaDoMapa();
-  const comBarra = !largo && ui.aba === 'rota' && tamanhoMapa !== 'fechado';
-  return <>
-    <div id="app" className={`mapa-${tamanhoMapa}${ui.aba === 'rota' ? ' mapa-embaixo' : ''}${comBarra ? ' com-barra' : ''}`}
-      style={altura ? ({'--mapa-h': altura + 'vh'} as React.CSSProperties) : undefined}>
-      <div className="mapwrap">
-        {comBarra && <BarraDoMapa />}
-        {/* fechado é não desenhar, não desenhar com altura zero: senão o mapa e o aviso de falha
-            ficam no DOM meio visíveis, e o Leaflet trabalha à toa numa aba que não o usa */}
-        {tamanhoMapa !== 'fechado'
-          && <EscudoDoMapa><Suspense fallback={null}>{comMapa && <Mapa />}</Suspense></EscudoDoMapa>}
-        <button id="btnMapa" className="btn peq" onClick={A.alternarMapa}
-          title="Toque para fechar, voltar ao normal ou ampliar o mapa desta aba">⤢ Mapa</button>
-        {ui.aba === 'rota' && tamanhoMapa !== 'fechado'
-          && <button id="btnEu" className="btn peq" onClick={A.centralizarEmMim} title="Centralizar onde você está">◎</button>}
-      </div>
-      <div id="painel">
-        <nav>{abas.map(([id, nome]) => <button key={id} className={ui.aba === id ? 'on' : ''} onClick={() => A.irPara(id)}>{nome}
-          {id === 'admin' && ui.esperandoAdmin > 0 && <span className="selo" data-selo aria-label={`${ui.esperandoAdmin} esperando você`}>{ui.esperandoAdmin}</span>}</button>)}</nav>
-        <div id="status" className={ui.aviso || ui.posicionando || ui.versaoNova || ui.podeInstalar ? 'on' : ''}>
-          {ui.podeInstalar && <div className="instalar" data-instalar>
-            <span>Instale o app: fica com ícone na tela inicial, abre em tela cheia, e o Compartilhar do WhatsApp manda os prints direto para cá.</span>
-            <span className="botoes"><button className="btn peq pri" onClick={A.instalarApp}>Instalar</button><button className="btn peq" onClick={A.instalarDepois}>Agora não</button></span>
-          </div>}
-          {ui.versaoNova && <div className="versao-nova" data-versao-nova>
-            <span>Versão nova do app, de {ui.versaoNova.quando}. A rota continua como está.</span>
-            <button className="btn peq" onClick={() => A.atualizarApp(ui.versaoNova!.id)}>Atualizar</button>
-          </div>}
-          {ui.posicionando && <Armado alvo={ui.posicionando} />}{ui.aviso}
-          {ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>↺ Desfazer</button></>}</div>
-        <div id="conteudo" ref={conteudo} onScroll={ev => { rolagem.current[ui.aba] = (ev.target as HTMLDivElement).scrollTop; }}>
-          {ui.aba === 'enderecos' && <TelaEnderecos />}
-          {ui.aba === 'conferir' && <TelaConferir />}
-          {ui.aba === 'rota' && <TelaRota />}
-          {ui.aba === 'admin' && <Suspense fallback={<div className="info">Abrindo…</div>}><TelaAdmin /></Suspense>}
-        </div>
-      </div>
+  const comMapa = ui.tela === 'rota' || ui.tela === 'admin';
+  if (comMapa) jaTeveMapa.current = true;
+  const folha = ui.tela === 'rota' ? ` folha-${ui.pino ? 'pino' : ui.folha}` : '';
+  return <div id="app" className={`tela-${ui.tela}${folha}`}>
+    <div className="cima">
+      {ui.tela === 'rota' && <TopoRota />}
+      {ui.tela === 'admin' && <Cabecalho titulo="Admin" />}
+      <Status />
     </div>
-  </>;
+    {jaTeveMapa.current && <div className="mapwrap" hidden={!comMapa}>
+      <EscudoDoMapa><Suspense fallback={null}>{carregaMapa && <Mapa />}</Suspense></EscudoDoMapa>
+      {ui.tela === 'rota' && <SobreOMapa />}
+    </div>}
+    <div id="painel">
+      {ui.tela === 'rota' && <FolhaRota />}
+      {ui.tela === 'inicio' && <TelaInicio />}
+      {ui.tela === 'conferir' && <TelaConferir />}
+      {ui.tela === 'saida' && <TelaSaida />}
+      {ui.tela === 'areas' && <TelaAreas />}
+      {ui.tela === 'admin' && <Suspense fallback={<div className="info">Abrindo…</div>}><TelaAdmin /></Suspense>}
+    </div>
+    {ui.menu && <MenuMais />}
+  </div>;
 }
 
 // antes de desenhar: o Chrome pode avisar que dá para instalar logo que a página carrega

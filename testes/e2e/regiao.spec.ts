@@ -1,4 +1,4 @@
-import {test, expect, abrir, aba, linhaDe} from './apoio';
+import {test, expect, abrir, aba, colar, linhaDe} from './apoio';
 
 // Todos os testes daqui são sobre o que acontece QUANDO O CENSO NÃO RESPONDE: o filtro de região,
 // a queda para o bairro, o nome antigo da rua, a nossa base de ruas. Por isso a rua usada é a
@@ -23,14 +23,15 @@ async function mapaFalso(page: any, ruaEncontrada: object) {
 test('rua de mesmo nome em outro estado não entra na rota', async ({page}) => {
   const buscas = await mapaFalso(page, EM_SAO_PAULO);
   await abrir(page);
+  await colar(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
   await page.getByLabel(/Endereços da área/).fill('Rua Construtora Cunha 114');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
-  await expect(page.getByText(/❗ 1 para conferir/)).toBeVisible({timeout: 30_000});
-  await expect(linhaDe(page, 'Rua Construtora Cunha 114', 'Marcar no mapa')).toContainText('Não encontrado');
+  await aba(page, '2. Conferir');
+  await expect(linhaDe(page, 'Rua Construtora Cunha 114', 'Marcar no mapa')).toContainText('Não encontrado', {timeout: 30_000});
   await expect(page.getByText('São Paulo')).toHaveCount(0);
   expect(buscas.some(b => b.includes('bounded=1') && b.includes('viewbox='))).toBe(true);
-  await aba(page, '1. Endereços');
+  await colar(page);
   await expect(page.getByText(/Só procuro endereço até 100 km de Aracaju, SE/)).toBeVisible();
 });
 
@@ -47,13 +48,15 @@ test('rua que o mapa não tem vai para o bairro certo, e a rua trocada fica só 
     r.fulfill({status: 200, contentType: 'application/json', headers: {'access-control-allow-origin': '*'}, body: JSON.stringify([corpo])});
   });
   await abrir(page);
+  await colar(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
   await page.getByLabel(/Endereços da área/).fill('Rua Construtora Cunha 1520');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await aba(page, '2. Conferir');
   const linha = linhaDe(page, 'Rua Construtora Cunha 1520', 'Marcar no mapa');
   await expect(linha).toContainText('o mapa não tem esta rua: posição pelo bairro Jardins', {timeout: 30_000});
   await expect(linha).toContainText('Posição pelo bairro — confira no local');
-  await page.locator('[data-item]').filter({hasText: 'Construtora Cunha'}).getByRole('button', {name: 'Ver', exact: true}).click();
+  await page.locator('[data-item]').filter({hasText: 'Construtora Cunha'}).locator('.topo').click();
   await expect(page.getByRole('button', {name: /Acrísio Moreira Siqueira/})).toBeVisible();
 });
 
@@ -65,9 +68,11 @@ test('rua que mudou de nome é reconhecida pelo nome antigo, e o app mostra os d
   };
   await mapaFalso(page, MESMA_RUA);
   await abrir(page);
+  await colar(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
   await page.getByLabel(/Endereços da área/).fill('Rua Construtora Cunha 1520');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await aba(page, '2. Conferir');
   const linha = linhaDe(page, 'Rua Construtora Cunha 1520', 'Marcar no mapa');
   await expect(linha).toContainText('Rua certa, número aproximado', {timeout: 30_000});
   await expect(linha).toContainText('no mapa: Rua Acrísio Moreira Siqueira');
@@ -76,9 +81,11 @@ test('rua que mudou de nome é reconhecida pelo nome antigo, e o app mostra os d
 test('a mesma rua dentro da região entra normalmente', async ({page}) => {
   await mapaFalso(page, NA_CIDADE);
   await abrir(page);
+  await colar(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
   await page.getByLabel(/Endereços da área/).fill('Rua Construtora Cunha 114');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await aba(page, '2. Conferir');
   await expect(linhaDe(page, 'Rua Construtora Cunha 114', 'Marcar no mapa')).toContainText('Rua Construtora Cunha — Aracaju', {timeout: 30_000});
 });
 
@@ -89,9 +96,11 @@ test('com a rua na nossa base, o app nem precisa perguntar ao mapa de fora', asy
   ]};
   const buscas = await mapaFalso(page, ARACAJU);
   await abrir(page);
+  await colar(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
   await page.getByLabel(/Endereços da área/).fill('Rua Construtora Cunha 114');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await aba(page, '2. Conferir');
   const linha = linhaDe(page, 'Rua Construtora Cunha 114', 'Marcar no mapa');
   await expect(linha).toContainText('pela nossa base de ruas', {timeout: 30_000});
   await expect(linha).toContainText('Rua certa, número aproximado');
@@ -116,9 +125,11 @@ test('resposta que cai em outro bairro não vira a posição da entrega', async 
   });
   await mapaFalso(page, EM_CIDADE_NOVA);
   await abrir(page);
+  await colar(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
   await page.getByLabel(/Endereços da área/).fill('Rua Principal 17, Jabotiana, CEP 49096-300');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await aba(page, '2. Conferir');
   const linha = linhaDe(page, 'Rua Principal 17', 'Marcar no mapa');
   await expect(linha).toContainText('Jabotiana', {timeout: 30_000});
   await expect(page.getByText('Cidade Nova')).toHaveCount(0);
@@ -132,9 +143,11 @@ test('rua que nenhum mapa tem cai onde já entregamos naquele CEP', async ({page
     status: 200, contentType: 'application/json', headers: {'access-control-allow-origin': '*'}, body: '[]',
   }));
   await abrir(page);
+  await colar(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
   await page.getByLabel(/Endereços da área/).fill('Rua Estanislau dos Santos 39, Jabotiana, CEP 49096-270');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await aba(page, '2. Conferir');
   const linha = linhaDe(page, 'Estanislau dos Santos', 'Marcar no mapa');
   await expect(linha).toContainText('pelas entregas já feitas neste CEP', {timeout: 30_000});
   const pedido = nuvem.pedidos.find(p => p.caminho === 'rpc/ancoras_de_cep');
@@ -153,9 +166,11 @@ test('porta vizinha do censo ganha do ponto solto da nossa base de ruas', async 
   ]};
   await mapaFalso(page, ARACAJU);
   await abrir(page);
+  await colar(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
   await page.getByLabel(/Endereços da área/).fill('Avenida Oviêdo Teixeira 935, CEP 49026100');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await aba(page, '2. Conferir');
   const linha = linhaDe(page, 'Avenida Oviêdo Teixeira 935', 'Marcar no mapa');
   await expect(linha).toContainText('o IBGE tem o nº 949', {timeout: 30_000});
   await expect(linha).not.toContainText('pela nossa base de ruas');

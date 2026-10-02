@@ -24,10 +24,12 @@ Nenhuma posição pode cair longe do bairro do endereço — o censo do IBGE dá
 ## Código
 
 - `app/`: Vite + React + TypeScript. Lógica pura em `app/src/logica` (com testes), telas em
-  `app/src/componentes` (uma por aba) e ações em `app/src/acoes` (conta, endereços, posições, rota).
+  `app/src/componentes` (uma por tela) e ações em `app/src/acoes` (conta, endereços, posições, rota,
+  navegação). O mapa da Rota é a tela de base, com o cartão da próxima entrega embaixo; o resto
+  abre pelo menu Mais, e cada tela ou cartão aberto é um passo do voltar do celular.
 - `supabase/`: estrutura do banco, rodada em ordem no SQL Editor.
 - `ferramentas/ruas.mjs`: copia as ruas de uma cidade do OpenStreetMap para a nossa base
-  (`npm run ruas -- Aracaju "Nossa Senhora do Socorro"`). Na aba Admin dá para nomear, com as
+  (`npm run ruas -- Aracaju "Nossa Senhora do Socorro"`). No Admin dá para nomear, com as
   entregas dos motoristas, os trechos que vieram sem nome.
 - `ferramentas/prefeitura.mjs`: traz da prefeitura de Aracaju as ruas que o OpenStreetMap não tem
   (`npm run prefeitura` mostra o que faria; `-- gravar` grava). São 1.281 ruas a mais, com traçado,
@@ -69,12 +71,12 @@ neste clone) e na publicação. Em caso de engano: `git commit --no-verify`.
 - A tela é testada no tamanho de celular, com `testes/planilhas/rota-d.xlsx` (80 paradas), e o que
   se afirma é o que cansa quem usa: cartão que repete a mesma frase, `Remover` ao lado de botão de
   todo dia, endereço da próxima entrega fora da tela. Roda no `npm test`.
-- `ROTA_REAL="…/rota.xlsx" npm run test:ui`: além disso, fotografa as abas com a rota do dia em
+- `ROTA_REAL="…/rota.xlsx" npm run test:ui`: além disso, fotografa as telas com a rota do dia em
   `test-results/`, para olhar a tela em vez de opinar sobre ela. A planilha não entra no git.
   Fica fora do `npm test` para o CI não depender de rede de fora.
 - `npm run test:nuvem`: contra o banco de verdade (cria e apaga usuários de teste).
 - Cada push na `main` roda os testes no GitHub Actions e, se passarem, publica no GitHub Pages.
 - O build grava um número de versão no app e em `versao.json`. O app compara os dois quando abre e
   quando volta para a tela. Sem entrega pendente, ele recarrega sozinho. Com rota andando, mostra a
-  barra "Versão nova do app" e espera o motorista tocar em Atualizar. A aba 1. Endereços mostra a
+  barra "Versão nova do app" e espera o motorista tocar em Atualizar. O pé do menu Mais mostra a
   versão que está rodando, para conferir pelo print de um motorista.

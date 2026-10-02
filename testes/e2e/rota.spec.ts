@@ -1,9 +1,25 @@
-import {test, expect, abrir, carregar, aviso, aba, montar, ordem, linhaDe, clicarMapa, pontosNoMaps, ROTA_A, ROTA_B} from './apoio';
+import {test, expect, abrir, carregar, aviso, aba, lista, menu, montar, ordem, linhaDe, clicarMapa, pontosNoMaps, paraABase, ROTA_A, ROTA_B} from './apoio';
+import type {Page} from '@playwright/test';
 
 const P1 = 'Rua Oeste, 1, Bairro';
 const Q = 'Rua Oeste, 150';
 const P5 = 'Rua Leste, 5';
 const NOMES = [P1, Q, 'Rua Centro Oeste, 2', 'Rua Centro, 3', 'Rua Centro Leste, 4', P5];
+// quantas entregas feitas o topo da Rota mostra ("3 de 10 entregas")
+const feitas = async (page: Page) => Number((await page.locator('.resumo b').innerText()).split(' ')[0]);
+
+// Entrega a próxima até o cartão ser de duas ou mais entregas no mesmo endereço.
+async function ateUmEnderecoComVarias(page: Page) {
+  const cartao = page.locator('.proxima');
+  const todas = cartao.getByRole('button', {name: /^Entreguei as \d+$/});
+  for (let i = 0; i < 15 && !(await todas.count()); i++) {
+    await cartao.locator('[data-acao="entregue"]').first().click();
+    await page.waitForTimeout(250);
+  }
+  await expect(todas).toBeVisible();
+  return todas;
+}
+
 const GPS = {
   p1: {latitude: -10.9300, longitude: -37.1000},
   p3: {latitude: -10.9300, longitude: -37.0800},
@@ -29,9 +45,10 @@ test.describe('com GPS', () => {
     await carregar(page, ROTA_B);
     await montar(page);
     expect((await ordem(page, NOMES)).slice(0, 2)).toEqual([P1, Q]);
+    await paraABase(page);
     await expect(page.locator('.proxima')).toContainText('Aqui perto, fora desta parada');
-    await expect(page.locator('.proxima')).toContainText(/Rua Oeste, 150.*~1\d\d m/);
-    await linhaDe(page, P1, 'Entregue').getByRole('button', {name: 'Entregue'}).click();
+    await expect(page.locator('.proxima')).toContainText(/Rua Oeste, 150 \(1\d\d m\)/);
+    await page.locator('.proxima [data-acao="entregue"]').click();
     await expect(aviso(page)).toContainText(/Próxima a ~1[45]0 m: Rua Oeste, 150\. Dá para ir a pé\./);
   });
 
@@ -41,44 +58,57 @@ test.describe('com GPS', () => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
-    const cartao = page.locator('.proxima');
-    const uma = cartao.getByRole('button', {name: '✓ Entreguei', exact: true});
-    const umPorUm = cartao.getByRole('button', {name: 'Entregue', exact: true});
-    const todas = cartao.getByRole('button', {name: /✓ Entreguei as \d+/});
+    const todas = await ateUmEnderecoComVarias(page);
+    const endereco = await page.locator('.proxima .endereco').innerText();
+    const antes = await feitas(page);
 
-    let entregues = 0;
-    for (let i = 0; i < 15 && !(await todas.count()); i++) {
-      await uma.click();
-      entregues++;
-      await page.waitForTimeout(250);
-    }
-    expect(entregues).toBeGreaterThan(0);
-    expect(await umPorUm.count()).toBe(2);
+    // uma a uma, na lista
+    await lista(page);
+    const bloco = page.locator('.bloco').filter({hasText: endereco});
+    await expect(bloco.getByRole('button', {name: 'Entregue', exact: true})).toHaveCount(2);
+    await paraABase(page);
 
     await todas.click();
     expect(perguntas.at(-1)).toMatch(/Marcar como entregue tudo desta parada\?[\s\S]*2 entrega\(s\), \d+ pacote\(s\)/);
     await expect(aviso(page)).toContainText('2 entrega(s) marcada(s) aqui');
-    await expect(page.locator('.resumo')).toContainText(`${entregues + 2}/10 entregas`);
+    await expect(page.locator('.resumo')).toContainText(`${antes + 2} de 10 entregas`);
 
-    await uma.click();
-    await expect(page.locator('.resumo')).toContainText(`${entregues + 3}/10 entregas`);
+    await page.locator('.proxima').getByRole('button', {name: 'Entreguei', exact: true}).click();
+    await expect(page.locator('.resumo')).toContainText(`${antes + 3} de 10 entregas`);
+  });
+
+  // Adiando só a primeira, o cartão voltava com o mesmo endereço, e "Depois" parecia quebrado.
+  test('"Depois" no cartão adia todas as entregas do endereço', async ({page}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await ateUmEnderecoComVarias(page);
+    const endereco = await page.locator('.proxima .endereco').innerText();
+    await page.locator('.proxima').getByRole('button', {name: 'Depois', exact: true}).click();
+    await expect(page.locator('.proxima .endereco')).not.toHaveText(endereco);
+    await lista(page);
+    await expect(page.getByText('Deixadas para depois (2)')).toBeVisible();
   });
 
   test('deixar para depois tira a parada da sequência sem desmontar a rota, e dá para arrumar e voltar', async ({page}) => {
     await abrir(page);
     await carregar(page, ROTA_B);
     await montar(page);
+    await lista(page);
     await linhaDe(page, P1, 'Deixar para depois').getByRole('button', {name: 'Deixar para depois'}).click();
-    await expect(page.getByText('⏸ Deixadas para depois (1)')).toBeVisible();
+    await expect(page.getByText('Deixadas para depois (1)')).toBeVisible();
     expect((await ordem(page, NOMES))[0]).toBe(Q);
     expect((await pontosNoMaps(page)).some(p => p.startsWith('-10.9300013,-37.1000013'))).toBe(false);
+    // da lista, marcar leva ao mapa, e marcado, volta sozinho para a lista
     await page.getByRole('button', {name: 'Marcar no mapa'}).last().click();
+    await expect(page.locator('[data-folha="lista"]')).toHaveCount(0);
     await clicarMapa(page, -10.9301, -37.1001);
-    await expect(page.locator('.resumo')).toBeVisible();
+    await expect(page.locator('[data-folha="lista"]')).toBeVisible();
     await page.getByRole('button', {name: 'Voltar para a rota'}).click();
     await expect(page.getByText(/1 parada\(s\) nova\(s\) ou corrigida\(s\) fora da rota/)).toBeVisible();
-    await page.getByRole('button', {name: 'Refazer rota'}).click();
-    await expect(page.getByText('⏸ Deixadas para depois')).toHaveCount(0);
+    await page.locator('[data-folha="lista"]').getByRole('button', {name: 'Refazer a rota'}).first().click();
+    await expect(page.getByText('Deixadas para depois')).toHaveCount(0);
     await expect.poll(async () => (await ordem(page, NOMES)).length).toBe(6);
   });
 
@@ -86,9 +116,10 @@ test.describe('com GPS', () => {
     await context.setGeolocation(GPS.p3);
     await abrir(page);
     await carregar(page, ROTA_B);
-    await aba(page, '3. Rota');
+    await menu(page, 'Ponto de saída e de chegada');
     await page.getByRole('button', {name: 'Marcar no mapa'}).click();
     await clicarMapa(page, -10.9300, -37.0550);
+    // marcado, volta sozinho para a tela de onde saiu
     await expect(page.getByText(/Local marcado no mapa\. A última entrega/)).toBeVisible();
     await montar(page);
     expect((await ordem(page, NOMES)).at(-1)).toBe(P5);
@@ -107,15 +138,15 @@ test('se o pedido de GPS fica sem resposta, a rota sai assim mesmo, e a resposta
   });
   await abrir(page);
   await carregar(page, ROTA_B);
-  await aba(page, '3. Rota');
-  await page.getByRole('button', {name: /Montar melhor sequência/}).click();
+  await page.getByRole('button', {name: 'Montar a rota', exact: true}).click();
   await expect(aviso(page)).toContainText('Pegando sua localização');
-  await expect(page.locator('.resumo')).toBeVisible({timeout: 60_000});
+  await expect(page.locator('[data-folha="proxima"]')).toBeVisible({timeout: 60_000});
   expect(await ordem(page, NOMES)).toHaveLength(6);
 
   await page.evaluate(() => (window as unknown as {permitirDepois: () => void}).permitirDepois());
   await expect(aviso(page)).toContainText('chegou depois que a rota ficou pronta');
-  await expect(page.locator('.resumo')).toBeVisible();
+  await paraABase(page);
+  await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
   expect(await ordem(page, NOMES)).toHaveLength(6);
 });
 
@@ -132,7 +163,6 @@ test('importar um segundo lote no meio do dia não apaga a rota', async ({page})
   await carregar(page, ROTA_B);
   await expect(aviso(page)).toContainText('A rota de agora continua na tela');
   await aba(page, '3. Rota');
-  await expect(page.locator('.resumo')).toBeVisible();
   await expect(page.locator('.proxima .endereco')).toHaveText(proxima);
   await expect(page.getByText(/parada\(s\) nova\(s\) ou corrigida\(s\) fora da rota/)).toBeVisible();
 });
@@ -155,32 +185,33 @@ test('se refazer sair sem as ruas, dá para voltar para a rota de antes', async 
   await abrir(page);
   await carregar(page, ROTA_B);
   await montar(page);
-  await expect(page.locator('.resumo')).not.toContainText('aproximado');
-  // O resumo termina com "fim ~16:10", que sai do relógio. Guardar o texto inteiro e comparar
-  // depois quebrava sozinho quando o minuto virava no meio do teste: o que este teste afirma é a
-  // distância e o tempo da rota que voltou, não a hora em que ela acabaria.
-  const semFim = (s: string) => s.replace(/\s*·\s*fim\s*~\s*\d{1,2}:\d{2}\s*$/, '');
-  const pelasRuas = semFim(await page.locator('.resumo').innerText());
+  // A distância e o tempo ficam no pé da lista. A hora de fim, no topo, sai do relógio: comparar
+  // com ela quebrava sozinho quando o minuto virava no meio do teste.
+  const pe = page.locator('.rodape-lista');
+  await lista(page);
+  await expect(pe).not.toContainText('aproximado');
+  const pelasRuas = await pe.innerText();
 
   ruas = false;
   await montar(page);
   await expect(aviso(page)).toContainText('A de antes saiu pelas ruas');
-  await expect(page.locator('.resumo')).toContainText('aproximado');
+  await expect(page.locator('.proxima')).toContainText('Rota em linha reta');
 
-  await page.getByRole('button', {name: '↺ Desfazer'}).click();
+  await aviso(page).getByRole('button', {name: 'Desfazer'}).click();
   await expect(aviso(page)).toContainText('A rota de antes voltou');
-  await expect.poll(async () => semFim(await page.locator('.resumo').innerText())).toBe(pelasRuas);
+  await lista(page);
+  await expect.poll(async () => pe.innerText()).toBe(pelasRuas);
 });
 
 test('dá para pedir a rota na ordem do app de entrega, e o app diz o que isso custa', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_A);
-  await aba(page, '3. Rota');
+  await menu(page, 'Ponto de saída e de chegada');
   await page.getByLabel('Seguir a ordem do app de entrega (parada 1, 2, 3…)').check();
-  await page.getByRole('button', {name: /Montar melhor sequência/}).click();
-  await expect(page.locator('.resumo')).toBeVisible();
-  await page.getByText('Detalhes da rota').click();
-  await expect(page.getByText(/Você pediu a ordem do app/)).toBeVisible();
+  await page.getByRole('button', {name: 'Montar a rota', exact: true}).click();
+  await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
+  await lista(page);
+  await expect(page.locator('.rodape-lista')).toContainText(/Você pediu a ordem do app/);
   const naOrdem = await ordem(page, ['Rua das Acácias, 120', 'Rua dos Ipês, 300', 'Avenida Central, 1500', 'Travessa Um, 45', 'Rua D, 49']);
   expect(naOrdem).toEqual(['Rua das Acácias, 120', 'Rua dos Ipês, 300', 'Avenida Central, 1500', 'Travessa Um, 45', 'Rua D, 49']);
 });
@@ -188,7 +219,7 @@ test('dá para pedir a rota na ordem do app de entrega, e o app diz o que isso c
 test('sem GPS a rota ainda é montada, e "voltar ao ponto de saída" já pode ser marcado', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_B);
-  await aba(page, '3. Rota');
+  await menu(page, 'Ponto de saída e de chegada');
   await expect(page.getByLabel('Voltar ao ponto de saída no final')).toBeEnabled();
   await montar(page);
   expect(await ordem(page, NOMES)).toHaveLength(6);
@@ -198,13 +229,14 @@ test('o ponto final é apagado no reset do dia', async ({page}) => {
   page.on('dialog', d => d.accept());
   await abrir(page);
   await carregar(page, ROTA_B);
-  await aba(page, '3. Rota');
+  await menu(page, 'Ponto de saída e de chegada');
   await page.getByRole('button', {name: 'Marcar no mapa'}).click();
   await clicarMapa(page, -10.9300, -37.0550);
-  await page.getByRole('button', {name: /Resetar rota/}).click();
+  await expect(page.getByText(/Local marcado no mapa/)).toBeVisible();
+  await menu(page, 'Resetar a rota');
   await carregar(page, ROTA_B);
-  await aba(page, '3. Rota');
-  await expect(page.getByText('Sem ponto final')).toBeVisible();
+  await menu(page, 'Ponto de saída e de chegada');
+  await expect(page.getByText(/Sem ponto final/)).toBeVisible();
 });
 
 // Num computador o navegador se localiza pela internet e erra quilômetros. Isso não é defeito
@@ -215,8 +247,8 @@ test.describe('localização ruim como ponto de saída', () => {
   test('avisa o tamanho do erro em vez de apresentar como localização', async ({page}) => {
     await abrir(page);
     await carregar(page, ROTA_B);
-    await aba(page, '3. Rota');
-    await page.getByRole('button', {name: '📡 Onde estou agora'}).click();
+    await menu(page, 'Ponto de saída e de chegada');
+    await page.getByRole('button', {name: 'Onde estou agora'}).click();
     await expect(aviso(page)).toContainText('38 km');
     await expect(aviso(page)).toContainText('Sair de outro endereço');
   });

@@ -4,8 +4,8 @@ test('planilha da Shopee salva como .txt vira paradas, somando pacotes do mesmo 
   await abrir(page);
   await carregar(page, ROTA_A);
   await expect(aviso(page)).toContainText('10 parada(s) da planilha, 2 pacote(s) somado(s) a um mesmo endereço.');
-  await expect(page.getByText('Conferir locais')).toBeVisible();
-  await expect(page.getByText('📦 3 unid.')).toBeVisible();
+  await aba(page, '2. Conferir');
+  await expect(page.getByText('3 unid.')).toBeVisible();
   await expect(page.getByText('Rua dos Ipês, 300, Bloco B ap 202', {exact: false})).toBeVisible();
 });
 
@@ -36,7 +36,9 @@ test('planilha .xlsx sem nada estranho não gera alerta', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_B);
   await expect(aviso(page)).toHaveText('6 parada(s) da planilha.');
-  await expect(page.getByText(/❗ 0 para conferir/)).toBeVisible();
+  // nada para conferir: o aviso de cima do mapa nem aparece
+  await expect(page.locator('[data-folha="montar"]')).toBeVisible();
+  await expect(page.locator('[data-conferir]')).toHaveCount(0);
 });
 
 test('cada lugar diferente vira uma marcação no Maps, e só pacotes no mesmo ponto dividem uma', async ({page}) => {

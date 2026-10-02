@@ -34,7 +34,7 @@ describe('planilha com posições fracas (caso do Robalo, 19/09)', () => {
 
   it('resume tudo o que precisa de atenção', () => {
     expect(resumo).toMatchObject({novas: 10, longe: 1, noBairro: 1, aproximadas: 1, numeros: 2, semPosicao: 1});
-    expect(resumoPlanilha(resumo)).toContain('⚠️ 1 com posição longe das outras entregas: levada(s) para o bairro certo, confira no local.');
+    expect(resumoPlanilha(resumo)).toContain(' 1 com posição longe das outras entregas: levada(s) para o bairro certo, confira no local.');
   });
   it('a entrega jogada a 13 km vai para o meio das outras do mesmo bairro, e a posição da Shopee fica como opção', () => {
     const p = achar(e, 'Rua do Robalo Errado');

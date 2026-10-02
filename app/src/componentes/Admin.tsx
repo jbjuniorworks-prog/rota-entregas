@@ -104,8 +104,10 @@ export function TelaAdmin() {
   </>;
 }
 
-const NOME_DO_BOTAO: Record<string, string> = {ver: 'Ver', mapa: 'Marcar no mapa', aqui: '📍 Estou aqui', editar: 'Editar', remover: 'Remover',
-  'balao-aqui': '📍 Entreguei aqui (balão do pino)', 'balao-entreguei': '✓ Entreguei (balão do pino)'};
+// Os nomes gravados no banco ficaram os de antes da tela nova (02/10): o balão do pino virou o
+// cartão de baixo, e o "Ver" da Conferir virou "Ver no mapa".
+const NOME_DO_BOTAO: Record<string, string> = {ver: 'Ver no mapa', mapa: 'Marcar no mapa', aqui: 'Estou aqui', editar: 'Editar', remover: 'Remover',
+  'balao-aqui': 'Entreguei aqui', 'balao-entreguei': 'Entreguei (cartão do pino)'};
 
 // Para parar de decidir no chute quais botões ficam na frente do cartão. Mostra quanto cada um
 // é usado e qual costuma vir depois de qual — dois botões que andam sempre juntos são, na

@@ -45,14 +45,17 @@ test.describe('nuvem @nuvem', () => {
     await page.getByLabel('E-mail').fill(EMAIL);
     await page.getByLabel('Senha', {exact: true}).fill(SENHA);
     await page.getByRole('button', {name: 'Entrar', exact: true}).click();
+    // a conta fica no pé do menu Mais
+    await page.getByRole('button', {name: 'Mais', exact: true}).click();
     await expect(page.getByText('Conectado como Motorista Teste')).toBeVisible();
+    await page.locator('.menu').getByRole('button', {name: 'Fechar'}).click();
 
     await carregar(page, ROTA_A);
     await montar(page);
     const primeira = (await ordem(page, ['Rua das Acácias, 10,', 'Rua das Acácias, 120', 'Rua dos Ipês, 300, Bloco A', 'Avenida Central', 'Travessa Um', 'Rua das Palmeiras', 'Rua das Flores', 'Alameda dos Coqueiros']))[0];
     await linhaDe(page, primeira, 'Entregue').getByRole('button', {name: 'Entregue'}).click();
-    await page.getByRole('button', {name: '1. Endereços'}).click();
-    await expect(page.getByText('✓ tudo salvo')).toBeVisible({timeout: 30_000});
+    await page.getByRole('button', {name: 'Mais', exact: true}).click();
+    await expect(page.locator('#nuvemFila')).toHaveText('tudo salvo', {timeout: 30_000});
 
     const rotas = (await api(`/rest/v1/rotas?motorista_id=eq.${uid}&select=id,at_id`)).corpo;
     expect(rotas).toHaveLength(1);
@@ -77,7 +80,10 @@ test.describe('nuvem @nuvem', () => {
     await page.getByLabel('E-mail').fill(EMAIL);
     await page.getByLabel('Senha', {exact: true}).fill(SENHA);
     await page.getByRole('button', {name: 'Entrar', exact: true}).click();
+    // a conta fica no pé do menu Mais
+    await page.getByRole('button', {name: 'Mais', exact: true}).click();
     await expect(page.getByText('Conectado como Motorista Teste')).toBeVisible();
+    await page.locator('.menu').getByRole('button', {name: 'Fechar'}).click();
     const token = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-auth') || '{}').access_token);
 
     // CEP inventado, para não mexer em nada que os motoristas de verdade já ensinaram
@@ -110,7 +116,10 @@ test.describe('nuvem @nuvem', () => {
     await page.getByLabel('E-mail').fill(EMAIL);
     await page.getByLabel('Senha', {exact: true}).fill(SENHA);
     await page.getByRole('button', {name: 'Entrar', exact: true}).click();
+    // a conta fica no pé do menu Mais
+    await page.getByRole('button', {name: 'Mais', exact: true}).click();
     await expect(page.getByText('Conectado como Motorista Teste')).toBeVisible();
+    await page.locator('.menu').getByRole('button', {name: 'Fechar'}).click();
     const token = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-auth') || '{}').access_token);
 
     const passagem = (porta: string, lat: number, lng: number) => api('/rest/v1/observacoes', {method: 'POST', body: JSON.stringify({
@@ -147,7 +156,10 @@ test.describe('nuvem @nuvem', () => {
     await page.getByLabel('E-mail').fill(EMAIL);
     await page.getByLabel('Senha', {exact: true}).fill(SENHA);
     await page.getByRole('button', {name: 'Entrar', exact: true}).click();
+    // a conta fica no pé do menu Mais
+    await page.getByRole('button', {name: 'Mais', exact: true}).click();
     await expect(page.getByText('Conectado como Motorista Teste')).toBeVisible();
+    await page.locator('.menu').getByRole('button', {name: 'Fechar'}).click();
     const token = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-auth') || '{}').access_token);
 
     const rota = (await api('/rest/v1/rotas', {method: 'POST', body: JSON.stringify({at_id: 'ATREGISTRO001'})}, token)).corpo[0];

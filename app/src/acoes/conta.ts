@@ -2,13 +2,14 @@
 import {usarRegiao} from '../servicos/geocodificacao';
 import {entrar as entrarNaNuvem, iniciarNuvem, nuvem, sair as sairDaNuvem} from '../servicos/nuvem';
 import {e, enviarFila, ui} from './base';
+import {iniciarNavegacao, irPara, telaBase} from './navegacao';
 import {conferirComOCensoAoAbrir, processarCompartilhado} from './enderecos';
 import {avisoCompartilhadas, consultarCompartilhadas} from './posicoes';
 import {saiuDaTela, verVersao} from './versao';
 
 // Pedido de 28/09: um motorista mexendo numa porta confirmada tem de chegar no dono sem ele ir
-// procurar. Sem servidor de notificação, o aviso é o número na aba ⚙️ Admin, conferido quando o
-// app abre e quando ele volta para o app. Só roda para quem administra, e o código do Admin só
+// procurar. Sem servidor de notificação, o aviso é o número no botão Mais e no Admin, conferido
+// quando o app abre e quando ele volta para o app. Só roda para quem administra, e o código do Admin só
 // é baixado por ele — o celular dos motoristas não carrega nada disto.
 const DE_NOVO = 120000;
 let consultado = 0;
@@ -28,6 +29,7 @@ export async function verPendenciasDoAdmin(forcar = false) {
 }
 
 export async function iniciar() {
+  iniciarNavegacao();
   usarRegiao(e().regiao || null);
   await iniciarNuvem();
   loja.mudou(false);
@@ -57,6 +59,6 @@ export async function entrar(email: string, senha: string) {
 export async function sair() {
   if (!confirm('Sair da conta? Para usar o app de novo, vai precisar do e-mail e da senha. O que ainda não foi enviado fica guardado neste celular.')) return;
   await sairDaNuvem();
-  if (ui.aba === 'admin') ui.aba = 'enderecos';
+  if (ui.tela === 'admin') irPara(telaBase());
   loja.mudou(false);
 }

@@ -1,4 +1,4 @@
-import {test, expect, abrir, carregar, aviso, aba, linhaDe, clicarMapa, montar, pontosNoMaps, ROTA_A} from './apoio';
+import {test, expect, abrir, carregar, aviso, aba, colar, linhaDe, lista, menu, clicarMapa, montar, pontosNoMaps, ROTA_A} from './apoio';
 
 const RUA_D = 'Rua D, 49, Perto do Vale';
 const PERTO_DO_GRUPO = [-10.9605, -37.0455] as const;
@@ -12,12 +12,14 @@ async function corrigirRuaD(page) {
 test('posição longe das outras entregas vem em vermelho e sai quando o motorista corrige', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_A);
-  await expect(aviso(page)).toContainText('⚠️ 1 com posição longe das outras entregas');
-  await expect(page.getByText(/❗ 1 para conferir/)).toBeVisible();
+  await expect(aviso(page)).toContainText('1 com posição longe das outras entregas');
+  // no mapa, o aviso de quantas conferir
+  await expect(page.locator('[data-conferir]')).toHaveText('1 para conferir');
+  await aba(page, '2. Conferir');
   await expect(linhaDe(page, RUA_D, 'Marcar no mapa')).toContainText('Longe das outras entregas — confira o pino');
   await corrigirRuaD(page);
   await expect(aviso(page)).toContainText('guardado para as próximas rotas');
-  await expect(page.getByText(/❗ 0 para conferir/)).toBeVisible();
+  await expect(page.getByText(/\b0 para conferir/)).toBeVisible();
 });
 
 test('pino marcado perto de outro já marcado pode virar uma parada só', async ({page}) => {
@@ -32,16 +34,15 @@ test('pino marcado perto de outro já marcado pode virar uma parada só', async 
   await clicarMapa(page, -10.96412, -37.04305);
   expect(perguntas.at(-1)).toContain('virarem uma parada só');
   await expect(aviso(page)).toContainText('Local definido');
-  await aba(page, '3. Rota');
-  await page.getByRole('button', {name: /Montar melhor sequência/}).click();
-  await expect(page.locator('.resumo')).toBeVisible();
-  await expect(page.locator('.item').filter({hasText: 'Avenida Central, 1500'})).toContainText('2 entregas perto');
+  await montar(page);
+  await lista(page);
+  await expect(page.locator('.bloco').filter({hasText: 'Avenida Central, 1500'})).toContainText('2 entregas perto');
 });
 
 test('arrumar o pino de um condomínio ensina o nome dele para a base', async ({page, nuvem}) => {
   await abrir(page);
   await carregar(page, ROTA_A);
-  await aba(page, '1. Endereços');
+  await colar(page);
   await page.getByLabel(/Endereços da área/).fill('Avenida das Flores, 1500, Ed Villa Sorrento apto 101, CEP 49000-102');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
   await aba(page, '2. Conferir');
@@ -62,10 +63,9 @@ test('marcar ao lado de uma entrega que veio da planilha leva as duas para o pon
   await linhaDe(page, 'Travessa Um, 45', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
   await clicarMapa(page, -10.96502, -37.04201);
   expect(perguntas.at(-1)).toContain('Levar as duas para o ponto que você marcou');
-  await aba(page, '3. Rota');
-  await page.getByRole('button', {name: /Montar melhor sequência/}).click();
-  await expect(page.locator('.resumo')).toBeVisible();
-  await expect(page.locator('.item').filter({hasText: 'Travessa Um, 45'})).toContainText('2 entregas');
+  await montar(page);
+  await lista(page);
+  await expect(page.locator('.bloco').filter({hasText: 'Travessa Um, 45'})).toContainText('2 entregas');
 });
 
 test('corrigir um pino do condomínio leva junto as outras entregas do mesmo endereço', async ({page}) => {
@@ -90,20 +90,21 @@ test('a correção fica guardada depois do reset e vale para a planilha e para t
   await carregar(page, ROTA_A);
   await corrigirRuaD(page);
 
-  await aba(page, '1. Endereços');
-  await page.getByRole('button', {name: /Resetar rota/}).click();
+  await menu(page, 'Resetar a rota');
   expect(perguntas.at(-1)).toContain('Quer resetar mesmo?');
-  await expect(page.getByText('Adicionar endereços por área')).toBeVisible();
+  await expect(page.getByText('Carregar a rota de hoje')).toBeVisible();
 
   await carregar(page, ROTA_A);
-  await expect(aviso(page)).toContainText('📌 1 com a posição que você já tinha corrigido');
-  await expect(page.getByText(/❗ 0 para conferir/)).toBeVisible();
+  await expect(aviso(page)).toContainText('1 com a posição que você já tinha corrigido');
+  await aba(page, '2. Conferir');
+  await expect(page.getByText(/\b0 para conferir/)).toBeVisible();
   await expect(linhaDe(page, RUA_D, 'Marcar no mapa')).toContainText('Corrigida por você antes');
 
-  await aba(page, '1. Endereços');
-  await page.getByRole('button', {name: /Resetar rota/}).click();
+  await menu(page, 'Resetar a rota');
+  await colar(page);
   await page.getByLabel(/Endereços da área/).fill('Rua D, 49, CEP 49000-199');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await aba(page, '2. Conferir');
   await expect(linhaDe(page, 'Rua D, 49', 'Marcar no mapa')).toContainText('Corrigida por você antes');
 
   // Pedro, 02/10: as duas partes de baixo da aba não serviam a ninguém. "Esquecer todas" apagava só
@@ -115,14 +116,15 @@ test('a correção fica guardada depois do reset e vale para a planilha e para t
 test('entrega que a planilha joga longe vai para o bairro dela, e o Maps não recebe o ponto errado', async ({page}) => {
   await abrir(page);
   await carregar(page, 'testes/planilhas/rota-c.xlsx');
-  await expect(aviso(page)).toContainText('⚠️ 1 com posição longe das outras entregas: levada(s) para o bairro certo, confira no local.');
-  await expect(aviso(page)).toContainText('⚠️ 1 com posição aproximada na planilha');
-  await expect(aviso(page)).toContainText('⚠️ 2 com número que não bate com a posição');
+  await expect(aviso(page)).toContainText('1 com posição longe das outras entregas: levada(s) para o bairro certo, confira no local.');
+  await expect(aviso(page)).toContainText('1 com posição aproximada na planilha');
+  await expect(aviso(page)).toContainText('2 com número que não bate com a posição');
+  await aba(page, '2. Conferir');
   const linha = linhaDe(page, 'Rua do Robalo Errado', 'Marcar no mapa');
   await expect(linha).toContainText('Posição pelo bairro — confira no local');
   await expect(linha).toContainText('Posição pelo bairro Bairro Robalo Teste');
-  await page.locator('[data-item]').filter({hasText: 'Rua do Robalo Errado'}).getByRole('button', {name: 'Ver', exact: true}).click();
-  await expect(page.getByText('Outras opções encontradas:')).toBeVisible();
+  await page.locator('[data-item]').filter({hasText: 'Rua do Robalo Errado'}).locator('.topo').click();
+  await expect(page.getByText('Outras posições encontradas:')).toBeVisible();
   await expect(page.getByRole('button', {name: /Posição que veio na planilha/})).toBeVisible();
   await montar(page);
   const pontos = await pontosNoMaps(page);
@@ -136,10 +138,10 @@ test('os pinos não se movem ao arrastar o mapa, e uma correção errada se desf
   await expect(page.locator('.leaflet-marker-icon').first()).toBeVisible();
   await expect(page.locator('.leaflet-marker-draggable')).toHaveCount(0);
   await corrigirRuaD(page);
-  await expect(page.getByText(/❗ 0 para conferir/)).toBeVisible();
-  await page.getByRole('button', {name: '↺ Desfazer'}).click();
+  await expect(page.getByText(/\b0 para conferir/)).toBeVisible();
+  await page.locator('#status').getByRole('button', {name: 'Desfazer'}).click();
   await expect(aviso(page)).toContainText('Posição anterior de volta.');
-  await expect(page.getByText(/❗ 1 para conferir/)).toBeVisible();
+  await expect(page.getByText(/\b1 para conferir/)).toBeVisible();
   await expect(linhaDe(page, RUA_D, 'Marcar no mapa')).toContainText('Longe das outras entregas — confira o pino');
   // e o celular esqueceu a correção desfeita
   expect(await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('rota-entregas-posicoes') || '{}')).length)).toBe(0);
@@ -149,8 +151,7 @@ test('reset cancelado não apaga nada', async ({page}) => {
   page.on('dialog', d => d.dismiss());
   await abrir(page);
   await carregar(page, ROTA_A);
-  await aba(page, '1. Endereços');
-  await page.getByRole('button', {name: /Resetar rota/}).click();
+  await menu(page, 'Resetar a rota');
   await aba(page, '2. Conferir');
   await expect(page.getByText(RUA_D)).toBeVisible();
 });
@@ -163,12 +164,12 @@ test.describe('corrigir pela localização do motorista', () => {
     await carregar(page, ROTA_A);
     await aba(page, '2. Conferir');
     const cartao = page.locator('[data-item]').filter({hasText: RUA_D});
-    await cartao.getByRole('button', {name: '📍 Estou aqui'}).click();
+    await cartao.getByRole('button', {name: 'Estou aqui'}).click();
     await expect(aviso(page)).toContainText('Local corrigido pela sua localização e guardado para as próximas rotas.');
     await expect(cartao).toContainText('Sua localização na porta (±10 m)');
-    await expect(page.getByText(/❗ 0 para conferir/)).toBeVisible();
-    await page.getByRole('button', {name: '↺ Desfazer'}).click();
-    await expect(page.getByText(/❗ 1 para conferir/)).toBeVisible();
+    await expect(page.getByText(/\b0 para conferir/)).toBeVisible();
+    await page.locator('#status').getByRole('button', {name: 'Desfazer'}).click();
+    await expect(page.getByText(/\b1 para conferir/)).toBeVisible();
   });
 
   // Pedido deles, 28/09: "esse endereço já foi confirmado, tem certeza que deseja arrumar?". A
@@ -196,7 +197,7 @@ test.describe('corrigir pela localização do motorista', () => {
       return {lat: p.lat, lng: p.lng};
     }, RUA_D);
 
-    await cartao.getByRole('button', {name: '📍 Estou aqui'}).click();
+    await cartao.getByRole('button', {name: 'Estou aqui'}).click();
     expect(perguntas.at(-1)).toContain('Este endereço já está verificado');
     expect(perguntas.at(-1)).toContain('Endereço verificado: 2 entregas feitas aqui');
     expect(perguntas.at(-1)).toContain('Tem certeza que quer arrumar?');
@@ -209,7 +210,8 @@ test.describe('corrigir pela localização do motorista', () => {
 
     aceitar = true;
     await cartao.getByRole('button', {name: 'Marcar no mapa'}).click();
-    await expect(cartao.getByRole('button', {name: 'Toque no mapa…'}), 'aceitou: arruma como antes').toBeVisible();
+    // aceitou: vai ao mapa, armado para o toque, como antes
+    await expect(page.locator('[data-armado]'), 'aceitou: arruma como antes').toBeVisible();
   });
 
   test('com GPS impreciso, pergunta antes; recusando, nada muda', async ({page, context}) => {
@@ -219,10 +221,10 @@ test.describe('corrigir pela localização do motorista', () => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await aba(page, '2. Conferir');
-    await page.locator('[data-item]').filter({hasText: RUA_D}).getByRole('button', {name: '📍 Estou aqui'}).click();
+    await page.locator('[data-item]').filter({hasText: RUA_D}).getByRole('button', {name: 'Estou aqui'}).click();
     await expect(aviso(page)).toHaveText('Posição não alterada.');
     expect(perguntas[0]).toContain('O GPS está impreciso agora (±200 m)');
-    await expect(page.getByText(/❗ 1 para conferir/)).toBeVisible();
+    await expect(page.getByText(/\b1 para conferir/)).toBeVisible();
   });
 
   // O botão do dia a dia: o motorista arruma o pino na porta, com o pacote na mão. A rota que
@@ -235,14 +237,14 @@ test.describe('corrigir pela localização do motorista', () => {
     await expect(page.getByText('Pino errado?')).toBeVisible();
     const proxima = await page.locator('.proxima .endereco').innerText();
 
-    await page.locator('.proxima').getByRole('button', {name: '📍 Estou aqui'}).click();
+    await page.locator('.proxima').getByRole('button', {name: 'Estou aqui'}).click();
     await expect(aviso(page)).toContainText('Local corrigido pela sua localização');
     await expect(aviso(page)).toContainText('A sequência continua de pé');
 
     await expect(page.locator('.resumo'), 'a rota tem de continuar montada').toBeVisible();
     await expect(page.locator('.proxima .endereco')).toHaveText(proxima);
     await expect(page.getByText('a sequência continua valendo')).toBeVisible();
-    await expect(page.getByRole('button', {name: 'Refazer rota'})).toBeVisible();
+    await expect(page.getByRole('button', {name: 'Refazer a rota'})).toBeVisible();
     // o que envelheceu aparece envelhecido: km, tempo e previsão de fim
     await expect(page.locator('.resumo .velho')).toBeVisible();
   });
@@ -251,9 +253,10 @@ test.describe('corrigir pela localização do motorista', () => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
-    await page.getByText('Ponto de saída / refazer rota').click();
-    await page.getByRole('button', {name: '📡 Onde estou agora'}).click();
+    await menu(page, 'Ponto de saída e de chegada');
+    await page.getByRole('button', {name: 'Onde estou agora'}).click();
     await expect(aviso(page)).toContainText('A rota continua na tela');
+    await aba(page, '3. Rota');
     await expect(page.locator('.resumo')).toBeVisible();
     await expect(page.locator('.proxima .endereco')).toBeVisible();
   });
@@ -266,11 +269,11 @@ test.describe('corrigir pela localização do motorista', () => {
     await montar(page);
     await aba(page, '2. Conferir');
     const cartao = page.locator('[data-item]').first();
-    await cartao.getByRole('button', {name: 'Ver', exact: true}).click();
+    await cartao.locator('.topo').click();
     await cartao.getByRole('button', {name: /Remover/}).click();
     await aba(page, '3. Rota');
-    await expect(page.getByRole('button', {name: /Montar melhor sequência/})).toBeVisible();
-    await expect(page.locator('.resumo')).toHaveCount(0);
+    await expect(page.getByRole('button', {name: 'Montar a rota', exact: true})).toBeVisible();
+    await expect(page.locator('[data-folha="proxima"]')).toHaveCount(0);
   });
 });
 
@@ -281,7 +284,7 @@ test.describe('a entrega marcada na porta vira posição para a base', () => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
-    await page.locator('.proxima').getByRole('button', {name: 'Entregue'}).first().click();
+    await page.locator('.proxima [data-acao="entregue"]').first().click();
     await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'observacoes').length, {timeout: 20_000}).toBe(1);
     const passagem = nuvem.pedidos.find(p => p.caminho === 'observacoes')!;
     expect(passagem.metodo).toBe('POST');
@@ -292,7 +295,7 @@ test.describe('a entrega marcada na porta vira posição para a base', () => {
 
     await context.setGeolocation({latitude: -10.9605, longitude: -37.0455, accuracy: 300});
     await page.waitForTimeout(5500);
-    await page.locator('.proxima').getByRole('button', {name: 'Entregue'}).first().click();
+    await page.locator('.proxima [data-acao="entregue"]').first().click();
     await page.waitForTimeout(1500);
     expect(nuvem.pedidos.filter(p => p.caminho === 'observacoes')).toHaveLength(1);
   });
@@ -310,7 +313,7 @@ test.describe('a entrega marcada na porta vira posição para a base', () => {
     // uns 10 m do pino, e o GPS velho do teste não pode valer mais
     await context.setGeolocation({latitude: alvo.lat + 0.00009, longitude: alvo.lng, accuracy: 8});
     await page.waitForTimeout(5500);
-    await page.locator('.proxima').getByRole('button', {name: 'Entregue'}).first().click();
+    await page.locator('.proxima [data-acao="entregue"]').first().click();
     await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'observacoes').length, {timeout: 20_000}).toBe(1);
     expect(nuvem.pedidos.find(p => p.caminho === 'observacoes')!.corpo).toMatchObject({no_pino: true, precisao_m: 8});
   });
@@ -322,6 +325,7 @@ test.describe('a entrega marcada na porta vira posição para a base', () => {
 // bairro, e agora a parada adota ele.
 test('endereço sem CEP nem bairro guarda a porta marcada, com o bairro que a busca achou', async ({page}) => {
   await abrir(page);
+  await colar(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
   await page.getByLabel(/Endereços da área/).fill('Rua Lúcio Mota 114');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
@@ -338,8 +342,8 @@ test('endereço sem CEP nem bairro guarda a porta marcada, com o bairro que a bu
   // null — se ninguém consultar de novo depois que o bairro chega, o app guarda todo dia e nunca
   // usa, e o Luan marca a mesma porta a vida inteira.
   page.on('dialog', d => d.accept());
-  await aba(page, '1. Endereços');
-  await page.getByRole('button', {name: /Resetar rota/}).click();
+  await menu(page, 'Resetar a rota');
+  await colar(page);
   await page.getByLabel(/Endereços da área/).fill('Rua Lúcio Mota 114');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
   await expect(aviso(page)).toContainText('Pronto!', {timeout: 30_000});
@@ -380,6 +384,7 @@ test('colar o link do mapa no Editar põe a parada na porta, guarda, e não troc
   page.on('dialog', d => d.accept('Auto Peças Qualquer Coisa, 999 '
     + 'https://www.google.com/maps/place/x/@-10.9436597,-37.0553986,17z/data=!3m1!4b1!8m2!3d-10.943665!4d-37.0528237'));
   await abrir(page);
+  await colar(page);
   await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
   await page.getByLabel(/Endereços da área/).fill('Avenida Deputado Sílvio Teixeira 200, CEP 49025-400');
   await page.getByRole('button', {name: /^Adicionar em/}).click();

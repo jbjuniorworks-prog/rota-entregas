@@ -1,4 +1,4 @@
-import {test, expect, abrir, aviso} from './apoio';
+import {test, expect, abrir, aviso, menu} from './apoio';
 
 test.describe('sem conta', () => {
   test.use({papel: null});
@@ -10,7 +10,7 @@ test.describe('sem conta', () => {
     }));
     await page.goto('./');
     await expect(page.getByText('Entre com a conta que o responsável criou para você.')).toBeVisible();
-    await expect(page.getByRole('button', {name: '1. Endereços'})).toHaveCount(0);
+    await expect(page.locator('#app')).toHaveCount(0);
     await page.getByLabel('E-mail').fill('alguem@exemplo.com');
     const senha = page.getByLabel('Senha', {exact: true});
     await senha.fill('errada');
@@ -22,15 +22,16 @@ test.describe('sem conta', () => {
     await expect(senha).toHaveAttribute('type', 'password');
     await senha.press('Enter');
     await expect(aviso(page)).toHaveText('E-mail ou senha errados.');
-    await expect(page.getByRole('button', {name: '1. Endereços'})).toHaveCount(0);
+    await expect(page.locator('#app')).toHaveCount(0);
   });
 });
 
 test('motorista entra direto se já tinha entrado, não vê a aba Admin, e ao sair volta para o login', async ({page}) => {
   page.on('dialog', d => d.accept());
   await abrir(page);
+  await page.getByRole('button', {name: 'Mais', exact: true}).click();
   await expect(page.getByText('Conectado como Você Teste')).toBeVisible();
-  await expect(page.getByRole('button', {name: '⚙️ Admin'})).toHaveCount(0);
+  await expect(page.locator('.menu').getByRole('button', {name: /^Admin/})).toHaveCount(0);
   await page.getByRole('button', {name: 'Sair'}).click();
   await expect(page.getByText('Entre com a conta que o responsável criou para você.')).toBeVisible();
 });
@@ -61,7 +62,7 @@ test.describe('administrador', () => {
     };
 
     await abrir(page);
-    await page.getByRole('button', {name: '⚙️ Admin'}).click();
+    await menu(page, /^Admin/);
     await expect(page.getByText('Motoristas (2)')).toBeVisible();
 
     await page.getByText('Nossa base de ruas').click();
@@ -148,13 +149,16 @@ test.describe('administrador', () => {
 
       await abrir(page);
       // o aviso chega antes de ele entrar no Admin: o número fica na própria aba
-      await expect(page.getByRole('button', {name: '⚙️ Admin'}).locator('[data-selo]')).toHaveText('1');
-      await page.getByRole('button', {name: '⚙️ Admin'}).click();
+      // o número fica no botão Mais, à vista em toda tela, e de novo no item do Admin
+      await expect(page.getByRole('button', {name: 'Mais', exact: true}).locator('[data-selo]')).toHaveText('1');
+      await page.getByRole('button', {name: 'Mais', exact: true}).click();
+      await expect(page.locator('.menu').getByRole('button', {name: /^Admin/}).locator('[data-selo]')).toHaveText('1');
+      await page.locator('.menu').getByRole('button', {name: /^Admin/}).click();
       await expect(page.locator('[data-resumo]')).toContainText('📌 1 esperando você.');
       await expect(page.locator('[data-resumo]')).toContainText('🆕 1 marcação(ões) nova(s) desde');
 
       // na ordem da tela: primeiro o que espera decisão, depois o que chegou, e o resto por último
-      const secoes = await page.locator('#conteudo details > summary').allInnerTexts();
+      const secoes = await page.locator('#painel details > summary').allInnerTexts();
       expect(secoes.slice(0, 2)).toEqual(['📌 Precisa de você (1)', '🆕 Marcadas pelos motoristas nos últimos 7 dias (1)']);
       expect(secoes.indexOf('Marcações mais antigas (1)')).toBeGreaterThan(secoes.findIndex(s => s.startsWith('Rotas')));
 
@@ -170,8 +174,8 @@ test.describe('administrador', () => {
       await expect(page.locator(`[data-lugar="${VELHA}"]`)).toBeHidden();
 
       // voltando depois, o que ele já viu deixa de ser novo
-      await page.getByRole('button', {name: '1. Endereços'}).click();
-      await page.getByRole('button', {name: '⚙️ Admin'}).click();
+      await page.locator('.cabecalho').getByRole('button', {name: 'Voltar'}).click();
+      await menu(page, /^Admin/);
       await expect(page.locator('[data-resumo]')).toContainText('Nada novo desde');
       await expect(porta).toBeVisible();
       await expect(porta).not.toContainText('novo');

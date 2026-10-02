@@ -8,6 +8,7 @@ import {loja, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
 import {clienteNuvem} from '../servicos/nuvem';
 import {desatualizarRota, e, enviarFila, fila, memoria, ui} from './base';
+import {abrir, alturaAgora, voltar} from './navegacao';
 
 export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number; xaropes: number}> {
   const saida = {confirmadas: 0, sugestoes: 0, minhas: 0, xaropes: 0};
@@ -32,10 +33,10 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
 }
 
 export function avisoCompartilhadas(r: {confirmadas: number; sugestoes: number; minhas?: number; xaropes?: number}): string {
-  return (r.confirmadas ? ` ✓ ${r.confirmadas} com endereço verificado por outros motoristas.` : '')
-    + (r.minhas ? ` ✍️ ${r.minhas} com a posição que você mesmo já arrumou.` : '')
-    + (r.sugestoes ? ` 💡 ${r.sugestoes} com sugestão de outro motorista: veja em Conferir.` : '')
-    + (r.xaropes ? ` ⚠️ ${r.xaropes} de cliente xarope: veja o pino antes de entregar.` : '');
+  return (r.confirmadas ? ` ${r.confirmadas} com endereço verificado por outros motoristas.` : '')
+    + (r.minhas ? ` ${r.minhas} com a posição que você mesmo já arrumou.` : '')
+    + (r.sugestoes ? ` ${r.sugestoes} com sugestão de outro motorista: veja em Conferir.` : '')
+    + (r.xaropes ? ` ${r.xaropes} de cliente xarope: veja o pino antes de entregar.` : '');
 }
 
 export function usarSugestao(p: Parada) {
@@ -102,19 +103,34 @@ ${p.exibido}
 Tem certeza que quer arrumar? Faça isso só se a porta estiver errada. Quem administra vai ver a mudança.`);
 }
 
+// Arrumar é no mapa: de outra tela (a Conferir, o ponto de chegada, a lista), vai para ele, e
+// marcado ou cancelado, volta sozinho para onde estava, para seguir conferindo a próxima. Só se
+// ainda estiver no passo que abriu: quem já voltou sozinho levaria um voltar a mais.
+let voltarDe = -1;
+
 export function posicionar(alvo: string) {
   const p = alvo === 'fim' || ui.posicionando === alvo ? null : loja.parada(alvo);
   if (p && !podeMexer(p)) return;
   ui.posicionando = ui.posicionando === alvo ? null : alvo;
-  loja.mudou(false);
   // O aviso de "toque no mapa" sai do próprio ui.posicionando (main.tsx), e fica enquanto o modo
   // estiver armado: como aviso de 4 s, o modo continuava valendo sem nada na tela.
-  if (ui.posicionando && window.innerWidth < 900) window.scrollTo(0, 0);
+  voltarDe = -1;
+  if (ui.posicionando && (ui.tela !== 'rota' || ui.folha === 'lista')) {
+    abrir({tela: 'rota', pino: null, folha: 'proxima'});
+    voltarDe = alturaAgora();
+  } else loja.mudou(false);
+}
+
+function terminouDePosicionar() {
+  const ali = voltarDe === alturaAgora();
+  voltarDe = -1;
+  if (ali) voltar();
 }
 
 export function pararDePosicionar() {
   ui.posicionando = null;
   loja.mudou(false);
+  terminouDePosicionar();
 }
 
 export function tocouNoMapa(lat: number, lng: number) {
@@ -125,12 +141,14 @@ export function tocouNoMapa(lat: number, lng: number) {
     e().fim = {id: 'fim', lat, lng, exibido: 'Local marcado no mapa'};
     desatualizarRota();
     loja.mudou();
-    status('Ponto final definido. ' + (e().rota ? 'Toque em "Refazer rota" para a sequência terminar por aqui.' : 'Toque em "Montar melhor sequência".'), 4000);
+    status('Ponto final definido. ' + (e().rota ? 'Toque em "Refazer a rota" para a sequência terminar por aqui.' : 'Toque em "Montar a rota".'), 4000);
+    terminouDePosicionar();
     return;
   }
   const p = loja.parada(alvo);
   if (!p) return;
   corrigirPosicao(p, lat, lng, 'Local definido');
+  terminouDePosicionar();
 }
 
 function prepararDesfazer(p: Parada): () => void {
@@ -305,11 +323,11 @@ export function centralizarEmMim() {
   loja.mudou(false);
 }
 
+// Mostra a entrega no mapa, com o cartão dela embaixo. De outra tela, vai para a Rota.
 export function focar(id: string) {
   ui.selecionada = id;
   ui.focar = {id, vez: (ui.focar?.vez || 0) + 1};
-  if (window.innerWidth < 900) window.scrollTo(0, 0);
-  loja.mudou(false);
+  abrir({tela: 'rota', pino: [id], folha: 'proxima'});
 }
 
 export function escolherCandidato(p: Parada, k: number) {
@@ -322,7 +340,7 @@ export function escolherCandidato(p: Parada, k: number) {
   Object.assign(p, {lat: c.lat, lng: c.lng, exibido: c.exibido, precisao: c.fonte === 'planilha' ? 'manual' : c.precisao, fonte: 'escolhida na lista'});
   const guardou = memoria.lembrar(p, Date.now(), false);
   status('Local escolhido' + (guardou
-    ? ' e guardado neste celular. Para valer para os outros motoristas, arraste o pino ou toque em "📍 Estou aqui" na porta.'
+    ? ' e guardado neste celular. Para valer para os outros motoristas, use "Marcar no mapa" ou toque em "Estou aqui" na porta.'
     : '. Sem CEP nem bairro, não deu para guardar para as próximas rotas.'), 10000, desfazer);
   desatualizarRota(longe);
   loja.mudou();

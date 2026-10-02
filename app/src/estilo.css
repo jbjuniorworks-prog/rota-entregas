@@ -1,145 +1,188 @@
-:root{--bg:#f3f4f6;--card:#fff;--tx:#111827;--mut:#6b7280;--bd:#e5e7eb;--pri:#1d4ed8;--ok:#16a34a;--bad:#dc2626}
+:root{--bg:#f3f4f6;--card:#fff;--tx:#111827;--mut:#4b5563;--bd:#e5e7eb;--pri:#1d4ed8;--ok:#15803d;--laranja:#c2410c;--bad:#b91c1c}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+/* a fonte do próprio celular: nenhuma a baixar, e é a que ele já lê bem */
+html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--tx)}
 #app{display:flex;flex-direction:column;height:100%}
-.mapwrap{position:relative;flex:none}
-/* A altura do mapa é uma variável só: o padrão vem da classe, e o valor que ele arrastou chega
-   por style no #app e ganha de qualquer regra. */
-#app{--mapa-h:28vh}
-#app.mapa-grande{--mapa-h:70vh}
-#map,.semmapa{height:var(--mapa-h);background:#dde3ea}
-/* A faixa de pegar sai do orçamento do MAPA, não do painel: tirando do painel, o endereço da
-   próxima entrega saía da tela — e foi o teste de tela de celular que pegou isso. */
-#app.com-barra #map,#app.com-barra .semmapa{height:calc(var(--mapa-h) - 26px)}
-/* fechado: fica só o botão, senão não há como trazer o mapa de volta */
-#app.mapa-fechado .mapwrap{min-height:46px;background:var(--card)}
-#app.mapa-fechado #btnMapa{top:6px}
-/* Na Rota o cartão da próxima entrega vem primeiro: é o que se olha de relance, moto parada.
-   Por `order`, não por column-reverse: aquele inverte a rolagem do contêiner e o navegador
-   deixa de conseguir rolar até o que está fora da tela. */
-@media (max-width:899px){
-  #app.mapa-embaixo .mapwrap{order:2}
-  #app.mapa-embaixo #painel{order:1}
-  /* a faixa de pegar ganha espaço só dela, acima do mapa; os botões descem junto */
-  #app.com-barra .mapwrap{padding-top:26px}
-  #app.com-barra #btnMapa{top:36px}
-  #app.com-barra #btnEu{top:78px}
-}
+#painel{flex:1;min-height:0;overflow:auto;background:var(--card)}
+
+/* As telas com mapa: a Rota (o mapa e o cartão de baixo) e o Admin. */
+.mapwrap{position:relative;flex:1;min-height:0}
+#map,.semmapa{position:absolute;inset:0;background:#dde3ea}
 .semmapa{display:grid;place-content:center;justify-items:center;gap:10px;padding:16px;text-align:center;font-size:14px;color:var(--mut)}
-#btnMapa{position:absolute;right:10px;top:10px;z-index:500}
-/* Barra de pegar o mapa, entre o cartão e o mapa. Fora dele de propósito: por cima, ela tornava
-   intocável qualquer pino que caísse embaixo dela. A faixa inteira é alvo, para o polegar. */
-#pegaMapa{position:absolute;left:0;right:0;top:0;height:26px;z-index:600;display:grid;place-items:center;background:var(--card);touch-action:none;cursor:ns-resize}
-#pegaMapa i{width:56px;height:6px;border-radius:99px;background:#374151;opacity:.55}
-#btnEu{position:absolute;right:10px;top:52px;z-index:500;font-size:18px;line-height:1;padding:8px 11px}
-/* "você está aqui": bolinha com anel branco, e a seta do rumo só quando ele está andando */
-.eu{width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 1px rgba(37,99,235,.6),0 1px 4px rgba(0,0,0,.4);position:relative;margin:2px}
-.eu i{position:absolute;left:50%;top:50%;width:0;height:0;margin:-6px 0 0 -6px;border:6px solid transparent;border-bottom-color:#2563eb;transform-origin:50% 50%}
-#painel{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--card)}
-nav{display:flex;border-bottom:1px solid var(--bd)}
-nav button{flex:1;border:0;background:none;padding:12px 4px;font-size:15px;font-weight:600;color:var(--mut);border-bottom:3px solid transparent}
-nav button.on{color:var(--pri);border-color:var(--pri)}
-#conteudo{flex:1;overflow:auto;padding:14px 14px 90px}
-h2{font-size:17px;margin:4px 0 10px}
-label{display:block;font-size:14px;color:var(--mut);margin:10px 0 4px}
-input[type=text],input[type=email],input[type=password],input[type=time],textarea,select{width:100%;font:inherit;padding:10px;border:1px solid var(--bd);border-radius:10px;background:#fff;color:var(--tx)}
+#app.tela-rota #painel{flex:none;max-height:52vh;border-radius:18px 18px 0 0;box-shadow:0 -6px 20px rgba(17,24,39,.12);margin-top:-14px;position:relative;z-index:500}
+/* puxada para cima, a lista fica com a tela e o mapa vira uma faixa */
+#app.tela-rota.folha-lista .mapwrap{flex:none;height:14vh}
+#app.tela-rota.folha-lista #painel{flex:1;max-height:none}
+#app.tela-admin .mapwrap{flex:none;height:38vh}
+
+/* o alto: o progresso na Rota, o título e o voltar nas outras */
+.topo-rota,.cabecalho{flex:none;display:flex;align-items:center;gap:12px;padding:10px 14px;background:#fff;border-bottom:1px solid var(--bd)}
+.progresso,.titulos{flex:1;min-width:0}
+.resumo{font-size:15px}
+.resumo span{color:var(--mut)}
+.barra{height:6px;border-radius:99px;background:var(--bd);overflow:hidden;margin-top:6px}
+.barra i{display:block;height:100%;background:var(--ok)}
+.titulo{font-size:18px;font-weight:800;line-height:1.25}
+.quadrado{flex:none;width:44px;height:44px;border-radius:12px;border:0;background:#f3f4f6;color:var(--tx);display:grid;place-items:center;cursor:pointer;padding:0}
+.quadrado.ok{background:#fff;color:var(--ok);box-shadow:inset 0 0 0 2px var(--ok)}
+.quadrado:disabled{opacity:.4}
+.com-selo{position:relative}
+.com-selo .selo{position:absolute;top:-4px;right:-4px}
+
+/* por cima do mapa */
+.chip-conferir{position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;top:12px;z-index:500;min-height:44px;padding:0 16px;border:0;border-radius:99px;background:var(--laranja);color:#fff;font:inherit;font-weight:700;box-shadow:0 2px 8px rgba(17,24,39,.2);cursor:pointer}
+#btnEu{position:absolute;right:12px;top:12px;z-index:500;width:48px;height:48px;border-radius:50%;border:0;background:#fff;color:var(--tx);display:grid;place-items:center;box-shadow:0 2px 8px rgba(17,24,39,.2);cursor:pointer;padding:0}
+
+/* o cartão de baixo */
+.folha{padding:4px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.folha-cab{display:flex;align-items:center;gap:10px;padding-top:8px}
+.folha-cab .titulo{flex:1}
+.puxador{align-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 24px;border:0;background:none;color:var(--mut);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.puxador i{width:44px;height:5px;border-radius:99px;background:#d1d5db}
+.linha-entrega{display:flex;gap:12px;align-items:flex-start}
+.badge{flex:none;min-width:34px;height:34px;padding:0 6px;border-radius:17px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px}
+.grande-badge{min-width:44px;height:44px;border-radius:22px;font-size:17px}
+.txt{flex:1;min-width:0;word-break:break-word}
+.rotulo-proxima{font-size:13px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.02em}
+.endereco{font-size:20px;font-weight:800;line-height:1.25}
+.grande-btn{min-height:56px;font-size:18px;font-weight:800;width:100%}
+.tres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.secundarios{display:flex;flex-wrap:wrap;gap:0 18px;align-items:center;font-size:14px;color:var(--mut)}
+.link{display:inline-flex;align-items:center;border:0;background:none;padding:0;min-height:44px;font:inherit;font-size:14px;font-weight:700;color:var(--pri);text-decoration:none;cursor:pointer}
+.perto{display:flex;flex-wrap:wrap;align-items:center;gap:0 14px}
+.perto .link{min-height:36px;text-align:left}
+.trechos{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.trechos .btn{flex:none;min-height:36px;padding:6px 10px}
+.entrega{border:1px solid var(--bd);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:10px;background:#f9fafb}
+.botoes-entrega{display:flex;gap:8px;flex-wrap:wrap}
+.botoes-entrega .btn{flex:1 1 30%}
+.feita{align-self:center;font-weight:700;color:var(--ok);padding:0 6px}
+.grande{font-size:19px;font-weight:700;margin:4px 0}
+
+/* a lista puxada para cima */
+.bloco-lista{margin-top:4px}
+.area-cab{display:flex;align-items:center;gap:8px;margin:12px 0 4px;font-size:15px}
+.area-cab .txt{font-weight:800}
+.bloco{border-top:1px solid var(--bd);padding-top:4px}
+.parada{display:flex;gap:8px;align-items:center;padding:6px 0}
+.parada .txt{border:0;background:none;padding:0;text-align:left;font:inherit;color:inherit;display:flex;flex-direction:column;gap:2px;cursor:pointer}
+.parada .end{font-weight:700}
+.parada.feito .end{text-decoration:line-through;color:var(--mut)}
+.parada.feito .badge{background:#9ca3af!important}
+.etiqueta-xarope{align-self:flex-start;font-size:12px;font-weight:700;color:var(--bad);box-shadow:inset 0 0 0 1.5px var(--bad);border-radius:99px;padding:1px 9px}
+.rodape-lista{padding:8px 0}
+details.feitas summary{color:var(--mut);font-size:14px}
+
+/* as telas sem mapa */
+.corpo{padding:14px 16px 32px;display:flex;flex-direction:column;gap:10px}
+.corpo h1{font-size:24px;margin:6px 0}
+.corpo h2{font-size:17px;margin:10px 0 0}
+.opcao{flex-direction:column;align-items:flex-start;text-align:left;gap:2px}
+.opcao-titulo{font-size:18px;font-weight:800}
+.opcao-sub{font-size:14px;font-weight:500;opacity:.85}
+.colar{display:flex;flex-direction:column;gap:6px}
+.linha-area{display:flex;align-items:center;gap:8px;font-size:15px}
+.marcar{display:flex;gap:8px;align-items:center;color:var(--tx)}
+.marcar input{width:20px;height:20px}
+.dois{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+.vazio{padding:24px 0;text-align:center}
+label{display:block;font-size:14px;color:var(--mut);margin:6px 0 2px}
+input[type=text],input[type=email],input[type=password],input[type=time],textarea,select{width:100%;font:inherit;padding:10px;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:var(--tx)}
 textarea{min-height:140px;resize:vertical}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:12px 14px;font:inherit;font-weight:600;background:#e5e7eb;color:var(--tx);text-decoration:none;cursor:pointer}
+
+/* botões */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:12px;padding:12px 14px;min-height:46px;font:inherit;font-weight:700;background:#e5e7eb;color:var(--tx);text-decoration:none;cursor:pointer;text-align:center}
 .btn.pri{background:var(--pri);color:#fff}
 .btn.ok{background:var(--ok);color:#fff}
-.btn.waze{background:#33ccff;color:#06283d}
-.btn.peq{padding:8px 10px;font-size:14px}
+.btn.contorno{background:#fff;box-shadow:inset 0 0 0 2px #d1d5db}
+.btn.contorno-ok{background:#fff;color:var(--ok);box-shadow:inset 0 0 0 2px var(--ok)}
+.btn.contorno-azul{background:#fff;color:var(--pri);box-shadow:inset 0 0 0 2px var(--pri)}
+.btn.peq{padding:8px 10px;font-size:14px;min-height:40px}
+.btn.apagar{color:var(--bad);background:#fff;box-shadow:inset 0 0 0 2px #fecaca}
 .btn:disabled{opacity:.45}
-.linha{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.linha{display:flex;gap:8px;flex-wrap:wrap}
 .linha .btn{flex:1 1 auto}
-.item{border:1px solid var(--bd);border-radius:12px;padding:10px;margin:8px 0;background:#fff}
+
+/* a Conferir */
+.item{border:1px solid var(--bd);border-radius:14px;padding:10px;background:#fff;display:flex;flex-direction:column;gap:8px}
 .item.sel{outline:3px solid var(--pri)}
-.topo{display:flex;gap:10px;align-items:flex-start}
-.badge{flex:none;min-width:34px;height:30px;padding:0 6px;border-radius:15px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px}
-.txt{flex:1;min-width:0;word-break:break-word}
-.orig{font-weight:600}
+.item .topo{display:flex;gap:10px;align-items:flex-start;width:100%;border:0;background:none;padding:0;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.item .txt{display:flex;flex-direction:column;gap:2px}
+.orig{font-weight:700}
 .achado{font-size:13px;color:var(--mut)}
-.tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;color:#fff;margin-top:4px}
-.aviso{background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:10px;font-size:14px;margin:10px 0}
-.aviso.laranja{background:#ffedd5;border-color:#fb923c}
-/* estimativa de antes das correções: dá para ler, não dá para confundir com a de agora */
-.velho{opacity:.45}
-.info{font-size:14px;color:var(--mut)}
-.proxima{background:#f8fafc;border:3px solid var(--pri);border-radius:14px;padding:12px;margin-bottom:12px}
-.grande{font-size:19px;font-weight:700;margin:4px 0}
+.tag{align-self:flex-start;display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;color:#fff;margin-top:2px}
+.cands{display:flex;flex-direction:column;gap:6px}
+.cands button{text-align:left;border:1px solid var(--bd);background:#f9fafb;border-radius:10px;padding:10px;font:inherit;font-size:14px;cursor:pointer}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--bd);background:#fff;border-radius:99px;padding:8px 12px;font:inherit;font-size:14px;font-weight:600;color:var(--tx)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--bd);background:#fff;border-radius:99px;padding:8px 12px;min-height:44px;font:inherit;font-size:14px;font-weight:600;color:var(--tx);cursor:pointer}
 .chip.on{border-color:var(--c,var(--pri));background:color-mix(in srgb,var(--c,var(--pri)) 12%,#fff)}
 .dot{width:14px;height:14px;border-radius:50%;background:var(--c);display:inline-block;flex:none}
-.cor{width:38px;height:38px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--bd);background:var(--c)}
+.cor{width:40px;height:40px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--bd);background:var(--c);cursor:pointer}
 .cor.on{box-shadow:0 0 0 3px var(--tx)}
-.area-cab{display:flex;align-items:center;gap:8px;margin:18px 0 6px;font-size:16px}
-.area-cab .txt{font-weight:700}
-.parada{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--bd)}
-.parada:first-of-type{border-top:0}
-.parada.feito .txt{text-decoration:line-through;color:var(--mut)}
-.parada.feito .badge{background:#9ca3af!important}
-.bloco-cab{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mut);margin-bottom:4px}
-.cands button{display:block;width:100%;text-align:left;border:1px solid var(--bd);background:#f9fafb;border-radius:8px;padding:8px;margin-top:6px;font:inherit;font-size:14px}
-details{margin-top:14px}
-summary{font-weight:600;cursor:pointer}
-code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
-.senha{position:relative}
-.senha input{padding-right:52px}
-.olho{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:40px;border:0;background:none;font-size:20px;cursor:pointer}
-.entrar{max-width:420px;margin:8vh max(16px, calc(50% - 210px));background:var(--card);border-radius:16px;padding:22px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-#status{background:#111827;color:#fff;padding:10px 14px;font-size:14px;display:none}
+
+/* avisos */
+.aviso{background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:8px 10px;font-size:14px}
+.aviso .link{min-height:0}
+.aviso.laranja{background:#ffedd5;border-color:#fb923c}
+.aviso.vermelho{background:#fee2e2;border-color:#fca5a5}
+.aviso.xarope{background:#111827;color:#fff;border-color:#111827;font-weight:600}
+.info{font-size:14px;color:var(--mut)}
+/* estimativa de antes das correções: dá para ler, não dá para confundir com a de agora */
+.velho{opacity:.45}
+.etiqueta{font-size:13px;font-weight:600;background:#e5e7eb;color:#374151;border-radius:99px;padding:3px 10px}
+.marcar-xarope{padding:8px;border-radius:10px;background:#f3f4f6}
+details summary{font-weight:600;cursor:pointer;padding:8px 0}
+
+/* o menu Mais */
+.fundo-menu{position:fixed;inset:0;z-index:2000;background:rgba(17,24,39,.45);display:flex;align-items:flex-end;justify-content:center}
+.menu{width:100%;max-width:560px;max-height:90vh;overflow:auto;background:#fff;border-radius:18px 18px 0 0;padding:6px 14px calc(16px + env(safe-area-inset-bottom))}
+.item-menu{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;border:0;background:none;padding:0 6px;border-radius:10px;font:inherit;font-size:17px;font-weight:600;color:var(--tx);text-align:left;cursor:pointer}
+.item-menu:active{background:#f3f4f6}
+.item-menu.perigo{color:var(--bad)}
+.rodape-menu{border-top:1px solid var(--bd);margin-top:6px;padding:10px 6px 0;display:grid;gap:8px}
+/* o número no Admin: o que espera decisão dele, visto sem entrar lá */
+.selo{display:inline-block;min-width:20px;padding:0 6px;border-radius:99px;background:var(--bad);color:#fff;font-size:12px;font-weight:700;line-height:20px;text-align:center}
+
+/* a barra de avisos */
+.cima{flex:none;position:relative;z-index:1100}
+/* na Rota, o aviso fica por cima do mapa: no fluxo, cada aviso empurrava o mapa 40 px para baixo e
+   de volta. Nas outras telas ele fica no fluxo, para não cobrir o voltar do cabeçalho. */
+#app.tela-rota .cima>#status{position:absolute;left:0;right:0;top:100%}
+#status{flex:none;background:#111827;color:#fff;padding:10px 14px;font-size:14px;display:none}
 #status.on{display:block}
 #status .armado,#status .versao-nova,#status .instalar{display:flex;align-items:center;gap:8px;justify-content:space-between}
 #status .instalar .botoes{display:flex;gap:6px;flex-shrink:0}
 #status.flutua{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));border-radius:12px;padding:12px 14px;z-index:1000}
-.resumo{font-size:14px;color:var(--mut);margin:0 0 10px}
-.resumo .barra{height:6px;border-radius:99px;background:var(--bd);overflow:hidden;margin-bottom:6px}
-.resumo .barra i{display:block;height:100%;background:var(--ok)}
-.endereco{font-size:19px;font-weight:700;line-height:1.25;margin:2px 0 8px}
-.etiquetas{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
-.etiqueta{font-size:13px;font-weight:600;background:#e5e7eb;color:#374151;border-radius:99px;padding:3px 10px}
-.acoes{display:flex;gap:8px}
-.acoes .btn{flex:1;padding:16px 12px;font-size:17px}
-.parada .end{font-weight:600}
-.linha-peq{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
-details.feitas summary{color:var(--mut);font-size:14px;font-weight:600}
+
+/* entrar */
+.senha{position:relative}
+.senha input{padding-right:52px}
+.olho{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:40px;border:0;background:none;font-size:20px;cursor:pointer}
+.entrar{max-width:420px;margin:8vh max(16px, calc(50% - 210px));background:var(--card);border-radius:16px;padding:22px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
+
+/* os pinos */
 .pino{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:grid;place-items:center}
+.pino span{transform:rotate(45deg);color:#fff;font-weight:700;font-size:11px}
 .pino.duvida{border:3px solid #dc2626}
 .pino.quase{border:3px solid #ea580c}
-/* o pino da próxima parada: halo, para achar de relance no meio de quarenta pinos iguais.
-   Nome "alvo" e não "proxima" porque .proxima já é o cartão da próxima entrega na aba Rota. */
+/* o pino da próxima parada: halo, para achar de relance no meio de quarenta pinos iguais */
 .pino.alvo{box-shadow:0 0 0 5px rgba(29,78,216,.5),0 1px 4px rgba(0,0,0,.45);z-index:1}
-/* os botões do balão, na aba Rota: ele age sem sair do mapa. O da porta é o principal — na
-   porta, entregar e marcar onde ela fica é um gesto só; o "Entreguei" sozinho é para quando ele
-   já saiu dali, e não pode levar a porta junto. */
-.popacoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.popacoes button{flex:1 1 auto;border:0;border-radius:9px;padding:9px 10px;font:inherit;font-size:14px;font-weight:600;background:#e5e7eb;color:var(--tx);cursor:pointer}
-.popacoes button[data-acao=aqui]{background:var(--ok);color:#fff}
-.popacoes button[data-acao=aqui]:not(.so){flex-basis:100%;padding:12px 10px;font-size:15px}
-.popacoes button[data-acao=entregue]{background:var(--ok);color:#fff}
-.popacoes button[data-acao=aqui]~button[data-acao=entregue]{background:#fff;color:var(--ok);box-shadow:inset 0 0 0 2px var(--ok)}
-/* com mais de uma entrega no mesmo pino, cada uma ganha o seu botão, pelo número da rota */
-.popacoes .popum{flex:1 1 100%;margin-top:2px;font-size:13px;font-weight:600;color:var(--mut)}
-.popacoes button.so{flex:0 0 auto;min-width:52px}
-/* "cliente xarope": um círculo escuro em volta do pino, que não é cor de área nem de dúvida
-   (vermelho) nem da próxima (azul). O aviso usa a mesma cor, para ligar um ao outro de relance. */
+/* "cliente xarope": um círculo escuro em volta do pino, que não é cor de área nem de dúvida */
 .pino.xarope{box-shadow:0 0 0 3px #fff,0 0 0 7px #111827,0 1px 4px rgba(0,0,0,.4)}
 .pino.alvo.xarope{box-shadow:0 0 0 3px #fff,0 0 0 7px #111827,0 0 0 12px rgba(29,78,216,.5)}
-.aviso.xarope,.popxarope{background:#111827;color:#fff;border-color:#111827;font-weight:600}
-.popxarope{margin:0 0 6px;padding:6px 8px;border-radius:8px;font-size:13px}
-.xarope-linha{color:#111827;font-weight:700}
-.marcar-xarope{margin:6px 0 4px;padding:8px;border-radius:10px;background:#f3f4f6}
-/* o número na aba ⚙️ Admin: o que espera decisão dele, visto sem entrar lá */
-.selo{display:inline-block;min-width:18px;margin-left:5px;padding:0 5px;border-radius:99px;background:var(--bad);color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center;vertical-align:1px}
 .leaflet-tooltip.balao{background:#111827;color:#fff;border:0;border-radius:6px;padding:1px 5px;font-size:11px;font-weight:700;box-shadow:none}
 .leaflet-tooltip.balao::before{border-top-color:#111827}
-.pino span{transform:rotate(45deg);color:#fff;font-weight:700;font-size:11px}
+/* "você está aqui": bolinha com anel branco, e a seta do rumo só quando ele está andando */
+.eu{width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 1px rgba(37,99,235,.6),0 1px 4px rgba(0,0,0,.4);position:relative;margin:2px}
+.eu i{position:absolute;left:50%;top:50%;width:0;height:0;margin:-6px 0 0 -6px;border:6px solid transparent;border-bottom-color:#2563eb;transform-origin:50% 50%}
+
+/* No computador: na Rota e no Admin, o painel ao lado do mapa; nas outras, uma coluna no meio. */
 @media (min-width:900px){
-  #app{flex-direction:row-reverse}
-  .mapwrap{flex:1}
-  #map,#app.mapa-grande #map,.semmapa,#app.mapa-grande .semmapa{height:100%}
-  #painel{flex:none;width:440px;border-right:1px solid var(--bd)}
-  #btnMapa{display:none}
+  #app.tela-rota,#app.tela-admin{display:grid;grid-template-columns:440px 1fr;grid-template-rows:auto 1fr}
+  #app.tela-rota>.cima,#app.tela-admin>.cima{grid-column:1;grid-row:1}
+  #app.tela-rota .cima>#status{position:static}
+  #app.tela-rota>.mapwrap,#app.tela-admin>.mapwrap,#app.tela-rota.folha-lista>.mapwrap{grid-column:2;grid-row:1/-1;height:auto}
+  #app.tela-rota>#painel,#app.tela-admin>#painel{grid-column:1;grid-row:2;max-height:none;border-radius:0;margin:0;box-shadow:none;border-right:1px solid var(--bd)}
+  #app:not(.tela-rota):not(.tela-admin){max-width:640px;margin:0 auto;border-left:1px solid var(--bd);border-right:1px solid var(--bd)}
 }
-.btn.apagar{color:var(--bad);border-color:#fecaca;background:#fff}

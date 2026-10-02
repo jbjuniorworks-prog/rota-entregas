@@ -9,7 +9,8 @@ import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos'
 import {carregarAncorasDeCep} from '../servicos/base';
 import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from '../servicos/geocodificacao';
 import {enderecoDoIbge, portasDaRuaNoIbge} from '../servicos/ibge';
-import {desatualizarRota, e, enviarFila, fila, invalidarRota, irPara, memoria, ui} from './base';
+import {desatualizarRota, e, enviarFila, fila, invalidarRota, memoria, ui} from './base';
+import {irPara} from './navegacao';
 import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, focar} from './posicoes';
 import {registrarComoFicou} from './registro';
 import {montarRota} from './rota';
@@ -87,8 +88,8 @@ export async function buscarPendentes(resumoAntes = '') {
   const longe = marcarIsoladas(e().paradas);
   ui.enquadrar++;
   loja.mudou();
-  const resultado = erro ? 'Alguns falharam (' + erro.message + '). Toque em "Buscar pendentes".'
-    : longe ? `Pronto! ⚠️ ${longe} parada(s) longe das outras entregas: confira o pino.` : 'Pronto! Confira os laranja e os vermelhos, se houver.';
+  const resultado = erro ? 'Alguns falharam (' + erro.message + '). Toque em "Buscar sem posição", em Conferir endereços.'
+    : longe ? `Pronto! ${longe} parada(s) longe das outras entregas: confira o pino.` : 'Pronto! Confira os laranja e os vermelhos, se houver.';
   const comp = avisoCompartilhadas(await consultarCompartilhadas());
   registrarComoFicou();
   enviarFila();
@@ -158,10 +159,10 @@ async function lerPrintsAgora(files: File[], textoAtual: string): Promise<string
     try {
       const r = await importarPlanilhas(planilhas);
       if (outros.length) r.novas += adicionarLinhas(e(), await lerArquivos(outros, m => status(m))).novas;
-      ui.aba = 'conferir';
+      irPara('rota');
       ui.enquadrar++;
       loja.mudou();
-      const resumo = resumoPlanilha(r) + (e().rota ? ' A rota de agora continua na tela: toque em "Refazer rota" para as novas entrarem na sequência.' : '');
+      const resumo = resumoPlanilha(r) + (e().rota ? ' A rota de agora continua na tela: toque em "Refazer a rota" para as novas entrarem na sequência.' : '');
       status(resumo, r.longe || e().rota ? 12000 : 5000);
       await buscarPendentes(resumo);
     } catch (err) {
@@ -174,7 +175,7 @@ async function lerPrintsAgora(files: File[], textoAtual: string): Promise<string
     const unicos = await lerArquivos(files, m => status(m));
     // sem nenhum endereço o app culpava a gravação; quando a leitura é que falhou, o aviso dela
     // é que tem de aparecer, senão o motorista grava tudo de novo à toa
-    const avisos = unicos.avisos.map(a => ' ⚠️ ' + a).join('');
+    const avisos = unicos.avisos.map(a => ' ' + a).join('');
     status(unicos.length
       ? `${unicos.length} endereço(s) lido(s). Confira o texto e toque em "Adicionar".${avisos}`
       : avisos
@@ -203,7 +204,9 @@ async function lerCompartilhado() {
       await cache.delete(req);
     }
   } catch {}
-  history.replaceState(null, '', location.pathname);
+  // tira o ?compartilhado da barra sem apagar o passo do voltar que está nesta entrada: com null,
+  // fechar o menu caía num estado vazio, e o app avisava que ia sair
+  history.replaceState(history.state, '', location.pathname);
   if (!files.length && !texto.trim()) return;
   try {
     const {planilhas, outros} = await separarPlanilhas(files);
@@ -214,13 +217,13 @@ async function lerCompartilhado() {
       linhas.push(...(doTexto.length ? doTexto : texto.split('\n').map(l => l.trim()).filter(Boolean)));
     }
     if (!linhas.length && !(daPlanilha && daPlanilha.novas + daPlanilha.juntas)) {
-      irPara('enderecos');
+      irPara('inicio');
       status('Não achei endereços. Compartilhe a planilha da rota ou o print da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
       return;
     }
     const {novas, repetidas} = adicionarLinhas(e(), linhas);
     status(daPlanilha ? resumoPlanilha(daPlanilha) : `${novas} parada(s) nova(s)${repetidas ? `, ${repetidas} já existia(m)` : ''}. Buscando no mapa…`);
-    irPara('conferir');
+    irPara('rota');
     await buscarPendentes();
     await montarRota();
   } catch (err) {
@@ -236,8 +239,7 @@ export async function adicionarTexto(texto: string) {
   // outros motoristas, como se ele tivesse marcado na porta.
   let guardadas = 0;
   for (const p of coladas) if (memoria.lembrar(p)) guardadas++;
-  ui.aba = 'conferir';
-  loja.mudou();
+  irPara('rota');
   const doMapa = coladas.length
     ? ` ${arrumadas ? `${arrumadas} parada(s) arrumada(s)` : `${coladas.length} com local`} pelo local colado do mapa${guardadas < coladas.length ? ' (sem CEP nem bairro na linha, não deu para guardar para as próximas rotas)' : ', guardado para as próximas rotas'}.`
     : '';

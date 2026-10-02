@@ -79,31 +79,77 @@ export {expect};
 
 export async function abrir(page: Page) {
   await page.goto('./');
-  await expect(page.getByRole('button', {name: '1. Endereços'})).toBeVisible();
+  await expect(page.locator('#app')).toBeVisible();
 }
 
 export function aviso(page: Page): Locator {
   return page.locator('#status');
 }
 
+// Volta pelos cabeçalhos até a tela de base, como o motorista faria pelo voltar.
+export async function paraABase(page: Page) {
+  for (let i = 0; i < 4; i++) {
+    if (await page.locator('.fundo-menu').isVisible()) { await page.locator('.menu').getByRole('button', {name: 'Fechar'}).click(); continue; }
+    if (await page.locator('[data-topo]').isVisible()) {
+      const fechar = page.locator('[data-folha="pino"]').getByRole('button', {name: 'Fechar'});
+      if (await fechar.isVisible()) { await fechar.click(); continue; }
+      if (await page.locator('[data-folha="lista"]').isVisible()) { await page.getByRole('button', {name: 'Voltar ao mapa'}).click(); continue; }
+      return;
+    }
+    const voltar = page.locator('.cabecalho').getByRole('button', {name: 'Voltar'});
+    if (await voltar.isVisible()) { await voltar.click(); continue; }
+    return;
+  }
+}
+
+export async function menu(page: Page, item: string | RegExp) {
+  await paraABase(page);
+  await page.getByRole('button', {name: 'Mais', exact: true}).click();
+  await page.locator('.menu').getByRole('button', {name: item}).click();
+}
+
 export async function carregar(page: Page, arquivo: string) {
-  await page.locator('input[type=file]').setInputFiles(arquivo);
+  if (!(await page.locator('#arquivo').count())) await menu(page, /Ler mais uma planilha/);
+  await page.locator('#arquivo').setInputFiles(arquivo);
   await expect(aviso(page)).toContainText('parada(s) da planilha');
 }
 
+// Os nomes das abas de antes, para os testes falarem do lugar e não do caminho até ele.
 export async function aba(page: Page, nome: '1. Endereços' | '2. Conferir' | '3. Rota') {
-  await page.getByRole('button', {name: nome}).click();
+  if (nome === '3. Rota') return paraABase(page);
+  if (nome === '1. Endereços') {
+    if (await page.locator('#arquivo').count()) return;
+    return menu(page, /Ler mais uma planilha/);
+  }
+  if (await page.locator('.cabecalho .titulo').getByText(/para conferir|Todos os endereços/).isVisible()) return;
+  await menu(page, 'Conferir endereços');
+}
+
+// Abre a parte de colar endereços do começo do dia.
+export async function colar(page: Page) {
+  await aba(page, '1. Endereços');
+  const botao = page.getByRole('button', {name: 'Colar endereços'});
+  if ((await botao.getAttribute('aria-expanded')) !== 'true') await botao.click();
 }
 
 export async function montar(page: Page) {
-  await aba(page, '3. Rota');
-  const botao = page.getByRole('button', {name: /Montar melhor sequência/});
-  if (!(await botao.isVisible())) await page.getByText('Ponto de saída / refazer rota').click();
-  await botao.click();
-  await expect(page.locator('.resumo')).toBeVisible();
+  await paraABase(page);
+  const montar = page.getByRole('button', {name: 'Montar a rota', exact: true});
+  if (await montar.isVisible()) await montar.click();
+  else await menu(page, /^(Refazer|Montar) a rota$/);
+  await expect(page.locator('[data-folha="proxima"], [data-folha="fim"]')).toBeVisible({timeout: 20_000});
 }
 
+// Abre a lista inteira da Rota, puxando o cartão para cima.
+export async function lista(page: Page) {
+  await paraABase(page);
+  if (!(await page.locator('[data-folha="lista"]').isVisible())) await page.locator('[data-lista]').click();
+  await expect(page.locator('[data-folha="lista"]')).toBeVisible();
+}
+
+// A sequência sai da lista: no mapa só a próxima está escrita.
 export async function ordem(page: Page, nomes: string[]): Promise<string[]> {
+  await lista(page);
   const cartoes = await page.locator('[data-item]').allInnerTexts();
   const texto = cartoes.join(' | ');
   return nomes.filter(n => texto.includes(n)).sort((a, b) => texto.indexOf(a) - texto.indexOf(b));
@@ -113,17 +159,10 @@ export function linhaDe(page: Page, endereco: string, botao: string | RegExp): L
   return page.locator('div').filter({hasText: endereco}).filter({has: page.getByRole('button', {name: botao})}).last();
 }
 
-// O tamanho do mapa é decisão por aba e fica guardado; teste que fala do mapa tem de dizer
-// que quer ele aberto, em vez de depender do padrão da aba em que caiu.
+// O mapa agora é a tela da Rota: garantir o mapa é estar nela, com ele desenhado.
 export async function garantirMapa(page: Page) {
-  // olha a classe da aba, não a altura: quando o pedaço do mapa não carrega a área fica pequena
-  // de qualquer jeito, e medir altura fazia o laço fechar o mapa em vez de abrir
-  for (let i = 0; i < 3; i++) {
-    const classe = (await page.locator('#app').getAttribute('class')) || '';
-    if (!classe.includes('mapa-fechado')) return;
-    await page.locator('#btnMapa').click();
-    await page.waitForTimeout(200);
-  }
+  await paraABase(page);
+  await expect(page.locator('#map')).toBeVisible({timeout: 15_000});
 }
 
 export async function zoom(page: Page, z: number) {
@@ -139,7 +178,9 @@ export async function verNoMapa(page: Page, lat: number, lng: number, z = 18) {
   await expect.poll(async () => {
     await page.evaluate(([a, b, c]) => (window as any).rotaTeste.irPara(a, b, c), [lat, lng, z]);
     const c = await page.evaluate(() => (window as any).rotaTeste.centro());
-    return Math.abs(c.lat - lat) < 1e-4 && Math.abs(c.lng - lng) < 1e-4;
+    // o centro cai no pixel inteiro: de longe, um pixel passa de 1e-4 grau
+    const folga = Math.max(1e-4, 2 * 360 / (256 * 2 ** z));
+    return Math.abs(c.lat - lat) < folga && Math.abs(c.lng - lng) < folga;
   }, {timeout: 10_000}).toBe(true);
 }
 
@@ -149,7 +190,8 @@ export async function clicarMapa(page: Page, lat: number, lng: number) {
 }
 
 export async function pontosNoMaps(page: Page): Promise<string[]> {
-  const links = await page.getByRole('link', {name: /Maps trecho/}).evaluateAll(as => as.map(a => (a as HTMLAnchorElement).href));
+  await lista(page);
+  const links = await page.getByRole('link', {name: /^Trecho \d+, pontos/}).evaluateAll(as => as.map(a => (a as HTMLAnchorElement).href));
   return links.flatMap(h => {
     const u = new URL(h);
     return [...(u.searchParams.get('waypoints') || '').split('|').filter(Boolean), u.searchParams.get('destination') || ''];

@@ -1,4 +1,5 @@
-export {fila, memoria, uso, contar, alternarMapa, arrastarMapa, tamanhoDoMapa, alturaDoMapa, ALTURA_MIN, ALTURA_MAX, enviarFila, desatualizarRota, invalidarRota, irPara, mudar} from './base';
+export {fila, memoria, uso, contar, enviarFila, desatualizarRota, invalidarRota, mudar} from './base';
+export * from './navegacao';
 export * from './conta';
 export * from './enderecos';
 export * from './posicoes';

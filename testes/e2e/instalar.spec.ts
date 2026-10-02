@@ -26,7 +26,7 @@ test('"Agora não" some, e não volta na mesma semana', async ({page}) => {
   await page.locator('[data-instalar]').getByRole('button', {name: 'Agora não'}).click();
   await expect(page.locator('[data-instalar]')).toHaveCount(0);
   await page.reload();
-  await expect(page.getByRole('button', {name: '1. Endereços'})).toBeVisible();
+  await expect(page.locator('#app')).toBeVisible();
   await chromeOferece(page);
   await page.waitForTimeout(500);
   await expect(page.locator('[data-instalar]')).toHaveCount(0);

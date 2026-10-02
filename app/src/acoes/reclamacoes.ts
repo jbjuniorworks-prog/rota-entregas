@@ -25,7 +25,7 @@ export function marcarXarope(p: Parada, motivo: MotivoReclamacao) {
   fila.enfileirar({tipo: 'reclamacao', chave: alvo.chave, motivo});
   enviarFila();
   loja.mudou();
-  status(`⚠️ Cliente xarope marcado: reclamou ${MOTIVOS[motivo].reclamou}. Quem entregar neste endereço vai ver no pino.`, 10000, () => tirarXarope(p, motivo));
+  status(`Cliente xarope marcado: reclamou ${MOTIVOS[motivo].reclamou}. Quem entregar neste endereço vai ver no pino.`, 10000, () => tirarXarope(p, motivo));
 }
 
 export function tirarXarope(p: Parada, motivo: MotivoReclamacao) {

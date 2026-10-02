@@ -1,6 +1,6 @@
 import {readFileSync, existsSync} from 'node:fs';
 import type {Browser, Page} from '@playwright/test';
-import {test, expect, carregar, aviso, aba, linhaDe, clicarMapa, ROTA_A} from './apoio';
+import {test, expect, carregar, aviso, aba, linhaDe, clicarMapa, menu, paraABase, ROTA_A} from './apoio';
 
 const env = existsSync('.env')
   ? Object.fromEntries(readFileSync('.env', 'utf8').split(/\r?\n/).filter(l => /^\w+=/.test(l)).map(l => l.split(/=(.*)/s).slice(0, 2)))
@@ -34,8 +34,19 @@ async function comoMotorista(browser: Browser, m: typeof MOTORISTAS[number]): Pr
   await page.getByLabel('E-mail').fill(m.email);
   await page.getByLabel('Senha', {exact: true}).fill(m.senha);
   await page.getByRole('button', {name: 'Entrar', exact: true}).click();
+  await expect(page.locator('#arquivo')).toBeAttached();
+  await page.getByRole('button', {name: 'Mais', exact: true}).click();
   await expect(page.getByText(`Conectado como ${m.nome}`)).toBeVisible();
+  await page.locator('.menu').getByRole('button', {name: 'Fechar'}).click();
   return page;
+}
+
+// a conta e a fila ficam no pé do menu Mais
+async function tudoSalvo(page: Page) {
+  await paraABase(page);
+  await page.getByRole('button', {name: 'Mais', exact: true}).click();
+  await expect(page.locator('#nuvemFila')).toHaveText('tudo salvo', {timeout: 30_000});
+  await page.locator('.menu').getByRole('button', {name: 'Fechar'}).click();
 }
 
 const correcoesDe = async (id: string) => (await api(`/rest/v1/correcoes?motorista_id=eq.${id}&select=chave_lugar,lat,lng`)).corpo;
@@ -61,34 +72,33 @@ test.describe('correções compartilhadas @nuvem', () => {
     await aba(a, '2. Conferir');
     await linhaDe(a, RUA_D, 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
     await clicarMapa(a, ...PONTO);
-    await aba(a, '1. Endereços');
-    await expect(a.getByText('✓ tudo salvo')).toBeVisible({timeout: 30_000});
+    await tudoSalvo(a);
     expect(await correcoesDe(A.id)).toHaveLength(1);
 
     const b = await comoMotorista(browser, B);
     await carregar(b, ROTA_A);
-    await expect(aviso(b)).toContainText('💡 1 com sugestão de outro motorista');
+    await expect(aviso(b)).toContainText('1 com sugestão de outro motorista');
+    await aba(b, '2. Conferir');
     const cartaoB = b.locator('[data-item]').filter({hasText: RUA_D});
     await expect(cartaoB).toContainText('Outro motorista marcou este endereço em outro lugar');
     await cartaoB.getByRole('button', {name: 'Usar a posição dele'}).click();
     await expect(aviso(b)).toContainText('Local do outro motorista usado');
-    await aba(b, '1. Endereços');
-    await expect(b.getByText('✓ tudo salvo')).toBeVisible({timeout: 30_000});
+    await tudoSalvo(b);
 
     const c = await comoMotorista(browser, C);
     await carregar(c, ROTA_A);
-    await expect(aviso(c)).toContainText('✓ 1 com endereço verificado por outros motoristas');
+    await expect(aviso(c)).toContainText('1 com endereço verificado por outros motoristas');
+    await aba(c, '2. Conferir');
     await expect(c.locator('[data-item]').filter({hasText: RUA_D})).toContainText('Endereço verificado por 2 motoristas');
-    await expect(c.getByText(/❗ 0 para conferir/)).toBeVisible();
+    await expect(c.getByText(/\b0 para conferir/)).toBeVisible();
 
     await aba(a, '2. Conferir');
     await linhaDe(a, 'Travessa Um, 45', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
     await clicarMapa(a, -10.9581, -37.0481);
     await expect.poll(async () => (await correcoesDe(A.id)).length, {timeout: 30_000}).toBe(2);
-    await a.getByRole('button', {name: '↺ Desfazer'}).click();
+    await aviso(a).getByRole('button', {name: 'Desfazer'}).click();
     await expect.poll(async () => (await correcoesDe(A.id)).length, {timeout: 30_000}).toBe(1);
-    await aba(a, '1. Endereços');
-    await expect(a.getByText('✓ tudo salvo')).toBeVisible();
+    await tudoSalvo(a);
   });
 
   test('o administrador vê as marcações, confirma a de um, apaga a de outro e desativa um motorista', async ({browser}) => {
@@ -96,7 +106,7 @@ test.describe('correções compartilhadas @nuvem', () => {
     expect(await correcoesDe(A.id)).toHaveLength(1);
     expect(await correcoesDe(B.id)).toHaveLength(1);
     const adm = await comoMotorista(browser, ADM);
-    await adm.getByRole('button', {name: '⚙️ Admin'}).click();
+    await menu(adm, /^Admin/);
     const lugar = adm.locator('[data-lugar]').filter({has: adm.locator('[data-marcacao="Teste A"]')});
     await expect(lugar).toHaveCount(1);
     await expect(lugar).toContainText('Rua D');

@@ -3,7 +3,23 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 01/10/2026.
+Atualizado em 02/10/2026.
+
+## Tela nova (02/10), para olhar na rua
+
+As quatro abas viraram o mapa da Rota como tela, com o cartão da próxima embaixo, e o resto no
+menu Mais. Cada tela e cada cartão aberto é um passo do voltar do celular; na Rota, o primeiro
+voltar avisa e o segundo sai. O que só a rua mostra:
+
+- **O voltar no app instalado.** Testado no Chrome; no app instalado, o segundo voltar é do
+  próprio Android (o app fica na primeira entrada do histórico e deixa o celular fechar). Confirmar
+  no celular do Luan que ele sai com dois toques, e não com um nem com três.
+- **O cartão da próxima vai até 52% da tela**, e o resto rola dentro dele. Com a rota de 80
+  paradas e sem sinal, o mapa fica com 42%. Se reclamarem do mapa pequeno de novo, o que sobra
+  para tirar é o "Aqui perto", que hoje fica no fim do cartão.
+- **O mapa fica montado depois de aberto**, e só se esconde nas outras telas. Ir à Conferir e
+  voltar não baixa nada de novo. O preço é a memória do Leaflet ficar ocupada o dia todo, o que
+  num celular fraco pode pesar: olhar se algum reclama de o app fechar sozinho.
 
 ## Falha viva
 
@@ -164,13 +180,15 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 - **O botão principal do cartão deveria variar com a confiança da posição** — parada confirmada
   não precisa de "Marcar no mapa" na frente; parada fraca precisa. Depende de saber quais botões
   são realmente usados.
-- **"📍 Estou aqui" talvez pertença à aba Rota**, não à Conferir: é ação de porta. Se o uso no
-  Conferir for baixo, confirma.
-- **O cartão inteiro talvez deva ser tocável como "Ver".** Se `Ver` é quase sempre seguido de
-  `Editar`, os dois são um fluxo só e podem virar um botão.
-- **"📍 Entreguei aqui" no balão do pino (28/09)** conta como `balao-aqui`, e o "✓ Entreguei" do
-  balão como `balao-entreguei`. Se o da porta ganhar, o "📍 Estou aqui" do cartão da próxima
-  entrega vira redundante na Rota. Se quase ninguém usar, o balão volta a ter dois botões.
+- **"Estou aqui" talvez pertença só à Rota**, não à Conferir: é ação de porta. Na tela nova ele
+  está nas duas (na Rota, como "Pino errado? Estou aqui"). Se o uso na Conferir for baixo, sai de lá.
+- **O contador `ver` mudou de sentido em 02/10.** Até ali era o "Ver" da Conferir, que abria o
+  cartão; agora abrir o cartão é tocar nele (não conta), e `ver` é o "Ver no mapa". Comparar
+  semanas só a partir de 02/10.
+- **"Entreguei aqui" (`balao-aqui`)** era do balão do pino. Desde 02/10 é o botão grande do
+  cartão da próxima e o do cartão do pino, os dois no mesmo contador; `balao-entreguei` é o
+  "Entreguei" do cartão do pino. Se o da porta ganhar, o "Pino errado? Estou aqui" do cartão da
+  próxima vira redundante na Rota.
 - **Endereço verificado com uma entrega só (017, 28/09).** A trava é o GPS da entrega cair a até
   30 m do pino (`no_pino`). Acompanhar no Admin se aparecem endereços verificados no lugar
   errado; se sim, o próximo aperto é exigir de novo duas entregas, e o pedido deles perde o sentido.
@@ -191,7 +209,7 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
   nenhuma piora. Contra o GPS do ✓, 7 melhoram e 2 pioram.
   Os pacotes levados ficam com `precisao = 'censo'` no banco. Daqui a uma semana, comparar a
   posição deles com a porta onde foram entregues: se piorar mais de 1 em 7, apertar os limites.
-  Também vale olhar quantas vezes o motorista volta para a posição da planilha em 2. Conferir.
+  Também vale olhar quantas vezes o motorista volta para a posição da planilha na Conferir.
 - **O censo também pode resolver o "número não bate com a posição".** Na planilha do Luan de
   01/10 foram 8: duas portas de números distantes no mesmo ponto, e uma delas está errada. Hoje
   o app só pinta de vermelho. A mesma regra (porta do censo + as portas da rua) diria qual das

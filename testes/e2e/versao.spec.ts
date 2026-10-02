@@ -26,8 +26,9 @@ test('com rota andando, avisa e espera ele tocar em Atualizar; a rota continua',
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas.length)).toBe(antes);
 });
 
-test('a mesma versão não mostra nada, e a aba Endereços diz qual é', async ({page}) => {
+test('a mesma versão não mostra nada, e o menu Mais diz qual é', async ({page}) => {
   await abrir(page);
+  await page.getByRole('button', {name: 'Mais', exact: true}).click();
   await expect(page.locator('[data-versao]')).toContainText(/Versão do app: \d\d\/\d\d/);
   await page.waitForTimeout(1000);
   await expect(page.locator('[data-versao-nova]')).toHaveCount(0);
@@ -61,7 +62,11 @@ test('voltando para a tela: logo depois só avisa; depois de muito tempo fora, r
 // os prints. De manhã, sem nenhuma parada, é justo quando o app recarregaria sozinho.
 test('lendo o que foi compartilhado, a versão nova espera', async ({page}) => {
   const {readFileSync} = await import('node:fs');
+  // a primeira página pergunta a versão ao abrir: publicada a nova antes da resposta, ela mesma
+  // recarregava, e essa navegação atropelava a do compartilhado
+  const perguntou = page.waitForResponse(/versao\.json/);
   await abrir(page);
+  await perguntou;
   const planilha = readFileSync('testes/planilhas/rota-d.xlsx').toString('base64');
   await page.evaluate(async b64 => {
     const c = await caches.open('compartilhado');

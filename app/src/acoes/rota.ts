@@ -8,6 +8,7 @@ import {guarda, loja, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
 import {linhaDaRota, matriz} from '../servicos/ruas';
 import {desatualizarRota, e, enviarFila, fila, ui} from './base';
+import {irPara} from './navegacao';
 import {comMinhaPosicao, GPS_PASSAGEM, guardarPassagem, guardarPassagens, portaDaEntrega} from './posicoes';
 import {registrarComoFicou} from './registro';
 
@@ -27,7 +28,7 @@ function saidaDefinida(precisao: number) {
   }
   const naTela = !!e().rota && !ui.ocupado;
   status(naTela
-    ? `Localização definida (±${m} m). A rota continua na tela; toque em "Refazer rota" para a sequência sair daqui.`
+    ? `Localização definida (±${m} m). A rota continua na tela; toque em "Refazer a rota" para a sequência sair daqui.`
     : `Localização definida (±${m} m).`, naTela ? 8000 : 3000);
 }
 
@@ -49,7 +50,7 @@ export function gps(aindaVale: () => boolean = () => true): Promise<void> {
     status('Pegando sua localização…');
     navigator.geolocation.getCurrentPosition(pos => {
       if (!aindaVale()) {
-        status('A localização chegou depois que a rota ficou pronta. Toque em "Montar melhor sequência" de novo para ela sair de onde você está.', 8000);
+        status('A localização chegou depois que a rota ficou pronta. Toque em "Refazer a rota" para ela sair de onde você está.', 8000);
         ok();
         return;
       }
@@ -103,7 +104,7 @@ export async function montarRota() {
     status('Erro ao montar rota: ' + (err as Error).message, 5000);
   }
   ui.ocupado = false;
-  ui.aba = 'rota';
+  irPara('rota');
   ui.enquadrar++;
   loja.mudou();
 }
@@ -120,7 +121,7 @@ export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = tru
     const proxima = e().rota!.areas.flatMap(a => a.ordem).map(loja.parada).find(x => x && !x.entregue && x.lat != null);
     const d = proximaAPe(p, proxima);
     if (d && proxima) {
-      status(`📍 Próxima a ~${d} m: ${proxima.texto.split(',').slice(0, 2).join(',')}. Dá para ir a pé.`, 7000);
+      status(`Próxima a ~${d} m: ${proxima.texto.split(',').slice(0, 2).join(',')}. Dá para ir a pé.`, 7000);
       try { navigator.vibrate?.(200); } catch {}
     }
   }
@@ -140,7 +141,7 @@ export function entregarTodas(ps: Parada[]) {
 ${faltando.length} entrega(s), ${pacotes} pacote(s).`)) return;
   faltando.forEach((p, i) => marcarEntregue(p, true, i === faltando.length - 1, false));
   guardarPassagens(faltando);
-  status(`${faltando.length} entrega(s) marcada(s) aqui. Se sobrou alguma, toque no ↺ dela.`, 6000);
+  status(`${faltando.length} entrega(s) marcada(s) aqui. Se sobrou alguma, desfaça na lista.`, 6000);
 }
 
 // O botão da porta, no balão do pino. Eram dois toques em lugares diferentes — "Estou aqui" no
@@ -157,7 +158,7 @@ ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
   alvo.forEach(p => marcarEntregue(p, true, false, false));
   const quantas = alvo.length > 1 ? ` as ${alvo.length}` : '';
   const desfazerEntrega = () => alvo.forEach(p => marcarEntregue(p, false, false, false));
-  const soEntregue = (motivo: string) => status(`✓ Entregue${quantas}. ${motivo} O pino ficou onde estava.`, 8000, () => {
+  const soEntregue = (motivo: string) => status(`Entregue${quantas}. ${motivo} O pino ficou onde estava.`, 8000, () => {
     desfazerEntrega();
     status('Entrega desfeita.', 3000);
   });
@@ -171,7 +172,7 @@ ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
     if (precisao > GPS_PASSAGEM) { soEntregue(`O GPS está impreciso agora (±${margem} m).`); return; }
     if (foraDaRegiao({lat, lng})) { soEntregue('O GPS deu um ponto fora da região das entregas.'); return; }
     const {guardou, desfazer} = portaDaEntrega(vivas, lat, lng, precisao);
-    status(`✓ Entregue${quantas}, com a porta marcada aqui (±${margem} m).` + (guardou
+    status(`Entregue${quantas}, com a porta marcada aqui (±${margem} m).` + (guardou
       ? ' Vai para os outros motoristas como porta confirmada.'
       : ' Sem CEP nem bairro, a porta vale só para hoje.'), 10000, () => {
       // nesta ordem: a volta da posição recalcula as isoladas, e parada entregue não entra na
@@ -180,28 +181,31 @@ ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
       desfazer();
       status('Desfeito: a entrega voltou para a lista e o pino para onde estava.', 4000);
     });
-  }, motivo => soEntregue(`Não consegui o GPS: ${motivo}`), `✓ Entregue${quantas}. Marcando a porta pelo GPS…`);
+  }, motivo => soEntregue(`Não consegui o GPS: ${motivo}`), `Entregue${quantas}. Marcando a porta pelo GPS…`);
 }
 
-export function deixarParaDepois(p: Parada) {
-  p.adiada = true;
-  if (e().rota) for (const ra of e().rota!.areas) ra.ordem = ra.ordem.filter(id => id !== p.id);
-  if (ui.selecionada === p.id) ui.selecionada = null;
+// Do cartão da próxima vêm todas as do endereço: adiando só a primeira, o cartão voltava com o
+// mesmo endereço, e "Depois" parecia não ter funcionado.
+export function deixarParaDepois(...ps: Parada[]) {
+  const ids = new Set(ps.map(p => p.id));
+  ps.forEach(p => { p.adiada = true; });
+  if (e().rota) for (const ra of e().rota!.areas) ra.ordem = ra.ordem.filter(id => !ids.has(id));
+  if (ui.selecionada && ids.has(ui.selecionada)) ui.selecionada = null;
   loja.mudou();
-  status('Deixada para depois. Ela está no fim da tela, em "Deixadas para depois", para você arrumar a localização.', 5000);
+  status(`${ps.length > 1 ? `Deixadas para depois as ${ps.length}. Estão` : 'Deixada para depois. Ela está'} no fim da lista, em "Deixadas para depois", para você arrumar a localização.`, 5000);
 }
 
 export function voltarParaARota(p: Parada) {
   p.adiada = false;
   loja.mudou();
-  status('De volta. Toque em "Refazer rota" para ela entrar na sequência.', 4000);
+  status('De volta. Toque em "Refazer a rota" para ela entrar na sequência.', 4000);
 }
 
 export function resetar() {
   if (!confirm('Quer resetar mesmo?\n\nTodas as paradas e a rota de hoje serão apagadas, para você carregar a planilha, o PDF ou os prints de novo. As posições que você corrigiu continuam guardadas.')) return;
-  ui.aba = 'enderecos';
   ui.posicionando = null;
   loja.trocarEstado(resetarDia(guarda, e()));
+  irPara('inicio');
   status('Rota resetada. Carregue a planilha, o PDF ou os prints. Dá para desfazer nos próximos 10 minutos.', 7000);
 }
 

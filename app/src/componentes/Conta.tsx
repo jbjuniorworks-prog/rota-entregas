@@ -7,12 +7,12 @@ export function Conta() {
   useLoja();
   const s = nuvem.sessao, pf = nuvem.perfil;
   const n = A.fila.pendentes(), erro = nuvem.semServidor ? 'sem conexão com o servidor' : A.fila.erro();
-  const texto = erro ? '⚠️ ' + erro + (n ? ` · ${n} para enviar` : '') : n ? `⏳ ${n} para enviar` : '✓ tudo salvo';
+  const texto = erro ? erro + (n ? ` · ${n} para enviar` : '') : n ? `${n} para enviar` : 'tudo salvo';
   if (s) {
-    return <div className="info">☁️ Conectado como <b>{pf ? pf.nome : s.user.email}</b>{pf?.papel === 'admin' ? ' (administrador)' : ''} · <span id="nuvemFila">{texto}</span>{' '}
+    return <div className="info">Conectado como <b>{pf ? pf.nome : s.user.email}</b>{pf?.papel === 'admin' ? ' (administrador)' : ''} · <span id="nuvemFila">{texto}</span>{' '}
       <button className="btn peq" onClick={A.sair}>Sair</button></div>;
   }
-  return <div className="info">☁️ Sem conexão com a conta agora. O que você fizer fica neste celular e sobe quando a internet voltar{n ? ` (${n} para enviar)` : ''}.</div>;
+  return <div className="info">Sem conexão com a conta agora. O que você fizer fica neste celular e sobe quando a internet voltar{n ? ` (${n} para enviar)` : ''}.</div>;
 }
 
 export function TelaEntrar() {
@@ -27,7 +27,7 @@ export function TelaEntrar() {
     </div>;
   }
   return <form className="entrar" onSubmit={ev => { ev.preventDefault(); A.entrar(email.trim(), senha); }}>
-    <h2>🚚 Rota de Entregas</h2>
+    <h2>Rota de Entregas</h2>
     <div className="info">Entre com a conta que o responsável criou para você.</div>
     <label htmlFor="loginEmail">E-mail</label>
     <input type="email" id="loginEmail" autoComplete="username" inputMode="email" value={email} onChange={ev => setEmail(ev.target.value)} />

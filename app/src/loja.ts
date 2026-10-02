@@ -1,9 +1,9 @@
 import {useSyncExternalStore} from 'react';
-import {CHAVES, carregarEstado, guardaEm, salvarEstado} from './logica/guarda';
+import {carregarEstado, guardaEm, salvarEstado} from './logica/guarda';
 import type {Estado, Parada} from './logica/tipos';
 
-export type Aba = 'enderecos' | 'conferir' | 'rota' | 'admin';
-export type TamanhoDoMapa = 'fechado' | 'normal' | 'grande';
+// Uma tela por vez, e o mapa só nas que trabalham nele: a Rota e o Admin.
+export type Tela = 'inicio' | 'rota' | 'conferir' | 'saida' | 'areas' | 'admin';
 
 export interface Marca {
   lat: number;
@@ -14,15 +14,17 @@ export interface Marca {
 }
 
 export interface Ui {
-  aba: Aba;
+  tela: Tela;
+  // o cartão de baixo da Rota: a próxima entrega, ou a lista inteira puxada para cima
+  folha: 'proxima' | 'lista';
+  // as entregas do pino que ele tocou no mapa: o cartão de baixo passa a ser delas
+  pino: string[] | null;
+  // o menu Mais aberto por cima da tela
+  menu: boolean;
   posicionando: string | null;
   selecionada: string | null;
   soDuvidas: boolean;
   ocupado: boolean;
-  // o tamanho do mapa é decisão por aba: em Endereços ele não tem o que mostrar enquanto se
-  // digita, em Conferir ele é o trabalho, e em Rota o cartão da próxima entrega vem antes.
-  // nome do tamanho, ou a altura em vh quando ele arrastou a barra
-  mapa: Partial<Record<Aba, TamanhoDoMapa | number>>;
   aviso: string;
   enquadrar: number;
   focar: {id: string; vez: number} | null;
@@ -32,7 +34,7 @@ export interface Ui {
   // ele: sem se ver no meio deles não dá para saber para que lado sair da esquina.
   euAqui: {lat: number; lng: number; precisao: number; rumo: number | null; quando: number} | null;
   irParaMim: number;
-  // quantas marcações esperam decisão de quem administra: o número na aba ⚙️ Admin
+  // quantas marcações esperam decisão de quem administra: o número no botão Mais e no Admin
   esperandoAdmin: number;
   // a entrega com a escolha de "cliente xarope" aberta
   xarope: string | null;
@@ -45,8 +47,9 @@ export interface Ui {
 export const guarda = guardaEm(localStorage);
 let estado = carregarEstado(guarda);
 const ui: Ui = {
-  aba: estado.paradas.length ? (estado.rota ? 'rota' : 'conferir') : 'enderecos',
-  posicionando: null, selecionada: null, soDuvidas: false, ocupado: false, mapa: guarda.ler(CHAVES.mapa, {}), aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
+  tela: estado.paradas.length ? 'rota' : 'inicio', folha: 'proxima', pino: null, menu: false,
+  // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
+  posicionando: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
   euAqui: null, irParaMim: 0, esperandoAdmin: 0, xarope: null, versaoNova: null, podeInstalar: false,
 };
 

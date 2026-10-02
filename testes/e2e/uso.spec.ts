@@ -8,7 +8,9 @@ test('os botões do cartão são contados, com a sequência, e a contagem chega 
   await aba(page, '2. Conferir');
   const cartao = page.locator('[data-item]').first();
 
-  await cartao.getByRole('button', {name: 'Ver', exact: true}).click();
+  await cartao.getByRole('button', {name: 'Ver no mapa'}).click();
+  await expect(page.locator('[data-folha="pino"]')).toBeVisible();
+  await page.goBack();
   await cartao.getByRole('button', {name: 'Editar'}).click();  // o prompt é recusado: o toque conta igual
   await cartao.getByRole('button', {name: 'Marcar no mapa'}).click();
   // corrigir a posição é o que empurra a fila; o contador vai junto, de carona
@@ -34,7 +36,7 @@ test('o contador não aparece como trabalho pendente do motorista', async ({page
   await abrir(page);
   await carregar(page, ROTA_A);
   await aba(page, '2. Conferir');
-  await page.locator('[data-item]').first().getByRole('button', {name: 'Ver', exact: true}).click();
+  await page.locator('[data-item]').first().getByRole('button', {name: 'Ver no mapa'}).click();
   await aba(page, '3. Rota');
-  await expect(page.locator('#painel')).not.toContainText('para enviar');
+  await expect(page.locator('#app')).not.toContainText('para enviar');
 });

@@ -21,7 +21,7 @@ describe('importar planilha', () => {
     const e = estadoVazio();
     const {resumo} = adicionarDaPlanilha(e, A, () => false);
     expect(resumo).toMatchObject({novas: 10, juntas: 2, repetidas: 0, longe: 1, lembradas: 0});
-    expect(resumoPlanilha(resumo)).toBe('10 parada(s) da planilha, 2 pacote(s) somado(s) a um mesmo endereço. ⚠️ 1 com posição longe das outras entregas: confira o pino antes de sair.');
+    expect(resumoPlanilha(resumo)).toBe('10 parada(s) da planilha, 2 pacote(s) somado(s) a um mesmo endereço. 1 com posição longe das outras entregas: confira o pino antes de sair.');
     const ipes = e.paradas.find(p => p.texto.startsWith('Rua dos Ipês, 300, Bloco A'))!;
     expect(ipes.unidades).toBe(3);
     expect(ipes.pacotes).toEqual(['BRTESTA0003', 'BRTESTA0004', 'BRTESTA0005']);
