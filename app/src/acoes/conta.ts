@@ -4,7 +4,7 @@ import {entrar as entrarNaNuvem, iniciarNuvem, nuvem, sair as sairDaNuvem} from 
 import {e, enviarFila, ui} from './base';
 import {conferirComOCensoAoAbrir, processarCompartilhado} from './enderecos';
 import {avisoCompartilhadas, consultarCompartilhadas} from './posicoes';
-import {verVersao} from './versao';
+import {saiuDaTela, verVersao} from './versao';
 
 // Pedido de 28/09: um motorista mexendo numa porta confirmada tem de chegar no dono sem ele ir
 // procurar. Sem servidor de notificação, o aviso é o número na aba ⚙️ Admin, conferido quando o
@@ -36,12 +36,12 @@ export async function iniciar() {
   setInterval(enviarFila, 60000);
   if (new URLSearchParams(location.search).has('compartilhado')) processarCompartilhado();
   verPendenciasDoAdmin(true);
-  verVersao();
+  verVersao(true);
   conferirComOCensoAoAbrir();
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') return;
+    if (document.visibilityState !== 'visible') { saiuDaTela(); return; }
     verPendenciasDoAdmin();
-    verVersao();
+    verVersao(false);
   });
 }
 

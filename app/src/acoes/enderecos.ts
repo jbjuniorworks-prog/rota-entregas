@@ -13,6 +13,7 @@ import {desatualizarRota, e, enviarFila, fila, invalidarRota, irPara, memoria, u
 import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, focar} from './posicoes';
 import {registrarComoFicou} from './registro';
 import {montarRota} from './rota';
+import {semRecarregar} from './versao';
 
 export const RAIO_REGIAO = 100000;
 
@@ -144,7 +145,11 @@ async function importarPlanilhas(files: Blob[]) {
   return resumo;
 }
 
-export async function lerPrints(files: File[], textoAtual: string): Promise<string | null> {
+export function lerPrints(files: File[], textoAtual: string): Promise<string | null> {
+  return semRecarregar(() => lerPrintsAgora(files, textoAtual));
+}
+
+async function lerPrintsAgora(files: File[], textoAtual: string): Promise<string | null> {
   const {planilhas, outros} = await separarPlanilhas(files);
   if (planilhas.length) {
     status('Lendo a planilha…');
@@ -180,7 +185,11 @@ export async function lerPrints(files: File[], textoAtual: string): Promise<stri
   }
 }
 
-export async function processarCompartilhado() {
+export function processarCompartilhado() {
+  return semRecarregar(lerCompartilhado);
+}
+
+async function lerCompartilhado() {
   const files: Blob[] = [];
   let texto = '';
   try {
