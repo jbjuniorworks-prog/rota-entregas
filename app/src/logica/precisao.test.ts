@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import XLSX from 'xlsx';
 import {estadoVazio} from './guarda';
-import {levarParaAPortaDoCenso, levarParaOCenso, marcarIsoladas, planilhaForaDaRua} from './geo';
+import {levarParaAPortaDoCenso, levarParaOCenso, marcarIsoladas, planilhaForaDaRua, refinarPeloCenso, refinoPeloCenso} from './geo';
 import {adicionarDaPlanilha, resumoPlanilha} from './importar';
 import {coordenadaDaPlanilha, itensDaPlanilha} from './planilha';
 import type {Candidato, Parada, Precisao} from './tipos';
@@ -123,12 +123,36 @@ describe('planilha e censo do IBGE discordando', () => {
       {...parada(), id: 'b', texto: 'Rua das Acácias, 109, Casa 3, Jardins, CEP 49000-100'},
       {...parada(), id: 'c', texto: 'Rua dos Ipês, 20, Jardins, CEP 49000-200'},
     ];
+    const r = await levarParaOCenso(ps, 'Aracaju', censo);
     // a casa 3 diz que o 109 é um condomínio: nenhuma das duas vai, para não ficar metade em cada pino
-    expect(await levarParaOCenso(ps, 'Aracaju', censo)).toEqual([]);
-    // o 20 está a 10 m da porta do censo: não precisou das portas da rua
+    expect(r.levadas).toEqual([]);
+    // o 20 está a 10 m da porta do censo: só refina, e não precisou das portas da rua
+    expect(r.refinadas.map(p => p.id)).toEqual(['c']);
     expect(ruas).toBe(0);
     const sozinha = [{...parada(), id: 'a'}];
-    expect((await levarParaOCenso(sozinha, 'Aracaju', censo)).map(p => p.id)).toEqual(['a']);
+    expect((await levarParaOCenso(sozinha, 'Aracaju', censo)).levadas.map(p => p.id)).toEqual(['a']);
     expect(ruas).toBe(1);
+  });
+
+  // 02/10: com as duas fontes a até 80 m, o censo acerta a casa e a planilha cai umas casas ao lado
+  it('casa com a planilha a até 80 m do censo vai para a porta dele, verde, com a planilha como opção', () => {
+    const p = parada();
+    const d = refinoPeloCenso(p, porta(40));
+    expect(Math.round(d!)).toBe(40);
+    refinarPeloCenso(p as Parada & {lat: number; lng: number}, porta(40), d!);
+    expect(p).toMatchObject({lat: porta(40).lat, lng: -37.06, precisao: 'exato', fonte: 'IBGE'});
+    expect(p.exibido).toContain('40 m de onde a planilha punha');
+    expect(p.candidatos.map(c => c.fonte)).toEqual(['IBGE', 'planilha']);
+  });
+
+  it('prédio, condomínio, rua genérica, mais de 80 m, ou posição que não veio só da planilha: não refina', () => {
+    const com = (texto: string) => ({...parada(), texto});
+    // no prédio o censo marca a porta lá dentro do terreno; a entrega é na portaria
+    expect(refinoPeloCenso(parada(), {...porta(40), predio: true})).toBeNull();
+    expect(refinoPeloCenso(com('Rua das Acácias, 109, Cond. Solar casa 18, Jardins, CEP 49000-100'), porta(40))).toBeNull();
+    expect(refinoPeloCenso(com('Rua B1, 109, Jardins, CEP 49000-100'), porta(40, 'Rua B1'))).toBeNull();
+    expect(refinoPeloCenso(parada(), porta(40, 'Avenida Beira Mar'))).toBeNull();
+    expect(refinoPeloCenso(parada(), porta(120))).toBeNull();
+    for (const pr of ['lembrado', 'confirmado', 'manual', 'censo'] as Precisao[]) expect(refinoPeloCenso(parada(pr), porta(40))).toBeNull();
   });
 });

@@ -105,6 +105,21 @@ Atualizado em 01/10/2026.
 
 ## Fechado com medição
 
+- **Revisão de precisão de 02/10, contra 418 portas marcadas na entrega** (planilhas de 18/09 a
+  02/10, com o código do app). Antes, a mediana era 12 m e 47 endereços ficavam a mais de 50 m.
+  - Entrou: casa com a planilha a até 80 m da porta do censo vai para a porta do censo. Mediana
+    de 12 para 9 m, 80% de 27 para 21 m e 90% de 63 para 51 m. Das 192 paradas que viram
+    "Número encontrado", a mediana é 6 m e só uma passa de 50 m.
+  - Recusado, por medir pior: usar a casa vizinha do censo (número ao lado); achar o número pela
+    rua quando o censo não tem o CEP (mediana de 434 m nos casos que mudaria); estranhar a planilha
+    longe das portas do CEP no censo (nesses, quem erra é o CEP do censo); e o censo sempre, no
+    lugar da planilha (um erro grande a mais).
+  - Medido e pequeno: porta marcada que a nuvem não entrega por a chave sair diferente (CEP num dia
+    e no outro não, abreviação). São 2 em 912 endereços.
+  - O que sobra acima de 100 m (22) é quase todo endereço cujo CEP o censo não tem. Isso é 30% dos
+    endereços. Ali só a porta marcada pelos motoristas conserta, e ela já vem: 63% das entregas
+    desde 28/09 viraram porta marcada (Pedro chega a 82%, Leudy fica em 45%).
+
 - **O nome do conjunto juntava casas de ruas diferentes num pino só.** Pedro, 29/09: duas casas
   do "Conjunto Orlando Dantas", a 106 m, desenhadas no mesmo ponto. Ele arrumava uma, e o mapa a
   punha de volta na outra. Nas planilhas de 20 a 29/09 (1353 endereços), a regra do nome fazia

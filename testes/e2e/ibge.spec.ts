@@ -146,3 +146,31 @@ test('a porta do censo fica laranja até entregarem ali', async ({page, context}
     return `${p.entregue} ${p.precisao}`;
   }), {timeout: 15_000}).toBe('true manual');
 });
+
+// 02/10: com a planilha e o censo a até 80 m, quem acerta a casa é o censo (mediana de 12 m para 9 m
+// nas 417 portas marcadas). No prédio, não: o censo marca a porta lá dentro do terreno.
+test('casa perto da porta do censo vai para ela, verde; prédio fica como veio', async ({page}) => {
+  const XLSX = (await import('xlsx')).default;
+  const CASA_802 = {lat: -10.93604, lng: -37.076566};
+  const cab = ['AT ID', 'Sequence', 'Stop', 'SPX TN', 'Destination Address', 'Bairro', 'City', 'Zipcode/Postal code', 'Latitude', 'Longitude'];
+  const ws = XLSX.utils.aoa_to_sheet([cab,
+    // a 40 m da porta de cada um, longe um do outro (perto, os números distantes dariam "número não bate")
+    ['AT-TESTE', 1, 1, '', 'Rua Francisco de Assis Delmondes Pereira Freitas, 802', 'Ponto Novo', 'Aracaju', '49097-710', -10.93568, -37.076566],
+    ['AT-TESTE', 2, 2, '', 'Rua Francisco de Assis Delmondes Pereira Freitas, 100', 'Ponto Novo', 'Aracaju', '49097-710', -10.936387, -37.076626],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
+  await abrir(page);
+  await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
+  const como = (inicio: string) => page.evaluate(t => {
+    const p = (JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas || []).find((x: any) => x.texto.startsWith(t));
+    return p ? {lat: p.lat, lng: p.lng, precisao: p.precisao} : null;
+  }, inicio);
+  await expect.poll(() => como('Rua Francisco de Assis Delmondes Pereira Freitas, 802').then(p => p?.precisao), {timeout: 30_000}).toBe('exato');
+  expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 802')).toEqual({...CASA_802, precisao: 'exato'});
+  expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 100')).toEqual({lat: -10.936387, lng: -37.076626, precisao: 'planilha'});
+  await expect(linhaDe(page, 'Delmondes Pereira Freitas, 802', 'Ver')).toContainText('Porta do censo do IBGE, a 40 m de onde a planilha punha');
+  // andar 40 m não pede para refazer nada, nem avisa
+  await expect(page.locator('#status')).not.toContainText('levada(s) para a porta do censo');
+});

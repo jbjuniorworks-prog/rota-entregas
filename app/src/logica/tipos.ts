@@ -14,6 +14,8 @@ export interface Candidato extends Ponto {
   bairro?: string;
   nomes?: string[];
   fonte: string;
+  // o censo marca a porta do prédio lá dentro do terreno; a entrega é na portaria
+  predio?: boolean;
 }
 
 export interface Parada {

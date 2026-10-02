@@ -113,11 +113,13 @@ async function levarAoBairroPeloMapa(): Promise<number> {
 }
 
 // Antes da nuvem: a porta que alguém já entregou passa por cima do censo também.
-async function conferirComOCenso(): Promise<number> {
-  const levadas = await levarParaOCenso(e().paradas, e().cidade,
+// As refinadas andam poucos metros: a sequência e o tempo da rota continuam valendo, e a barra de
+// "as posições mudaram, refazer rota" seria barulho, ainda mais ao abrir o app no meio do dia.
+async function conferirComOCenso(): Promise<{levadas: number; refinadas: number}> {
+  const {levadas, refinadas} = await levarParaOCenso(e().paradas, e().cidade,
     {porta: (cep, numero, cidade) => enderecoDoIbge(cep, numero, cidade, true), rua: portasDaRuaNoIbge});
   if (levadas.length) desatualizarRota(true);
-  return levadas.length;
+  return {levadas: levadas.length, refinadas: refinadas.length};
 }
 
 // A rota que já estava na tela também passa pelo censo: lida por uma versão de antes da regra, ou
@@ -125,10 +127,10 @@ async function conferirComOCenso(): Promise<number> {
 // na porta do censo, ou foi escolhido por ele, não é mais 'planilha' e não volta a ser mexido.
 export async function conferirComOCensoAoAbrir() {
   if (!e().paradas.some(p => p.precisao === 'planilha' && !p.entregue)) return;
-  const n = await conferirComOCenso();
-  if (!n) return;
+  const {levadas, refinadas} = await conferirComOCenso();
+  if (!levadas && !refinadas) return;
   loja.mudou();
-  status(`${n} parada(s) levada(s) para a porta do censo do IBGE, porque a planilha punha fora da rua: confira na porta.`, 8000);
+  if (levadas) status(`${levadas} parada(s) levada(s) para a porta do censo do IBGE, porque a planilha punha fora da rua: confira na porta.`, 8000);
 }
 
 async function importarPlanilhas(files: Blob[]) {
@@ -137,7 +139,7 @@ async function importarPlanilhas(files: Blob[]) {
   fila.enfileirar(...operacoesDaPlanilha(itens, rotaDe, e().cidade));
   enviarFila();
   resumo.noBairro += await levarAoBairroPeloMapa();
-  resumo.censo = await conferirComOCenso();
+  resumo.censo = (await conferirComOCenso()).levadas;
   const comp = await consultarCompartilhadas();
   resumo.confirmadas = comp.confirmadas;
   resumo.sugestoes = comp.sugestoes;

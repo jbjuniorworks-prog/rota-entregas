@@ -123,6 +123,28 @@ export function levarParaAPortaDoCenso(p: Parada & Ponto, porta: Candidato, metr
     exibido: `Porta do censo do IBGE: a planilha punha este pino a ${Math.round(metros)} m, fora da rua. Confira na porta`});
 }
 
+// Quando a planilha e o censo concordam no lugar (até 80 m), quem acerta a casa é o censo: ele
+// marca a porta, e a planilha costuma cair umas casas para o lado. Medido em 417 portas marcadas
+// na entrega (02/10), nas planilhas de 18/09 a 02/10. Mediana de 12 m para 9 m, 80% de 27 m para
+// 20 m, e de 112 para 86 endereços a mais de 20 m da porta. 36 melhoram, 8 pioram um pouco e
+// nenhum piora mais de 30 m. Só casa: no prédio o censo marca a porta lá dentro do terreno, e a
+// entrega é na portaria, onde a planilha já estava (7 dos 15 que pioravam eram prédios).
+export function refinoPeloCenso(p: Parada, porta: Candidato | null): number | null {
+  if (!porta || porta.predio || p.precisao !== 'planilha' || p.entregue || !comPosicao(p)) return null;
+  const daPlanilha = decompor(p.texto).rua;
+  if (ruaGenerica(daPlanilha) || emCondominio(p.texto)) return null;
+  if (!porta.rua || !mesmaRua(daPlanilha, porta.rua)) return null;
+  const d = haversine(p, porta);
+  return d <= CENSO_DISCORDA ? d : null;
+}
+
+// Verde: com as duas fontes concordando não há o que conferir. A planilha fica como opção.
+export function refinarPeloCenso(p: Parada & Ponto, porta: Candidato, metros: number) {
+  p.candidatos = [porta, {lat: p.lat, lng: p.lng, exibido: 'A posição que veio na planilha', precisao: 'planilha', fonte: 'planilha'}];
+  Object.assign(p, {lat: porta.lat, lng: porta.lng, precisao: 'exato', fonte: 'IBGE',
+    exibido: `Porta do censo do IBGE, a ${Math.round(metros)} m de onde a planilha punha`});
+}
+
 export interface Censo {
   porta: (cep: string, numero: string, cidade: string) => Promise<Candidato | null>;
   // cara: varre o censo inteiro, então só vai para quem já discorda da porta
@@ -131,21 +153,27 @@ export interface Censo {
 
 // O mesmo número decide junto. Com complementos diferentes (o bloco, a casa), metade num pino e
 // metade no outro seria pior que qualquer um dos dois.
-export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: Censo): Promise<Parada[]> {
+// levadas: a planilha punha fora da rua, e o pino andou muito; refinadas: as duas concordavam.
+export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: Censo): Promise<{levadas: Parada[]; refinadas: Parada[]}> {
   const porLugar = new Map<string, Parada[]>();
   for (const p of paradas) {
     if (p.precisao !== 'planilha' || p.entregue) continue;
     const k = chaveLugar(p.texto, p.bairro, cidade);
     if (k) porLugar.set(k, [...(porLugar.get(k) || []), p]);
   }
-  const levadas: Parada[] = [];
+  const levadas: Parada[] = [], refinadas: Parada[] = [];
   for (const ps of porLugar.values()) {
     if (ps.some(p => emCondominio(p.texto))) continue;
     const d = decompor(ps[0].texto);
     if (!d.cep || !d.numero || ruaGenerica(d.rua)) continue;
     try {
       const porta = await censo.porta(d.cep, d.numero, cidade);
-      if (!porta || !ps.some(p => discordaDaPorta(p, porta) != null)) continue;
+      if (!porta) continue;
+      for (const p of ps) {
+        const metros = refinoPeloCenso(p, porta);
+        if (metros != null) { refinarPeloCenso(p as Parada & Ponto, porta, metros); refinadas.push(p); }
+      }
+      if (!ps.some(p => discordaDaPorta(p, porta) != null)) continue;
       const rua = await censo.rua(d.rua, porta, cidade);
       for (const p of ps) {
         const metros = planilhaForaDaRua(p, porta, rua);
@@ -153,7 +181,7 @@ export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: 
       }
     } catch {}
   }
-  return levadas;
+  return {levadas, refinadas};
 }
 
 export function proximaAPe(feita: Parada, proxima: Parada | undefined): number | null {
