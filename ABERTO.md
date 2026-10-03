@@ -283,10 +283,12 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 - **Um lugar só do admin**, para o que hoje precisa de terminal ou não aparece em tela nenhuma.
   O Admin já lista as rotas de 14 dias com entregues/pacotes, ativa e desativa motorista, mostra
   as correções e o uso dos botões. Falta:
-  - **Criar conta de entregador.** Hoje é `npm run motoristas -- criar email Nome`. Criar usuário
-    exige a chave de serviço, e ela dentro de um app público entrega o banco inteiro a qualquer
-    um — então não é "mover o botão para a tela": seria um RPC que só admin chama, com o convite
-    saindo por e-mail do próprio Supabase.
+  - **Criar conta de entregador: feito em 03/10, falta rodar o `019_criar_motorista.sql`.** Em
+    Admin > Motoristas, cola o e-mail e sai a senha, com a mensagem pronta para o WhatsApp. A
+    conta nasce dentro do banco, numa função que só admin chama, escrevendo em `auth.users` e
+    `auth.identities` como o cadastro do Supabase faz. Não é o caminho oficial (esse pede a chave
+    de serviço): se um dia o Supabase mudar essas tabelas, quem pega é o teste @nuvem "o admin cria
+    a conta pela tela", que entra com a senha de verdade. Trocar senha continua no terminal.
   - **"Teve problema nesta rota?"** O dado já está gravado desde `011_registro.sql`:
     `rotas.sem_ruas` diz se a sequência saiu em linha reta e por quê, e `pacotes.fonte` /
     `precisao` dizem de onde veio cada posição. A tela do Admin não mostra nenhum dos três —

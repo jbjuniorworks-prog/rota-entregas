@@ -79,6 +79,21 @@ export async function listarMotoristas(): Promise<Motorista[]> {
   return (data || []) as Motorista[];
 }
 
+export interface ContaNova {id: string; nome: string; senha: string}
+
+// A conta nasce no banco, numa função que só quem administra chama: a chave de serviço, que é o
+// outro jeito de criar conta, não pode vir para um app público (019_criar_motorista.sql).
+export async function criarMotorista(email: string, nome: string): Promise<ContaNova> {
+  const {data, error} = await cliente().rpc('criar_motorista', {email_: email, nome_: nome || null});
+  if (error) {
+    const faltaSql = error.code === 'PGRST202' || /criar_motorista/.test(error.message || '');
+    throw new Error(faltaSql ? 'falta rodar o supabase/019_criar_motorista.sql no SQL Editor' : error.message || 'erro no servidor');
+  }
+  const conta = (data as ContaNova[] | null)?.[0];
+  if (!conta?.senha) throw new Error('o banco não devolveu a senha');
+  return conta;
+}
+
 export async function mudarAtivo(id: string, ativo: boolean) {
   const {error} = await cliente().from('perfis').update({ativo}).eq('id', id);
   falhou(error);

@@ -6,6 +6,8 @@ const env = existsSync('.env')
   : {};
 const URL = env.SUPABASE_URL, SERVICO = env.SUPABASE_SERVICE_ROLE_KEY;
 const EMAIL = 'juniorpiks+motorista-teste@hotmail.com';
+// a conta que o teste cria pela aba Admin, como o dono faz com um motorista novo
+const CRIADO = 'juniorpiks+criado-pela-tela@hotmail.com';
 const SENHA = 'Teste-' + Math.random().toString(36).slice(2) + '-9Z';
 const RUA_TESTE = 'rua so de teste automatizado';
 
@@ -17,6 +19,8 @@ async function api(caminho: string, init: RequestInit = {}, chave = SERVICO) {
 
 async function apagarMotoristaDeTeste() {
   const {corpo} = await api('/auth/v1/admin/users?per_page=200');
+  const criado = corpo.users.find((x: any) => x.email === CRIADO);
+  if (criado) await api(`/auth/v1/admin/users/${criado.id}`, {method: 'DELETE'});
   const u = corpo.users.find((x: any) => x.email === EMAIL);
   if (!u) return;
   await api(`/rest/v1/correcoes?motorista_id=eq.${u.id}`, {method: 'DELETE'});
@@ -189,5 +193,46 @@ test.describe('nuvem @nuvem', () => {
       })}, token);
       expect(alheia.corpo, 'não pode escrever na rota de outro').toBe(0);
     }
+  });
+
+  // Pedido de 03/10: o dono cola o e-mail na aba Admin e sai com a senha. A conta nasce dentro do
+  // banco (019_criar_motorista.sql), sem a API do Supabase: o que vale é o login aceitar a senha.
+  test('o admin cria a conta pela tela, e o motorista entra com a senha', async ({page}) => {
+    const {menu} = await import('./apoio');
+    await page.goto('./');
+    await page.getByLabel('E-mail').fill(EMAIL);
+    await page.getByLabel('Senha', {exact: true}).fill(SENHA);
+    await page.getByRole('button', {name: 'Entrar', exact: true}).click();
+    await expect(page.getByRole('button', {name: 'Mais', exact: true})).toBeVisible();
+    const token = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-auth') || '{}').access_token);
+
+    // motorista não cria conta
+    const recusa = await api('/rest/v1/rpc/criar_motorista', {method: 'POST', body: JSON.stringify({email_: CRIADO})}, token);
+    expect(recusa.status).toBe(400);
+    expect(recusa.corpo.message).toContain('apenas quem administra');
+
+    await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({papel: 'admin'})});
+    await page.reload();
+    await menu(page, /^Admin/);
+    await page.locator('summary', {hasText: /^Motoristas/}).click();
+    await page.getByLabel('E-mail do motorista').fill(CRIADO);
+    await page.getByLabel('Nome do motorista').fill('Criado Pela Tela');
+    await page.getByRole('button', {name: 'Criar conta'}).click();
+    const senha = (await page.locator('[data-senha]').innerText()).trim();
+    expect(senha).toMatch(/^[A-HJ-NP-Za-km-np-z2-9]{14}$/);
+
+    // entra com ela, no Supabase de verdade
+    const login = await fetch(URL + '/auth/v1/token?grant_type=password', {method: 'POST',
+      headers: {apikey: SERVICO, 'Content-Type': 'application/json'}, body: JSON.stringify({email: CRIADO, password: senha})});
+    const sessao = await login.json();
+    expect(login.status, JSON.stringify(sessao)).toBe(200);
+    // e o perfil nasceu motorista, ativo, com o nome dado, legível por ele mesmo
+    const perfil = (await api(`/rest/v1/perfis?id=eq.${sessao.user.id}&select=nome,papel,ativo`, {}, sessao.access_token)).corpo[0];
+    expect(perfil).toEqual({nome: 'Criado Pela Tela', papel: 'motorista', ativo: true});
+
+    // o mesmo e-mail de novo não cria outra conta
+    await page.getByLabel('E-mail do motorista').fill(CRIADO);
+    await page.getByRole('button', {name: 'Criar conta'}).click();
+    await expect(page.locator('#status')).toContainText('já existe conta');
   });
 });

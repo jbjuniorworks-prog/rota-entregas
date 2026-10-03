@@ -114,6 +114,43 @@ test.describe('administrador', () => {
     await expect(page.locator('[data-motorista="Você Teste"]').getByRole('button')).toHaveCount(0);
   });
 
+  // Pedido de 03/10: colar o e-mail e sair com a senha, em vez do terminal. Que a conta entra de
+  // verdade com ela, quem garante é o teste @nuvem; aqui é a tela.
+  test('cria a conta de um motorista colando o e-mail, e a senha sai pronta para o WhatsApp', async ({page, context, nuvem}) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    nuvem.rpc = {criar_motorista: [{id: 'm9', nome: 'Motorista Inventado', senha: 'Abc23defGhjkmn'}]};
+    await abrir(page);
+    await menu(page, /^Admin/);
+    await page.locator('summary', {hasText: /^Motoristas/}).click();
+    await page.getByLabel('E-mail do motorista').fill('  Motorista.Inventado@Exemplo.com ');
+    await page.getByLabel('Nome do motorista').fill('Motorista Inventado');
+    await page.getByRole('button', {name: 'Criar conta'}).click();
+
+    await expect(page.locator('[data-senha]')).toHaveText('Abc23defGhjkmn');
+    expect(nuvem.pedidos.find(p => p.caminho === 'rpc/criar_motorista')?.corpo)
+      .toEqual({email_: 'motorista.inventado@exemplo.com', nome_: 'Motorista Inventado'});
+    await expect(page.getByLabel('E-mail do motorista')).toHaveValue('');
+
+    await page.getByRole('button', {name: 'Copiar para o WhatsApp'}).click();
+    // a área de transferência do Windows devolve as quebras de linha como \r\n
+    const copiado = (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n');
+    expect(copiado).toMatch(/^Seu acesso ao app de rota:\nhttp\S+\nE-mail: motorista\.inventado@exemplo\.com\nSenha: Abc23defGhjkmn$/);
+  });
+
+  test('sem o SQL da conta rodado, diz o que falta em vez de uma senha', async ({page, context}) => {
+    await context.route('**/rest/v1/rpc/criar_motorista', r => r.fulfill({
+      status: 404, contentType: 'application/json', headers: {'access-control-allow-origin': '*'},
+      body: JSON.stringify({code: 'PGRST202', message: 'Could not find the function public.criar_motorista(email_, nome_) in the schema cache'}),
+    }));
+    await abrir(page);
+    await menu(page, /^Admin/);
+    await page.locator('summary', {hasText: /^Motoristas/}).click();
+    await page.getByLabel('E-mail do motorista').fill('motorista.inventado@exemplo.com');
+    await page.getByRole('button', {name: 'Criar conta'}).click();
+    await expect(aviso(page)).toContainText('falta rodar o supabase/019_criar_motorista.sql');
+    await expect(page.locator('[data-senha]')).toHaveCount(0);
+  });
+
   // Pedido de 28/09: "não faz sentido eu ter que procurar as mudanças que eles pedirem". As
   // marcações ficavam no fim da página, depois de 14 dias de rotas, todas misturadas.
   test.describe('no celular', () => {

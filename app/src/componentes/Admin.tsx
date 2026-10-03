@@ -186,8 +186,44 @@ function Motoristas({lista, recarregar}: {lista: Adm.Motorista[]; recarregar: ()
         <div className="achado">{m.ativo ? '🟢 ativo' : '⛔ desativado'}</div></div>
       {m.id !== nuvem.perfil?.id && <button className="btn peq" onClick={() => mudar(m)} disabled={!!ocupado}>{fazendo(m.id) ? 'Só um momento…' : m.ativo ? 'Desativar' : 'Ativar'}</button>}
     </div>)}
-    <div className="info">Para criar conta ou trocar senha, no computador: <code>npm run motoristas -- criar email Nome</code> ou <code>-- senha email</code>.</div>
+    <NovaConta recarregar={recarregar} />
+    <div className="info">Para trocar a senha de alguém, no computador: <code>npm run motoristas -- senha email</code>.</div>
   </details>;
+}
+
+// Colar o e-mail e sair com a senha (pedido de 03/10): a mensagem já vai pronta para o WhatsApp,
+// com o endereço do app. A senha só aparece aqui, uma vez: o banco guarda só o embaralhado dela.
+function NovaConta({recarregar}: {recarregar: () => void}) {
+  const [email, setEmail] = useState('');
+  const [nome, setNome] = useState('');
+  const [criada, setCriada] = useState<(Adm.ContaNova & {email: string}) | null>(null);
+  const {correr, fazendo} = useTrabalho();
+  const criar = async () => {
+    const e = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { status('Cole o e-mail do motorista.', 4000); return; }
+    const conta = await correr('criar', () => Adm.criarMotorista(e, nome.trim()));
+    if (!conta) return;
+    setCriada({...conta, email: e});
+    setEmail('');
+    setNome('');
+    recarregar();
+  };
+  const copiar = async () => {
+    if (!criada) return;
+    const texto = `Seu acesso ao app de rota:\n${location.origin}${location.pathname}\nE-mail: ${criada.email}\nSenha: ${criada.senha}`;
+    try { await navigator.clipboard.writeText(texto); status('Copiado. Cole no WhatsApp do motorista.', 3000); } catch { status('Não consegui copiar: anote a senha.', 4000); }
+  };
+  return <div className="item" data-nova-conta>
+    <b>Criar conta de motorista</b>
+    <input type="email" inputMode="email" autoComplete="off" aria-label="E-mail do motorista" placeholder="Cole o e-mail" value={email} onChange={ev => setEmail(ev.target.value)} />
+    <input type="text" autoComplete="off" aria-label="Nome do motorista" placeholder="Nome (se vazio, usa o começo do e-mail)" value={nome} onChange={ev => setNome(ev.target.value)} />
+    <button className="btn pri" onClick={criar} disabled={fazendo('criar')}>{fazendo('criar') ? 'Criando…' : 'Criar conta'}</button>
+    {criada && <div className="aviso" data-conta-criada>
+      Conta criada: <b>{criada.nome}</b> ({criada.email})<br />Senha: <b data-senha>{criada.senha}</b>
+      <div className="info">Ela só aparece agora. Copie e mande para o motorista.</div>
+      <div className="linha"><button className="btn peq" onClick={copiar}>Copiar para o WhatsApp</button></div>
+    </div>}
+  </div>;
 }
 
 function Rotas({lista}: {lista: Adm.RotaResumo[]}) {
