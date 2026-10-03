@@ -181,10 +181,13 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
   não precisa de "Marcar no mapa" na frente; parada fraca precisa. Depende de saber quais botões
   são realmente usados.
 - **A busca de "Todos os endereços" (02/10, para B.O.)** conta como `busca`, uma vez por tela
-  aberta. Ela só enxerga a rota de hoje deste celular: o resetar apaga. B.O. que chega dias
-  depois só se resolve pela nuvem, que guarda de cada pacote o código, o endereço, a hora da
-  entrega e o motorista. Se a busca for usada e o B.O. vier mesmo depois, o próximo passo é a
-  mesma busca no Admin, em todas as rotas.
+  aberta, e o "Procurar nos dias anteriores" como `busca-antiga`. A de hoje é no celular; a dos
+  dias anteriores vai à nuvem, que guarda todo pacote de planilha desde 19/09 (o motorista vê os
+  dele, quem administra vê todos, com o nome). Só acha o que veio de planilha: endereço colado ou
+  lido de print não vira pacote na nuvem. A hora da entrega só existe se ele marcou "Entreguei"
+  (Pedro 100%, Luan 93%, Leudy 94% até 02/10), e o ponto da porta em 92% das marcadas. A peneira
+  do banco é `ilike` sem índice: com 4.500 pacotes responde rápido; passando de umas 100 mil
+  linhas, vale um índice de trigrama (migração).
 - **"Estou aqui" talvez pertença só à Rota**, não à Conferir: é ação de porta. Na tela nova ele
   está nas duas (na Rota, como "Pino errado? Estou aqui"). Se o uso na Conferir for baixo, sai de lá.
 - **O contador `ver` mudou de sentido em 02/10.** Até ali era o "Ver" da Conferir, que abria o

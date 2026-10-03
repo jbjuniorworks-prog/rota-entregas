@@ -19,6 +19,21 @@ const NO_CODIGO = 4;
 
 const palavras = (busca: string) => normal(busca).replace(/[^a-z0-9# ]/g, ' ').split(' ').filter(Boolean);
 
+// A peneira da busca nos dias anteriores, no formato do PostgREST. O banco não tira acento, então
+// vogal e "c" viram "_" (qualquer letra) e a peneira só estreita: quem decide é o acharNaParada,
+// no celular, com a mesma regra da rota de hoje. Cada palavra tem de aparecer em algum campo.
+export function peneiraDaNuvem(busca: string): string | null {
+  const ps = palavras(busca).map(w => w.replace(/^#/, '')).filter(Boolean);
+  if (!ps.length) return null;
+  return `and(${ps.map(w => {
+    const solto = w.replace(/[aeiouc]/g, '_');
+    const campos = [`endereco.ilike.*${solto}*`, `bairro.ilike.*${solto}*`];
+    if (/^\d+$/.test(w)) campos.push(`cep.ilike.*${w}*`);
+    if (/\d/.test(w) && (/[a-z]/.test(w) || w.length >= NO_CODIGO)) campos.push(`spx_tn.ilike.*${w}*`);
+    return `or(${campos.join(',')})`;
+  }).join(',')})`;
+}
+
 export function acharNaParada(p: Parada, busca: string): Achado | null {
   const ps = palavras(busca);
   if (!ps.length) return null;

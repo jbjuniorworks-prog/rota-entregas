@@ -19,7 +19,8 @@ export function MenuMais() {
         <div className="titulo">Mais</div>
         <button className="quadrado" aria-label="Fechar" onClick={A.voltar}><Icone nome="x" /></button>
       </div>
-      {comParadas && item('Conferir endereços', () => { ui.soDuvidas = false; A.abrir({tela: 'conferir'}); })}
+      {/* sem rota, a mesma tela serve para achar uma entrega de outro dia (B.O.) */}
+      {item(comParadas ? 'Conferir endereços' : 'Procurar uma entrega', () => { ui.soDuvidas = false; A.abrir({tela: 'conferir'}); })}
       {comParadas && item(e.rota ? 'Refazer a rota' : 'Montar a rota', A.montarRota)}
       {item('Ponto de saída e de chegada', () => A.abrir({tela: 'saida'}))}
       {item('Áreas e horários', () => A.abrir({tela: 'areas'}))}

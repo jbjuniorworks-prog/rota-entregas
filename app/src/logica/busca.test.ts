@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {acharNaParada} from './busca';
+import {acharNaParada, peneiraDaNuvem} from './busca';
 import type {Parada} from './tipos';
 
 const parada = (texto: string, extra: Partial<Parada> = {}): Parada => ({
@@ -58,5 +58,32 @@ describe('busca de Todos os endereços', () => {
 
   it('busca vazia não filtra nada', () => {
     expect(acharNaParada(ACACIAS, '  ')).toBeNull();
+  });
+});
+
+describe('peneira da busca nos dias anteriores', () => {
+  // o banco compara letra por letra: sem trocar as vogais, "acacias" não acharia "Acácias"
+  const casa = (padrao: string, texto: string) =>
+    new RegExp('^' + padrao.replace(/\*/g, '.*').replace(/_/g, '.') + '$', 'i').test(texto);
+  const padroes = (busca: string) => [...peneiraDaNuvem(busca)!.matchAll(/endereco\.ilike\.([^,)]+)/g)].map(m => m[1]);
+
+  it('acha com acento e cedilha o que foi digitado sem', () => {
+    expect(casa(padroes('acacias')[0], 'Rua das Acácias, 110')).toBe(true);
+    expect(casa(padroes('praca')[0], 'Praça Fausto Cardoso, 12')).toBe(true);
+  });
+
+  it('cada palavra é uma condição, e todas valem juntas', () => {
+    expect(peneiraDaNuvem('central 35')).toBe('and(or(endereco.ilike.*__ntr_l*,bairro.ilike.*__ntr_l*),'
+      + 'or(endereco.ilike.*35*,bairro.ilike.*35*,cep.ilike.*35*))');
+  });
+
+  it('só procura no código com 4 dígitos ou mais, como na rota de hoje', () => {
+    expect(peneiraDaNuvem('35')).not.toContain('spx_tn');
+    expect(peneiraDaNuvem('4567')).toContain('spx_tn.ilike.*4567*');
+    expect(peneiraDaNuvem('brtestd0022')).toContain('spx_tn.ilike.*brtestd0022*');
+  });
+
+  it('sem nada digitado, não vai à nuvem', () => {
+    expect(peneiraDaNuvem(' # ')).toBeNull();
   });
 });
