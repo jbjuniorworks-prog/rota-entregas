@@ -20,7 +20,7 @@ describe('trava contra subir dado real para o repositório público', () => {
     expect(olharNome('app/public/favicon.ico')).toBeNull();
   });
   it('barra planilha de rota fora da pasta de teste', () => {
-    expect(olharNome('20-09-2026 Luan Mateus Santos Silva.xlsx')).toMatch(/planilha/);
+    expect(olharNome('20-09-2026 Motorista Inventado.xlsx')).toMatch(/planilha/);
     expect(olharNome('app/dados/rota.csv')).toMatch(/planilha/);
     expect(olharNome('testes/planilhas/rota-b.xlsx')).toBeNull();
   });
@@ -34,12 +34,12 @@ describe('trava contra subir dado real para o repositório público', () => {
     expect(olharConteudo('{"role":"service_role","iss":"supabase"}')).toMatch(/service_role/);
     expect(olharConteudo('SUPABASE_SERVICE_ROLE_KEY=abc123')).toMatch(/chave/);
     expect(olharConteudo('const t = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdefghijk"')).toMatch(/chave|token/);
-    expect(olharConteudo('mandar para luanmateus_cs@hotmail.com')).toMatch(/pessoa real/);
+    expect(olharConteudo('mandar para motorista.inventado.000@hotmail.com')).toMatch(/pessoa real/);
   });
   it('barra código de pacote e telefone de verdade', () => {
-    expect(olharConteudo('spx_tn: BR268632715522L')).toMatch(/pacote/);
-    expect(olharConteudo('contato +55 79 96060000')).toBeNull();
-    expect(olharConteudo('contato +55 79 96067704')).toBeNull();
+    expect(olharConteudo('spx_tn: BR1234567890123X')).toMatch(/pacote/);
+    expect(olharConteudo('contato +55 79 90000-0000')).toMatch(/telefone/);
+    expect(olharConteudo('contato +55 79 90000000')).toBeNull();
   });
   it('deixa passar o que o projeto usa de verdade', () => {
     expect(olharConteudo('const SUPA_CHAVE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrY2x6bWxjZmlrc2FxcXNwcXN5Iiwicm9sZSI6ImFub24i…"')).toBeNull();
