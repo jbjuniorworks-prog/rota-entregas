@@ -1,7 +1,8 @@
 import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {abrir, seguirMinhaPosicao, tocouNoMapa, trocar, voltar} from '../acoes';
+import {abrir, pararDeSeguir, seguirMinhaPosicao, tocouNoMapa, trocar, voltar} from '../acoes';
+import {haversine} from '../logica/geo';
 import {empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
@@ -19,6 +20,10 @@ function icone(texto: string, cor: string, apagado = false, borda = '') {
 const BALAO = {permanent: true as const, direction: 'top' as const, offset: [0, -28] as [number, number], className: 'balao'};
 const ZOOM_DO_FOCO = 17;
 const ZOOM_DE_MIM = 17;
+// seguindo: o mapa se ajusta quando ele anda isto, e não a cada tremida do GPS
+const REENQUADRAR_M = 30;
+// GPS de computador erra quilômetros: com margem maior, o mapa não vai atrás
+const SEGUIR_ATE_M = 300;
 
 // A bolinha de "você está aqui", com a seta do rumo quando ele está andando.
 const iconeDeMim = (rumo: number | null) => L.divIcon({
@@ -55,6 +60,8 @@ export default function Mapa() {
   const enquadrado = useRef(0);
   const focado = useRef(0);
   const marcado = useRef(0);
+  const seguido = useRef<{lat: number; lng: number; alvo: string} | null>(null);
+  const irMim = useRef(0);
   const [, setZoom] = useState(0);
 
   useEffect(() => {
@@ -69,12 +76,24 @@ export default function Mapa() {
       if (loja.ui.pino) voltar();
     });
     m.on('zoomend', () => setZoom(m.getZoom()));
+    // Ele mexeu no mapa: arrastou, pinçou, rolou ou tocou no + e −. O mapa para de segui-lo, senão
+    // puxa de volta o que ele foi olhar. Na captura, porque os botões de zoom não deixam o clique
+    // subir. Os movimentos do próprio app não passam por aqui.
+    m.on('dragstart', pararDeSeguir);
+    const caixa = m.getContainer();
+    caixa.addEventListener('wheel', pararDeSeguir, {passive: true, capture: true});
+    caixa.addEventListener('touchstart', ev => { if (ev.touches.length > 1) pararDeSeguir(); }, {passive: true, capture: true});
+    caixa.addEventListener('dblclick', pararDeSeguir, true);
+    caixa.addEventListener('click', ev => { if ((ev.target as Element).closest?.('.leaflet-control-zoom')) pararDeSeguir(); }, true);
     mapa.current = m;
     const daqui = {
       clicarMapa: (lat: number, lng: number) => m.fire('click', {latlng: L.latLng(lat, lng)}),
-      zoom: (z: number) => m.setZoom(z),
+      // mover o mapa pelo teste é como mexer nele com o dedo: para de seguir
+      zoom: (z: number) => { pararDeSeguir(); m.setZoom(z); },
       zoomAtual: () => m.getZoom(),
-      irPara: (lat: number, lng: number, z: number) => m.setView([lat, lng], z),
+      // a última posição do GPS que o app recebeu
+      eu: () => loja.ui.euAqui,
+      irPara: (lat: number, lng: number, z: number) => { pararDeSeguir(); m.setView([lat, lng], z); },
       centro: () => { const c = m.getCenter(); return {lat: +c.lat.toFixed(5), lng: +c.lng.toFixed(5)}; },
     };
     (window as any).rotaTeste = daqui;
@@ -90,6 +109,11 @@ export default function Mapa() {
     if (e.inicio) limites.push([e.inicio.lat, e.inicio.lng]);
     if (e.fim) limites.push([e.fim.lat, e.fim.lng]);
     const marcasAdmin = ui.tela === 'admin' && ui.marcas ? ui.marcas : null;
+    const alvo = comLocal
+      .filter(p => !p.entregue && !p.adiada)
+      .map(p => ({p, i: ondeNaRota(p.id)}))
+      .filter((x): x is {p: typeof x.p; i: number} => x.i != null)
+      .sort((a, b) => a.i - b.i)[0]?.p;
 
     const z = m.getZoom();
     const pilhas = empilhar(comLocal, q => m.project([q.lat, q.lng], z), q => ondeNaRota(q.id) ?? 1e6);
@@ -113,11 +137,7 @@ export default function Mapa() {
       }
       // A próxima parada é a que ele mais olha e a que menos saltava: num mapa com quarenta
       // pinos iguais, achar qual é exigia ler os números um por um.
-      const proxima = comLocal
-        .filter(p => !p.entregue && !p.adiada)
-        .map(p => ({id: p.id, i: ondeNaRota(p.id)}))
-        .filter((x): x is {id: string; i: number} => x.i != null)
-        .sort((a, b) => a.i - b.i)[0]?.id;
+      const proxima = alvo?.id;
       for (const g of pilhas) {
         const p = g.ps[0];
         const chave = g.ps.map(x => x.id).join('+');
@@ -187,23 +207,41 @@ export default function Mapa() {
     // Escondido (outra tela aberta), o mapa não tem tamanho, e enquadrar agora mostrava o mundo
     // inteiro: o pedido espera ele aparecer. Aparecendo, o tamanho de antes já não vale.
     if (!div.current!.offsetWidth) return;
-    const pedido = (marcasAdmin && marcasAdmin.vez !== marcado.current) || (ui.enquadrar !== enquadrado.current && limites.length)
-      || (ui.focar && ui.focar.vez !== focado.current);
-    if (pedido) m.invalidateSize({pan: false});
-    if (marcasAdmin && marcasAdmin.vez !== marcado.current && marcasAdmin.pontos.length) {
-      marcado.current = marcasAdmin.vez;
-      m.fitBounds(marcasAdmin.pontos.map(x => [x.lat, x.lng] as [number, number]), {padding: [40, 40], maxZoom: 17});
+    // Seguindo (pedido de 02/10): o mapa mostra ele e a próxima entrega, e se ajusta quando ele anda
+    // ou a próxima muda. Não com o cartão de um pino aberto, a lista puxada ou o toque no mapa
+    // armado: ali ele está olhando outra coisa.
+    const eu = ui.euAqui;
+    const seguir = !!eu && ui.seguindo && ui.tela === 'rota' && ui.folha === 'proxima' && !ui.pino && !ui.posicionando
+      && eu.precisao <= SEGUIR_ATE_M;
+    const pediuEu = ui.irParaMim !== irMim.current;
+    const querEnquadrar = ui.enquadrar !== enquadrado.current && limites.length > 0;
+    // a mira, a rota nova ou as paradas novas: enquadra de novo já
+    if (pediuEu || querEnquadrar) seguido.current = null;
+    irMim.current = ui.irParaMim;
+    const ancora = seguido.current;
+    const querSeguir = seguir && (!ancora || ancora.alvo !== (alvo?.id || '') || haversine(ancora, eu!) > REENQUADRAR_M);
+    const querFocar = !!ui.focar && ui.focar.vez !== focado.current;
+    const querAdmin = !!marcasAdmin && marcasAdmin.vez !== marcado.current;
+    if (querAdmin || querEnquadrar || querFocar || querSeguir || pediuEu) m.invalidateSize({pan: false});
+    if (querAdmin) {
+      marcado.current = marcasAdmin!.vez;
+      if (marcasAdmin!.pontos.length) m.fitBounds(marcasAdmin!.pontos.map(x => [x.lat, x.lng] as [number, number]), {padding: [40, 40], maxZoom: 17});
     }
-    if (ui.enquadrar !== enquadrado.current && limites.length) {
+    if (querEnquadrar) {
       enquadrado.current = ui.enquadrar;
       // em cima ficam o aviso de "para conferir" e o botão de onde estou: pino ali não se toca
-      m.fitBounds(limites, {paddingTopLeft: [30, 72], paddingBottomRight: [30, 30], maxZoom: 16});
+      if (!seguir) m.fitBounds(limites, {paddingTopLeft: [30, 72], paddingBottomRight: [30, 30], maxZoom: 16});
     }
-    if (ui.focar && ui.focar.vez !== focado.current) {
-      focado.current = ui.focar.vez;
-      const p = loja.parada(ui.focar.id);
+    if (querFocar) {
+      focado.current = ui.focar!.vez;
+      const p = loja.parada(ui.focar!.id);
       if (p && p.lat != null && p.lng != null) m.setView([p.lat, p.lng], ZOOM_DO_FOCO);
     }
+    if (querSeguir) {
+      seguido.current = {lat: eu!.lat, lng: eu!.lng, alvo: alvo?.id || ''};
+      if (alvo) m.fitBounds([[eu!.lat, eu!.lng], [alvo.lat!, alvo.lng!]], {paddingTopLeft: [40, 90], paddingBottomRight: [40, 40], maxZoom: 17});
+      else m.setView([eu!.lat, eu!.lng], Math.max(m.getZoom(), ZOOM_DE_MIM));
+    } else if (pediuEu && eu) m.setView([eu.lat, eu.lng], Math.max(m.getZoom(), ZOOM_DE_MIM));
   });
 
   // o tamanho do mapa muda com a tela e com a lista puxada para cima
@@ -230,12 +268,6 @@ export default function Mapa() {
     }
     L.marker([eu.lat, eu.lng], {icon: iconeDeMim(eu.rumo), interactive: false, zIndexOffset: 2000}).addTo(c);
   }, [ui.euAqui, ui.tela]);
-
-  useEffect(() => {
-    if (!ui.irParaMim || !ui.euAqui) return;
-    mapa.current?.invalidateSize({pan: false});
-    mapa.current?.setView([ui.euAqui.lat, ui.euAqui.lng], Math.max(mapa.current.getZoom(), ZOOM_DE_MIM));
-  }, [ui.irParaMim]);
 
   return <div id="map" ref={div} />;
 }

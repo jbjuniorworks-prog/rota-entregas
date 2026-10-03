@@ -249,18 +249,6 @@ test.describe('corrigir pela localização do motorista', () => {
     await expect(page.locator('.resumo .velho')).toBeVisible();
   });
 
-  test('definir de onde eu saio, com a rota na tela, também não apaga ela', async ({page}) => {
-    await abrir(page);
-    await carregar(page, ROTA_A);
-    await montar(page);
-    await menu(page, 'Ponto de saída e de chegada');
-    await page.getByRole('button', {name: 'Onde estou agora'}).click();
-    await expect(aviso(page)).toContainText('A rota continua na tela');
-    await aba(page, '3. Rota');
-    await expect(page.locator('.resumo')).toBeVisible();
-    await expect(page.locator('.proxima .endereco')).toBeVisible();
-  });
-
   // O outro lado da regra: quando a parada deixa de existir, a rota deixa de descrever o dia.
   test('remover uma parada, essa sim, desmonta a rota', async ({page}) => {
     page.on('dialog', d => d.accept());

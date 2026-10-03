@@ -20,10 +20,13 @@ const RECENTE = 30000;
 // resposta até estourar o prazo. Então usa e diz de quanto foi o erro.
 const SAIDA_RUIM = 1000;
 
+const saidaRuim = (m: number) =>
+  `A sua localização veio com ±${m >= 2000 ? Math.round(m / 100) / 10 + ' km' : m + ' m'} de margem — esse aparelho se localizou pela internet, não por satélite. Num computador é assim mesmo. Se o ponto de saída ficou longe, use "Sair de outro endereço", em Ponto de saída e de chegada.`;
+
 function saidaDefinida(precisao: number) {
   const m = Math.round(precisao);
   if (m > SAIDA_RUIM) {
-    status(`Localização definida, mas com ±${m >= 2000 ? Math.round(m / 100) / 10 + ' km' : m + ' m'} de margem — esse aparelho se localizou pela internet, não por satélite. Num computador é assim mesmo. Se o ponto de saída ficou longe, use "Sair de outro endereço".`, 14000);
+    status(saidaRuim(m), 14000);
     return;
   }
   const naTela = !!e().rota && !ui.ocupado;
@@ -32,7 +35,8 @@ function saidaDefinida(precisao: number) {
     : `Localização definida (±${m} m).`, naTela ? 8000 : 3000);
 }
 
-export function gps(aindaVale: () => boolean = () => true): Promise<void> {
+// Devolve a margem da posição usada, ou null quando ela chegou tarde demais para valer.
+export function gps(aindaVale: () => boolean = () => true): Promise<number | null> {
   return new Promise((ok, falha) => {
     if (!navigator.geolocation) { status('Este navegador não dá acesso ao GPS.', 3000); falha(new Error('sem GPS')); return; }
     // Com o mapa da Rota aberto a posição já está chegando sozinha: pedir de novo faz o motorista
@@ -44,14 +48,14 @@ export function gps(aindaVale: () => boolean = () => true): Promise<void> {
       ui.enquadrar++;
       loja.mudou();
       saidaDefinida(meu.precisao);
-      ok();
+      ok(meu.precisao);
       return;
     }
     status('Pegando sua localização…');
     navigator.geolocation.getCurrentPosition(pos => {
       if (!aindaVale()) {
         status('A localização chegou depois que a rota ficou pronta. Toque em "Refazer a rota" para ela sair de onde você está.', 8000);
-        ok();
+        ok(null);
         return;
       }
       e().inicio = {id: 'inicio', lat: pos.coords.latitude, lng: pos.coords.longitude, exibido: `Minha localização (±${Math.round(pos.coords.accuracy)} m)`};
@@ -59,7 +63,7 @@ export function gps(aindaVale: () => boolean = () => true): Promise<void> {
       ui.enquadrar++;
       loja.mudou();
       saidaDefinida(pos.coords.accuracy);
-      ok();
+      ok(pos.coords.accuracy);
     }, err => {
       status('Não consegui o GPS: ' + (err.code === 1 ? 'permissão negada. Libere a localização para este site.' : err.message), 5000);
       falha(err);
@@ -79,24 +83,28 @@ export async function montarRota() {
   ui.ocupado = true;
   // Refazer não pode piorar: sem rede a sequência sai em linha reta e, até aqui, não tinha volta.
   const antes = e().rota ? {rota: e().rota!, pernas: e().pernas} : null;
+  // A saída é onde ele está, pega aqui na hora: não há botão para isso antes (02/10, "todas as
+  // respostas são onde você está"). Margem grande avisa no fim, senão o "Rota pronta" apagava.
+  let margem: number | null = null;
   try {
     if (!e().inicio || !e().inicio!.texto) {
       let noPrazo = true;
-      try { await comPrazo(gps(() => noPrazo), PRAZO_DO_GPS); } catch { noPrazo = false; e().inicio = null; }
+      try { margem = await comPrazo(gps(() => noPrazo), PRAZO_DO_GPS); } catch { noPrazo = false; e().inicio = null; }
     }
+    const ruim = margem != null && margem > SAIDA_RUIM ? ' ' + saidaRuim(Math.round(margem)) : '';
     const rota = await calcularRota(e(), {matriz, linha: linhaDaRota}, m => status(m));
     // fica registrado se a rota saiu com as ruas de verdade ou em linha reta, e por quê:
     // rota em linha reta parece rota ruim, e até agora só dava para descobrir perguntando ao motorista
     registrarComoFicou(rota.porRuas ? null : rota.motivoSemRuas || 'sem motivo anotado');
     enviarFila();
     if (antes && antes.rota.porRuas && !rota.porRuas) {
-      status('Rota pronta, mas sem acesso às ruas: usei distância em linha reta. A de antes saiu pelas ruas.', 15000, () => {
+      status('Rota pronta, mas sem acesso às ruas: usei distância em linha reta. A de antes saiu pelas ruas.' + ruim, 15000, () => {
         e().rota = antes.rota;
         e().pernas = antes.pernas;
         loja.mudou();
         status('A rota de antes voltou. O tempo e a distância dela são de antes das suas correções.', 5000);
       });
-    } else status(rota.porRuas ? 'Rota pronta!' : 'Rota pronta (sem acesso às ruas: usei distância aproximada).', 3500);
+    } else status((rota.porRuas ? 'Rota pronta!' : 'Rota pronta (sem acesso às ruas: usei distância aproximada).') + ruim, ruim ? 14000 : 3500);
   } catch (err) {
     // a montagem zera as pernas antes de começar: se ela falhou no meio, a rota de antes ficava
     // na tela sem os tempos de trecho. As estimativas voltam junto com ela.
@@ -104,7 +112,11 @@ export async function montarRota() {
     status('Erro ao montar rota: ' + (err as Error).message, 5000);
   }
   ui.ocupado = false;
-  irPara('rota');
+  // rota nova: o mapa volta a mostrar ele e a primeira entrega
+  ui.seguindo = true;
+  // De outra tela (Ponto de saída, Áreas), vai para a Rota. Já nela, fica onde está: a lista que
+  // ele abriu enquanto a rota era refeita fechava sozinha quando ela ficava pronta.
+  if (ui.tela !== 'rota') irPara('rota');
   ui.enquadrar++;
   loja.mudou();
 }

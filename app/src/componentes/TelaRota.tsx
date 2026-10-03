@@ -47,7 +47,8 @@ export function SobreOMapa() {
   const n = paraConferir();
   return <>
     {n > 0 && <button className="chip-conferir" data-conferir onClick={() => { ui.soDuvidas = true; A.abrir({tela: 'conferir'}); }}>{n} para conferir</button>}
-    <button className="redondo" id="btnEu" aria-label="Onde estou" onClick={A.centralizarEmMim}><Icone nome="mira" /></button>
+    {/* azul enquanto o mapa anda junto com ele; apagada, ele mexeu no mapa e o toque liga de novo */}
+    <button className="redondo" id="btnEu" aria-label="Seguir onde estou" aria-pressed={ui.seguindo} onClick={A.centralizarEmMim}><Icone nome="mira" /></button>
   </>;
 }
 

@@ -12,9 +12,8 @@ export function TelaSaida() {
       <h2>Saindo de</h2>
       <div className="info">{e.inicio && e.inicio.texto
         ? `${e.inicio.exibido}. Saindo deste endereço, não do GPS.`
-        : `Sua localização, pega na hora de montar a rota${e.inicio ? ` (última: ${e.inicio.exibido})` : ''}.`}</div>
+        : 'Onde você estiver na hora de montar a rota. Não precisa fazer nada.'}</div>
       <div className="linha">
-        <button className="btn" onClick={() => A.gps().catch(() => {})}>Onde estou agora</button>
         <button className="btn" onClick={A.saidaPorEndereco}>Sair de outro endereço</button>
         {e.inicio && e.inicio.texto && <button className="btn" onClick={() => A.mudar(() => { e.inicio = null; }, true)}>Usar o GPS</button>}
       </div>

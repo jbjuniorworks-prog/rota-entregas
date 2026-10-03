@@ -17,6 +17,11 @@ voltar avisa e o segundo sai. O que só a rua mostra:
 - **O cartão da próxima vai até 52% da tela**, e o resto rola dentro dele. Com a rota de 80
   paradas e sem sinal, o mapa fica com 42%. Se reclamarem do mapa pequeno de novo, o que sobra
   para tirar é o "Aqui perto", que hoje fica no fim do cartão.
+- **O mapa anda junto com ele (02/10).** Mostra ele e a próxima entrega, e se ajusta a cada 30 m
+  andados ou quando a próxima muda. Arrastar, pinçar ou o + e − param; a mira azul liga de novo.
+  Na rua, olhar se reenquadrar a cada 30 m numa moto incomoda (sobe o número) e se alguém fica
+  sem saber que parou de seguir (a mira apagada é o único sinal). O ponto de saída não tem mais
+  botão: é onde ele estiver ao montar a rota.
 - **O mapa fica montado depois de aberto**, e só se esconde nas outras telas. Ir à Conferir e
   voltar não baixa nada de novo. O preço é a memória do Leaflet ficar ocupada o dia todo, o que
   num celular fraco pode pesar: olhar se algum reclama de o app fechar sozinho.

@@ -36,6 +36,8 @@ test.describe('com GPS', () => {
     expect((await ordem(page, NOMES))[0]).toBe(P1);
 
     await context.setGeolocation(GPS.p5);
+    // refazer usa a posição que o mapa vem seguindo: espera ela chegar, como na rua
+    await expect.poll(() => page.evaluate(() => (window as any).rotaTeste.eu()?.lng)).toBe(GPS.p5.longitude);
     await montar(page);
     await expect.poll(async () => (await ordem(page, NOMES))[0]).toBe(P5);
   });
@@ -244,11 +246,13 @@ test('o ponto final é apagado no reset do dia', async ({page}) => {
 test.describe('localização ruim como ponto de saída', () => {
   test.use({permissions: ['geolocation'], geolocation: {latitude: -10.93, longitude: -37.10, accuracy: 38000}});
 
-  test('avisa o tamanho do erro em vez de apresentar como localização', async ({page}) => {
+  // sem botão de "onde estou": a saída é pega ao montar, e o aviso fica no fim, não some sob o
+  // "Rota pronta"
+  test('avisa o tamanho do erro ao montar a rota, e o aviso fica na tela', async ({page}) => {
     await abrir(page);
     await carregar(page, ROTA_B);
-    await menu(page, 'Ponto de saída e de chegada');
-    await page.getByRole('button', {name: 'Onde estou agora'}).click();
+    await montar(page);
+    await expect(aviso(page)).toContainText('Rota pronta');
     await expect(aviso(page)).toContainText('38 km');
     await expect(aviso(page)).toContainText('Sair de outro endereço');
   });

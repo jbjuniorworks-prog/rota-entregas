@@ -157,3 +157,19 @@ test('tocar em outro pino troca o cartão, e um voltar fecha', async ({page}) =>
   await expect(page.locator('[data-folha="pino"]')).toHaveCount(0);
   await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
 });
+
+// A lista aberta enquanto a rota é refeita fechava sozinha quando ela ficava pronta: a montagem
+// mandava para a Rota até quem já estava nela.
+test('refazer a rota pela lista deixa a lista aberta', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_B);
+  await montar(page);
+  await lista(page);
+  const linha = page.locator('[data-folha="lista"] .parada').first();
+  await linha.getByRole('button', {name: 'Deixar para depois'}).click();
+  await page.getByRole('button', {name: 'Voltar para a rota'}).click();
+  await page.locator('[data-folha="lista"]').getByRole('button', {name: 'Refazer a rota'}).first().click();
+  await expect(aviso(page)).toContainText('Rota pronta');
+  await page.waitForTimeout(500);
+  await expect(page.locator('[data-folha="lista"]')).toBeVisible();
+});

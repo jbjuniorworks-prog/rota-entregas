@@ -41,49 +41,82 @@ test.describe('no celular', () => {
   });
 });
 
-// Escondido, o mapa não tem tamanho. "Onde estou agora", na tela de Ponto de saída, pede para
-// enquadrar a rota com ele fora da vista: enquadrado ali, ele ia ao zoom máximo, e na volta
-// metade das entregas estava fora da tela.
+// Escondido, o mapa não tem tamanho. "Buscar sem posição", na Conferir, pede para enquadrar a
+// rota com ele fora da vista: enquadrado ali, ele ia ao zoom máximo, e na volta metade das
+// entregas estava fora da tela.
 test.describe('enquadrar com o mapa escondido', () => {
-  test.use({viewport: {width: 412, height: 915}, permissions: ['geolocation'], geolocation: {latitude: -10.9605, longitude: -37.0455, accuracy: 10}});
+  test.use({viewport: {width: 412, height: 915}});
 
   test('o pedido espera o mapa aparecer, e todas as entregas cabem nele', async ({page}) => {
-    const {menu, paraABase} = await import('./apoio');
+    const {colar, paraABase} = await import('./apoio');
     await abrir(page);
     await carregar(page, ROTA_A);
     await page.waitForFunction(() => !!(window as any).rotaTeste);
-    await menu(page, 'Ponto de saída e de chegada');
-    await page.getByRole('button', {name: 'Onde estou agora'}).click();
-    await expect(page.locator('#status')).toContainText('Localização definida');
+    // um endereço que nenhum mapa acha (aqui eles nem respondem) fica esperando busca
+    await colar(page);
+    await page.getByLabel(/Endereços da área/).fill('Rua Que Nao Existe Em Lugar Nenhum 10');
+    await page.getByRole('button', {name: /^Adicionar em/}).click();
+    await aba(page, '2. Conferir');
+    await page.getByRole('button', {name: 'Buscar 1 sem posição'}).click();
+    await expect(page.locator('#status')).toContainText(/Alguns falharam|Pronto/);
     await paraABase(page);
-    const foraDoMapa = () => page.evaluate(() => {
-      const m = document.querySelector('#map')!.getBoundingClientRect();
-      return [...document.querySelectorAll('.leaflet-marker-icon')].filter(el => {
-        const r = el.getBoundingClientRect();
-        return r.right < m.left || r.left > m.right || r.bottom < m.top || r.top > m.bottom;
-      }).length;
-    });
-    await expect.poll(foraDoMapa, {timeout: 5000}).toBe(0);
+    await expect.poll(() => foraDoMapa(page, '.leaflet-marker-icon'), {timeout: 5000}).toBe(0);
   });
 });
 
-// O Luan reclamou que não conseguia se situar no mapa: ele mostrava os pinos das entregas e não
-// mostrava ele. Sem se ver no meio deles não dá para saber para que lado sair da esquina.
-test.describe('onde o motorista está', () => {
-  test.use({viewport: {width: 412, height: 915}, permissions: ['geolocation'], geolocation: {latitude: -10.9605, longitude: -37.0455, accuracy: 10}});
+// quantos destes estão fora do retângulo do mapa (pino fora da vista existe no DOM, só não aparece)
+const foraDoMapa = (page, seletor: string) => page.evaluate(s => {
+  const m = document.querySelector('#map')!.getBoundingClientRect();
+  return [...document.querySelectorAll(s)].filter(el => {
+    const r = el.getBoundingClientRect();
+    return r.right < m.left || r.left > m.right || r.bottom < m.top || r.top > m.bottom;
+  }).length;
+}, seletor);
 
-  test('a Rota mostra o motorista no mapa, e o botão centraliza nele', async ({page}) => {
+// "Todas as respostas são onde você está" (02/10): ele não tocava em "onde estou" para se ver.
+// O mapa da Rota mostra ele e a próxima entrega, e anda junto. Mexer no mapa para; a mira volta.
+test.describe('o mapa anda junto com ele', () => {
+  const NA_ROTA = {latitude: -10.9605, longitude: -37.0455, accuracy: 10};
+  // a uns 4 km, fora do que o mapa mostrava
+  const LONGE = {latitude: -10.9300, longitude: -37.0300, accuracy: 10};
+  test.use({viewport: {width: 412, height: 915}, permissions: ['geolocation'], geolocation: NA_ROTA});
+
+  const seVe = async (page) => (await foraDoMapa(page, '.eu')) === 0 && (await page.locator('.eu').count()) > 0
+    && (await foraDoMapa(page, '.pino.alvo')) === 0;
+
+  test('sem tocar em nada, mostra ele e a próxima entrega, e vai atrás quando ele anda', async ({page, context}) => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
-    await expect(page.locator('#map')).toBeVisible();
-    await expect(page.locator('.eu'), 'a bolinha de "você está aqui"').toBeVisible();
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => seVe(page), {timeout: 10_000}).toBe(true);
+
+    await context.setGeolocation(LONGE);
+    await expect.poll(() => seVe(page), {timeout: 10_000}).toBe(true);
+  });
+
+  test('mexer no mapa para de seguir, e a mira liga de novo', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => seVe(page), {timeout: 10_000}).toBe(true);
+
+    // arrastar com o dedo (aqui, o mouse)
+    const caixa = (await page.locator('#map').boundingBox())!;
+    await page.mouse.move(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(caixa.x + caixa.width / 2 + 80, caixa.y + caixa.height / 2 + 40, {steps: 8});
+    await page.mouse.up();
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'false');
+
+    // andou, e o mapa ficou onde ele deixou
+    await context.setGeolocation(LONGE);
+    await page.waitForTimeout(1500);
+    expect(await foraDoMapa(page, '.eu'), 'o mapa foi atrás mesmo parado pelo dedo').toBe(1);
 
     await page.locator('#btnEu').click();
-    await expect.poll(async () => {
-      const c = await page.evaluate(() => (window as any).rotaTeste.centro());
-      return Math.max(Math.abs(c.lat - -10.9605), Math.abs(c.lng - -37.0455));
-    }, {timeout: 10_000}).toBeLessThan(0.002);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => seVe(page), {timeout: 10_000}).toBe(true);
   });
 });
 

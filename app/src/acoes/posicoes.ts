@@ -317,14 +317,25 @@ export function seguirMinhaPosicao(): () => void {
   return () => navigator.geolocation.clearWatch(vigia);
 }
 
+// A mira: volta a seguir, e leva o mapa até ele já.
 export function centralizarEmMim() {
-  if (!ui.euAqui) { status('Ainda não sei onde você está. Deixe o GPS pegar uns segundos.', 4000); return; }
+  ui.seguindo = true;
+  if (!ui.euAqui) { status('Ainda não sei onde você está. Deixe o GPS pegar uns segundos.', 4000); loja.mudou(false); return; }
   ui.irParaMim++;
+  loja.mudou(false);
+}
+
+// Ele mexeu no mapa (arrastou, deu zoom): o mapa para de andar sozinho, senão briga com o dedo.
+export function pararDeSeguir() {
+  if (!ui.seguindo) return;
+  ui.seguindo = false;
   loja.mudou(false);
 }
 
 // Mostra a entrega no mapa, com o cartão dela embaixo. De outra tela, vai para a Rota.
 export function focar(id: string) {
+  // olhar uma entrega é parar de seguir: o mapa vai até ela e fica lá
+  ui.seguindo = false;
   ui.selecionada = id;
   ui.focar = {id, vez: (ui.focar?.vez || 0) + 1};
   abrir({tela: 'rota', pino: [id], folha: 'proxima'});
