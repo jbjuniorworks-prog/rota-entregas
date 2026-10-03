@@ -286,6 +286,16 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 - `ruas.nome_chave2` (apelido vindo do OpenStreetMap) ainda tem chave no formato velho: o texto do
   apelido não é guardado, então só se acerta no próximo `npm run ruas`. Não dá resposta errada —
   nenhuma busca produz mais aquela forma, ela só deixa de casar.
+- **"Criar rua que falta no mapa", primeiro uso (03/10).** Criou 16 ruas; as 16 batem com a chave
+  que o celular calcula e voltam na consulta do `ruaNaBase`. De fora ficaram uma de 2 km (chave
+  juntando trechos) e duas com as duas portas no mesmo ponto. Das 146 entregas já feitas nessas
+  ruas, 134 tinham o pino a menos de 100 m da linha: o ganho é para número novo que o censo não tem.
+  Cinco das 16 são a mesma rua do mapa escrita com abreviação ou erro ("Queroz", "Prfa Maria P",
+  "de A. Lima"), com a linha a 3–55 m dela — não atrapalha, e o próximo endereço escrito igual acha
+  direto. O `criar_ruas_das_entregas` olha só `nome_chave` para saber se o mapa já tem a rua, não
+  `nome_chave2`: por isso "Rua C1" (o mapa tem "Rua C Um", a 122 m) e "Exator Ernesto José
+  Francisco" ("Embaixador", a 24 m) entraram. Medido sem estrago — o `escolherTrecho` desempata
+  pelo bairro — então ficou como está. O botão não roda sozinho.
 - Coluna com o código IBGE da cidade nas tabelas.
 - Zona/polígono de entrega.
 - PostGIS, quando a base de ruas crescer a ponto de a consulta doer.
