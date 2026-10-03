@@ -10,6 +10,10 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
 #map,.semmapa{position:absolute;inset:0;background:#dde3ea}
 .semmapa{display:grid;place-content:center;justify-items:center;gap:10px;padding:16px;text-align:center;font-size:14px;color:var(--mut)}
 #app.tela-rota #painel{flex:none;max-height:52vh;border-radius:18px 18px 0 0;box-shadow:0 -6px 20px rgba(17,24,39,.12);margin-top:-14px;position:relative;z-index:500}
+/* dirigindo, o mapa é a maior parte da tela (03/10): o cartão da próxima mostra endereço e botões,
+   e o resto rola. Os 240px são o endereço de duas linhas com os dois botões, em celular baixo.
+   O cartão de um pino tocado fica com os 52vh: ali ele parou para olhar. */
+#app.tela-rota.folha-proxima #painel{max-height:max(32vh,240px)}
 /* puxada para cima, a lista fica com a tela e o mapa vira uma faixa */
 #app.tela-rota.folha-lista .mapwrap{flex:none;height:14vh}
 #app.tela-rota.folha-lista #painel{flex:1;max-height:none}
@@ -30,7 +34,6 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
 .com-selo .selo{position:absolute;top:-4px;right:-4px}
 
 /* por cima do mapa */
-.chip-conferir{position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;top:12px;z-index:500;min-height:44px;padding:0 16px;border:0;border-radius:99px;background:var(--laranja);color:#fff;font:inherit;font-weight:700;box-shadow:0 2px 8px rgba(17,24,39,.2);cursor:pointer}
 #btnEu[aria-pressed="true"]{background:var(--pri);color:#fff}
 #btnEu{position:absolute;right:12px;top:12px;z-index:500;width:48px;height:48px;border-radius:50%;border:0;background:#fff;color:var(--tx);display:grid;place-items:center;box-shadow:0 2px 8px rgba(17,24,39,.2);cursor:pointer;padding:0}
 
@@ -40,12 +43,20 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
 .folha-cab .titulo{flex:1}
 .puxador{align-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 24px;border:0;background:none;color:var(--mut);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
 .puxador i{width:44px;height:5px;border-radius:99px;background:#d1d5db}
+.proxima{gap:8px}
+.proxima .puxador{min-height:34px;gap:4px}
+.topo-folha{position:relative;display:flex;justify-content:center}
+.minimizar{position:absolute;right:-10px;top:0;width:48px;height:38px;border:0;background:none;color:var(--mut);display:grid;place-items:center;cursor:pointer;padding:0}
+.minimizada{padding:6px 12px 8px}
+.linha-minimizada{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--tx);text-align:left;cursor:pointer}
+.linha-minimizada .end-curto{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .linha-entrega{display:flex;gap:12px;align-items:flex-start}
 .badge{flex:none;min-width:34px;height:34px;padding:0 6px;border-radius:17px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px}
-.grande-badge{min-width:44px;height:44px;border-radius:22px;font-size:17px}
+.grande-badge{min-width:40px;height:40px;border-radius:20px;font-size:16px}
 .txt{flex:1;min-width:0;word-break:break-word}
 .rotulo-proxima{font-size:13px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.02em}
-.endereco{font-size:20px;font-weight:800;line-height:1.25}
+.endereco{font-size:17px;font-weight:800;line-height:1.25}
+.quase{font-size:14px;font-weight:700;color:var(--laranja);margin-top:2px}
 .grande-btn{min-height:56px;font-size:18px;font-weight:800;width:100%}
 .tres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .secundarios{display:flex;flex-wrap:wrap;gap:0 18px;align-items:center;font-size:14px;color:var(--mut)}
@@ -187,6 +198,6 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
   #app.tela-rota>.cima,#app.tela-admin>.cima{grid-column:1;grid-row:1}
   #app.tela-rota .cima>#status{position:static}
   #app.tela-rota>.mapwrap,#app.tela-admin>.mapwrap,#app.tela-rota.folha-lista>.mapwrap{grid-column:2;grid-row:1/-1;height:auto}
-  #app.tela-rota>#painel,#app.tela-admin>#painel{grid-column:1;grid-row:2;max-height:none;border-radius:0;margin:0;box-shadow:none;border-right:1px solid var(--bd)}
+  #app.tela-rota>#painel,#app.tela-rota.folha-proxima>#painel,#app.tela-admin>#painel{grid-column:1;grid-row:2;max-height:none;border-radius:0;margin:0;box-shadow:none;border-right:1px solid var(--bd)}
   #app:not(.tela-rota):not(.tela-admin){max-width:640px;margin:0 auto;border-left:1px solid var(--bd);border-right:1px solid var(--bd)}
 }

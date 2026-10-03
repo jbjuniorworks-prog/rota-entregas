@@ -36,24 +36,57 @@ test.describe('a tela no celular', () => {
     await expect(cartao.getByRole('button', {name: /Remover/})).toBeVisible();
   });
 
-  // "O mapa fica pequeno" (setembro): era uma faixa de 28% da tela embaixo do cartão. Agora ele é
-  // a tela, e o cartão da próxima cabe inteiro por cima, sem rolar, com o endereço e o botão.
-  test('na Rota o mapa ocupa a tela, e o cartão da próxima cabe inteiro', async ({page}) => {
+  // E a lista puxada para cima é quase a tela inteira, com uma faixa do mapa para se situar.
+  test('a lista puxada para cima fica com a tela', async ({page}) => {
     await abrir(page);
     await carregar(page, ROTA_GRANDE);
     await montar(page);
-    const caixa = async (seletor: string) => (await page.locator(seletor).first().boundingBox())!;
-    expect((await caixa('#map')).height, 'altura do mapa').toBeGreaterThan(915 * 0.4);
-    for (const s of ['.proxima .endereco', '.proxima [data-acao="entregue"]']) {
-      const b = await caixa(s);
-      expect(b.y >= 0 && b.y + b.height <= 915, `${s} tem de caber na tela sem rolar`).toBe(true);
-    }
-    // e a lista puxada para cima é quase a tela inteira, com uma faixa do mapa para se situar
     await lista(page);
+    const caixa = async (seletor: string) => (await page.locator(seletor).first().boundingBox())!;
     expect((await caixa('[data-folha="lista"]')).height).toBeGreaterThan(915 * 0.6);
     expect((await caixa('#map')).height).toBeGreaterThan(60);
   });
 });
+
+// "O mapa fica pequeno" (setembro: uma faixa de 28%) e de novo em 03/10, com o print do Pedro: no
+// celular dele (384×760) o cartão da próxima tinha 52% da tela e o mapa 39%. "O mapa tem que ser
+// de longe a maior parte da tela." O cartão mostra endereço e botões, sem rolar; o resto rola.
+for (const tela of [{width: 384, height: 760}, {width: 412, height: 915}]) {
+  test.describe(`o mapa é a maior parte da tela, em ${tela.width}×${tela.height}`, () => {
+    test.use({viewport: tela});
+    const caixa = async (page, seletor: string) => (await page.locator(seletor).first().boundingBox())!;
+    // o mapa que se vê: o cartão sobe um pouco por cima dele, com os cantos redondos
+    const mapaVisivel = async (page) => ((await caixa(page, '#painel')).y - (await caixa(page, '#map')).y) / tela.height;
+
+    test('com o cartão da próxima aberto, e o endereço e os botões cabem sem rolar', async ({page}) => {
+      await abrir(page);
+      await carregar(page, ROTA_GRANDE);
+      await montar(page);
+      expect(await mapaVisivel(page), 'parte da tela com o mapa').toBeGreaterThan(0.55);
+      for (const s of ['.proxima .endereco', '.proxima [data-acao="aqui"]', '.proxima .tres [data-acao="entregue"]']) {
+        const b = await caixa(page, s);
+        expect(b.y >= 0 && b.y + b.height <= tela.height, `${s} tem de caber na tela sem rolar`).toBe(true);
+      }
+    });
+
+    // "Na prática, o menu pode ser minimizado e deixar o mapa na tela toda" (03/10)
+    test('minimizado, o mapa fica com quase tudo, e continua assim ao abrir o app de novo', async ({page}) => {
+      await abrir(page);
+      await carregar(page, ROTA_GRANDE);
+      await montar(page);
+      await page.getByRole('button', {name: 'Minimizar'}).click();
+      const linha = page.getByRole('button', {name: 'Mostrar a próxima entrega'});
+      await expect(linha).toBeVisible();
+      expect(await mapaVisivel(page)).toBeGreaterThan(0.8);
+      // o Android fecha o app quando ele vai para o Waze
+      await page.reload();
+      await expect(linha).toBeVisible();
+      await linha.click();
+      await expect(page.locator('.proxima [data-acao="aqui"]')).toBeVisible();
+      expect(await mapaVisivel(page)).toBeLessThan(0.8);
+    });
+  });
+}
 
 // As fotos das telas, para olhar em vez de opinar. Com a planilha do dia, que não entra no git:
 //   ROTA_REAL="/caminho/rota.xlsx" npm run test:ui

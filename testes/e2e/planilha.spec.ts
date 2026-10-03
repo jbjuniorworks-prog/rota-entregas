@@ -36,9 +36,12 @@ test('planilha .xlsx sem nada estranho não gera alerta', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_B);
   await expect(aviso(page)).toHaveText('6 parada(s) da planilha.');
-  // nada para conferir: o aviso de cima do mapa nem aparece
+  // nada para conferir: nem número no botão Mais, nem a linha no menu
   await expect(page.locator('[data-folha="montar"]')).toBeVisible();
-  await expect(page.locator('[data-conferir]')).toHaveCount(0);
+  await expect(page.getByRole('button', {name: 'Mais', exact: true}).locator('[data-selo]')).toHaveCount(0);
+  await page.getByRole('button', {name: 'Mais', exact: true}).click();
+  await expect(page.locator('.menu')).toBeVisible();
+  await expect(page.locator('.menu [data-conferir]')).toHaveCount(0);
 });
 
 test('cada lugar diferente vira uma marcação no Maps, e só pacotes no mesmo ponto dividem uma', async ({page}) => {

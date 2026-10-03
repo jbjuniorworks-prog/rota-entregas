@@ -139,7 +139,8 @@ test('a porta do censo fica laranja até entregarem ali', async ({page, context}
   await expect(linha).toContainText('Porta do censo do IBGE — confira na porta');
 
   await montar(page);
-  await expect(page.locator('.proxima [data-quase]')).toContainText('entregando com "Entreguei aqui", o endereço fica verificado');
+  // curto, embaixo do endereço: o cartão da próxima ficou baixo para o mapa ser a tela (03/10)
+  await expect(page.locator('.proxima [data-quase]')).toHaveText('Pino na porta do censo do IBGE, não onde a planilha punha: confira na porta.');
   await garantirMapa(page);
   await context.grantPermissions(['geolocation']);
   await context.setGeolocation({latitude: PORTA_170.lat, longitude: PORTA_170.lng, accuracy: 6});

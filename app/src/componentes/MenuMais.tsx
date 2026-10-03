@@ -2,7 +2,7 @@ import * as A from '../acoes';
 import {backupRecente} from '../logica/guarda';
 import {guarda, useLoja} from '../loja';
 import {nuvem} from '../servicos/nuvem';
-import {Icone} from './comuns';
+import {Icone, paraConferir} from './comuns';
 import {Conta} from './Conta';
 
 // O que se usa uma vez por dia ou nunca, fora do caminho do dedo. Fechar e escolher voltam um
@@ -11,6 +11,7 @@ export function MenuMais() {
   const {e, ui} = useLoja();
   const comParadas = e.paradas.length > 0;
   const admin = nuvem.perfil?.papel === 'admin';
+  const duvidas = paraConferir();
   const item = (rotulo: string, acao: () => void, classe = '') =>
     <button className={`item-menu ${classe}`} onClick={() => A.fecharMenuE(acao)}>{rotulo}</button>;
   return <div className="fundo-menu" onClick={ev => { if (ev.target === ev.currentTarget) A.voltar(); }}>
@@ -19,6 +20,8 @@ export function MenuMais() {
         <div className="titulo">Mais</div>
         <button className="quadrado" aria-label="Fechar" onClick={A.voltar}><Icone nome="x" /></button>
       </div>
+      {duvidas > 0 && <button className="item-menu" data-conferir onClick={() => A.fecharMenuE(() => { ui.soDuvidas = true; A.abrir({tela: 'conferir'}); })}>
+        {duvidas} para conferir</button>}
       {/* sem rota, a mesma tela serve para achar uma entrega de outro dia (B.O.) */}
       {item(comParadas ? 'Conferir endereços' : 'Procurar uma entrega', () => { ui.soDuvidas = false; A.abrir({tela: 'conferir'}); })}
       {comParadas && item(e.rota ? 'Refazer a rota' : 'Montar a rota', A.montarRota)}

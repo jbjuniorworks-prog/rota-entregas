@@ -4,10 +4,10 @@ import {haversine, marcarIsoladas} from '../logica/geo';
 import {avisoGuardou} from '../logica/memoria';
 import {chaveCidade, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
 import type {Parada, Ponto} from '../logica/tipos';
-import {loja, status} from '../loja';
+import {loja, MINIMIZADO, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
 import {clienteNuvem} from '../servicos/nuvem';
-import {desatualizarRota, e, enviarFila, fila, memoria, ui} from './base';
+import {contar, desatualizarRota, e, enviarFila, fila, memoria, ui} from './base';
 import {abrir, alturaAgora, voltar} from './navegacao';
 
 export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number; xaropes: number}> {
@@ -325,10 +325,19 @@ export function centralizarEmMim() {
   loja.mudou(false);
 }
 
-// Ele mexeu no mapa (arrastou, deu zoom): o mapa para de andar sozinho, senão briga com o dedo.
+// Ele arrastou o mapa: o mapa para de andar sozinho, senão briga com o dedo.
 export function pararDeSeguir() {
   if (!ui.seguindo) return;
   ui.seguindo = false;
+  loja.mudou(false);
+}
+
+// O cartão da próxima vira uma linha e o mapa fica com a tela; um toque na linha traz de volta.
+export function minimizarCartao(sim: boolean) {
+  ui.minimizado = sim;
+  try { if (sim) localStorage.setItem(MINIMIZADO, '1'); else localStorage.removeItem(MINIMIZADO); } catch {}
+  // para saber no Admin se alguém usa
+  if (sim) contar('minimizar');
   loja.mudou(false);
 }
 

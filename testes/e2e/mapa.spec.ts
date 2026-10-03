@@ -74,32 +74,74 @@ const foraDoMapa = (page, seletor: string) => page.evaluate(s => {
 }, seletor);
 
 // "Todas as respostas são onde você está" (02/10): ele não tocava em "onde estou" para se ver.
-// O mapa da Rota mostra ele e a próxima entrega, e anda junto. Mexer no mapa para; a mira volta.
+// E o mapa fica perto (Pedro, 03/10): mostrar ele e a próxima juntos afastava até a cidade inteira
+// enquanto a entrega estava longe. Ele fica no meio, o mapa vai junto, e pinçar só muda a
+// distância. Arrastar para; a mira volta.
 test.describe('o mapa anda junto com ele', () => {
   const NA_ROTA = {latitude: -10.9605, longitude: -37.0455, accuracy: 10};
   // a uns 4 km, fora do que o mapa mostrava
   const LONGE = {latitude: -10.9300, longitude: -37.0300, accuracy: 10};
   test.use({viewport: {width: 412, height: 915}, permissions: ['geolocation'], geolocation: NA_ROTA});
 
-  const seVe = async (page) => (await foraDoMapa(page, '.eu')) === 0 && (await page.locator('.eu').count()) > 0
-    && (await foraDoMapa(page, '.pino.alvo')) === 0;
+  // quantos pixels ele está do meio do mapa: o meio do ícone é o ponto do GPS (a bolinha azul
+  // tem margem dentro dele)
+  const doMeio = (page) => page.evaluate(() => {
+    const m = document.querySelector('#map')!.getBoundingClientRect(), eu = document.querySelector('.leaflet-marker-icon:has(.eu)');
+    if (!eu) return Infinity;
+    const r = eu.getBoundingClientRect();
+    return Math.round(Math.hypot(r.left + r.width / 2 - (m.left + m.width / 2), r.top + r.height / 2 - (m.top + m.height / 2)));
+  });
+  const zoomAgora = (page) => page.evaluate(() => (window as any).rotaTeste.zoomAtual());
 
-  test('sem tocar em nada, mostra ele e a próxima entrega, e vai atrás quando ele anda', async ({page, context}) => {
+  test('sem tocar em nada, ele fica no meio do mapa, de perto, e o mapa vai atrás quando ele anda', async ({page, context}) => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
     await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
-    await expect.poll(() => seVe(page), {timeout: 10_000}).toBe(true);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    expect(await zoomAgora(page), 'de perto, como no "onde estou" de antes').toBeGreaterThanOrEqual(17);
 
     await context.setGeolocation(LONGE);
-    await expect.poll(() => seVe(page), {timeout: 10_000}).toBe(true);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    expect(await zoomAgora(page)).toBeGreaterThanOrEqual(17);
   });
 
-  test('mexer no mapa para de seguir, e a mira liga de novo', async ({page, context}) => {
+  test('pinçar muda a distância e o mapa continua indo junto, nela', async ({page, context}) => {
+    const {zoom} = await import('./apoio');
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
-    await expect.poll(() => seVe(page), {timeout: 10_000}).toBe(true);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+
+    await zoom(page, 15);
+    await context.setGeolocation(LONGE);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    expect(await zoomAgora(page), 'voltou para a distância de antes de ele pinçar').toBe(15);
+  });
+
+  // O dedo fica onde der, longe do meio: seguindo, o zoom é em volta dele, senão ele sai da tela
+  // até andar 30 m.
+  test('aproximar com o dedo longe do meio não tira ele do meio', async ({page}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+
+    const caixa = (await page.locator('#map').boundingBox())!;
+    await page.mouse.move(caixa.x + 60, caixa.y + 120);
+    await page.mouse.wheel(0, 400);
+    await expect.poll(() => zoomAgora(page)).toBeLessThan(17);
+    await page.waitForTimeout(500);
+    expect(await doMeio(page)).toBeLessThan(4);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('arrastar o mapa para de seguir, e a mira liga de novo', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
 
     // arrastar com o dedo (aqui, o mouse)
     const caixa = (await page.locator('#map').boundingBox())!;
@@ -116,7 +158,43 @@ test.describe('o mapa anda junto com ele', () => {
 
     await page.locator('#btnEu').click();
     await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
-    await expect.poll(() => seVe(page), {timeout: 10_000}).toBe(true);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+  });
+});
+
+// O cartão de baixo muda de altura, e o Leaflet só desenha no tamanho que ele conhece: no print
+// do Pedro (03/10), o cartão de um pino, mais baixo, deixou uma faixa cinza no pé do mapa.
+test.describe('o mapa acompanha a altura do cartão', () => {
+  test.use({viewport: {width: 384, height: 760}});
+
+  const confere = async (page) => {
+    await expect.poll(async () => {
+      const t = await page.evaluate(() => (window as any).rotaTeste.tamanho());
+      const b = (await page.locator('#map').boundingBox())!;
+      return Math.abs(t.altura - Math.round(b.height));
+    }).toBeLessThan(2);
+  };
+
+  test('ao abrir o cartão de um pino e ao minimizar', async ({page}) => {
+    const {verNoMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await confere(page);
+
+    const alvo = await page.locator('.proxima .endereco').innerText().then(t => page.evaluate(t2 => {
+      const p = JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto === t2);
+      return {lat: p.lat, lng: p.lng};
+    }, t));
+    await verNoMapa(page, alvo.lat, alvo.lng, 18);
+    await page.locator('.leaflet-marker-icon .pino.alvo').click();
+    await expect(page.locator(PINO)).toBeVisible();
+    await confere(page);
+
+    await page.getByRole('button', {name: 'Fechar'}).click();
+    await page.getByRole('button', {name: 'Minimizar'}).click();
+    await expect(page.getByRole('button', {name: 'Mostrar a próxima entrega'})).toBeVisible();
+    await confere(page);
   });
 });
 

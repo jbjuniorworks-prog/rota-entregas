@@ -3,9 +3,9 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 02/10/2026.
+Atualizado em 03/10/2026.
 
-## Tela nova (02/10), para olhar na rua
+## Tela nova (02/10 e 03/10), para olhar na rua
 
 As quatro abas viraram o mapa da Rota como tela, com o cartão da próxima embaixo, e o resto no
 menu Mais. Cada tela e cada cartão aberto é um passo do voltar do celular; na Rota, o primeiro
@@ -14,14 +14,23 @@ voltar avisa e o segundo sai. O que só a rua mostra:
 - **O voltar no app instalado.** Testado no Chrome; no app instalado, o segundo voltar é do
   próprio Android (o app fica na primeira entrada do histórico e deixa o celular fechar). Confirmar
   no celular do Luan que ele sai com dois toques, e não com um nem com três.
-- **O cartão da próxima vai até 52% da tela**, e o resto rola dentro dele. Com a rota de 80
-  paradas e sem sinal, o mapa fica com 42%. Se reclamarem do mapa pequeno de novo, o que sobra
-  para tirar é o "Aqui perto", que hoje fica no fim do cartão.
-- **O mapa anda junto com ele (02/10).** Mostra ele e a próxima entrega, e se ajusta a cada 30 m
-  andados ou quando a próxima muda. Arrastar, pinçar ou o + e − param; a mira azul liga de novo.
-  Na rua, olhar se reenquadrar a cada 30 m numa moto incomoda (sobe o número) e se alguém fica
-  sem saber que parou de seguir (a mira apagada é o único sinal). O ponto de saída não tem mais
-  botão: é onde ele estiver ao montar a rota.
+- **O mapa é a maior parte da tela (03/10, print do Pedro).** No celular dele (384×760) o cartão
+  da próxima tinha 52% e o mapa 39%. Agora o cartão vai até 32% (mínimo 240 px, o endereço de duas
+  linhas com os botões) e o mapa fica com 59%; o tamanho que o Pedro mostrou como bom. Em cima dos
+  botões ficam só o endereço e o "confira na porta"; os avisos da rota, os links e o "Aqui perto"
+  vêm depois e rolam. Endereço de quatro linhas num celular baixo corta o Depois: se acontecer,
+  tirar o CEP do endereço mostrado (os testes acham a próxima pelo texto inteiro, mudar junto).
+- **Minimizar o cartão (03/10).** A seta do canto reduz o cartão a uma linha com a próxima, e o mapa
+  fica com 83%. Fica escolhido no celular, porque o Android fecha o app quando ele vai ao Waze.
+  Conta como "minimizar" no Uso dos botões: ver se alguém usa.
+- **"Para conferir" saiu de cima do mapa (03/10).** Virou o número no botão Mais, somado ao do
+  admin, e uma linha no topo do menu. Olhar se alguém deixa de conferir por não ver mais o aviso.
+- **O mapa anda junto com ele (02/10, mudado em 03/10).** Ele fica no meio, de perto (zoom 17, o do
+  "onde estou" de antes), e o mapa vai junto a cada 30 m. Mostrar ele e a próxima juntos, como no
+  02/10, afastava até a cidade inteira com a entrega longe: o Pedro sentiu falta do zoom. Pinçar e
+  o + e − só mudam a distância, em volta dele; arrastar para, e a mira azul liga de novo. Na rua,
+  olhar se o passo de 30 m incomoda numa moto e se alguém fica sem saber que parou de seguir (a
+  mira apagada é o único sinal). O ponto de saída não tem mais botão: é onde ele estiver.
 - **O mapa fica montado depois de aberto**, e só se esconde nas outras telas. Ir à Conferir e
   voltar não baixa nada de novo. O preço é a memória do Leaflet ficar ocupada o dia todo, o que
   num celular fraco pode pesar: olhar se algum reclama de o app fechar sozinho.

@@ -34,8 +34,8 @@ export interface Ui {
   // ele: sem se ver no meio deles não dá para saber para que lado sair da esquina.
   euAqui: {lat: number; lng: number; precisao: number; rumo: number | null; quando: number} | null;
   irParaMim: number;
-  // o mapa da Rota anda junto com ele, mostrando ele e a próxima entrega (pedido de 02/10:
-  // "todas as respostas são onde você está"). Mexer no mapa desliga; a mira liga de novo.
+  // o mapa da Rota anda junto com ele, com ele no meio (pedidos de 02/10 e 03/10: "todas as
+  // respostas são onde você está"). Arrastar o mapa desliga; a mira liga de novo.
   seguindo: boolean;
   // quantas marcações esperam decisão de quem administra: o número no botão Mais e no Admin
   esperandoAdmin: number;
@@ -45,7 +45,14 @@ export interface Ui {
   versaoNova: {id: string; quando: string} | null;
   // o Chrome avisou que dá para instalar, e ele não pediu para deixar para depois
   podeInstalar: boolean;
+  // o cartão da próxima reduzido a uma linha, e o mapa com quase a tela toda (pedido de 03/10)
+  minimizado: boolean;
 }
+
+// Fica escolhido neste celular: o Android fecha o app quando ele vai para o Waze, e minimizar de
+// novo a cada volta seria o mesmo incômodo de antes.
+export const MINIMIZADO = 'rota-entregas-cartao-minimizado';
+const lerMinimizado = () => { try { return localStorage.getItem(MINIMIZADO) === '1'; } catch { return false; } };
 
 export const guarda = guardaEm(localStorage);
 let estado = carregarEstado(guarda);
@@ -54,6 +61,7 @@ const ui: Ui = {
   // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
   posicionando: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
   euAqui: null, irParaMim: 0, seguindo: true, esperandoAdmin: 0, xarope: null, versaoNova: null, podeInstalar: false,
+  minimizado: lerMinimizado(),
 };
 
 let versao = 0;

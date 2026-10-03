@@ -2,7 +2,7 @@ import type {ReactNode} from 'react';
 import * as A from '../acoes';
 import {fmtKm} from '../logica/otimizacao';
 import {avisoXarope, MOTIVOS} from '../logica/reclamacoes';
-import {COR_PRECISAO, ROTULO} from '../logica/rotulos';
+import {COR_PRECISAO, DUVIDA, ROTULO} from '../logica/rotulos';
 import type {MotivoReclamacao, Parada} from '../logica/tipos';
 import {loja} from '../loja';
 
@@ -23,10 +23,15 @@ const DESENHOS: Record<string, ReactNode> = {
 export const Icone = ({nome}: {nome: keyof typeof DESENHOS}) =>
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{DESENHOS[nome]}</svg>;
 
-// O número do que espera quem administra fica no botão Mais, à vista em toda tela: era a aba
-// Admin que o mostrava, e o pedido de 28/09 é ver sem ir procurar.
+// As que precisam de alguém olhar antes de sair: vermelhas, sem busca, ou com sugestão de outro
+// motorista. As laranja ("confira na porta") se resolvem entregando, e não entram aqui.
+export const paraConferir = () => loja.e.paradas.filter(p => !p.entregue && (DUVIDA.has(p.precisao) || p.precisao === 'pendente' || p.sugestao)).length;
+
+// O número do que espera por ele fica no botão Mais, à vista em toda tela: o de quem administra
+// (pedido de 28/09, ver sem ir procurar) e o das entregas para conferir, que era um aviso por cima
+// do mapa e ficava no caminho dele (Pedro, 03/10).
 export function BotaoMais() {
-  const n = loja.ui.esperandoAdmin;
+  const n = loja.ui.esperandoAdmin + paraConferir();
   return <button className="quadrado com-selo" aria-label="Mais" onClick={() => A.abrir({menu: true})}><Icone nome="mais" />
     {n > 0 && <span className="selo" data-selo>{n}</span>}</button>;
 }

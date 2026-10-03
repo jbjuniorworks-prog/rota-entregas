@@ -14,10 +14,6 @@ const daRota = () => {
   return R ? R.areas.flatMap(ra => ra.ordem.map(loja.parada).filter((p): p is Parada => !!p)) : [];
 };
 
-// As que precisam de alguém olhar antes de sair: vermelhas, sem busca, ou com sugestão de outro
-// motorista. As laranja ("confira na porta") se resolvem entregando, e não entram aqui.
-export const paraConferir = () => loja.e.paradas.filter(p => !p.entregue && (DUVIDA.has(p.precisao) || p.precisao === 'pendente' || p.sugestao)).length;
-
 export function TopoRota() {
   const {e} = useLoja();
   const R = e.rota;
@@ -42,14 +38,11 @@ export function TopoRota() {
   </div>;
 }
 
+// Por cima do mapa, só a mira: o "para conferir" foi para o botão Mais (03/10).
 export function SobreOMapa() {
   const {ui} = useLoja();
-  const n = paraConferir();
-  return <>
-    {n > 0 && <button className="chip-conferir" data-conferir onClick={() => { ui.soDuvidas = true; A.abrir({tela: 'conferir'}); }}>{n} para conferir</button>}
-    {/* azul enquanto o mapa anda junto com ele; apagada, ele mexeu no mapa e o toque liga de novo */}
-    <button className="redondo" id="btnEu" aria-label="Seguir onde estou" aria-pressed={ui.seguindo} onClick={A.centralizarEmMim}><Icone nome="mira" /></button>
-  </>;
+  // azul enquanto o mapa anda junto com ele; apagada, ele arrastou o mapa e o toque liga de novo
+  return <button className="redondo" id="btnEu" aria-label="Seguir onde estou" aria-pressed={ui.seguindo} onClick={A.centralizarEmMim}><Icone nome="mira" /></button>;
 }
 
 // As entregas de um ponto, cada endereço com os seus botões. Na porta, "Entreguei aqui" entrega e
@@ -112,8 +105,8 @@ function CartaoMontar() {
   </div>;
 }
 
-// Os avisos da rota, numa linha cada, em cima do cartão: o que ele precisa saber antes do próximo
-// toque, sem empurrar o endereço para fora da tela.
+// Os avisos da rota, numa linha cada. No cartão da próxima vêm depois dos botões: em cima, eles
+// empurravam o Entreguei para fora de um cartão que agora é baixo. Na lista, vêm no alto.
 function AvisosDaRota() {
   const {e} = useLoja();
   const R = e.rota!;
@@ -134,7 +127,7 @@ function AvisosDaRota() {
 }
 
 function CartaoProxima() {
-  const {e} = useLoja();
+  const {e, ui} = useLoja();
   const R = e.rota!;
   let agora: {ra: RotaArea; b: string[]; k: number} | null = null;
   for (const ra of R.areas) {
@@ -153,28 +146,43 @@ function CartaoProxima() {
   const bp = agora.b.map(loja.parada).filter((p): p is Parada => !!p);
   const pend = bp.filter(p => !p.entregue);
   const alvo = pend[0];
+  // minimizado, o mapa fica com a tela: sobra a próxima numa linha, e o toque traz os botões
+  if (ui.minimizado) {
+    return <div className="folha proxima minimizada" data-folha="proxima">
+      <button className="linha-minimizada" aria-label="Mostrar a próxima entrega" onClick={() => A.minimizarCartao(false)}>
+        <span className="badge" style={{background: loja.area(alvo.area).cor}}>{rotuloDe(alvo)}</span>
+        <span className="end-curto">{alvo.texto}</span>
+        <Icone nome="cima" />
+      </button>
+    </div>;
+  }
   const umEndereco = agruparPorEndereco(pend).length === 1;
   const pacotes = pend.reduce((n, p) => n + (p.unidades || 1), 0);
   const vizinhas = porPerto(e.paradas, alvo as Ponto, agora.b);
   const perna = e.pernas[agora.b[0]];
   const podeAqui = alvo.precisao !== 'confirmado' && pend.every(x => haversine(x as Ponto, alvo as Ponto) <= RAIO_BLOCO);
   const entreguei = (classe: string) => <button className={classe} data-acao="entregue" onClick={() => pend.length > 1 ? A.entregarTodas(pend) : A.marcarEntregue(alvo, true)}>Entreguei{pend.length > 1 ? ` as ${pend.length}` : ''}</button>;
+  // O mapa é a maior parte da tela (pedido de 03/10, com o print do Pedro): acima dos botões fica
+  // só o que ele lê antes de tocar. Os avisos da rota e o resto vêm depois, rolando o cartão.
   return <div className="folha proxima" data-folha="proxima">
-    {puxar}
-    <AvisosDaRota />
+    <div className="topo-folha">
+      {puxar}
+      <button className="minimizar" aria-label="Minimizar" onClick={() => A.minimizarCartao(true)}><Icone nome="baixo" /></button>
+    </div>
     <div className="linha-entrega">
       <div className="badge grande-badge" style={{background: loja.area(alvo.area).cor}}>{rotuloDe(alvo)}</div>
       <div className="txt">
         <div className="rotulo-proxima">Próxima{alvo.stop ? ` · parada ${alvo.stop}` : alvo.adicional ? ' · ADS' : ''}{pacotes > 1 ? ` · ${pacotes} pacotes` : ''}{perna && perna.dur ? ` · ${fmtMin(perna.dur)}` : ''}</div>
         <div className="endereco">{alvo.texto}</div>
-        {alvo.exibido && <div className="achado">{alvo.exibido}</div>}
+        {/* de onde veio a posição só importa quando ela é duvidosa */}
+        {DUVIDA.has(alvo.precisao) && alvo.exibido && <div className="achado">{alvo.exibido}</div>}
+        {QUASE.has(alvo.precisao) && <div className="quase" data-quase>{alvo.precisao === 'censo'
+          // até alguém entregar ali, a porta do censo é o lugar mais provável, não o certo (pedido de 01/10)
+          ? 'Pino na porta do censo do IBGE, não onde a planilha punha: confira na porta.'
+          : 'Número aproximado: confira na porta.'}</div>}
       </div>
     </div>
     <AvisoXarope p={pend.find(x => x.reclamacoes?.length) || alvo} />
-    {QUASE.has(alvo.precisao) && <div className="aviso laranja" data-quase>{alvo.precisao === 'censo'
-      // até alguém entregar ali, a porta do censo é o lugar mais provável, não o certo (pedido de 01/10)
-      ? 'A planilha punha este pino fora da rua, e o app trouxe para a porta do censo do IBGE. Confira na porta: entregando com "Entreguei aqui", o endereço fica verificado para todos.'
-      : 'Rua certa, número aproximado: confira o número na porta.'}</div>}
     {umEndereco ? <>
       {/* na porta confirmada o botão grande é o Entreguei simples: ela não se marca de novo na rua */}
       {podeAqui
@@ -190,6 +198,7 @@ function CartaoProxima() {
       <EntregasDoPonto ps={pend} />
       <div className="tres"><a className="btn contorno-azul" href={linkWaze(alvo as Ponto)} target="_blank" rel="noopener">Waze</a></div>
     </>}
+    <AvisosDaRota />
     <div className="secundarios">
       {alvo.precisao === 'confirmado'
         ? <span data-confirmada>Endereço verificado.</span>

@@ -19,8 +19,9 @@ function icone(texto: string, cor: string, apagado = false, borda = '') {
 
 const BALAO = {permanent: true as const, direction: 'top' as const, offset: [0, -28] as [number, number], className: 'balao'};
 const ZOOM_DO_FOCO = 17;
+// a distância de quando o mapa começa a segui-lo: a do "onde estou" de antes, que o Pedro usava
 const ZOOM_DE_MIM = 17;
-// seguindo: o mapa se ajusta quando ele anda isto, e não a cada tremida do GPS
+// seguindo: o mapa vai atrás quando ele anda isto, e não a cada tremida do GPS
 const REENQUADRAR_M = 30;
 // GPS de computador erra quilômetros: com margem maior, o mapa não vai atrás
 const SEGUIR_ATE_M = 300;
@@ -60,7 +61,8 @@ export default function Mapa() {
   const enquadrado = useRef(0);
   const focado = useRef(0);
   const marcado = useRef(0);
-  const seguido = useRef<{lat: number; lng: number; alvo: string} | null>(null);
+  const seguido = useRef<{lat: number; lng: number} | null>(null);
+  const seguia = useRef(false);
   const irMim = useRef(0);
   const [, setZoom] = useState(0);
 
@@ -76,30 +78,34 @@ export default function Mapa() {
       if (loja.ui.pino) voltar();
     });
     m.on('zoomend', () => setZoom(m.getZoom()));
-    // Ele mexeu no mapa: arrastou, pinçou, rolou ou tocou no + e −. O mapa para de segui-lo, senão
-    // puxa de volta o que ele foi olhar. Na captura, porque os botões de zoom não deixam o clique
-    // subir. Os movimentos do próprio app não passam por aqui.
+    // Arrastar é ir olhar outro lugar: o mapa para de segui-lo, senão puxa de volta o que ele foi
+    // ver. Pinçar, rolar e o + e − só mudam a distância, e o mapa continua indo junto: parar ali
+    // era o "o mapa não fica no zoom indo à entrega" do Pedro (03/10). Os movimentos do próprio
+    // app não disparam o arrastar.
     m.on('dragstart', pararDeSeguir);
-    const caixa = m.getContainer();
-    caixa.addEventListener('wheel', pararDeSeguir, {passive: true, capture: true});
-    caixa.addEventListener('touchstart', ev => { if (ev.touches.length > 1) pararDeSeguir(); }, {passive: true, capture: true});
-    caixa.addEventListener('dblclick', pararDeSeguir, true);
-    caixa.addEventListener('click', ev => { if ((ev.target as Element).closest?.('.leaflet-control-zoom')) pararDeSeguir(); }, true);
     mapa.current = m;
     const daqui = {
       clicarMapa: (lat: number, lng: number) => m.fire('click', {latlng: L.latLng(lat, lng)}),
-      // mover o mapa pelo teste é como mexer nele com o dedo: para de seguir
-      zoom: (z: number) => { pararDeSeguir(); m.setZoom(z); },
+      // como pinçar: muda a distância, e seguindo continua nele
+      zoom: (z: number) => m.setZoom(z),
       zoomAtual: () => m.getZoom(),
       // a última posição do GPS que o app recebeu
       eu: () => loja.ui.euAqui,
+      // como arrastar com o dedo: para de seguir
       irPara: (lat: number, lng: number, z: number) => { pararDeSeguir(); m.setView([lat, lng], z); },
       centro: () => { const c = m.getCenter(); return {lat: +c.lat.toFixed(5), lng: +c.lng.toFixed(5)}; },
+      // o tamanho que o Leaflet acha que tem: diferente do da caixa, sobra faixa cinza
+      tamanho: () => { const s = m.getSize(); return {largura: s.x, altura: s.y}; },
     };
     (window as any).rotaTeste = daqui;
+    // O cartão de baixo muda de altura (o de um pino é mais baixo que o da próxima, minimizar,
+    // endereço de três linhas): o Leaflet só sabe do tamanho novo se for avisado, e sem isso
+    // deixava cinza a faixa que o mapa ganhou (print do Pedro, 03/10). Escondido, não há tamanho.
+    const tamanho = new ResizeObserver(() => { if (div.current?.offsetWidth) m.invalidateSize(); });
+    tamanho.observe(div.current!);
     // Fechar e reabrir o mapa monta outro: sem tirar este daqui, o teste continuava mandando
     // ordem para um mapa já morto e elas sumiam sem erro nenhum.
-    return () => { m.remove(); if ((window as any).rotaTeste === daqui) delete (window as any).rotaTeste; };
+    return () => { tamanho.disconnect(); m.remove(); if ((window as any).rotaTeste === daqui) delete (window as any).rotaTeste; };
   }, []);
 
   useEffect(() => {
@@ -207,19 +213,26 @@ export default function Mapa() {
     // Escondido (outra tela aberta), o mapa não tem tamanho, e enquadrar agora mostrava o mundo
     // inteiro: o pedido espera ele aparecer. Aparecendo, o tamanho de antes já não vale.
     if (!div.current!.offsetWidth) return;
-    // Seguindo (pedido de 02/10): o mapa mostra ele e a próxima entrega, e se ajusta quando ele anda
-    // ou a próxima muda. Não com o cartão de um pino aberto, a lista puxada ou o toque no mapa
-    // armado: ali ele está olhando outra coisa.
+    // Seguindo (pedidos de 02/10 e 03/10): ele fica no meio do mapa, de perto, e o mapa vai junto
+    // quando ele anda. Mostrar ele e a próxima juntos afastava o mapa a cidade inteira enquanto a
+    // entrega estava longe. Não com o cartão de um pino aberto, a lista puxada ou o toque no mapa
+    // armado: ali ele está olhando outra coisa, e ao fechar o mapa volta para ele.
     const eu = ui.euAqui;
     const seguir = !!eu && ui.seguindo && ui.tela === 'rota' && ui.folha === 'proxima' && !ui.pino && !ui.posicionando
       && eu.precisao <= SEGUIR_ATE_M;
+    // seguindo, pinçar e o + e − aproximam em volta dele, não dos dedos: ele continua no meio. Com
+    // o cartão de um pino aberto, é em volta dos dedos, que estão no que ele foi olhar.
+    const emVolta = seguir ? 'center' : true;
+    m.options.touchZoom = m.options.scrollWheelZoom = m.options.doubleClickZoom = emVolta;
+    const voltou = seguir && !seguia.current;
+    seguia.current = seguir;
     const pediuEu = ui.irParaMim !== irMim.current;
     const querEnquadrar = ui.enquadrar !== enquadrado.current && limites.length > 0;
-    // a mira, a rota nova ou as paradas novas: enquadra de novo já
+    // a mira, a rota nova ou as paradas novas: chega perto dele de novo
     if (pediuEu || querEnquadrar) seguido.current = null;
     irMim.current = ui.irParaMim;
     const ancora = seguido.current;
-    const querSeguir = seguir && (!ancora || ancora.alvo !== (alvo?.id || '') || haversine(ancora, eu!) > REENQUADRAR_M);
+    const querSeguir = seguir && (!ancora || voltou || haversine(ancora, eu!) > REENQUADRAR_M);
     const querFocar = !!ui.focar && ui.focar.vez !== focado.current;
     const querAdmin = !!marcasAdmin && marcasAdmin.vez !== marcado.current;
     if (querAdmin || querEnquadrar || querFocar || querSeguir || pediuEu) m.invalidateSize({pan: false});
@@ -229,7 +242,7 @@ export default function Mapa() {
     }
     if (querEnquadrar) {
       enquadrado.current = ui.enquadrar;
-      // em cima ficam o aviso de "para conferir" e o botão de onde estou: pino ali não se toca
+      // em cima ficam o zoom e a mira: pino ali não se toca
       if (!seguir) m.fitBounds(limites, {paddingTopLeft: [30, 72], paddingBottomRight: [30, 30], maxZoom: 16});
     }
     if (querFocar) {
@@ -238,14 +251,14 @@ export default function Mapa() {
       if (p && p.lat != null && p.lng != null) m.setView([p.lat, p.lng], ZOOM_DO_FOCO);
     }
     if (querSeguir) {
-      seguido.current = {lat: eu!.lat, lng: eu!.lng, alvo: alvo?.id || ''};
-      if (alvo) m.fitBounds([[eu!.lat, eu!.lng], [alvo.lat!, alvo.lng!]], {paddingTopLeft: [40, 90], paddingBottomRight: [40, 40], maxZoom: 17});
-      else m.setView([eu!.lat, eu!.lng], Math.max(m.getZoom(), ZOOM_DE_MIM));
+      // Ao começar, chega perto, de uma vez: o cartão costuma mudar de altura logo em seguida (a
+      // rota acabou de montar), e no meio da animação o ajuste de tamanho se perdia e ele ficava
+      // fora do meio. Depois, anda junto na distância que ele escolheu pinçando.
+      seguido.current = {lat: eu!.lat, lng: eu!.lng};
+      if (ancora) m.setView([eu!.lat, eu!.lng], m.getZoom());
+      else m.setView([eu!.lat, eu!.lng], Math.max(m.getZoom(), ZOOM_DE_MIM), {animate: false});
     } else if (pediuEu && eu) m.setView([eu.lat, eu.lng], Math.max(m.getZoom(), ZOOM_DE_MIM));
   });
-
-  // o tamanho do mapa muda com a tela e com a lista puxada para cima
-  useEffect(() => { setTimeout(() => mapa.current?.invalidateSize(), 50); }, [ui.tela, ui.folha]);
 
   // Só segue a posição na Rota, que é a tela que ele olha dirigindo: no Admin o GPS não fica
   // ligado à toa.

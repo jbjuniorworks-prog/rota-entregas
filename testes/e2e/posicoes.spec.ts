@@ -13,8 +13,13 @@ test('posição longe das outras entregas vem em vermelho e sai quando o motoris
   await abrir(page);
   await carregar(page, ROTA_A);
   await expect(aviso(page)).toContainText('1 com posição longe das outras entregas');
-  // no mapa, o aviso de quantas conferir
-  await expect(page.locator('[data-conferir]')).toHaveText('1 para conferir');
+  // quantas conferir: o número no botão Mais, e no menu o caminho até elas (o aviso ficava por
+  // cima do mapa e atrapalhava, 03/10)
+  await expect(page.getByRole('button', {name: 'Mais', exact: true}).locator('[data-selo]')).toHaveText('1');
+  await page.getByRole('button', {name: 'Mais', exact: true}).click();
+  await page.locator('.menu [data-conferir]').click();
+  await expect(page.locator('.cabecalho .titulo')).toHaveText('1 para conferir');
+  await expect(page.locator('[data-item]')).toHaveCount(1);
   await aba(page, '2. Conferir');
   await expect(linhaDe(page, RUA_D, 'Marcar no mapa')).toContainText('Longe das outras entregas — confira o pino');
   await corrigirRuaD(page);
