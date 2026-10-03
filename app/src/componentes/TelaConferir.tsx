@@ -1,9 +1,11 @@
+import {useState} from 'react';
 import * as A from '../acoes';
+import {acharNaParada, type Achado} from '../logica/busca';
 import {DUVIDA, ROTULO} from '../logica/rotulos';
 import type {Parada} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
 import {rotuloDe} from '../logica/rotulo';
-import {AvisoXarope, Cabecalho, MarcarXarope, Meta, Sugestao, Tag} from './comuns';
+import {AvisoXarope, Cabecalho, hhmm, MarcarXarope, Meta, Sugestao, Tag} from './comuns';
 
 const precisaConferir = (p: Parada) => DUVIDA.has(p.precisao) || p.precisao === 'pendente' || !!p.sugestao;
 
@@ -12,29 +14,40 @@ export function TelaConferir() {
   const abertas = e.paradas.filter(p => !p.entregue);
   const aConferir = abertas.filter(precisaConferir);
   const pend = e.paradas.filter(p => p.precisao === 'pendente').length;
-  const mostrar = ui.soDuvidas ? aConferir : e.paradas;
+  const [busca, setBusca] = useState('');
+  const buscando = !ui.soDuvidas && busca.trim() !== '';
+  const achados = new Map<string, Achado>();
+  if (buscando) for (const p of e.paradas) { const a = acharNaParada(p, busca); if (a) achados.set(p.id, a); }
+  const mostrar = ui.soDuvidas ? aConferir : buscando ? e.paradas.filter(p => achados.has(p.id)) : e.paradas;
   return <>
     <Cabecalho titulo={ui.soDuvidas ? `${aConferir.length} para conferir` : 'Todos os endereços'}
-      sub={ui.soDuvidas ? 'O pino pode estar fora do lugar' : `${e.paradas.length} entrega(s) · ${aConferir.length} para conferir`} />
+      sub={ui.soDuvidas ? 'O pino pode estar fora do lugar'
+        : buscando ? `${mostrar.length} de ${e.paradas.length} entrega(s)` : `${e.paradas.length} entrega(s) · ${aConferir.length} para conferir`} />
     <div className="corpo">
       <div className="linha">
         {pend > 0 && <button className="btn pri" onClick={() => A.buscarPendentes()}>Buscar {pend} sem posição</button>}
         <button className="btn" onClick={() => A.mudar(() => { ui.soDuvidas = !ui.soDuvidas; })}>{ui.soDuvidas ? 'Ver todos' : 'Só os para conferir'}</button>
       </div>
-      {!mostrar.length && <div className="info vazio">Nada para conferir agora.</div>}
+      {/* para o B.O. (pedido de 02/10): achar logo qual foi, pelo código da etiqueta ou pela rua */}
+      {!ui.soDuvidas && <div className="busca">
+        <input type="search" aria-label="Buscar" placeholder="Rua e número, bairro ou código do pacote" value={busca}
+          onChange={ev => { if (!busca && ev.target.value) A.contar('busca'); setBusca(ev.target.value); }} />
+        <div className="info">Procura na rota de hoje deste celular, entregues também.</div>
+      </div>}
+      {!mostrar.length && <div className="info vazio">{buscando ? 'Nenhuma entrega da rota de hoje com isso.' : 'Nada para conferir agora.'}</div>}
       {e.areas.map(a => {
         const ps = mostrar.filter(p => p.area === a.id);
         if (!ps.length) return null;
         return <div key={a.id}>
           {e.areas.length > 1 && <div className="area-cab" style={{'--c': a.cor} as any}><span className="dot" /><span className="txt">{a.nome}</span><span className="info">{ps.length}</span></div>}
-          {ps.map(p => <ItemConferir key={p.id} p={p} />)}
+          {ps.map(p => <ItemConferir key={p.id} p={p} pacotes={achados.get(p.id)?.pacotes} />)}
         </div>;
       })}
     </div>
   </>;
 }
 
-function ItemConferir({p}: {p: Parada}) {
+function ItemConferir({p, pacotes}: {p: Parada; pacotes?: string[]}) {
   const {e, ui} = useLoja();
   const sel = ui.selecionada === p.id;
   const a = loja.area(p.area);
@@ -46,6 +59,8 @@ function ItemConferir({p}: {p: Parada}) {
         {/* a etiqueta colorida já diz isto; repetir a mesma frase logo acima é ruído em cada um dos 83 cartões */}
         {p.exibido && p.exibido !== ROTULO[p.precisao] && <span className="achado">{p.exibido}</span>}
         <Tag p={p} />
+        {p.entregue && <span className="feita" data-entregue>{p.entregueEm ? `Entregue às ${hhmm(p.entregueEm)}` : 'Entregue'}</span>}
+        {pacotes?.map(c => <span key={c} className="achado" data-pacote>Pacote {c}</span>)}
       </span>
     </button>
     <AvisoXarope p={p} />

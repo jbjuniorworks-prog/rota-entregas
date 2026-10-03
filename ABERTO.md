@@ -180,6 +180,11 @@ O painel fica no **Admin > Uso dos botões do cartão**. Com uma semana de rota 
 - **O botão principal do cartão deveria variar com a confiança da posição** — parada confirmada
   não precisa de "Marcar no mapa" na frente; parada fraca precisa. Depende de saber quais botões
   são realmente usados.
+- **A busca de "Todos os endereços" (02/10, para B.O.)** conta como `busca`, uma vez por tela
+  aberta. Ela só enxerga a rota de hoje deste celular: o resetar apaga. B.O. que chega dias
+  depois só se resolve pela nuvem, que guarda de cada pacote o código, o endereço, a hora da
+  entrega e o motorista. Se a busca for usada e o B.O. vier mesmo depois, o próximo passo é a
+  mesma busca no Admin, em todas as rotas.
 - **"Estou aqui" talvez pertença só à Rota**, não à Conferir: é ação de porta. Na tela nova ele
   está nas duas (na Rota, como "Pino errado? Estou aqui"). Se o uso na Conferir for baixo, sai de lá.
 - **O contador `ver` mudou de sentido em 02/10.** Até ali era o "Ver" da Conferir, que abria o
