@@ -3,7 +3,7 @@ import {CHAVES, type Guarda} from './guarda';
 import {chaveLugar, chavePorta} from './texto';
 import type {Parada, Ponto} from './tipos';
 
-interface Lembrada {
+export interface Lembrada {
   lat: number;
   lng: number;
   quando: number;
@@ -11,6 +11,9 @@ interface Lembrada {
   // ontem. Falta nas marcações antigas, e aí só a chave exata vale — como era antes.
   porta?: string;
 }
+
+// gravável: vai junto da parada para o desfazer que vem depois de o app ser reaberto
+export interface FotoDaMemoria {chave: string; valor?: Lembrada}
 
 export function criarMemoria(g: Guarda, cidade: () => string, aoGuardar: (chave: string, lat: number, lng: number) => void = () => {}) {
   const todas = () => g.ler<Record<string, Lembrada>>(CHAVES.memoria, {});
@@ -26,11 +29,11 @@ export function criarMemoria(g: Guarda, cidade: () => string, aoGuardar: (chave:
       if (compartilhar) aoGuardar(k, m[k].lat, m[k].lng);
       return g.gravar(CHAVES.memoria, m);
     },
-    fotografar(p: Parada): {chave: string; valor: Lembrada | undefined} | null {
+    fotografar(p: Parada): FotoDaMemoria | null {
       const k = chave(p);
       return k ? {chave: k, valor: todas()[k]} : null;
     },
-    restaurar(foto: {chave: string; valor: Lembrada | undefined}) {
+    restaurar(foto: FotoDaMemoria) {
       const m = todas();
       if (foto.valor) m[foto.chave] = foto.valor;
       else delete m[foto.chave];

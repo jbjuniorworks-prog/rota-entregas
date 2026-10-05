@@ -9,7 +9,7 @@ import {foraDaRegiao} from '../servicos/geocodificacao';
 import {linhaDaRota, matriz} from '../servicos/ruas';
 import {desatualizarRota, e, enviarFila, fila, ui} from './base';
 import {irPara} from './navegacao';
-import {comMinhaPosicao, GPS_PASSAGEM, guardarPassagem, guardarPassagens, portaDaEntrega} from './posicoes';
+import {comMinhaPosicao, desfazerPorta, GPS_PASSAGEM, guardarPassagem, guardarPassagens, portaDaEntrega} from './posicoes';
 import {registrarComoFicou} from './registro';
 
 // Quando vale a posição que o mapa já vem seguindo, em vez de pedir uma nova ao GPS.
@@ -128,8 +128,10 @@ export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = tru
   // mapa, até para fechar o balão, levava o pino da entrega feita para onde o dedo caiu. Com a
   // Leudy, 29/09: a porta que o GPS guardou na entrega foi para o mato meio minuto depois.
   if (entregue && ui.posicionando === p.id) ui.posicionando = null;
-  // desfeita, por aviso ou pela lista: a porta que esperava o prazo não vai mais
-  if (!entregue) fila.soltar(p.id);
+  // Desfeita, por aviso ou pela lista: a porta que esperava o prazo não vai mais, e a que o
+  // "aqui" marcou volta. Nesta ordem, já não entregue: a volta da posição recalcula as isoladas,
+  // e parada entregue não entra na conta — o aviso de "longe" sumia de quem voltou para a lista.
+  if (!entregue) { fila.soltar(p.id); desfazerPorta(p); }
   // um pulso curto confirma o toque sem olhar a tela; o de 200 ms é o de "próxima a pé"
   if (entregue) { try { navigator.vibrate?.(35); } catch {} }
   loja.mudou();
@@ -193,14 +195,12 @@ ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
     // nos outros como sugestão. Mexer no pino assim não é o que o botão promete.
     if (precisao > GPS_PASSAGEM) { soEntregue(`O GPS está impreciso agora (±${margem} m).`); return; }
     if (foraDaRegiao({lat, lng})) { soEntregue('O GPS deu um ponto fora da região das entregas.'); return; }
-    const {guardou, desfazer} = portaDaEntrega(vivas, lat, lng, precisao);
+    const {guardou} = portaDaEntrega(vivas, lat, lng, precisao);
     status(`Entregue${quantas}, com a porta marcada aqui (±${margem} m).` + (guardou
       ? ' Vai para os outros motoristas como porta confirmada.'
       : ' Sem CEP nem bairro, a porta vale só para hoje.'), 10000, () => {
-      // nesta ordem: a volta da posição recalcula as isoladas, e parada entregue não entra na
-      // conta — desfazendo a posição primeiro, o aviso de "longe" sumia de quem voltou para a lista
+      // desfazer a entrega volta a porta junto (desfazerPorta, em marcarEntregue)
       desfazerEntrega();
-      desfazer();
       status('Desfeito: a entrega voltou para a lista e o pino para onde estava.', 4000);
     });
   }, motivo => soEntregue(`Não consegui o GPS: ${motivo}`), `Entregue${quantas}. Marcando a porta pelo GPS…`);

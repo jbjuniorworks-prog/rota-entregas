@@ -375,6 +375,29 @@ test.describe('entreguei aqui, pelo pino', () => {
     expect(enviados(nuvem, 'observacoes')).toEqual([]);
   });
 
+  // O aviso de 10 s já passou, o app foi fechado e aberto de novo (o Waze), e ele percebe o erro
+  // na parada seguinte: desfaz pela lista. A porta volta junto, como no aviso (05/10).
+  test('desfeita pela lista, com o app reaberto, a porta volta junto com a entrega', async ({page, context, nuvem}) => {
+    const {aviso, lista} = await import('./apoio');
+    await page.clock.install();
+    const {ids, antes} = await tocarAqui(page, context, 8);
+    await expect(aviso(page)).toContainText('com a porta marcada aqui (±8 m)');
+    await expect.poll(() => enviados(nuvem, 'correcoes').length, {timeout: 20_000}).toBeGreaterThan(0);
+    const texto = await page.evaluate(i => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((p: any) => p.id === i).texto, ids[0]);
+
+    await page.reload();
+    await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
+    await lista(page);
+    await page.locator('details.feitas summary').click();
+    for (const _ of ids) await page.locator('details.feitas [data-item]').filter({hasText: texto}).first().getByRole('button', {name: 'Desfazer'}).click();
+
+    await expect.poll(() => paradas(page, ids)).toEqual(antes);
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'correcoes' && p.metodo === 'DELETE').length, {timeout: 20_000}).toBeGreaterThan(0);
+    await page.clock.fastForward('11:00');
+    await page.waitForTimeout(1500);
+    expect(enviados(nuvem, 'observacoes')).toEqual([]);
+  });
+
   test('com GPS ruim, entrega mas não mexe no pino nem manda porta para a nuvem', async ({page, context, nuvem}) => {
     const {aviso} = await import('./apoio');
     const {ids, antes} = await tocarAqui(page, context, 200);

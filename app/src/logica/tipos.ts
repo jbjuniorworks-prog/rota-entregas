@@ -1,3 +1,5 @@
+import type {FotoDaMemoria} from './memoria';
+
 export type Precisao = 'exato' | 'planilha' | 'lembrado' | 'manual' | 'bom' | 'rua' | 'longe' | 'bairro' | 'aproximada' | 'numero' | 'censo' | 'confirmado' | 'ruim' | 'nao' | 'pendente';
 
 export interface Ponto {
@@ -43,6 +45,23 @@ export interface Parada {
   sugestao?: {lat: number; lng: number; distancia: number | null};
   // "cliente xarope": já reclamou de pacote jogado ou deixado com vizinho (018)
   reclamacoes?: Reclamacao[];
+  // como ela estava antes do "Entreguei aqui" levar o pino para a porta
+  portaAntes?: PortaAntes;
+}
+
+// Na própria parada, que é gravada: o Desfazer da lista pode vir horas depois do "aqui", com o
+// app reaberto, e tem de voltar a porta junto com a entrega (05/10).
+export interface PortaAntes {
+  lat: number | null;
+  lng: number | null;
+  exibido: string;
+  precisao: Precisao;
+  precisaoAntes?: Precisao;
+  fonte?: string;
+  sugestao?: Parada['sugestao'];
+  // onde o "aqui" pôs o pino: se ele foi mexido de novo depois, o desfazer não passa por cima
+  porta: Ponto;
+  memoria: FotoDaMemoria | null;
 }
 
 export type MotivoReclamacao = 'jogado' | 'vizinho';

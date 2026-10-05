@@ -12,10 +12,10 @@ Atualizado em 05/10/2026.
   errado para todos: a passagem saía sempre "no pino" e nenhum desfazer a tirava. Agora passagem e
   lugar ficam numa chave à parte da fila, gravada, e qualquer desfazer da entrega (aviso ou lista)
   tira a da parada. O "no pino" compara com o pino de antes do "aqui" mexer nele.
-- **Ainda aberto:** o Desfazer *da lista* depois de um "Entreguei aqui" desfaz a entrega e a
-  passagem, mas não a correção nem o pino, que fica onde o GPS estava. Na nuvem a correção sozinha
-  vira só sugestão para os outros (não confirma), mas no celular dele o pino errado fica. O
-  Desfazer do *aviso* desfaz tudo. Se aparecer pino trocado depois de desfazer pela lista, é isto.
+- Todo desfazer da entrega, do aviso ou da lista, também volta a porta que o "aqui" marcou: pino,
+  memória e correção. O "antes" fica gravado na parada (`portaAntes`), e vale com o app reaberto.
+  Se o pino foi mexido de novo depois do "aqui", o desfazer não passa por cima. Esse caso de
+  guarda não tem teste: entrega feita não oferece Arrumar, só a Conferir chega nela.
 - "Entreguei", "Entreguei as N" e "Depois" ganharam Desfazer no aviso. O do Depois devolve ao
   mesmo lugar da sequência, sem refazer a rota. A entrega dá um pulso curto (35 ms); o de 200 ms
   continua sendo "próxima a pé".

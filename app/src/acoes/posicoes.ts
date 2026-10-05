@@ -4,7 +4,7 @@ import {haversine, marcarIsoladas, noPino} from '../logica/geo';
 import type {Operacao} from '../logica/fila';
 import {avisoGuardou} from '../logica/memoria';
 import {chaveCidade, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
-import type {Parada, Ponto} from '../logica/tipos';
+import type {Parada, PortaAntes, Ponto} from '../logica/tipos';
 import {loja, MINIMIZADO, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
 import {clienteNuvem} from '../servicos/nuvem';
@@ -287,23 +287,47 @@ export function estouAqui(p: Parada) {
 // esse par no mesmo ponto que a `posicoes` da nuvem aceita como confirmação: o próximo motorista
 // já recebe a porta confirmada, sem esperar um segundo motorista passar lá. Sem as perguntas de
 // juntar do `corrigirPosicao`: estas já saíram da rota, não há parada para juntar com elas.
-export function portaDaEntrega(ps: Parada[], lat: number, lng: number, precisao: number): {guardou: boolean; desfazer: () => void} {
+export function portaDaEntrega(ps: Parada[], lat: number, lng: number, precisao: number): {guardou: boolean} {
   const longe = ps.some(x => x.lat != null && x.lng != null && haversine(x as Ponto, {lat, lng}) > MUDOU_MUITO);
-  const desfazers = ps.map(prepararDesfazer);
+  // todas antes de lembrar qualquer uma: as do mesmo endereço dividem a mesma memória
+  const antes: PortaAntes[] = ps.map(p => ({
+    lat: p.lat, lng: p.lng, exibido: p.exibido, precisao: p.precisao, precisaoAntes: p.precisaoAntes, fonte: p.fonte,
+    ...(p.sugestao ? {sugestao: p.sugestao} : {}), porta: {lat, lng}, memoria: memoria.fotografar(p),
+  }));
   let guardou = false;
-  for (const p of ps) {
+  ps.forEach((p, i) => {
     const seguia = {lat: p.lat, lng: p.lng};
     delete p.sugestao;
-    Object.assign(p, {lat, lng, precisao: 'manual', exibido: `Sua localização na porta (±${Math.round(precisao)} m)`, fonte: 'motorista'});
+    Object.assign(p, {lat, lng, precisao: 'manual', exibido: `Sua localização na porta (±${Math.round(precisao)} m)`, fonte: 'motorista', portaAntes: antes[i]});
     guardou = memoria.lembrar(p) || guardou;
     const chave = chaveLugar(p.texto, p.bairro, e().cidade);
     if (chave) segurarPorta(p, chave, lat, lng, precisao, seguia);
-  }
+  });
   if (ps.some(p => p.adiada)) marcarIsoladas(e().paradas);
   else desatualizarRota(longe);
   enviarFila();
   loja.mudou();
-  return {guardou, desfazer: () => desfazers.forEach(f => f())};
+  return {guardou};
+}
+
+// Todo desfazer da entrega passa aqui, do aviso ou da lista, e a porta que o "aqui" marcou volta
+// junto: a correção sai da fila (ou é apagada na nuvem) e o pino volta para onde estava. Antes, só
+// o aviso de 10 s voltava a porta, e pela lista o pino errado ficava (05/10).
+export function desfazerPorta(p: Parada) {
+  const a = p.portaAntes;
+  if (!a) return;
+  delete p.portaAntes;
+  // mexido depois do "aqui" (Arrumar, Estou aqui): é outra decisão dele, e fica
+  if (p.lat !== a.porta.lat || p.lng !== a.porta.lng) return;
+  if (a.memoria) {
+    fila.desfazerCorrecao(a.memoria.chave, +a.porta.lat.toFixed(6), +a.porta.lng.toFixed(6));
+    memoria.restaurar(a.memoria);
+    enviarFila();
+  }
+  const {porta: _, memoria: __, sugestao, ...posicao} = a;
+  Object.assign(p, posicao, sugestao ? {sugestao} : {});
+  if (p.adiada) marcarIsoladas(e().paradas);
+  else desatualizarRota();
 }
 
 // O rumo só vale quando ele está andando: parado, o GPS devolve lixo ou nada, e uma seta que
