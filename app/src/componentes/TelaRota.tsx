@@ -70,6 +70,11 @@ function EntregasDoPonto({ps}: {ps: Parada[]}) {
         {noChao && abertas[0].precisao !== 'confirmado' && <button className="btn ok" data-acao="aqui" data-ids={ids} onClick={() => { A.contar('balao-aqui'); A.entregueAqui(abertas); }}>Entreguei aqui</button>}
         <button className="btn contorno-ok" data-acao="entregue" data-ids={ids} onClick={() => { A.contar('balao-entreguei'); abertas.length > 1 ? A.entregarTodas(abertas) : A.marcarEntregue(abertas[0], true); }}>Entreguei</button>
         {abertas[0].precisao !== 'confirmado' && <button className="btn contorno" data-acao="arrumar" data-ids={abertas[0].id} onClick={() => A.posicionar(abertas[0].id)}>Arrumar o pino</button>}
+        {/* Na porta ele toca no pino, e é ali que procura o Depois (print de 05/10): só o cartão da
+            próxima tinha. Adiada, o mesmo lugar traz de volta, que serve de desfazer. */}
+        {loja.e.rota && (abertas.some(p => p.adiada)
+          ? <button className="btn contorno" data-acao="voltar-rota" data-ids={ids} onClick={() => abertas.forEach(A.voltarParaARota)}>Voltar para a rota</button>
+          : <button className="btn contorno" data-acao="depois" data-ids={ids} onClick={() => A.deixarParaDepois(...abertas)}>Depois</button>)}
         {abertas[0].precisao === 'confirmado' && <span className="info">Endereço verificado. Se estiver errado, arrume em Conferir endereços.</span>}
       </div> : <div className="botoes-entrega">
         <span className="feita">Entregue</span>

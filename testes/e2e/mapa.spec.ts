@@ -238,6 +238,29 @@ test.describe('agir pelo pino', () => {
     return {lat: p.lat, lng: p.lng, entregue: !!p.entregue};
   }, id);
 
+  // "Tirou a função de pausar?" (05/10): na porta ele toca no pino, e o Depois só existia no
+  // cartão da próxima. Do pino: adia, sai da sequência, e o mesmo lugar traz de volta.
+  test('o cartão do pino deixa para depois, e traz de volta', async ({page}) => {
+    const {garantirMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await garantirMapa(page);
+    const {id} = await posicaoDaProxima(page);
+    const situacao = () => page.evaluate(i => {
+      const e = JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}');
+      return {adiada: !!e.paradas.find((x: any) => x.id === i).adiada, naSequencia: e.rota.areas.some((a: any) => a.ordem.includes(i))};
+    }, id);
+
+    await page.locator('.pino.alvo').click();
+    await page.locator(`${PINO} [data-acao=depois][data-ids="${id}"]`).click();
+    await expect.poll(situacao).toEqual({adiada: true, naSequencia: false});
+
+    await page.locator(`${PINO} [data-acao=voltar-rota][data-ids="${id}"]`).click();
+    await expect.poll(async () => (await situacao()).adiada).toBe(false);
+    await expect(page.locator(`${PINO} [data-acao=depois][data-ids="${id}"]`)).toBeVisible();
+  });
+
   test('entregar depois de tocar em Arrumar desarma: o toque seguinte no mapa não leva o pino', async ({page}) => {
     const {garantirMapa, clicarMapa} = await import('./apoio');
     page.on('dialog', d => d.accept());
