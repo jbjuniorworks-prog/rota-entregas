@@ -5,6 +5,22 @@ decisão está na mensagem do commit que a fez, não aqui.
 
 Atualizado em 05/10/2026.
 
+## Planilha de outra cidade (05/10), para olhar na rua
+
+- **O censo e a busca usam a cidade de cada entrega**: a da linha da planilha, senão a da faixa
+  do CEP (490xx Aracaju, 4914x Barra, conferidas em 2.837 linhas sem divergência), senão a do
+  app. Antes, com Aracaju guardado de ontem, a planilha toda da Barra do Jeferson foi conferida
+  no censo de Aracaju: nenhuma porta achada, contra 9 com a cidade certa.
+- **Ponto da planilha repetido para 3 bairros ou mais não é porta.** A do Jeferson pôs 8 linhas
+  de 7 bairros na rotatória da Barra. Vai, nesta ordem, para a porta do censo (mesma rua), a rua
+  pela busca (nunca nome genérico como "Rua I"), o meio das outras entregas do bairro, ou o
+  centro do bairro pelo mapa. Medido na planilha dele com a internet: as 7 saíram do ponto
+  (4 porta, 2 rua, 1 bairro). O que nada achar fica vermelho, "não é a porta".
+- A `chave do lugar` (sem CEP) ainda usa a cidade do app, não a da linha: mexer nela é a armadilha
+  do CLAUDE.md. Só pega linha sem CEP de outra cidade; não apareceu nas planilhas.
+- O link do Google Maps de um endereço que o dono mandou não traz as coordenadas sem abrir o
+  mapa: a comparação com o ponto que o app escolheu é feita à mão.
+
 ## Desfazer a entrega (05/10), para olhar na rua
 
 - **A porta de uma entrega espera 10 min antes de ir para a nuvem** (`ESPERA_DA_PORTA`). Antes,

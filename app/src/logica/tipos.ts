@@ -47,6 +47,11 @@ export interface Parada {
   reclamacoes?: Reclamacao[];
   // como ela estava antes do "Entreguei aqui" levar o pino para a porta
   portaAntes?: PortaAntes;
+  // A cidade da linha da planilha. O censo e a busca são da cidade de cada entrega: com a de
+  // ontem guardada no app, a Barra dos Coqueiros era procurada no censo de Aracaju (05/10).
+  cidade?: string;
+  // a planilha deu o mesmo ponto para entregas de vários bairros: não é a porta de ninguém
+  pontoGenerico?: boolean;
 }
 
 // Na própria parada, que é gravada: o Desfazer da lista pode vir horas depois do "aqui", com o

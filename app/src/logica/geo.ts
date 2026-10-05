@@ -4,7 +4,7 @@
 // censo de Aracaju, então 3 km também cobre esse uso com folga.
 export const LONGE_DA_ANCORA = 3000;
 
-import {DA_PLANILHA} from './rotulos';
+import {DA_PLANILHA, DUVIDA} from './rotulos';
 import {chaveLugar, decompor, emCondominio, mesmaRua, normal, ruaGenerica} from './texto';
 import type {Candidato, Parada, Ponto} from './tipos';
 
@@ -61,6 +61,79 @@ export function moverParaOBairro(p: Parada, ponto: Ponto, bairro: string) {
   p.candidatos = [{lat: ponto.lat, lng: ponto.lng, exibido: `Pelo bairro ${bairro}`, precisao: 'bairro', fonte: 'bairro'}, original];
   Object.assign(p, {lat: ponto.lat, lng: ponto.lng, precisao: 'bairro', fonte: 'bairro',
     exibido: `Posição pelo bairro ${bairro}: a planilha mandava para longe. Confira no local.`});
+  delete p.pontoGenerico;
+}
+
+// A cidade pela faixa do CEP, para a linha que não diz a cidade: colada, de print, ou de rota
+// carregada antes de a parada guardar a dela. Aracaju (490xx) e Barra dos Coqueiros (4914x)
+// conferidas em 2.837 linhas de 32 planilhas, sem uma divergência; Socorro e São Cristóvão são as
+// faixas dos Correios, sem linha de planilha ainda.
+const CIDADE_DO_CEP: [RegExp, string][] = [[/^490/, 'Aracaju'], [/^4910/, 'São Cristóvão'], [/^4914/, 'Barra dos Coqueiros'], [/^4916/, 'Nossa Senhora do Socorro']];
+export function cidadeDoCep(cep: string | null | undefined): string | null {
+  const c = String(cep || '').replace(/\D/g, '');
+  return CIDADE_DO_CEP.find(([faixa]) => faixa.test(c))?.[1] ?? null;
+}
+
+// a da linha da planilha; senão a do CEP; senão a que o app guardou
+export const cidadeDaParada = (p: Parada, padrao: string): string => p.cidade || cidadeDoCep(decompor(p.texto).cep) || padrao;
+
+// Bairro para comparar: a planilha escreve o mesmo de vários jeitos ("Espaço Tropical-",
+// "Espaco Tropical").
+const bairroDe = (p: Parada) => normal(p.bairro || '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+// A planilha às vezes dá o mesmo ponto para entregas de bairros diferentes: a do Jeferson (05/10)
+// pôs 8 linhas de 7 bairros da Barra dos Coqueiros na rotatória, e o mapa mostrava as cinco
+// paradas num pino só. Não é a porta de ninguém. Medido em 32 planilhas: os outros pontos
+// repetidos são portaria de condomínio, com no máximo 2 bairros, e esses continuam juntos.
+export const BAIRROS_NO_MESMO_PONTO = 3;
+
+export function marcarPontoGenerico(paradas: Parada[]): number {
+  const grupos = new Map<string, Parada[]>();
+  for (const p of paradas) {
+    if (!DA_PLANILHA.has(p.precisao) || !comPosicao(p) || p.entregue) continue;
+    const k = `${p.lat},${p.lng}`;
+    grupos.set(k, [...(grupos.get(k) || []), p]);
+  }
+  let n = 0;
+  for (const ps of grupos.values()) {
+    const bairros = new Set(ps.map(bairroDe).filter(Boolean)).size;
+    if (bairros < BAIRROS_NO_MESMO_PONTO) continue;
+    for (const p of ps) {
+      Object.assign(p, {precisao: 'aproximada', pontoGenerico: true,
+        exibido: `A planilha deu este mesmo ponto para entregas de ${bairros} bairros: não é a porta`});
+      n++;
+    }
+  }
+  return n;
+}
+
+export function levarGenericaAoBairro(p: Parada, ponto: Ponto) {
+  p.candidatos = [{...ponto, exibido: `Pelo bairro ${p.bairro}`, precisao: 'bairro', fonte: 'bairro'},
+    {lat: p.lat!, lng: p.lng!, exibido: 'O ponto que veio na planilha (o mesmo para vários bairros)', precisao: 'aproximada', fonte: 'planilha'}];
+  Object.assign(p, {...ponto, precisao: 'bairro', fonte: 'bairro',
+    exibido: `Posição pelo bairro ${p.bairro}: a planilha deu o mesmo ponto para vários bairros. Confira no local.`});
+  delete p.pontoGenerico;
+}
+
+// Achou a rua pela busca de endereço: um ponto da rua dela vale mais que o meio do bairro.
+export function levarGenericaParaARua(p: Parada, c: Candidato) {
+  p.candidatos = [c, {lat: p.lat!, lng: p.lng!, exibido: 'O ponto que veio na planilha (o mesmo para vários bairros)', precisao: 'aproximada', fonte: 'planilha'}];
+  Object.assign(p, {lat: c.lat, lng: c.lng, precisao: c.precisao, fonte: c.fonte, exibido: c.exibido});
+  delete p.pontoGenerico;
+}
+
+// O que o censo não achou vai para junto das outras entregas do mesmo bairro, com posição boa:
+// é o que a planilha sabe de onde fica o bairro.
+export function moverGenericasPeloBairro(paradas: Parada[]): Parada[] {
+  const movidas: Parada[] = [];
+  for (const p of paradas) {
+    if (!p.pontoGenerico || p.precisao !== 'aproximada' || p.entregue || !bairroDe(p)) continue;
+    const vizinhos = paradas.filter(q => q !== p && !q.pontoGenerico && comPosicao(q) && !DUVIDA.has(q.precisao) && bairroDe(q) === bairroDe(p)) as (Parada & Ponto)[];
+    if (!vizinhos.length) continue;
+    levarGenericaAoBairro(p, {lat: mediana(vizinhos.map(q => q.lat)), lng: mediana(vizinhos.map(q => q.lng))});
+    movidas.push(p);
+  }
+  return movidas;
 }
 
 export function moverPeloBairro(paradas: Parada[]): Parada[] {
@@ -127,10 +200,16 @@ export function planilhaForaDaRua(p: Parada, porta: Candidato | null, rua: Ponto
 }
 
 // A planilha fica como opção em 2. Conferir: em um caso de sete quem errava era o censo.
-export function levarParaAPortaDoCenso(p: Parada & Ponto, porta: Candidato, metros: number) {
-  p.candidatos = [porta, {lat: p.lat, lng: p.lng, exibido: 'A posição que veio na planilha', precisao: 'planilha', fonte: 'planilha'}];
+// `metros` nulo: o ponto da planilha era o mesmo para vários bairros, e não há distância que conte.
+export function levarParaAPortaDoCenso(p: Parada & Ponto, porta: Candidato, metros: number | null) {
+  p.candidatos = [porta, metros == null
+    ? {lat: p.lat, lng: p.lng, exibido: 'O ponto que veio na planilha (o mesmo para vários bairros)', precisao: 'aproximada', fonte: 'planilha'}
+    : {lat: p.lat, lng: p.lng, exibido: 'A posição que veio na planilha', precisao: 'planilha', fonte: 'planilha'}];
   Object.assign(p, {lat: porta.lat, lng: porta.lng, precisao: 'censo', fonte: 'IBGE',
-    exibido: `Porta do censo do IBGE: a planilha punha este pino a ${Math.round(metros)} m, fora da rua. Confira na porta`});
+    exibido: metros == null
+      ? 'Porta do censo do IBGE: a planilha deu o mesmo ponto para vários bairros. Confira na porta'
+      : `Porta do censo do IBGE: a planilha punha este pino a ${Math.round(metros)} m, fora da rua. Confira na porta`});
+  delete p.pontoGenerico;
 }
 
 // Quando a planilha e o censo concordam no lugar (até 80 m), quem acerta a casa é o censo: ele
@@ -164,34 +243,43 @@ export interface Censo {
 // O mesmo número decide junto. Com complementos diferentes (o bloco, a casa), metade num pino e
 // metade no outro seria pior que qualquer um dos dois.
 // levadas: a planilha punha fora da rua, e o pino andou muito; refinadas: as duas concordavam.
-export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: Censo): Promise<{levadas: Parada[]; refinadas: Parada[]}> {
+export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: Censo): Promise<{levadas: Parada[]; refinadas: Parada[]; genericas: Parada[]}> {
   const porLugar = new Map<string, Parada[]>();
   for (const p of paradas) {
-    if (p.precisao !== 'planilha' || p.entregue) continue;
+    if (p.entregue || !(p.precisao === 'planilha' || (p.pontoGenerico && p.precisao === 'aproximada'))) continue;
     const k = chaveLugar(p.texto, p.bairro, cidade);
     if (k) porLugar.set(k, [...(porLugar.get(k) || []), p]);
   }
-  const levadas: Parada[] = [], refinadas: Parada[] = [];
+  const levadas: Parada[] = [], refinadas: Parada[] = [], genericas: Parada[] = [];
   for (const ps of porLugar.values()) {
     if (ps.some(p => emCondominio(p.texto))) continue;
     const d = decompor(ps[0].texto);
     if (!d.cep || !d.numero || ruaGenerica(d.rua)) continue;
+    // a cidade da entrega, não a que o app guardou de ontem
+    const daCidade = cidadeDaParada(ps[0], cidade);
     try {
-      const porta = await censo.porta(d.cep, d.numero, cidade);
+      const porta = await censo.porta(d.cep, d.numero, daCidade);
       if (!porta) continue;
+      // O ponto genérico já se sabe que não é a porta: a do censo, sendo da mesma rua, vale mais
+      // a qualquer distância.
+      for (const p of ps) {
+        if (!p.pontoGenerico || !porta.rua || !mesmaRua(d.rua, porta.rua)) continue;
+        levarParaAPortaDoCenso(p as Parada & Ponto, porta, null);
+        genericas.push(p);
+      }
       for (const p of ps) {
         const metros = refinoPeloCenso(p, porta);
         if (metros != null) { refinarPeloCenso(p as Parada & Ponto, porta, metros); refinadas.push(p); }
       }
       if (!ps.some(p => discordaDaPorta(p, porta) != null)) continue;
-      const rua = await censo.rua(d.rua, porta, cidade);
+      const rua = await censo.rua(d.rua, porta, daCidade);
       for (const p of ps) {
         const metros = planilhaForaDaRua(p, porta, rua);
         if (metros) { levarParaAPortaDoCenso(p as Parada & Ponto, porta, metros); levadas.push(p); }
       }
     } catch {}
   }
-  return {levadas, refinadas};
+  return {levadas, refinadas, genericas};
 }
 
 export function proximaAPe(feita: Parada, proxima: Parada | undefined): number | null {

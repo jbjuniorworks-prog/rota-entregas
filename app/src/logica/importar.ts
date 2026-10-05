@@ -1,4 +1,4 @@
-import {marcarIsoladas, marcarNumerosIncoerentes, moverPeloBairro} from './geo';
+import {marcarIsoladas, marcarNumerosIncoerentes, marcarPontoGenerico, moverPeloBairro} from './geo';
 import type {ItemPlanilha} from './planilha';
 import {analisarLinha, coordenadaNoTexto, semLink, chaveEndereco} from './texto';
 import type {Estado, Parada} from './tipos';
@@ -26,6 +26,9 @@ export interface ResumoPlanilha {
   xaropes?: number;
   // levadas para a porta do censo do IBGE: a planilha punha o pino fora da rua
   censo?: number;
+  // com o ponto que a planilha repete para vários bairros, e quantas o app já pôs no lugar
+  genericas: number;
+  genericasNoLugar?: number;
 }
 
 export function adicionarDaPlanilha(
@@ -37,7 +40,7 @@ export function adicionarDaPlanilha(
   // mesma entrega, e ele teve de apagar um (29/09).
   const pacotesNaRota = new Set(e.paradas.flatMap(x => x.pacotes || []));
   const desta = new Map<string, Parada>();
-  const r: ResumoPlanilha = {novas: 0, juntas: 0, repetidas: 0, semPosicao: 0, longe: 0, lembradas: 0, noBairro: 0, aproximadas: 0, numeros: 0, confirmadas: 0, sugestoes: 0};
+  const r: ResumoPlanilha = {novas: 0, juntas: 0, repetidas: 0, semPosicao: 0, longe: 0, lembradas: 0, noBairro: 0, aproximadas: 0, numeros: 0, confirmadas: 0, sugestoes: 0, genericas: 0};
   const rotaDe = (it: ItemPlanilha) => it.at || `${it.arquivo}:${agora}`;
   for (const it of itens) {
     if (it.tn && pacotesNaRota.has(it.tn)) { r.repetidas++; continue; }
@@ -59,6 +62,7 @@ export function adicionarDaPlanilha(
       exibido: !temCoord ? '' : it.aproximada ? 'Posição da planilha com poucas casas decimais: pode errar em até 1 km' : 'Posição da planilha',
       precisao: !temCoord ? 'pendente' : it.aproximada ? 'aproximada' : 'planilha', candidatos: [], entregue: false,
       fonte: temCoord ? 'planilha' : undefined,
+      ...(it.cidade.trim() ? {cidade: it.cidade.trim()} : {}),
     };
     const lembrada = aplicarMemoria(p);
     if (!lembrada && p.precisao === 'aproximada') r.aproximadas++;
@@ -69,6 +73,7 @@ export function adicionarDaPlanilha(
     else if (!temCoord) r.semPosicao++;
   }
   if (!e.cidade) { const c = itens.find(i => i.cidade); if (c) e.cidade = c.cidade; }
+  r.genericas = marcarPontoGenerico(e.paradas);
   r.numeros = marcarNumerosIncoerentes(e.paradas);
   r.longe = marcarIsoladas(e.paradas);
   r.noBairro = moverPeloBairro(e.paradas).length;
@@ -91,6 +96,7 @@ export function resumoPlanilha(r: ResumoPlanilha): string {
     + (r.aproximadas ? ` ${r.aproximadas} com posição aproximada na planilha: confira o pino.` : '')
     + (r.numeros ? ` ${r.numeros} com número que não bate com a posição: confira.` : '')
     + (r.censo ? ` ${r.censo} levada(s) para a porta do censo do IBGE, porque a planilha punha fora da rua: confira na porta.` : '')
+    + (r.genericas ? ` ${r.genericas} com um ponto que a planilha repete para bairros diferentes: ${(r.genericasNoLugar || 0) === r.genericas ? 'levada(s) para a porta do censo ou para o bairro, confira no local.' : `${r.genericasNoLugar || 0} levada(s) para a porta do censo ou para o bairro, confira o pino das outras.`}` : '')
     + (r.semPosicao ? ` ${r.semPosicao} sem posição, buscando no mapa…` : '');
 }
 

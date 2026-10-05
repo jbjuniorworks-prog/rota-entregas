@@ -1,9 +1,9 @@
 ﻿import {operacoesDaPlanilha} from '../logica/fila';
-import {haversine, levarParaOCenso, marcarIsoladas, mediana, moverParaOBairro} from '../logica/geo';
+import {cidadeDaParada, haversine, levarGenericaAoBairro, levarGenericaParaARua, levarParaOCenso, marcarIsoladas, marcarPontoGenerico, mediana, moverGenericasPeloBairro, moverParaOBairro} from '../logica/geo';
 import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from '../logica/importar';
 import {CORES, DA_PLANILHA} from '../logica/rotulos';
-import {coordenadaNoTexto, decompor, extrairEnderecos} from '../logica/texto';
-import type {Parada} from '../logica/tipos';
+import {coordenadaNoTexto, decompor, extrairEnderecos, ruaGenerica} from '../logica/texto';
+import type {Parada, Precisao} from '../logica/tipos';
 import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
 import {carregarAncorasDeCep} from '../servicos/base';
@@ -49,7 +49,7 @@ export async function buscarParada(p: Parada) {
   if (memoria.aplicar(p)) return;
   await garantirRegiao();
   try {
-    const cands = await geocodificar(p.texto, {cidade: e().cidade, perto: centroDasEntregas(), bairro: p.bairro || ''});
+    const cands = await geocodificar(p.texto, {cidade: p.cidade || e().cidade, perto: centroDasEntregas(), bairro: p.bairro || ''});
     p.candidatos = cands;
     // A linha do Mercado Livre com o cartão fechado vem só "Avenida Tal 184": sem CEP e sem
     // bairro, `chaveLugar` devolve null e a marcação que o motorista faz na porta não tem onde
@@ -96,42 +96,73 @@ export async function buscarPendentes(resumoAntes = '') {
   status((resumoAntes ? `${resumoAntes} Busca dos sem posição: ${resultado}` : resultado) + comp, resumoAntes || comp ? 15000 : longe ? 8000 : 4000);
 }
 
-async function levarAoBairroPeloMapa(): Promise<number> {
-  const perto = e().paradas.filter(p => p.lat != null && p.lng != null && p.precisao !== 'longe');
-  const sozinhas = e().paradas.filter(p => p.precisao === 'longe' && p.bairro && DA_PLANILHA.has(p.precisaoAntes!));
-  if (!perto.length || !sozinhas.length) return 0;
+// As longe da planilha, e o ponto genérico que nem o censo nem as outras entregas do bairro
+// resolveram: o centro do bairro pelo mapa, da cidade de cada uma.
+async function levarAoBairroPeloMapa(soGenericas = false): Promise<{longe: number; genericas: number}> {
+  const perto = e().paradas.filter(p => p.lat != null && p.lng != null && p.precisao !== 'longe' && !p.pontoGenerico);
+  const sozinhas = e().paradas.filter(p => !p.entregue && p.bairro && ((p.pontoGenerico && p.precisao === 'aproximada') || (!soGenericas && p.precisao === 'longe' && DA_PLANILHA.has(p.precisaoAntes!))));
+  const n = {longe: 0, genericas: 0};
+  if (!perto.length || !sozinhas.length) return n;
   const centro = {lat: mediana(perto.map(p => p.lat!)), lng: mediana(perto.map(p => p.lng!))};
-  let n = 0;
   for (const p of sozinhas) {
     status(`Procurando o bairro ${p.bairro} no mapa…`);
     try {
-      const c = await centroDoBairro(p.bairro!, e().cidade);
-      if (c && haversine(c, centro) < 20000) { moverParaOBairro(p, c, p.bairro!); n++; }
+      const c = await centroDoBairro(p.bairro!, cidadeDaParada(p, e().cidade));
+      if (!c || haversine(c, centro) >= 20000) continue;
+      if (p.pontoGenerico) { levarGenericaAoBairro(p, c); n.genericas++; } else { moverParaOBairro(p, c, p.bairro!); n.longe++; }
     } catch {}
   }
-  if (n) desatualizarRota(true);
+  if (n.longe || n.genericas) desatualizarRota(true);
   return n;
 }
 
 // Antes da nuvem: a porta que alguém já entregou passa por cima do censo também.
 // As refinadas andam poucos metros: a sequência e o tempo da rota continuam valendo, e a barra de
 // "as posições mudaram, refazer rota" seria barulho, ainda mais ao abrir o app no meio do dia.
-async function conferirComOCenso(): Promise<{levadas: number; refinadas: number}> {
-  const {levadas, refinadas} = await levarParaOCenso(e().paradas, e().cidade,
+async function conferirComOCenso(): Promise<{levadas: number; refinadas: number; genericas: number}> {
+  const {levadas, refinadas, genericas} = await levarParaOCenso(e().paradas, e().cidade,
     {porta: (cep, numero, cidade) => enderecoDoIbge(cep, numero, cidade, true), rua: portasDaRuaNoIbge});
-  if (levadas.length) desatualizarRota(true);
-  return {levadas: levadas.length, refinadas: refinadas.length};
+  if (levadas.length || genericas.length) desatualizarRota(true);
+  return {levadas: levadas.length, refinadas: refinadas.length, genericas: genericas.length};
 }
+
+// O ponto que a planilha repete para vários bairros: a porta do censo, se ele tem; senão a rua,
+// pela busca de endereço; senão o meio das outras entregas do mesmo bairro; senão o centro do
+// bairro pelo mapa. Sem aviso: o app
+// decide, e o pino vai laranja ou vermelho conforme o que achou.
+async function genericasNoLugar(): Promise<number> {
+  let n = 0;
+  // A rua, pela busca de endereço: só vale se ela achou a rua, e não só o bairro. Nome genérico
+  // ("Rua I") fica de fora, como no censo: a busca achou a Rua I do Pontal da Barra para uma
+  // entrega do Governador Marcelo Déda, na planilha do Jeferson.
+  for (const p of e().paradas.filter(x => x.pontoGenerico && x.precisao === 'aproximada' && !x.entregue && !ruaGenerica(decompor(x.texto).rua))) {
+    try {
+      const [c] = await geocodificar(p.texto, {cidade: cidadeDaParada(p, e().cidade), perto: centroDasEntregas(), bairro: p.bairro || ''});
+      if (c && NA_RUA.has(c.precisao)) { levarGenericaParaARua(p, c); n++; }
+    } catch {}
+  }
+  n += moverGenericasPeloBairro(e().paradas).length;
+  if (n) desatualizarRota(true);
+  return n;
+}
+const NA_RUA: ReadonlySet<Precisao> = new Set<Precisao>(['exato', 'bom', 'rua', 'censo']);
 
 // A rota que já estava na tela também passa pelo censo: lida por uma versão de antes da regra, ou
 // com o censo ainda sem baixar, atualizar o app não consertava nada (Luan, 02/10). Quem já está
 // na porta do censo, ou foi escolhido por ele, não é mais 'planilha' e não volta a ser mexido.
 export async function conferirComOCensoAoAbrir() {
-  if (!e().paradas.some(p => p.precisao === 'planilha' && !p.entregue)) return;
-  const {levadas, refinadas} = await conferirComOCenso();
-  if (!levadas && !refinadas) return;
+  if (!e().paradas.some(p => (p.precisao === 'planilha' || p.pontoGenerico) && !p.entregue)) return;
+  // a rota de antes desta versão também tem o ponto genérico, sem marca
+  const genericas = marcarPontoGenerico(e().paradas);
+  const {levadas, refinadas, genericas: doCenso} = await conferirComOCenso();
+  const noLugar = e().paradas.some(p => p.pontoGenerico) || doCenso
+    ? doCenso + (await genericasNoLugar()) + (await levarAoBairroPeloMapa(true)).genericas : 0;
+  if (!levadas && !refinadas && !genericas && !noLugar) return;
   loja.mudou();
-  if (levadas) status(`${levadas} parada(s) levada(s) para a porta do censo do IBGE, porque a planilha punha fora da rua: confira na porta.`, 8000);
+  if (levadas || noLugar) status([
+    levadas ? `${levadas} parada(s) levada(s) para a porta do censo do IBGE, porque a planilha punha fora da rua: confira na porta.` : '',
+    noLugar ? `${noLugar} parada(s) que a planilha punha num mesmo ponto para vários bairros, levada(s) para a porta ou o bairro: confira no local.` : '',
+  ].filter(Boolean).join(' '), 8000);
 }
 
 async function importarPlanilhas(files: Blob[]) {
@@ -139,8 +170,13 @@ async function importarPlanilhas(files: Blob[]) {
   const {resumo, rotaDe} = adicionarDaPlanilha(e(), itens, p => memoria.aplicar(p));
   fila.enfileirar(...operacoesDaPlanilha(itens, rotaDe, e().cidade));
   enviarFila();
-  resumo.noBairro += await levarAoBairroPeloMapa();
-  resumo.censo = (await conferirComOCenso()).levadas;
+  // o censo antes do bairro: a porta vale mais que o meio do bairro
+  const censo = await conferirComOCenso();
+  resumo.censo = censo.levadas;
+  const pelaRuaOuBairro = await genericasNoLugar();
+  const peloMapa = await levarAoBairroPeloMapa();
+  resumo.noBairro += peloMapa.longe;
+  if (resumo.genericas) resumo.genericasNoLugar = censo.genericas + pelaRuaOuBairro + peloMapa.genericas;
   const comp = await consultarCompartilhadas();
   resumo.confirmadas = comp.confirmadas;
   resumo.sugestoes = comp.sugestoes;

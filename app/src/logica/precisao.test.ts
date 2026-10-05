@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import XLSX from 'xlsx';
 import {estadoVazio} from './guarda';
-import {levarParaAPortaDoCenso, levarParaOCenso, marcarIsoladas, planilhaForaDaRua, refinarPeloCenso, refinoPeloCenso} from './geo';
+import {cidadeDaParada, cidadeDoCep, levarParaAPortaDoCenso, levarParaOCenso, marcarIsoladas, marcarPontoGenerico, moverGenericasPeloBairro, planilhaForaDaRua, refinarPeloCenso, refinoPeloCenso} from './geo';
 import {adicionarDaPlanilha, resumoPlanilha} from './importar';
 import {coordenadaDaPlanilha, itensDaPlanilha} from './planilha';
 import type {Candidato, Parada, Precisao} from './tipos';
@@ -154,5 +154,85 @@ describe('planilha e censo do IBGE discordando', () => {
     expect(refinoPeloCenso(parada(), porta(40, 'Avenida Beira Mar'))).toBeNull();
     expect(refinoPeloCenso(parada(), porta(120))).toBeNull();
     for (const pr of ['lembrado', 'confirmado', 'manual', 'censo'] as Precisao[]) expect(refinoPeloCenso(parada(pr), porta(40))).toBeNull();
+  });
+});
+
+// Planilha do Jeferson, 05/10: 8 linhas de 7 bairros da Barra dos Coqueiros no mesmo ponto, a
+// rotatória, e cinco paradas num pino só. E o censo, que levaria quase todas para a porta, era
+// consultado no arquivo de Aracaju, a cidade que o app guardava de ontem.
+describe('ponto que a planilha repete para vários bairros', () => {
+  const ROTATORIA = {lat: -10.907875, lng: -37.026708};
+  const linha = (id: string, texto: string, bairro: string, ponto = ROTATORIA, extra: Partial<Parada> = {}) => ({id, area: 'a', ml: null, texto, bairro,
+    unidades: null, comercial: false, ...ponto, exibido: 'Posição da planilha', precisao: 'planilha', candidatos: [], entregue: false, ...extra}) as Parada;
+
+  it('com 3 bairros ou mais no mesmo ponto, não é porta de ninguém', () => {
+    const ps = [
+      linha('a', 'Rua Um, 33, CEP 49140-901', 'Prisco Viana'),
+      linha('b', 'Rua Dois, 77, CEP 49140-902', 'Moisés Gomes'),
+      linha('c', 'Rua Tres, 199, CEP 49140-903', 'Antônio Pedro'),
+    ];
+    expect(marcarPontoGenerico(ps)).toBe(3);
+    expect(ps.every(p => p.pontoGenerico && p.precisao === 'aproximada')).toBe(true);
+    expect(ps[0].exibido).toContain('3 bairros');
+  });
+
+  // Nos 32 dias medidos, os outros pontos repetidos eram portaria de condomínio: 1 ou 2 bairros.
+  it('portaria de condomínio, com 1 ou 2 bairros, continua junta; o mesmo bairro escrito de dois jeitos é um só', () => {
+    const condominio = [
+      linha('a', 'Avenida Um, 380, Cond Park', 'Luar da Barra'),
+      linha('b', 'Rua Dois, 266, Bloco 2', 'Espaço Tropical-'),
+      linha('c', 'Rua Tres, 10, Bloco 3', 'Espaco Tropical'),
+    ];
+    expect(marcarPontoGenerico(condominio)).toBe(0);
+    expect(condominio.every(p => p.precisao === 'planilha' && !p.pontoGenerico)).toBe(true);
+  });
+
+  it('o que sobra vai para o meio das outras entregas do mesmo bairro, com o ponto da planilha como opção', () => {
+    const ps = [
+      linha('a', 'Rua Um, 33', 'Prisco Viana'),
+      linha('b', 'Rua Dois, 77', 'Moisés Gomes'),
+      linha('c', 'Rua Tres, 199', 'Antônio Pedro'),
+      linha('v1', 'Rua Quatro, 10', 'Prisco Viana', {lat: -10.9105, lng: -37.0307}),
+      linha('v2', 'Rua Cinco, 20', 'prisco viana', {lat: -10.9107, lng: -37.0303}),
+    ];
+    marcarPontoGenerico(ps);
+    const movidas = moverGenericasPeloBairro(ps);
+    expect(movidas.map(p => p.id)).toEqual(['a']);
+    expect(ps[0]).toMatchObject({lat: -10.9106, lng: -37.0305, precisao: 'bairro', fonte: 'bairro'});
+    expect(ps[0].pontoGenerico).toBeUndefined();
+    expect(ps[0].candidatos.map(c => [c.precisao, c.lat])).toEqual([['bairro', -10.9106], ['aproximada', ROTATORIA.lat]]);
+    // sem outra entrega do bairro, fica onde estava, vermelha, para o mapa ou para conferir
+    expect(ps[1]).toMatchObject({...ROTATORIA, precisao: 'aproximada', pontoGenerico: true});
+  });
+
+  it('a cidade vem da linha da planilha, senão da faixa do CEP, senão da que o app guardou', () => {
+    expect(cidadeDoCep('49140-901')).toBe('Barra dos Coqueiros');
+    expect(cidadeDoCep('49000101')).toBe('Aracaju');
+    expect(cidadeDoCep('57000-000')).toBeNull();
+    expect(cidadeDaParada(linha('a', 'Rua Um, 33, CEP 49000-086', 'Centro', ROTATORIA, {cidade: 'Barra dos Coqueiros'}), 'Aracaju, SE')).toBe('Barra dos Coqueiros');
+    expect(cidadeDaParada(linha('a', 'Rua Um, 33, CEP 49140-901', 'Centro'), 'Aracaju, SE')).toBe('Barra dos Coqueiros');
+    expect(cidadeDaParada(linha('a', 'Rua Um, 33', 'Centro'), 'Aracaju, SE')).toBe('Aracaju, SE');
+  });
+
+  it('o censo é consultado na cidade da entrega, e o ponto genérico vai para a porta da mesma rua', async () => {
+    const pedidas: string[] = [];
+    const censo = {
+      porta: async (cep: string, numero: string, cidade: string) => {
+        pedidas.push(cidade);
+        return {lat: -10.9107, lng: -37.0304, exibido: 'Rua Inventada Um, 33', precisao: 'bom', rua: numero === '33' ? 'Rua Inventada Um' : 'Outra Rua', bairro: 'Prisco Viana', fonte: 'IBGE'} as Candidato;
+      },
+      rua: async () => [],
+    };
+    const ps = [
+      linha('a', 'Rua Inventada Um, 33, CEP 49140-901', 'Prisco Viana', ROTATORIA, {precisao: 'aproximada', pontoGenerico: true}),
+      linha('b', 'Rua Inventada Dois, 77, CEP 49140-902', 'Moisés Gomes', ROTATORIA, {precisao: 'aproximada', pontoGenerico: true}),
+    ];
+    const r = await levarParaOCenso(ps, 'Aracaju, SE', censo);
+    expect(pedidas).toEqual(['Barra dos Coqueiros', 'Barra dos Coqueiros']);
+    expect(r.genericas.map(p => p.id)).toEqual(['a']);
+    expect(ps[0]).toMatchObject({lat: -10.9107, lng: -37.0304, precisao: 'censo'});
+    expect(ps[0].exibido).toContain('mesmo ponto para vários bairros');
+    // o censo achou o número numa rua de outro nome: não é a porta dela, fica para o bairro
+    expect(ps[1]).toMatchObject({...ROTATORIA, precisao: 'aproximada', pontoGenerico: true});
   });
 });
