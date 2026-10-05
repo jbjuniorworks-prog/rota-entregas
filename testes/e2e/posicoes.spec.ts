@@ -274,10 +274,14 @@ test.describe('a entrega marcada na porta vira posição para a base', () => {
   test.use({permissions: ['geolocation'], geolocation: {latitude: -10.9605, longitude: -37.0455, accuracy: 12}});
 
   test('marcar entregue guarda onde o motorista estava, e GPS ruim não guarda', async ({page, context, nuvem}) => {
+    // a porta espera o prazo de desfazer: o relógio controlado pula a espera
+    await page.clock.install();
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
     await page.locator('.proxima [data-acao="entregue"]').first().click();
+    await page.waitForTimeout(1000);
+    await page.clock.fastForward('11:00');
     await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'observacoes').length, {timeout: 20_000}).toBe(1);
     const passagem = nuvem.pedidos.find(p => p.caminho === 'observacoes')!;
     expect(passagem.metodo).toBe('POST');
@@ -290,12 +294,15 @@ test.describe('a entrega marcada na porta vira posição para a base', () => {
     await page.waitForTimeout(5500);
     await page.locator('.proxima [data-acao="entregue"]').first().click();
     await page.waitForTimeout(1500);
+    await page.clock.fastForward('11:00');
+    await page.waitForTimeout(1500);
     expect(nuvem.pedidos.filter(p => p.caminho === 'observacoes')).toHaveLength(1);
   });
 
   // "Igual o Mercado Livre faz, endereço verificado" (28/09): entregou no pino, o pino estava
   // certo, e essa entrega sozinha já verifica o endereço para os outros (017 no banco).
   test('entrega marcada no pino vai como "no pino", que verifica o endereço', async ({page, context, nuvem}) => {
+    await page.clock.install();
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
@@ -307,8 +314,139 @@ test.describe('a entrega marcada na porta vira posição para a base', () => {
     await context.setGeolocation({latitude: alvo.lat + 0.00009, longitude: alvo.lng, accuracy: 8});
     await page.waitForTimeout(5500);
     await page.locator('.proxima [data-acao="entregue"]').first().click();
+    await page.waitForTimeout(1000);
+    await page.clock.fastForward('11:00');
     await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'observacoes').length, {timeout: 20_000}).toBe(1);
     expect(nuvem.pedidos.find(p => p.caminho === 'observacoes')!.corpo).toMatchObject({no_pino: true, precisao_m: 8});
+  });
+});
+
+// Revisão de 05/10: "Entreguei aqui" na parada errada e Desfazer deixavam o endereço verificado no
+// lugar errado para todos. O pino ia para o GPS antes da passagem ser feita, ela saía "no pino",
+// e uma passagem no pino verifica sozinha (017); o Desfazer tirava a correção, não a passagem. E o
+// toque errado se percebe na parada seguinte, desfazendo pela lista. Agora a passagem e o lugar
+// esperam o prazo de desfazer na fila do celular, e qualquer desfazer da entrega os tira de lá.
+test.describe('a porta espera o prazo de desfazer antes de ir para a nuvem', () => {
+  test.use({permissions: ['geolocation'], geolocation: {latitude: -10.9605, longitude: -37.0455, accuracy: 12}});
+  const enviados = (nuvem, tabela: string) => nuvem.pedidos.filter(p => p.caminho === tabela && p.metodo === 'POST');
+  const PRAZO = '11:00';
+  // o relógio controlado anda sozinho; depois de pular o prazo, o envio ainda tem de acontecer
+  const depoisDoPrazo = async (page) => { await page.clock.fastForward(PRAZO); await page.waitForTimeout(1500); };
+
+  test('"Entreguei aqui" desfeito não manda passagem nem lugar, nem depois do prazo', async ({page, nuvem}) => {
+    await page.clock.install();
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await page.locator('.proxima [data-acao="aqui"]').click();
+    await expect(aviso(page)).toContainText('com a porta marcada aqui');
+    await page.locator('#status').getByRole('button', {name: 'Desfazer'}).click();
+    await expect(aviso(page)).toContainText('Desfeito');
+    await depoisDoPrazo(page);
+    expect(enviados(nuvem, 'observacoes')).toHaveLength(0);
+    expect(enviados(nuvem, 'lugares')).toHaveLength(0);
+  });
+
+  test('sem desfazer, a passagem chega só depois do prazo', async ({page, nuvem}) => {
+    await page.clock.install();
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await page.locator('.proxima [data-acao="aqui"]').click();
+    await expect(aviso(page)).toContainText('com a porta marcada aqui');
+    await page.waitForTimeout(1500);
+    expect(enviados(nuvem, 'observacoes'), 'foi antes do prazo de desfazer').toHaveLength(0);
+    await depoisDoPrazo(page);
+    await expect.poll(() => enviados(nuvem, 'observacoes').length).toBe(1);
+    // o GPS do teste está a km do pino que ele seguia: o "aqui" levou o pino até o GPS, mas isso
+    // não faz a entrega ter sido "no pino"
+    expect(enviados(nuvem, 'observacoes')[0].corpo).not.toHaveProperty('no_pino');
+  });
+
+  // O Android fecha o app quando ele vai para o Waze, logo depois do toque: a espera não pode
+  // morar só na memória.
+  test('fechar e abrir o app no meio do prazo não perde a passagem', async ({page, nuvem}) => {
+    await page.clock.install();
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await page.locator('.proxima [data-acao="entregue"]').first().click();
+    await page.waitForTimeout(1500);
+    expect(enviados(nuvem, 'observacoes'), 'foi antes do prazo de desfazer').toHaveLength(0);
+    await page.reload();
+    await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
+    await depoisDoPrazo(page);
+    await expect.poll(() => enviados(nuvem, 'observacoes').length).toBe(1);
+  });
+
+  // O aviso tem uma vaga só: entregou a seguinte, e o Desfazer do aviso já é o dela. A primeira
+  // se desfaz pela lista, e é por ela que a passagem tem de sair.
+  test('o Desfazer da lista tira a passagem que ainda espera, e só a dela', async ({page, nuvem}) => {
+    const {lista} = await import('./apoio');
+    await page.clock.install();
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const primeira = await page.locator('.proxima .endereco').innerText();
+    await page.locator('.proxima [data-acao="entregue"]').first().click();
+    await expect(page.locator('.proxima .endereco')).not.toHaveText(primeira);
+    const segunda = await page.locator('.proxima .endereco').innerText();
+    await page.locator('.proxima [data-acao="entregue"]').first().click();
+    await expect(page.locator('.proxima .endereco')).not.toHaveText(segunda);
+
+    await lista(page);
+    await page.locator('details.feitas summary').click();
+    await page.locator('[data-item]').filter({hasText: primeira}).getByRole('button', {name: 'Desfazer'}).click();
+    await depoisDoPrazo(page);
+    await expect.poll(() => enviados(nuvem, 'observacoes').length).toBe(1);
+    expect((enviados(nuvem, 'observacoes')[0].corpo as any).endereco).toBe(segunda);
+  });
+});
+
+// O "Entreguei" e o "Depois" ficam lado a lado, e o cartão já pula para a próxima: o toque errado
+// se desfazia abrindo a lista e procurando a linha, de luva e na rua (revisão de 05/10).
+test.describe('o toque que muda o dia se desfaz no próprio aviso', () => {
+  test('Entreguei: o aviso desfaz, e o cartão volta para a mesma entrega', async ({page}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const antes = await page.locator('.proxima .endereco').innerText();
+    await page.locator('.proxima [data-acao="entregue"]').first().click();
+    await expect(page.locator('.proxima .endereco')).not.toHaveText(antes);
+    await page.locator('#status').getByRole('button', {name: 'Desfazer'}).click();
+    await expect(page.locator('.proxima .endereco')).toHaveText(antes);
+    await expect(page.locator('.resumo')).toContainText('0 de');
+  });
+
+  // Desfazer não é "Voltar para a rota": aquele pede Refazer, e a rota nunca se refaz sozinha.
+  test('Depois: o aviso desfaz, e a entrega volta ao mesmo lugar da sequência', async ({page}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const ordem = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).rota.areas.map((a: any) => a.ordem));
+    const antes = await ordem();
+    const endereco = await page.locator('.proxima .endereco').innerText();
+    await page.locator('.proxima').getByRole('button', {name: 'Depois', exact: true}).click();
+    await expect(page.locator('.proxima .endereco')).not.toHaveText(endereco);
+    await page.locator('#status').getByRole('button', {name: 'Desfazer'}).click();
+    await expect(page.locator('.proxima .endereco')).toHaveText(endereco);
+    expect(await ordem()).toEqual(antes);
+  });
+
+  // Um pulso curto confirma o toque sem olhar para a tela. O de 200 ms continua sendo o de
+  // "próxima a pé", e é o único que o app tinha.
+  test('Entreguei dá um pulso curto, diferente do de "próxima a pé"', async ({page}) => {
+    await page.addInitScript(() => {
+      (window as any).pulsos = [];
+      Object.defineProperty(navigator, 'vibrate', {value: (p: number) => { (window as any).pulsos.push(p); return true; }});
+    });
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await page.locator('.proxima [data-acao="entregue"]').first().click();
+    const pulsos = await page.evaluate(() => (window as any).pulsos);
+    expect(pulsos[0]).toBeGreaterThanOrEqual(20);
+    expect(pulsos[0]).toBeLessThanOrEqual(50);
   });
 });
 

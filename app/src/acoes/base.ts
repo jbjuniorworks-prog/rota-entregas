@@ -14,7 +14,16 @@ export const memoria = criarMemoria(guarda, () => e().cidade, (chave, lat, lng) 
   enviarFila();
 });
 
+// Quanto a porta de uma entrega espera antes de ir para a nuvem. O toque errado costuma ser notado
+// na parada seguinte, e desfeito pela lista: o aviso de 10 s não basta. Esperar não custa nada aos
+// outros, que só leem as portas ao carregar a rota ou entrar na conta.
+export const ESPERA_DA_PORTA = 10 * 60_000;
+let liberacao: ReturnType<typeof setTimeout> | undefined;
+
 export async function enviarFila() {
+  const proxima = fila.liberar(Date.now());
+  clearTimeout(liberacao);
+  if (proxima != null) liberacao = setTimeout(enviarFila, Math.max(0, proxima - Date.now()) + 100);
   await fila.enviar(clienteNuvem());
   loja.mudou(false);
 }

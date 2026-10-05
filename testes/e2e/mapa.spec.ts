@@ -346,24 +346,33 @@ test.describe('entreguei aqui, pelo pino', () => {
     return {ids, antes};
   }
 
+  // A passagem espera o prazo de desfazer na fila do celular (05/10); a correção vai na hora.
   test('um toque entrega, põe o pino na porta e manda o par que confirma; desfazer volta tudo', async ({page, context, nuvem}) => {
     const {aviso} = await import('./apoio');
+    await page.clock.install();
     const {ids, antes} = await tocarAqui(page, context, 8);
     await expect(aviso(page)).toContainText('com a porta marcada aqui (±8 m)');
     await expect(aviso(page)).toContainText('Vai para os outros motoristas como porta confirmada');
     expect(await paradas(page, ids)).toEqual(ids.map(() => ({entregue: true, lat: PORTA.latitude, lng: PORTA.longitude, precisao: 'manual'})));
 
     await expect.poll(() => enviados(nuvem, 'correcoes').length, {timeout: 20_000}).toBeGreaterThan(0);
-    await expect.poll(() => enviados(nuvem, 'observacoes').length, {timeout: 20_000}).toBeGreaterThan(0);
-    const [correcao] = enviados(nuvem, 'correcoes') as any[], [passagem] = enviados(nuvem, 'observacoes') as any[];
+    const [correcao] = enviados(nuvem, 'correcoes') as any[];
     expect(correcao).toMatchObject({lat: PORTA.latitude, lng: PORTA.longitude});
-    // é isto que a `posicoes` cruza: mesma chave, mesmo ponto, e GPS bom o bastante para a passagem
-    expect(passagem).toMatchObject({chave_lugar: correcao.chave_lugar, lat: correcao.lat, lng: correcao.lng, precisao_m: 8});
+    // a passagem que espera é a outra metade do par que a `posicoes` cruza: mesma chave, mesmo
+    // ponto, e GPS bom o bastante para ser passagem
+    const esperando = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-fila-seguradas') || '[]')
+      .flatMap((s: any) => s.ops).filter((op: any) => op.tipo === 'observacao'));
+    const [passagem] = await esperando();
+    expect(passagem).toMatchObject({chave: correcao.chave_lugar, lat: correcao.lat, lng: correcao.lng, precisao: 8});
 
     await aviso(page).getByRole('button', {name: 'Desfazer'}).click();
     await expect(aviso(page)).toContainText('a entrega voltou para a lista e o pino para onde estava');
     expect(await paradas(page, ids)).toEqual(antes);
     await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'correcoes' && p.metodo === 'DELETE').length, {timeout: 20_000}).toBeGreaterThan(0);
+    expect(await esperando(), 'a passagem desfeita continua esperando para ir').toEqual([]);
+    await page.clock.fastForward('11:00');
+    await page.waitForTimeout(1500);
+    expect(enviados(nuvem, 'observacoes')).toEqual([]);
   });
 
   test('com GPS ruim, entrega mas não mexe no pino nem manda porta para a nuvem', async ({page, context, nuvem}) => {

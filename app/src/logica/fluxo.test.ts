@@ -440,3 +440,38 @@ describe('colar a porta de uma parada que já está na lista', () => {
     expect(r).toMatchObject({novas: 1, arrumadas: 0});
   });
 });
+
+// Revisão de 05/10: a porta de uma entrega espera o prazo de desfazer numa chave à parte da fila,
+// gravada, e o desfazer a tira de lá pela parada.
+describe('porta segurada até o prazo de desfazer', () => {
+  const passagem = (chave: string) => ({tipo: 'observacao' as const, chave, lat: 1, lng: 1, precisao: 10, endereco: 'Rua Um, 1', rua: 'Rua Um', ruaChave: 'um'});
+  const lugar = {tipo: 'lugar' as const, nomeChave: 'flores', nome: 'Condomínio das Flores', cidade: 'aracaju', lat: 1, lng: 1, endereco: 'Rua Um, 1'};
+
+  it('não entra na fila antes do prazo, nem conta como "para enviar"', () => {
+    const g = guardaNaMemoria(), f = criarFila(g);
+    f.segurar('p1', [passagem('x|1'), lugar], 1000);
+    expect(f.liberar(999)).toBe(1000);
+    expect(f.pendentes()).toBe(0);
+    expect(f.liberar(1000)).toBeNull();
+    expect(g.ler(CHAVES.fila, [])).toEqual([passagem('x|1'), lugar]);
+  });
+
+  it('soltar tira só as da parada desfeita, e a outra vence no prazo dela', () => {
+    const g = guardaNaMemoria(), f = criarFila(g);
+    f.segurar('p1', [passagem('x|1'), lugar], 1000);
+    f.segurar('p2', [passagem('x|2')], 2000);
+    expect(f.soltar('p1')).toBe(1);
+    expect(f.liberar(1500)).toBe(2000);
+    expect(f.pendentes()).toBe(0);
+    expect(f.liberar(2000)).toBeNull();
+    expect(g.ler(CHAVES.fila, [])).toEqual([passagem('x|2')]);
+  });
+
+  it('fica gravada: o app fechado e aberto de novo solta no prazo', () => {
+    const g = guardaNaMemoria();
+    criarFila(g).segurar('p1', [passagem('x|1')], 1000);
+    const reaberta = criarFila(g);
+    expect(reaberta.liberar(1000)).toBeNull();
+    expect(reaberta.pendentes()).toBe(1);
+  });
+});

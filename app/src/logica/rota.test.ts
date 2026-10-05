@@ -1,4 +1,4 @@
-import {haversine, marcarIsoladas, proximaAPe} from './geo';
+import {haversine, marcarIsoladas, noPino, proximaAPe} from './geo';
 import {montarRota as montarRotaDoEstado} from './montagem';
 import {agruparPorEndereco, agruparVisitas, gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, trechos} from './otimizacao';
 import type {Parada, Ponto} from './tipos';
@@ -268,5 +268,19 @@ describe('balão de pacotes no mapa', () => {
       parada('2', 'Rua A, 1', -10.94, -37.06, {unidades: 2}),
     ];
     expect(gruposNoMapa(ps)[0]).toMatchObject({pacotes: 2, enderecos: 1});
+  });
+});
+
+// O "Entreguei aqui" leva o pino para o GPS antes de guardar a passagem: comparada depois, toda
+// entrega saía "no pino", e uma passagem no pino verifica o endereço sozinha (revisão de 05/10).
+describe('entrega no pino', () => {
+  const gps = {lat: -10.9605, lng: -37.0455};
+  it('compara com o pino que ele seguia, até 30 m', () => {
+    expect(noPino({lat: gps.lat + 0.0002, lng: gps.lng}, gps)).toBe(true);
+    expect(noPino({lat: gps.lat + 0.0005, lng: gps.lng}, gps)).toBe(false);
+  });
+  it('sem pino, não foi no pino', () => {
+    expect(noPino({lat: null, lng: null}, gps)).toBe(false);
+    expect(noPino({}, gps)).toBe(false);
   });
 });

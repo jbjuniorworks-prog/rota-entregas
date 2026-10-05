@@ -3,7 +3,22 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 03/10/2026.
+Atualizado em 05/10/2026.
+
+## Desfazer a entrega (05/10), para olhar na rua
+
+- **A porta de uma entrega espera 10 min antes de ir para a nuvem** (`ESPERA_DA_PORTA`). Antes,
+  "Entreguei aqui" na parada errada seguido de Desfazer deixava o endereço verificado no lugar
+  errado para todos: a passagem saía sempre "no pino" e nenhum desfazer a tirava. Agora passagem e
+  lugar ficam numa chave à parte da fila, gravada, e qualquer desfazer da entrega (aviso ou lista)
+  tira a da parada. O "no pino" compara com o pino de antes do "aqui" mexer nele.
+- **Ainda aberto:** o Desfazer *da lista* depois de um "Entreguei aqui" desfaz a entrega e a
+  passagem, mas não a correção nem o pino, que fica onde o GPS estava. Na nuvem a correção sozinha
+  vira só sugestão para os outros (não confirma), mas no celular dele o pino errado fica. O
+  Desfazer do *aviso* desfaz tudo. Se aparecer pino trocado depois de desfazer pela lista, é isto.
+- "Entreguei", "Entreguei as N" e "Depois" ganharam Desfazer no aviso. O do Depois devolve ao
+  mesmo lugar da sequência, sem refazer a rota. A entrega dá um pulso curto (35 ms); o de 200 ms
+  continua sendo "próxima a pé".
 
 ## Tela nova (02/10 e 03/10), para olhar na rua
 

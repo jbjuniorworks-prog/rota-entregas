@@ -1,13 +1,14 @@
 ﻿import {aplicarCompartilhadas} from '../logica/compartilhadas';
 import {aplicarReclamacoes, chaveCliente} from '../logica/reclamacoes';
-import {haversine, marcarIsoladas} from '../logica/geo';
+import {haversine, marcarIsoladas, noPino} from '../logica/geo';
+import type {Operacao} from '../logica/fila';
 import {avisoGuardou} from '../logica/memoria';
 import {chaveCidade, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
 import type {Parada, Ponto} from '../logica/tipos';
 import {loja, MINIMIZADO, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
 import {clienteNuvem} from '../servicos/nuvem';
-import {contar, desatualizarRota, e, enviarFila, fila, memoria, ui} from './base';
+import {contar, desatualizarRota, e, enviarFila, ESPERA_DA_PORTA, fila, memoria, ui} from './base';
 import {abrir, alturaAgora, voltar} from './navegacao';
 
 export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number; xaropes: number}> {
@@ -47,27 +48,34 @@ export function usarSugestao(p: Parada) {
 
 export const GPS_PASSAGEM = 40;
 
-export function guardarNome(p: Parada, lat: number, lng: number) {
+function opDoLugar(p: Parada, lat: number, lng: number): Operacao | null {
   const n = nomeDoLugar(p.texto, p.bairro), cidade = chaveCidade(e().cidade);
-  if (!n || !cidade) return;
-  fila.enfileirar({
+  if (!n || !cidade) return null;
+  return {
     tipo: 'lugar', nomeChave: n.chave, nome: n.nome, cidade,
     lat: +lat.toFixed(6), lng: +lng.toFixed(6), endereco: p.texto.slice(0, 300),
-  });
+  };
 }
 
-// Entrega marcada com o GPS a até isto do pino que ele seguia: o pino estava certo, e a nuvem
-// dá o endereço como verificado com essa entrega só (017). É o mesmo raio de "mesmo ponto" dela.
-export const NO_PINO = 30;
+export function guardarNome(p: Parada, lat: number, lng: number) {
+  const op = opDoLugar(p, lat, lng);
+  if (op) fila.enfileirar(op);
+}
 
-function enfileirarPassagem(p: Parada, chave: string, lat: number, lng: number, precisao: number) {
+// `seguia` é o pino de antes de qualquer mudança: é ele que diz se a entrega foi "no pino"
+function opDaPassagem(p: Parada, chave: string, lat: number, lng: number, precisao: number, seguia: {lat?: number | null; lng?: number | null}): Operacao {
   const rua = decompor(p.texto).rua;
-  const noPino = p.lat != null && p.lng != null && haversine(p as Ponto, {lat, lng}) <= NO_PINO;
-  fila.enfileirar({
+  return {
     tipo: 'observacao', chave, lat: +lat.toFixed(6), lng: +lng.toFixed(6), precisao: Math.round(precisao),
     endereco: p.texto.slice(0, 300), rua: rua.slice(0, 200), ruaChave: chaveRua(rua).slice(0, 200),
-    ...(noPino ? {noPino: true} : {}),
-  });
+    ...(noPino(seguia, {lat, lng}) ? {noPino: true} : {}),
+  };
+}
+
+// A passagem e o lugar de uma entrega esperam o prazo de desfazer antes de entrar na fila.
+function segurarPorta(p: Parada, chave: string, lat: number, lng: number, precisao: number, seguia: {lat?: number | null; lng?: number | null}) {
+  const lugar = opDoLugar(p, lat, lng);
+  fila.segurar(p.id, [opDaPassagem(p, chave, lat, lng, precisao, seguia), ...(lugar ? [lugar] : [])], Date.now() + ESPERA_DA_PORTA);
 }
 
 export function guardarPassagens(ps: Parada[]) {
@@ -79,10 +87,8 @@ export function guardarPassagens(ps: Parada[]) {
   // Sem aviso de "Pegando sua localização": o da próxima entrega é que importa agora.
   comMinhaPosicao((lat, lng, precisao) => {
     if (precisao > GPS_PASSAGEM || foraDaRegiao({lat, lng})) return;
-    for (const {p, chave} of alvos) {
-      guardarNome(p, lat, lng);
-      enfileirarPassagem(p, chave, lat, lng, precisao);
-    }
+    // desfeita enquanto o GPS respondia: não há porta desta entrega para guardar
+    for (const {p, chave} of alvos) if (p.entregue && loja.parada(p.id) === p) segurarPorta(p, chave, lat, lng, precisao, p);
     enviarFila();
   }, () => {}, '');
 }
@@ -286,12 +292,12 @@ export function portaDaEntrega(ps: Parada[], lat: number, lng: number, precisao:
   const desfazers = ps.map(prepararDesfazer);
   let guardou = false;
   for (const p of ps) {
+    const seguia = {lat: p.lat, lng: p.lng};
     delete p.sugestao;
     Object.assign(p, {lat, lng, precisao: 'manual', exibido: `Sua localização na porta (±${Math.round(precisao)} m)`, fonte: 'motorista'});
     guardou = memoria.lembrar(p) || guardou;
-    guardarNome(p, lat, lng);
     const chave = chaveLugar(p.texto, p.bairro, e().cidade);
-    if (chave) enfileirarPassagem(p, chave, lat, lng, precisao);
+    if (chave) segurarPorta(p, chave, lat, lng, precisao, seguia);
   }
   if (ps.some(p => p.adiada)) marcarIsoladas(e().paradas);
   else desatualizarRota(longe);

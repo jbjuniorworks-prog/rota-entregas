@@ -128,14 +128,21 @@ export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = tru
   // mapa, até para fechar o balão, levava o pino da entrega feita para onde o dedo caiu. Com a
   // Leudy, 29/09: a porta que o GPS guardou na entrega foi para o mato meio minuto depois.
   if (entregue && ui.posicionando === p.id) ui.posicionando = null;
+  // desfeita, por aviso ou pela lista: a porta que esperava o prazo não vai mais
+  if (!entregue) fila.soltar(p.id);
+  // um pulso curto confirma o toque sem olhar a tela; o de 200 ms é o de "próxima a pé"
+  if (entregue) { try { navigator.vibrate?.(35); } catch {} }
   loja.mudou();
-  if (entregue && avisarProxima && e().rota) {
-    const proxima = e().rota!.areas.flatMap(a => a.ordem).map(loja.parada).find(x => x && !x.entregue && x.lat != null);
+  if (entregue && avisarProxima) {
+    const proxima = e().rota?.areas.flatMap(a => a.ordem).map(loja.parada).find(x => x && !x.entregue && x.lat != null);
     const d = proximaAPe(p, proxima);
-    if (d && proxima) {
-      status(`Próxima a ~${d} m: ${proxima.texto.split(',').slice(0, 2).join(',')}. Dá para ir a pé.`, 7000);
-      try { navigator.vibrate?.(200); } catch {}
-    }
+    // Uma mensagem só: o aviso tem uma vaga, e o do desfazer apagaria o de "dá para ir a pé".
+    const aPe = d && proxima ? ` Próxima a ~${d} m: ${proxima.texto.split(',').slice(0, 2).join(',')}. Dá para ir a pé.` : '';
+    status('Entregue.' + aPe, aPe ? 7000 : 6000, () => {
+      marcarEntregue(p, false, false, false);
+      status('Entrega desfeita.', 3000);
+    });
+    if (aPe) { try { navigator.vibrate?.(200); } catch {} }
   }
   if (entregue && comGps) guardarPassagem(p);
   if (p.rota && p.pacotes && p.pacotes.length) {
@@ -151,9 +158,12 @@ export function entregarTodas(ps: Parada[]) {
   if (!confirm(`Marcar como entregue tudo desta parada?
 
 ${faltando.length} entrega(s), ${pacotes} pacote(s).`)) return;
-  faltando.forEach((p, i) => marcarEntregue(p, true, i === faltando.length - 1, false));
+  faltando.forEach(p => marcarEntregue(p, true, false, false));
   guardarPassagens(faltando);
-  status(`${faltando.length} entrega(s) marcada(s) aqui. Se sobrou alguma, desfaça na lista.`, 6000);
+  status(`${faltando.length} entrega(s) marcada(s) aqui. Se sobrou alguma, desfaça na lista.`, 6000, () => {
+    faltando.forEach(p => marcarEntregue(p, false, false, false));
+    status('Entregas desfeitas.', 3000);
+  });
 }
 
 // O botão da porta, no balão do pino. Eram dois toques em lugares diferentes — "Estou aqui" no
@@ -200,11 +210,22 @@ ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
 // mesmo endereço, e "Depois" parecia não ter funcionado.
 export function deixarParaDepois(...ps: Parada[]) {
   const ids = new Set(ps.map(p => p.id));
+  const rota = e().rota;
+  // onde cada uma estava: o desfazer devolve ao mesmo lugar da sequência, sem refazer a rota
+  const lugares = new Map(rota ? rota.areas.map(ra => [ra.id, ra.ordem.flatMap((id, i) => ids.has(id) ? [[id, i] as const] : [])]) : []);
   ps.forEach(p => { p.adiada = true; });
-  if (e().rota) for (const ra of e().rota!.areas) ra.ordem = ra.ordem.filter(id => !ids.has(id));
+  if (rota) for (const ra of rota.areas) ra.ordem = ra.ordem.filter(id => !ids.has(id));
   if (ui.selecionada && ids.has(ui.selecionada)) ui.selecionada = null;
   loja.mudou();
-  status(`${ps.length > 1 ? `Deixadas para depois as ${ps.length}. Estão` : 'Deixada para depois. Ela está'} no fim da lista, em "Deixadas para depois", para você arrumar a localização.`, 5000);
+  status(`${ps.length > 1 ? `Deixadas para depois as ${ps.length}. Estão` : 'Deixada para depois. Ela está'} no fim da lista, em "Deixadas para depois", para você arrumar a localização.`, 6000, () => {
+    ps.forEach(p => { p.adiada = false; });
+    // "Voltar para a rota" pede Refazer; isto é desfazer um toque errado, então volta de onde saiu
+    if (rota && e().rota === rota) for (const ra of rota.areas) {
+      for (const [id, i] of lugares.get(ra.id) || []) if (!ra.ordem.includes(id)) ra.ordem.splice(Math.min(i, ra.ordem.length), 0, id);
+    }
+    loja.mudou();
+    status('De volta ao mesmo lugar da sequência.', 3000);
+  });
 }
 
 export function voltarParaARota(p: Parada) {

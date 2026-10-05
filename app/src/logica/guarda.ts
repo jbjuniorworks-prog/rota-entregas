@@ -29,6 +29,7 @@ export const CHAVES = {
   rotasNuvem: 'rota-entregas-rotas-nuvem',
   sessao: 'rota-entregas-auth',
   filaDesde: 'rota-entregas-fila-desde',
+  seguradas: 'rota-entregas-fila-seguradas',
   uso: 'rota-entregas-uso',
   adminVisto: 'rota-entregas-admin-visto',
 } as const;

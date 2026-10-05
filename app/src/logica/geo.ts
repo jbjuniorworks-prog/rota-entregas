@@ -10,6 +10,16 @@ import type {Candidato, Parada, Ponto} from './tipos';
 
 export const RAIO_BLOCO = 10;
 export const RAIO_VISITA = 25;
+
+// Entrega marcada com o GPS a até isto do pino que ele seguia: o pino estava certo, e a nuvem
+// dá o endereço como verificado com essa entrega só (017). É o mesmo raio de "mesmo ponto" dela.
+export const NO_PINO = 30;
+
+// Contra o pino que ele SEGUIA, o de antes de mexer: o "Entreguei aqui" leva o pino para o GPS, e
+// comparado depois dava sempre 0 m, toda passagem "no pino" (revisão de 05/10).
+export function noPino(seguia: {lat?: number | null; lng?: number | null}, gps: Ponto): boolean {
+  return seguia.lat != null && seguia.lng != null && haversine({lat: seguia.lat, lng: seguia.lng}, gps) <= NO_PINO;
+}
 export const MESMO_LUGAR = 150;
 export const PERTO_A_PE = 300;
 export const ISOLADA_MIN = 7000;

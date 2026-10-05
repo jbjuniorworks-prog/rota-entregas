@@ -87,8 +87,16 @@ export function operacoesDaPlanilha(itens: ItemPlanilha[], rotaDe: (it: ItemPlan
   return [...porRota.values()];
 }
 
+// O que uma entrega manda sobre a porta (passagem e lugar) espera o prazo de desfazer antes de
+// entrar na fila: desfeita a entrega, a porta errada não chega a ninguém (revisão de 05/10). Fica
+// numa chave à parte, gravada, porque o Android fecha o app quando ele vai ao Waze; e à parte
+// para o envio continuar contando que o item em envio é o primeiro da fila, e para o "N para
+// enviar" não acusar como travado o que só está esperando.
+export interface Segurada {id: string; ate: number; ops: Operacao[]}
+
 export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.randomUUID()) {
   const ler = () => g.ler<Operacao[]>(CHAVES.fila, []);
+  const lerSeguradas = () => g.ler<Segurada[]>(CHAVES.seguradas, []);
   let enviando = false;
   let erro = '';
 
@@ -162,6 +170,27 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
       }
       g.gravar(CHAVES.fila, [...f, {tipo: 'desfazerCorrecao', chave, lat, lng}].slice(-FILA_MAX));
       return 'apagar';
+    },
+    // `id` é a parada: o desfazer da lista acha a dela, mesmo com outro aviso já na tela
+    segurar(id: string, ops: Operacao[], ate: number) {
+      if (ops.length) g.gravar(CHAVES.seguradas, [...lerSeguradas(), {id, ate, ops}]);
+    },
+    soltar(id: string): number {
+      const s = lerSeguradas(), fica = s.filter(x => x.id !== id);
+      if (fica.length !== s.length) g.gravar(CHAVES.seguradas, fica);
+      return s.length - fica.length;
+    },
+    // As vencidas entram na fila; devolve quando vence a próxima, ou null se não sobrou nenhuma.
+    liberar(agora: number): number | null {
+      const s = lerSeguradas();
+      const vencidas = s.filter(x => x.ate <= agora), resto = s.filter(x => x.ate > agora);
+      if (vencidas.length) {
+        const f = ler();
+        if (!f.length) g.gravar(CHAVES.filaDesde, agora);
+        g.gravar(CHAVES.fila, [...f, ...vencidas.flatMap(x => x.ops)].slice(-FILA_MAX));
+        g.gravar(CHAVES.seguradas, resto);
+      }
+      return resto.length ? Math.min(...resto.map(x => x.ate)) : null;
     },
     async enviar(c: ClienteNuvem | null): Promise<void> {
       if (!c || enviando) return;
