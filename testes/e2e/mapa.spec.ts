@@ -261,6 +261,21 @@ test.describe('agir pelo pino', () => {
     await expect(page.locator(`${PINO} [data-acao=depois][data-ids="${id}"]`)).toBeVisible();
   });
 
+  // "Cadê o botão do Waze?" (Luan, 06/10): ele tocou no pino da próxima, e o Waze só existia no
+  // cartão que o toque troca.
+  test('o cartão do pino abre o Waze na posição daquele pino', async ({page}) => {
+    const {garantirMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await garantirMapa(page);
+    const {id, lat, lng} = await posicaoDaProxima(page);
+
+    await page.locator('.pino.alvo').click();
+    await expect(page.locator(`${PINO} [data-acao=waze][data-ids="${id}"]`))
+      .toHaveAttribute('href', `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`);
+  });
+
   test('entregar depois de tocar em Arrumar desarma: o toque seguinte no mapa não leva o pino', async ({page}) => {
     const {garantirMapa, clicarMapa} = await import('./apoio');
     page.on('dialog', d => d.accept());

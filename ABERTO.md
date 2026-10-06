@@ -3,7 +3,14 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 05/10/2026.
+Atualizado em 06/10/2026.
+
+## Waze no cartão do pino (06/10)
+
+- "Cadê o botão do Waze?", Luan com o cartão do pino aberto: só o cartão da próxima tinha. Agora
+  cada endereço do pino tem o seu, ao lado do Depois. Tocar no pino é o jeito que ele escolhe o
+  destino, e é para lá que o Waze vai. O Waze não conta no Uso dos botões, nem o do cartão da
+  próxima.
 
 ## Planilha de outra cidade (05/10), para olhar na rua
 

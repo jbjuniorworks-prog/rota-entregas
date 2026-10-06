@@ -70,6 +70,9 @@ function EntregasDoPonto({ps}: {ps: Parada[]}) {
         {noChao && abertas[0].precisao !== 'confirmado' && <button className="btn ok" data-acao="aqui" data-ids={ids} onClick={() => { A.contar('balao-aqui'); A.entregueAqui(abertas); }}>Entreguei aqui</button>}
         <button className="btn contorno-ok" data-acao="entregue" data-ids={ids} onClick={() => { A.contar('balao-entreguei'); abertas.length > 1 ? A.entregarTodas(abertas) : A.marcarEntregue(abertas[0], true); }}>Entreguei</button>
         {abertas[0].precisao !== 'confirmado' && <button className="btn contorno" data-acao="arrumar" data-ids={abertas[0].id} onClick={() => A.posicionar(abertas[0].id)}>Arrumar o pino</button>}
+        {/* "Cadê o botão do Waze?" (Luan, 06/10): ele toca no pino para ir até ele. Um por endereço,
+            porque um pino de ruas diferentes tem mais de um destino. */}
+        <a className="btn contorno-azul" data-acao="waze" data-ids={ids} href={linkWaze(abertas[0] as Ponto)} target="_blank" rel="noopener">Waze</a>
         {/* Na porta ele toca no pino, e é ali que procura o Depois (print de 05/10): só o cartão da
             próxima tinha. Adiada, o mesmo lugar traz de volta, que serve de desfazer. */}
         {loja.e.rota && (abertas.some(p => p.adiada)
@@ -201,7 +204,6 @@ function CartaoProxima() {
     </> : <>
       <div className="info">{pend.length} entregas {mesmoEndereco(pend.map(p => p.texto)) ? 'no mesmo endereço' : 'aqui perto'}:</div>
       <EntregasDoPonto ps={pend} />
-      <div className="tres"><a className="btn contorno-azul" href={linkWaze(alvo as Ponto)} target="_blank" rel="noopener">Waze</a></div>
     </>}
     <AvisosDaRota />
     <div className="secundarios">
