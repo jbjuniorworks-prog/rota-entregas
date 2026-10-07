@@ -14,15 +14,39 @@ Atualizado em 07/10/2026.
   "N entregue(s)" do fim, onde estão o Desfazer e o Cliente xarope.
 - Olhar na rua se alguém sente falta de ver a feita no lugar dela da sequência.
 
-## Leitor de vídeo perdeu paradas (07/10), em aberto
+## Leitor da gravação da lista do Meli (07/10)
 
-Rota do Mercado Livre de 67 paradas, gravada em vídeo e lida pelo app. Na mesma gravação (cópia
-do WhatsApp, 480 px de largura), o leitor achou 65 linhas, e o 67 do celular bateu por
-coincidência: perdeu 7 paradas e inventou umas 8 linhas, com número de rua errado ou com os
-ícones da tela lidos como número. A contagem igual não prova nada, e o app não tem como saber
-quantas paradas o vídeo tinha.
+Rota do Mercado Livre de 67 paradas (62 portas), gravada e lida pelo app. O 67 do celular bateu
+com o do Meli por coincidência: o leitor achou 53 portas, inventou 12 linhas, e deu número de
+parada certo a 6 e errado a 4. Com o texto cru do leitor gravado e um gabarito tirado dos quadros
+(os dois fora do git), depois do conserto: **59 portas, 5 linhas a mais, 26 números certos e 2
+errados**. Nas gravações de 19/09, 22/09 e 26/09 nada piorou: saíram 3 linhas de lixo e entraram
+números pela etiqueta.
+
+- Rua que começa com "da", "do" ou "de" não parecia endereço: sumiam todas as de uma estrada.
+- Os ícones da barra de baixo do Meli viravam número de rua no cartão cortado pela borda.
+- Rua com dígito no nome ("Rua Q7") não separava o número da porta.
+- 85A e 85B eram a mesma porta que a 85, e a com letra era jogada fora. A chave do endereço agora
+  tem a letra; medido em 3.269 linhas de planilha, isso separa 2 endereços.
+- A mesma porta lida com uma palavra a mais em outro quadro virava duas paradas.
+- O número de porta do cartão de cima virava número da parada de baixo.
+- Cartão inteiro só com a rua (o Meli manda assim) entra sem número.
+- O número da parada vem da etiqueta do pacote ("#AZ-24", "#V-11", qualquer prefixo), e ganha do
+  escudo quando os dois brigam. Pacote dividido ("##AZ-25.1") sem o ponto fica sem número.
+
+Ainda erra, sem conserto bom à vista:
+- o selo de verificado grudado no número da porta, igual em todos os quadros ("3278");
+- algarismo romano no nome da rua ("II 105" sai "11105");
+- duas leituras do mesmo cartão com um dígito diferente viram duas paradas;
+- o escudo do cartão bloqueado ("Habilita as") lido errado quando não há etiqueta;
+- várias paradas na mesma porta viram uma: o cartão bloqueado não diz quantos pacotes.
+
+Para medir de novo: espiar o Tesseract num teste do Playwright no Edge (o Chromium dele não abre
+o vídeo do WhatsApp), gravar o texto cru de cada quadro, e reproduzir offline com
+`extrairEnderecos`, `juntarLeituras` e `juntarQuadros`, que dão a mesma lista que o app.
+
 Uma parada de São Cristóvão, de rua com nome de uma letra, caiu numa rua de mesmo nome da Barra
-dos Coqueiros.
+dos Coqueiros. Falta ver por que a busca saiu da cidade do CEP.
 
 ## Waze no cartão do pino (06/10)
 

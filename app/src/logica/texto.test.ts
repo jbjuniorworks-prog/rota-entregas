@@ -218,13 +218,15 @@ describe('extrairEnderecos (texto de print ou PDF)', () => {
       'O = O =',
       'Início Disponíveis — Agendados Mais',
     ].join('\n');
+    // "#": o número veio da etiqueta, e vale mais que o do escudo quando os dois brigam
     expect(extrairEnderecos(ocr)).toEqual([
-      '40 Avenida das Mangueiras 2850, Condomínio Jardim Teste, CEP 49000100 · 2 unid',
-      '43 Avenida das Mangueiras 3434, Condomínio Condominio, Residencial Padre Teste, CEP · 1 unid',
+      '#40 Avenida das Mangueiras 2850, Condomínio Jardim Teste, CEP 49000100 · 2 unid',
+      '#43 Avenida das Mangueiras 3434, Condomínio Condominio, Residencial Padre Teste, CEP · 1 unid',
       'Avenida Doutor Fulano de Tal Souza 160',
       '2 Rua Beltrano Martins Fontes 200',
-      '5 Avenida Conselheiro Sicrano Moreira Filho 2151, Condomínio Pátio Teste, CEP 49000200 · 1 unid',
+      '#5 Avenida Conselheiro Sicrano Moreira Filho 2151, Condomínio Pátio Teste, CEP 49000200 · 1 unid',
     ]);
+    expect(juntarQuadros([extrairEnderecos(ocr)])[0]).toBe('40 Avenida das Mangueiras 2850, Condomínio Jardim Teste, CEP 49000100 · 2 unid');
   });
   it('juntando as leituras do mesmo print, o ícone lido como dígito a mais sai do número', () => {
     expect(juntarLeituras([
@@ -275,6 +277,63 @@ describe('extrairEnderecos (texto de print ou PDF)', () => {
   it('continua ignorando ruído que começa parecido com rua', () => {
     expect(extrairEnderecos('R$ 12,00\nBR 101 km 5\nR 12\nRua x\nRua B')).toEqual([]);
     expect(analisarLinha('BR 101, 200')).toMatchObject({ml: null, texto: 'BR 101, 200'});
+  });
+});
+
+// Gravação do Mercado Livre de 07/10, 67 paradas: das 62 portas o leitor achou 53, e inventou 12
+// linhas. Cada caso aqui é um defeito de lá, com endereço inventado.
+describe('leitura da lista do Meli: o que a gravação de 07/10 ensinou', () => {
+  it('rua que começa com "da", "do" ou "de" não é sujeira', () => {
+    expect(extrairEnderecos('Estrada do Inventado 103 &\nCondomínio Teste Um, CEP 49000300\nEntrega 3 unidades | ETIQUETA'))
+      .toEqual(['Estrada do Inventado 103, Condomínio Teste Um, CEP 49000300 · 3 unid']);
+    expect(extrairEnderecos('Avenida da Paz Teste 20')).toEqual(['Avenida da Paz Teste 20']);
+    expect(extrairEnderecos('Rua E 5')).toEqual(['Rua E 5']);
+  });
+  it('o cartão cortado pela borda não pega os ícones da barra de baixo como número', () => {
+    expect(extrairEnderecos('08:15h a 12:15h\nAvenida Senador Inventado\nO          8          O          =\n\nInício     Disponiveis — Agendados       Mais')).toEqual([]);
+  });
+  it('rua com número no nome ("Rua Q7") separa o número da porta, e o selo grudado sai', () => {
+    expect(decompor('Rua Q7 120')).toMatchObject({rua: 'Rua Q7', numero: '120'});
+    expect(juntarLeituras(['Rua Q7 1208, CEP 49000400'], ['Rua Q7 120, CEP 49000400'])).toEqual(['Rua Q7 120, CEP 49000400']);
+  });
+  it('85, 85A e 85B são portas diferentes, e a porta com letra não é jogada fora', () => {
+    expect(chaveEndereco('Avenida Teste de Lima 85A')).not.toBe(chaveEndereco('Avenida Teste de Lima 85'));
+    expect(extrairEnderecos('Avenida Teste Alves de\nLima 85B')).toEqual(['Avenida Teste Alves de Lima 85B']);
+    expect(juntarLeituras(['Avenida Teste de Lima 85', 'Avenida Teste de Lima 85B'])).toHaveLength(2);
+    expect(juntarQuadros([['Avenida Teste de Lima 85'], ['Avenida Teste de Lima 85B']])).toHaveLength(2);
+  });
+  it('a mesma porta lida de dois jeitos em quadros diferentes vira uma parada só', () => {
+    expect(juntarQuadros([
+      ['Rua Soldado Inventado Fulano Andrade 50, Loja Teste, CEP 49000500'],
+      ['Rua Soldado Inventado Fulano de Andrade 50, Loja Teste, CEP 49000500 · 1 unid'],
+      ['Rua Soldado Inventado Fulano de Andrade 50, Loja Teste, CEP 49000500 · 1 unid'],
+    ])).toEqual(['Rua Soldado Inventado Fulano de Andrade 50, Loja Teste, CEP 49000500 · 1 unid']);
+    expect(juntarQuadros([['Rua dos Ipês Teste 300, Bloco A ap 101'], ['Rua dos Ipês Teste 300, Bloco B ap 202']])).toHaveLength(2);
+  });
+  it('o número solto antes da faixa é do cartão de cima, não o número da parada de baixo', () => {
+    expect(extrairEnderecos('306\n\n& Habilita as 11:45 h\nRua Teste Santos Silva 3')).toEqual(['Rua Teste Santos Silva 3']);
+  });
+  it('cartão inteiro só com a rua entra; o cortado pela borda, não', () => {
+    expect(extrairEnderecos('& Habilita as 13:50 h\nRua Francisco de Inventado\nSobrenome Teste Freitas\n\n& Habilita as 13:50 h\nAvenida Inventada 3500'))
+      .toEqual(['Rua Francisco de Inventado Sobrenome Teste Freitas', 'Avenida Inventada 3500']);
+    expect(extrairEnderecos('& Habilita as 13:50 h\nRua Francisco de Inventado\nSobrenome Teste Freitas\nO  8  CC  =\nInício Disponíveis Agendados Mais')).toEqual([]);
+    expect(juntarQuadros([['Rua Francisco Inventado Freitas'], ['Rua Francisco Inventado Freitas 40']])).toEqual(['Rua Francisco Inventado Freitas 40']);
+  });
+  it('o número da parada vem da etiqueta de qualquer rota, e ganha do escudo lido errado', () => {
+    expect(extrairEnderecos('08:15h a 12:15h\n(5) Rua Teste Um 10\nCondomínio Teste, CEP 49000600\nEntrega 1 unidade | ETIQUETA\nHAZ-24...\n08:15h a 12:15h\nRua Teste Dois 20\nEntrega 1 unidade | ETIQUETA\nHAZ-2A4...'))
+      .toEqual(['#24 Rua Teste Um 10, Condomínio Teste, CEP 49000600 · 1 unid', 'Rua Teste Dois 20 · 1 unid']);
+    expect(extrairEnderecos('Rua Teste Tres 30\nEntrega 2 unidades | ETIQUETA\n#V-11...')).toEqual(['#11 Rua Teste Tres 30 · 2 unid']);
+    // pacote dividido ("##AZ-25.1"): sem o ponto, o número não é de confiança
+    const dividido = (etiqueta: string) => extrairEnderecos(`Rua Teste Quatro 40\nEntrega 1 unidade | ETIQUETA\n${etiqueta}`);
+    expect(dividido('HHAZ-254...')).toEqual(['Rua Teste Quatro 40 · 1 unid']);
+    expect(dividido('4HAD-91...')).toEqual(['Rua Teste Quatro 40 · 1 unid']);
+    expect(dividido('HHAZ-25.1...')).toEqual(['#25 Rua Teste Quatro 40 · 1 unid']);
+    expect(dividido('$HAZ-10...')).toEqual(['#10 Rua Teste Quatro 40 · 1 unid']);
+    expect(juntarQuadros([['#57 Rua Teste Nascimento 143'], ['57 Rua Teste Machado 59']])).toEqual(['57 Rua Teste Nascimento 143', 'Rua Teste Machado 59']);
+    expect(juntarQuadros([['#25 Rua Teste Um 1', '#254 Rua Teste Dois 2', '#60 Rua Teste Tres 3']])).toEqual(['25 Rua Teste Um 1', 'Rua Teste Dois 2', '60 Rua Teste Tres 3']);
+  });
+  it('depois da faixa, a etiqueta de um cartão sem rua lida não vai para a parada de cima', () => {
+    expect(extrairEnderecos('Rua Teste Um 10\n08:15h a 12:15h\nEntrega 2 unidades | ETIQUETA\nHAZ-30...')).toEqual(['Rua Teste Um 10']);
   });
 });
 

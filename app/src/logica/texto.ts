@@ -104,7 +104,9 @@ export function decompor(txt: string): Decomposto {
   const seg = limpo.split(',').map(s => s.trim()).filter(Boolean);
   let rua = seg[0] || '', numero: string | null = null, resto = seg.slice(1);
   // "… 2082(3)": o print cola a contagem no número da porta; o número continua sendo o 2082.
-  const fim = rua.match(/^(.*\D)\s+(?:n[º°o.]*\s*)?(\d{1,5})[a-z]?(?:\s*\(\d{1,3}\))?$/i);
+  // "Rua Q7 120": o nome da rua acaba em dígito, e sem o [a-z]\d a porta não saía de lugar
+  // nenhum. Só ganha número quem não tinha nenhum.
+  const fim = rua.match(/^(.*(?:\D|[a-zà-ÿ]\d))\s+(?:n[º°o.]*\s*)?(\d{1,5})[a-z]?(?:\s*\(\d{1,3}\))?$/i);
   const cauda = fim ? fim[1].match(CAUDA_UNIDADE) : null;
   const semCauda = cauda ? fim![1].slice(0, cauda.index).trim() : '';
   const unidadeNaRua = !!cauda && /[a-zà-ÿ]{2}/i.test(semCauda);
@@ -136,9 +138,18 @@ export function complementoChave(resto: string[]): string {
   return partes.join('+');
 }
 
+// "85A" é outra porta que a 85. O decompor guarda só os dígitos, que é o que a busca precisa; a
+// chave precisa da letra, senão a 85, a 85A e a 85B de uma gravação viravam uma parada só (07/10).
+// Medido em 3.269 linhas de planilha: 20 têm letra, e só 2 endereços misturam com e sem.
+export function letraDaPorta(texto: string, numero: string | null): string {
+  if (!numero) return '';
+  const m = texto.match(new RegExp(`(?:^|[\\s,])0*${numero}([a-z])\\b`, 'i'));
+  return m ? m[1].toLowerCase() : '';
+}
+
 export function chaveEndereco(linha: string): string {
-  const d = decompor(analisarLinha(linha).texto);
-  return [normal(d.rua).replace(TIPOS_RUA, ''), d.numero || '', d.cep || '', complementoChave(d.resto)].join('|');
+  const t = analisarLinha(linha).texto, d = decompor(t);
+  return [normal(d.rua).replace(TIPOS_RUA, ''), (d.numero || '') + letraDaPorta(t, d.numero), d.cep || '', complementoChave(d.resto)].join('|');
 }
 
 export function mesmoEndereco(textos: string[]): boolean {
@@ -148,7 +159,10 @@ export function mesmoEndereco(textos: string[]): boolean {
 
 export function pareceEndereco(texto: string): boolean {
   if (/[=?@*<>~^{}\\]/.test(texto)) return false;
-  const semTipo = texto.replace(RUA, '').trim();
+  // "Estrada da Tal", "Rua do Sol": a palavra de duas letras na frente do nome fazia a linha
+  // parecer sujeira, e as quatro paradas de uma estrada assim sumiram de uma gravação (07/10).
+  // Só quando vem um nome depois: "Rua E" continua sendo a rua de uma letra.
+  const semTipo = texto.replace(RUA, '').trim().replace(/^(?:d[aeo]s?|e)\s+(?=[a-zà-ÿ]{3})/i, '');
   const primeira = semTipo.split(/[\s,]+/)[0] || '';
   const letras = (texto.match(/[a-zà-ÿ]/gi) || []).length;
   if (RUA.test(texto + ' ') && /^[A-Z]\d?$/.test(primeira)) return letras >= 3 && letras / texto.length > 0.25;
@@ -161,7 +175,14 @@ interface Aberto {
   texto: string;
   unidades?: number;
   comercial?: boolean;
+  // o cartão acabou na faixa de horário do seguinte: está inteiro, não foi cortado pela borda
+  inteiro?: boolean;
 }
+
+// A faixa de horário ("08:15h a 12:15h", "Habilita as 13:50 h") é o alto de cada cartão do
+// Mercado Livre: o que vem antes dela é do cartão anterior.
+const FAIXA = '\u0000faixa';
+const soFaixa = (l: string) => !limparRuido(l) && new RegExp(FAIXA_DE_HORARIO.source, 'i').test(l);
 
 const DE_COMANDA = /(id do pedido|localizador|c[oó]digo de coleta|entrega para [aà]s|pedido\s*#?\s*\d|documento fiscal|taxa de entrega|goomer|itens\s*\(=\)|\(\+\))/i;
 const ANTES_DO_ENDERECO = /^(telefone|localizador|id do pedido|cliente)\b|\(\d{2}\)\s*\d{4,5}-?\d{4}|^\w{0,4}:\s*\(?\d{2}\)?\s*\d{4,5}-\d{4}/i;
@@ -315,19 +336,31 @@ export function extrairEnderecos(bruto: string): string[] {
   if (daLista.length) return daLista;
   const daComanda = enderecoDaComanda(bruto);
   if (daComanda.length) return daComanda;
-  const linhas = juntarCepQuebrado(bruto.split('\n').map(limparRuido).filter(Boolean));
+  const linhas = juntarCepQuebrado(bruto.split('\n').map(l => soFaixa(l) ? FAIXA : limparRuido(l)).filter(Boolean));
   const out: Aberto[] = [];
-  let numeroSolto: string | null = null, aberto: Aberto | null = null;
+  let numeroSolto: string | null = null, aberto: Aberto | null = null, semDono = false;
   for (const l of linhas) {
+    // O número solto antes da faixa é o fim do cartão de cima, cortado pela borda do quadro: um
+    // "306" da porta de lá virou o número de parada da rua de baixo (07/10).
+    if (l === FAIXA) {
+      if (aberto) aberto.inteiro = true;
+      aberto = null;
+      numeroSolto = null;
+      semDono = true;
+      continue;
+    }
     const {ml, texto} = analisarLinha(l);
     const complementoDoAnterior = aberto && !TEM_CEP.test(aberto.texto) && /\d/.test(aberto.texto) && RUA_COMPLEMENTO.test(texto + ' ');
     if (RUA.test(texto + ' ') && !complementoDoAnterior) {
       aberto = {ml: ml || numeroSolto, texto};
       out.push(aberto);
       numeroSolto = null;
+      semDono = false;
       continue;
     }
-    const ultimo = out[out.length - 1];
+    // Depois da faixa, até aparecer a rua, o que vier é de um cartão cuja rua não foi lida: as
+    // unidades e a etiqueta dele não são da parada de cima.
+    const ultimo = semDono ? undefined : out[out.length - 1];
     // Sujeira curta no meio de um endereço que já tem número não fecha ele: o selo de
     // "verificado" sai como "2" ou "[2" numa linha só dele, entre a rua e o bairro, e encerrar a
     // parada ali levava o CEP embora. Fora daí vale a regra velha — uma linha curta com número
@@ -335,13 +368,24 @@ export function extrairEnderecos(bruto: string): string[] {
     const curta = l.replace(/[^a-zà-ÿ]/gi, '').length <= 2 && (l.match(/\d/g) || []).length <= 2;
     if (curta && aberto && /\d/.test(aberto.texto)) continue;
     if (!/\d/.test(l) && l.replace(/[^a-zà-ÿ]/gi, '').length <= 2) continue;
-    const etiqueta = l.match(/EB\s*-\s*(\d{1,3})/i);
+    // A etiqueta do pacote ("#AZ-24...", "EB-40") traz o número da parada, e é mais fácil de ler
+    // que o escudo colorido: o leitor tira "67" do escudo da 57 em cinco quadros seguidos (07/10).
+    // O prefixo muda de rota para rota, de uma ou duas letras ("V-11"). Número com letra no meio
+    // ("AZ-2A4") não vale.
+    const etiqueta = l.match(/(\S*?)[A-Z]{1,2}\s*-\s*(\d{1,3})([.\s]\d)?(?=[.\s]|$)/);
+    // "##AZ-25.1" é pacote dividido: os dois # saem "HH", "4H" ou "AH", e sem o ponto (ou o
+    // espaço que o leitor põe no lugar dele) o número vira "251" ou "91", que é outra parada.
+    // Sem o ponto, fica sem número (07/10 e 26/09).
+    const daEtiqueta = !etiqueta ? null
+      : (etiqueta[1].match(/[H4A#]/g) || []).length < 2 || etiqueta[3] ? '#' + etiqueta[2] : null;
     if (ultimo && /hor[aá]rio\s+comercial/i.test(l)) { ultimo.comercial = true; aberto = null; continue; }
     const mu = l.match(/entrega\s+(\d+)\s+unidade/i);
-    if (ultimo && mu) { ultimo.unidades = +mu[1]; if (etiqueta) ultimo.ml = etiqueta[1]; aberto = null; continue; }
-    if (ultimo && etiqueta && /^.{0,5}EB\s*-/i.test(l)) { ultimo.ml = etiqueta[1]; aberto = null; continue; }
+    if (ultimo && mu) { ultimo.unidades = +mu[1]; if (daEtiqueta) ultimo.ml = daEtiqueta; aberto = null; continue; }
+    if (ultimo && etiqueta && /^.{0,5}[A-Z]{1,2}\s*-/.test(l)) { if (daEtiqueta) ultimo.ml = daEtiqueta; aberto = null; continue; }
     if (aberto && !/\d/.test(aberto.texto) && /^\d{1,5}\b/.test(l)) { aberto.texto += ' ' + l; continue; }
-    if (aberto && !/\d/.test(aberto.texto) && !COMPLEMENTO.test(l) && (RESTO_DA_RUA.test(l) || CONTINUA_O_NOME.test(l))) { aberto.texto += ' ' + l; continue; }
+    // O resto do nome tem palavra. Os ícones da barra de baixo do app ("O 8 O =") passavam como
+    // resto do nome com número, e o cartão cortado pela borda virava "Avenida Tal 8 O" (07/10).
+    if (aberto && !/\d/.test(aberto.texto) && !COMPLEMENTO.test(l) && /[a-zà-ÿ]{3}/i.test(l) && (RESTO_DA_RUA.test(l) || CONTINUA_O_NOME.test(l))) { aberto.texto += ' ' + l; continue; }
     if (aberto && !TEM_CEP.test(aberto.texto) && (COMPLEMENTO.test(l) || TEM_CEP.test(l) || complementoDoAnterior)) { aberto.texto = aberto.texto.replace(/[\s,]+$/, '') + ', ' + l.replace(/[\s,]+$/, ''); continue; }
     aberto = null;
     const mn = l.match(/^[#(]?(\d{1,3})(?:[).:\]\-]|\s|$)/);
@@ -350,8 +394,12 @@ export function extrairEnderecos(bruto: string): string[] {
   return out
     // Sem número e sem CEP normalmente é sobra de leitura. Mas "S/N" é endereço de verdade — o
     // Mercado Livre manda assim — e sumir com a parada é pior que mostrá-la só com a rua: some
-    // da tela e ninguém procura o que não sabe que existe.
-    .filter(e => (/\s\d{1,5}\b/.test(e.texto) || TEM_CEP.test(e.texto) || SEM_NUMERO.test(e.texto)) && pareceEndereco(e.texto))
+    // da tela e ninguém procura o que não sabe que existe. Pelo mesmo motivo fica o cartão
+    // inteiro que só tem a rua: o Meli manda assim, e uma rua de nome comprido sem número sumiu
+    // de uma gravação (07/10). O cortado pela borda acaba na barra de baixo, não na faixa do
+    // cartão seguinte, e continua de fora.
+    .filter(e => (/\s\d{1,5}[a-z]?\b/i.test(e.texto) || TEM_CEP.test(e.texto) || SEM_NUMERO.test(e.texto)
+      || (e.inteiro && palavrasRua(e.texto).length >= 3)) && pareceEndereco(e.texto))
     .map(e => (e.ml ? e.ml + ' ' : '') + e.texto.replace(/\s[Oo0](?=\s)/g, '') + (e.unidades ? ` · ${e.unidades} unid` : '') + (e.comercial ? ' · comercial' : ''));
 }
 
@@ -368,11 +416,11 @@ export function juntarQuadros(quadros: string[][]): string[] {
     for (const e of new Set(q)) {
       const k = chaveEndereco(e), v = vistos.get(k);
       if (!v) vistos.set(k, {e, n: 1});
-      else { v.n++; if (e.length > v.e.length) v.e = e; }
+      else { v.n++; v.e = melhorLeitura(v.e, e); }
     }
   }
   const itens = [...vistos.values()].map(v => ({...v, d: decompor(analisarLinha(v.e).texto)}));
-  const saida = itens.filter(x => !itens.some(y => y !== x && (
+  const restantes = itens.filter(x => !itens.some(y => y !== x && (
     // "37" que na verdade era "37A": o número saiu cortado num quadro e inteiro em outro
     (!!x.d.numero && !!y.d.numero && y.n >= x.n && y.d.numero.length > x.d.numero.length
       && y.d.numero.startsWith(x.d.numero) && normal(y.d.rua) === normal(x.d.rua))
@@ -387,20 +435,57 @@ export function juntarQuadros(quadros: string[][]): string[] {
     // completos — e, se vierem iguais, já viram uma só lá em cima, pela chave.
     || (!!x.d.numero && x.d.numero === y.d.numero && !x.d.cep && !!y.d.cep && !x.d.resto.length
       && semLetraTapada(x.d.rua) === semLetraTapada(y.d.rua))
-  ))).map(x => x.e);
+    // Só a rua, de um cartão que o Meli manda sem número: se a mesma rua aparece com número em
+    // outro quadro, era esse cartão com o número escondido, não outra parada.
+    || (!x.d.numero && !x.d.cep && !SEM_NUMERO.test(x.e) && !!y.d.numero && mesmaRua(x.d.rua, y.d.rua) && mesmaRua(y.d.rua, x.d.rua))
+  )));
+  // A mesma porta lida de dois jeitos em quadros diferentes ("Fulano Andrade 50" e "Fulano de
+  // Andrade 50", "Côrtes 100" e "cones É 100") virava duas paradas (07/10). A
+  // regra é a que já junta as duas leituras de um quadro, com a mesma unidade e sem CEP
+  // contrário. Fica a que mais quadros leram.
+  const juntas: typeof restantes = [];
+  for (const x of restantes) {
+    const par = juntas.find(y => !!x.d.numero && y.d.numero === x.d.numero
+      && letraDaPorta(analisarLinha(x.e).texto, x.d.numero) === letraDaPorta(analisarLinha(y.e).texto, y.d.numero)
+      && (!x.d.cep || !y.d.cep || x.d.cep === y.d.cep) && complementoChave(x.d.resto) === complementoChave(y.d.resto)
+      && mesmaRua(x.d.rua, y.d.rua) && mesmaRua(y.d.rua, x.d.rua));
+    if (!par) { juntas.push(x); continue; }
+    const certo = [x.e, par.e].map(e => e.match(NUMERO_CERTO)?.[0]).find(Boolean);
+    if (x.n > par.n || (x.n === par.n && x.e.length > par.e.length)) Object.assign(par, x);
+    if (certo && !par.e.startsWith(certo + ' ')) par.e = certo + ' ' + par.e.replace(/^#?\d{1,3}\s+/, '');
+  }
+  const saida = juntas.map(x => x.e);
   // Número de parada repetido não é número de parada: no app do Meli ele é único. Quando o mesmo
   // sai em duas paradas diferentes, foi o leitor errando o crachá — e esse número vira o rótulo
   // do cartão e entra na ordenação da rota. Sem ele, a parada fica com a posição na leitura, que
   // é a ordem da lista do Meli e não depende de ler escudo colorido nenhum.
-  const quantas = new Map<string, number>();
+  // O da etiqueta fica quando é o único certo com aquele número: o escudo que o leitor errou é
+  // que perde o número, não a parada que tinha a etiqueta. Na saída, o "#" sai.
+  const quantas = new Map<string, number>(), certas = new Map<string, number>();
   for (const e of saida) {
     const m = analisarLinha(e).ml;
-    if (m) quantas.set(m, (quantas.get(m) || 0) + 1);
+    if (!m) continue;
+    quantas.set(m, (quantas.get(m) || 0) + 1);
+    if (NUMERO_CERTO.test(e)) certas.set(m, (certas.get(m) || 0) + 1);
   }
+  // Número de três dígitos sem nenhum vizinho até a metade dele não é desta lista: a etiqueta
+  // "##AZ-25.1" de pacote dividido sai "254" sem o ponto, numa rota que vai até 69 (07/10).
+  const numeros = [...quantas.keys()].map(Number);
+  const foraDaLista = (m: string) => +m >= 100 && !numeros.some(x => x !== +m && x * 2 >= +m);
   return saida.map(e => {
     const m = analisarLinha(e).ml;
-    return m && quantas.get(m)! > 1 ? e.replace(/^\d{1,3}\s+/, '') : e;
+    const fica = !m || (!foraDaLista(m) && (quantas.get(m) === 1 || (NUMERO_CERTO.test(e) && certas.get(m) === 1)));
+    return (fica ? e : e.replace(/^#?\d{1,3}\s+/, '')).replace(/^#(?=\d)/, '');
   });
+}
+
+// "#24 Rua Tal": o número da parada veio da etiqueta, não do escudo. Entre duas leituras da mesma
+// parada fica o texto mais comprido e, se uma delas tem, o número da etiqueta.
+const NUMERO_CERTO = /^#\d{1,3}(?=\s)/;
+function melhorLeitura(a: string, b: string): string {
+  const texto = b.length > a.length ? b : a;
+  const certo = [a, b].map(e => e.match(NUMERO_CERTO)?.[0]).find(Boolean);
+  return certo && !texto.startsWith(certo + ' ') ? certo + ' ' + texto.replace(/^#?\d{1,3}\s+/, '') : texto;
 }
 
 const quantasDiferentes = (lista: string[]) => new Set(lista.map(chaveEndereco)).size;
@@ -411,9 +496,12 @@ export function juntarLeituras(leituras: string[], apoio: string[] = []): string
   const porChave = new Map<string, string>();
   for (const e of leituras) {
     const k = chaveEndereco(e), antigo = porChave.get(k);
-    if (!antigo || e.length > antigo.length) porChave.set(k, e);
+    porChave.set(k, antigo ? melhorLeitura(antigo, e) : e);
   }
-  const decomposto = (e: string) => ({e, d: decompor(analisarLinha(e).texto)});
+  const decomposto = (e: string) => {
+    const t = analisarLinha(e).texto, d = decompor(t);
+    return {e, d, letra: letraDaPorta(t, d.numero)};
+  };
   const itens = [...porChave.values()].map(decomposto);
   const referencias = [...itens, ...apoio.map(decomposto)];
   const fora = new Set<number>();
@@ -429,9 +517,10 @@ export function juntarLeituras(leituras: string[], apoio: string[] = []): string
   const sobraram = itens.filter((_, i) => !fora.has(i));
   const juntas: typeof sobraram = [];
   for (const x of sobraram) {
-    const parecida = juntas.find(y => y.d.numero && x.d.numero === y.d.numero && mesmaRua(x.d.rua, y.d.rua) && mesmaRua(y.d.rua, x.d.rua));
+    // 85 e 85B são portas diferentes, mesmo com a rua e os dígitos iguais
+    const parecida = juntas.find(y => y.d.numero && x.d.numero === y.d.numero && x.letra === y.letra && mesmaRua(x.d.rua, y.d.rua) && mesmaRua(y.d.rua, x.d.rua));
     if (!parecida) { juntas.push(x); continue; }
-    if (x.e.length > parecida.e.length) parecida.e = x.e;
+    parecida.e = melhorLeitura(parecida.e, x.e);
   }
   return juntas.map(x => x.e);
 }
