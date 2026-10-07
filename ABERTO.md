@@ -3,7 +3,26 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 06/10/2026.
+Atualizado em 07/10/2026.
+
+## Só o que falta, nas duas listas (07/10)
+
+- **Conferir endereços, sem busca:** "Para conferir" no topo, "Falta entregar" embaixo, e os
+  verificados e os entregues recolhidos no fim. A busca continua achando todos, entregues
+  também, por causa do B.O. O "Só os para conferir" e o "N para conferir" do menu não mudaram.
+- **Lista da rota:** a entrega feita sai do bloco mesmo com o endereço pela metade, e fica só no
+  "N entregue(s)" do fim, onde estão o Desfazer e o Cliente xarope.
+- Olhar na rua se alguém sente falta de ver a feita no lugar dela da sequência.
+
+## Leitor de vídeo perdeu paradas (07/10), em aberto
+
+Rota do Mercado Livre de 67 paradas, gravada em vídeo e lida pelo app. Na mesma gravação (cópia
+do WhatsApp, 480 px de largura), o leitor achou 65 linhas, e o 67 do celular bateu por
+coincidência: perdeu 7 paradas e inventou umas 8 linhas, com número de rua errado ou com os
+ícones da tela lidos como número. A contagem igual não prova nada, e o app não tem como saber
+quantas paradas o vídeo tinha.
+Uma parada de São Cristóvão, de rua com nome de uma letra, caiu numa rua de mesmo nome da Barra
+dos Coqueiros.
 
 ## Waze no cartão do pino (06/10)
 

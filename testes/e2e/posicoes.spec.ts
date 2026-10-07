@@ -196,6 +196,8 @@ test.describe('corrigir pela localização do motorista', () => {
     await page.reload();
     await abrir(page);
     await aba(page, '2. Conferir');
+    // a verificada fica recolhida no fim da lista (07/10)
+    await page.locator('[data-grupo="verificadas"] summary').click();
     const cartao = page.locator('[data-item]').filter({hasText: RUA_D});
     const onde = () => page.evaluate(t => {
       const p = JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.includes(t));

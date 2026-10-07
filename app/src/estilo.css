@@ -91,6 +91,8 @@ details.feitas summary{color:var(--mut);font-size:14px}
 .corpo{padding:14px 16px 32px;display:flex;flex-direction:column;gap:10px}
 .corpo h1{font-size:24px;margin:6px 0}
 .corpo h2{font-size:17px;margin:10px 0 0}
+.itens{display:flex;flex-direction:column;gap:10px}
+.corpo details.feitas[open] summary{margin-bottom:6px}
 .opcao{flex-direction:column;align-items:flex-start;text-align:left;gap:2px}
 .opcao-titulo{font-size:18px;font-weight:800}
 .opcao-sub{font-size:14px;font-weight:500;opacity:.85}

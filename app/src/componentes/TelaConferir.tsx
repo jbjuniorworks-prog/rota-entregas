@@ -40,17 +40,41 @@ export function TelaConferir() {
       {!mostrar.length && !(semRota && buscando) && <div className="info vazio">{semRota
         ? 'Digite o código do pacote ou a rua para procurar nos dias anteriores.'
         : buscando ? 'Nenhuma entrega da rota de hoje com isso.' : 'Nada para conferir agora.'}</div>}
-      {e.areas.map(a => {
-        const ps = mostrar.filter(p => p.area === a.id);
-        if (!ps.length) return null;
-        return <div key={a.id}>
-          {e.areas.length > 1 && <div className="area-cab" style={{'--c': a.cor} as any}><span className="dot" /><span className="txt">{a.nome}</span><span className="info">{ps.length}</span></div>}
-          {ps.map(p => <ItemConferir key={p.id} p={p} pacotes={achados.get(p.id)?.pacotes} />)}
-        </div>;
-      })}
+      {ui.soDuvidas || buscando ? <PorArea ps={mostrar} achados={achados} /> : <Agrupadas />}
       {/* a chave refaz o bloco a cada letra: resultado de outra busca não fica na tela */}
       {buscando && <DiasAnteriores key={busca} busca={busca} />}
     </div>
+  </>;
+}
+
+function PorArea({ps, achados}: {ps: Parada[]; achados?: Map<string, Achado>}) {
+  const {e} = useLoja();
+  return <>{e.areas.map(a => {
+    const daArea = ps.filter(p => p.area === a.id);
+    if (!daArea.length) return null;
+    return <div key={a.id} className="itens">
+      {e.areas.length > 1 && <div className="area-cab" style={{'--c': a.cor} as any}><span className="dot" /><span className="txt">{a.nome}</span><span className="info">{daArea.length}</span></div>}
+      {daArea.map(p => <ItemConferir key={p.id} p={p} pacotes={achados?.get(p.id)?.pacotes} />)}
+    </div>;
+  })}</>;
+}
+
+// Todos, sem busca: o que precisa dele primeiro, o que não precisa recolhido no fim. Numa rota de
+// 67, achar os problemas rolando por entregues e verificados atrapalhava (pedido de 07/10).
+function Agrupadas() {
+  const {e} = useLoja();
+  const abertas = e.paradas.filter(p => !p.entregue);
+  const conferir = abertas.filter(precisaConferir);
+  const verificadas = abertas.filter(p => !precisaConferir(p) && p.precisao === 'confirmado');
+  const faltam = abertas.filter(p => !precisaConferir(p) && p.precisao !== 'confirmado');
+  const entregues = e.paradas.filter(p => p.entregue);
+  return <>
+    {conferir.length > 0 && <div className="itens" data-grupo="conferir"><h2>Para conferir ({conferir.length})</h2><PorArea ps={conferir} /></div>}
+    {faltam.length > 0 && <div className="itens" data-grupo="faltam"><h2>Falta entregar ({faltam.length})</h2><PorArea ps={faltam} /></div>}
+    {verificadas.length > 0 && <details className="feitas" data-grupo="verificadas"><summary>{verificadas.length} com endereço verificado</summary>
+      <div className="itens"><PorArea ps={verificadas} /></div></details>}
+    {entregues.length > 0 && <details className="feitas" data-grupo="entregues"><summary>{entregues.length} entregue(s)</summary>
+      <div className="itens"><PorArea ps={entregues} /></div></details>}
   </>;
 }
 

@@ -79,6 +79,24 @@ test.describe('com GPS', () => {
     await expect(page.locator('.resumo')).toContainText(`${antes + 3} de 10 entregas`);
   });
 
+  // Pedido de 07/10: na lista, ver as entregas feitas no meio das que faltam atrapalha.
+  test('a lista mostra só o que falta, mesmo num endereço entregue pela metade', async ({page}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await ateUmEnderecoComVarias(page);
+    // rua e número: o resto (bloco, apartamento) é de cada uma
+    const endereco = (await page.locator('.proxima .endereco').innerText()).split(',').slice(0, 2).join(',');
+
+    await lista(page);
+    const bloco = page.locator('.bloco').filter({hasText: endereco});
+    await bloco.getByRole('button', {name: 'Entregue', exact: true}).first().click();
+    await expect(bloco.getByRole('button', {name: 'Entregue', exact: true})).toHaveCount(1);
+    await expect(page.locator('[data-folha="lista"] .bloco .parada.feito')).toHaveCount(0);
+    await expect(page.locator('[data-folha="lista"] details.feitas summary')).toBeVisible();
+  });
+
   // Adiando só a primeira, o cartão voltava com o mesmo endereço, e "Depois" parecia quebrado.
   test('"Depois" no cartão adia todas as entregas do endereço', async ({page}) => {
     page.on('dialog', d => d.accept());

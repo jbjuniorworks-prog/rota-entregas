@@ -295,10 +295,15 @@ function Lista() {
           n += t.filter(x => x.ids.length).length;
           return <a key={k} className="btn peq contorno-azul" aria-label={`Trecho ${k + 1}, pontos ${ini} a ${n}`} href={linkMapsVarios(t.map(x => x.alvo))} target="_blank" rel="noopener">{ini}–{n}</a>;
         })}</div>}
-        {bs.length ? bs.map(b => <div key={b[0]} className="bloco">
-          {b.length > 1 && <div className="info">{b.length} entregas {mesmoEndereco(b.map(id => loja.parada(id)!.texto)) ? 'no mesmo endereço' : 'perto'}</div>}
-          {b.map(id => loja.parada(id)!).map(p => <LinhaParada key={p.id} p={p} />)}
-        </div>) : <div className="info">Área concluída.</div>}
+        {/* só o que falta: a feita vai para o "N entregue(s)" do fim, mesmo com o bloco pela
+            metade (pedido de 07/10, ver as feitas no meio atrapalhava) */}
+        {bs.length ? bs.map(b => {
+          const falta = b.map(id => loja.parada(id)!).filter(p => !p.entregue);
+          return <div key={b[0]} className="bloco">
+            {falta.length > 1 && <div className="info">{falta.length} entregas {mesmoEndereco(falta.map(p => p.texto)) ? 'no mesmo endereço' : 'perto'}</div>}
+            {falta.map(p => <LinhaParada key={p.id} p={p} />)}
+          </div>;
+        }) : <div className="info">Área concluída.</div>}
       </div>;
     })}
     <Adiadas />

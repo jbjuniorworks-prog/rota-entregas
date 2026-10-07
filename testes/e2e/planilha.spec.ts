@@ -60,6 +60,36 @@ test('a aba Conferir mostra a origem de cada posição', async ({page}) => {
   await expect(page.getByText('Posição da planilha').first()).toBeVisible();
 });
 
+// Pedido de 07/10: numa rota de 67, achar os problemas rolando por entregues e verificados
+// atrapalhava. A busca continua achando tudo, porque é ela que serve ao B.O.
+test('a Conferir mostra primeiro o que tem problema, e recolhe os verificados e os entregues', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  const [verificada, entregue] = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
+    const sem = s.paradas.filter((p: any) => ['exato', 'planilha', 'bom'].includes(p.precisao));
+    Object.assign(sem[0], {precisao: 'confirmado', exibido: 'Endereço verificado'});
+    Object.assign(sem[1], {entregue: true, entregueEm: Date.now()});
+    localStorage.setItem('rota-entregas-v2', JSON.stringify(s));
+    return [sem[0].texto, sem[1].texto];
+  });
+  await page.reload();
+  await abrir(page);
+  await aba(page, '2. Conferir');
+
+  await expect(page.locator('.corpo [data-item]').first()).toContainText('Rua D, 49');
+  await expect(page.locator('[data-grupo="conferir"]')).toContainText('Rua D, 49');
+  await expect(page.locator('[data-item]').filter({hasText: verificada})).toBeHidden();
+  await expect(page.locator('[data-item]').filter({hasText: entregue})).toBeHidden();
+  await page.locator('[data-grupo="entregues"] summary').click();
+  await expect(page.locator('[data-grupo="entregues"] [data-item]').filter({hasText: entregue})).toBeVisible();
+  await page.locator('[data-grupo="verificadas"] summary').click();
+  await expect(page.locator('[data-grupo="verificadas"] [data-item]').filter({hasText: verificada})).toBeVisible();
+
+  await page.getByRole('searchbox', {name: 'Buscar'}).fill(entregue.split(',')[0]);
+  await expect(page.locator('[data-item]').filter({hasText: entregue})).toBeVisible();
+});
+
 // Planilha do Jeferson, 05/10: a Shopee deu o mesmo ponto, a rotatória da Barra dos Coqueiros,
 // para entregas de 7 bairros, e o mapa juntou cinco paradas num pino só. O app tinha Aracaju
 // guardado de ontem, e é com ele que esta planilha chega.
