@@ -95,6 +95,35 @@ test('planilha fora da rua vai para a porta do censo; em cima da rua, fica como 
   expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 170')).toEqual({...FORA_DA_RUA, precisao: 'manual'});
 });
 
+// Pedro, 08/10: a planilha pôs uma Rua B de um bairro noutra Rua B, a 11,7 km, no meio das outras
+// entregas da rota, e o app não disse nada. Aqui com uma Rua B do censo (Aruana, CEP 49000-584).
+test('a Rua B que a planilha pôs noutra Rua B vai para a porta do CEP, e fica vermelha longe da rota', async ({page}) => {
+  const XLSX = (await import('xlsx')).default;
+  const PORTA = {lat: -11.010071, lng: -37.088918};
+  // seis casas, como a da Shopee: com poucas, o app trata como posição aproximada
+  const GRUPO = {lat: -10.920512, lng: -37.060537};
+  const em = (dLat: number, dLng: number) => [+(GRUPO.lat + dLat).toFixed(6), +(GRUPO.lng + dLng).toFixed(6)];
+  const cab = ['AT ID', 'Sequence', 'Stop', 'SPX TN', 'Destination Address', 'Bairro', 'City', 'Zipcode/Postal code', 'Latitude', 'Longitude'];
+  // CEPs que o censo não tem: estas ficam onde a planilha pôs
+  const perto = (n: number, dLat: number, dLng: number) => ['AT-TESTE', n, n, '', `Rua Inventada ${n}, 10`, 'Bairro Inventado', 'Aracaju', `49099-90${n}`, ...em(dLat, dLng)];
+  const ws = XLSX.utils.aoa_to_sheet([cab,
+    perto(1, 0.001, 0), perto(2, -0.001, 0.001), perto(3, 0, -0.001), perto(4, 0.0015, 0.0012),
+    ['AT-TESTE', 5, 5, '', 'Rua B, 23', 'Aruana', 'Aracaju', '49000-584', ...em(0.0005, 0.0005)],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
+  await abrir(page);
+  await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
+  await expect(page.locator('#status')).toContainText('1 estava(m) numa rua de mesmo nome longe do CEP', {timeout: 30_000});
+
+  const ruaB = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas.find((x: any) => x.texto.startsWith('Rua B, 23')));
+  expect({lat: ruaB.lat, lng: ruaB.lng}).toEqual(PORTA);
+  // a 10 km do resto da rota: vermelho, e o texto diz de onde ela saiu
+  expect(ruaB.precisao).toBe('longe');
+  expect(ruaB.exibido).toContain('numa rua de mesmo nome fora do CEP');
+});
+
 // Luan, 02/10: a rota lida pela versão antiga continuava errada depois de atualizar o app.
 test('ao abrir, a rota que já estava na tela também passa pelo censo', async ({page}) => {
   const XLSX = (await import('xlsx')).default;

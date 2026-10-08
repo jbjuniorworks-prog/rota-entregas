@@ -154,6 +154,16 @@ export async function enderecoDoIbge(cep: string, numero: string, cidade: string
   };
 }
 
+// Todas as portas de um CEP: para saber se um ponto está dentro dele, e não só longe de um número.
+export async function portasDoCep(cep: string, cidade: string): Promise<Ponto[]> {
+  const t = await tabela(cidade);
+  if (!t) return [];
+  const chave = +String(cep).replace(/\D/g, '');
+  const portas: Ponto[] = [];
+  for (let i = primeiro(t.ceps, chave); i < t.ceps.length && t.ceps[i] === chave; i++) portas.push({lat: t.lats[i] / 1e6, lng: t.lngs[i] / 1e6});
+  return portas;
+}
+
 // As portas da mesma rua perto de um ponto. Para julgar a posição da planilha não basta a porta
 // do censo: a planilha que pôs o pino em cima da rua errou só o número (e às vezes quem erra o
 // número é o censo); a que pôs fora da rua errou o lugar. Varre o censo inteiro, então só é

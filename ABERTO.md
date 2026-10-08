@@ -3,7 +3,21 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 07/10/2026.
+Atualizado em 08/10/2026.
+
+## Rua de nome genérico noutra rua de mesmo nome (08/10), para olhar na rua
+
+- A planilha do Pedro pôs uma "Rua B" do Industrial noutra Rua B, perto do aeroporto, a 11,8 km,
+  no meio das paradas daquela região, e o app não disse nada: a conferência pelo censo pulava rua
+  de nome genérico inteira, até pelo CEP.
+- Agora vai para a porta do censo quando: rua de nome genérico, planilha a mais de 500 m de toda
+  porta do CEP, e o censo com o número exato do CEP, na rua de mesmo nome e no bairro que a
+  planilha diz (no campo ou no texto). Fica laranja, e vermelha quando cai longe da rota.
+- Medido contra o GPS das entregas, de 18/09 a 08/10: longe do próprio CEP, em geral quem erra é o
+  CEP (21 de 27 a mais de 1 km foram entregues no ponto da planilha). Por isso a regra só vale
+  para nome genérico e pede o bairro. Nas 39 planilhas guardadas ela mexe em 5 paradas; das 3 com
+  entrega, 2 foram na porta do censo e 1 mais perto dela que da planilha.
+- Olhar se aparece alguma levada para a porta errada: a planilha fica como opção em Conferir.
 
 ## Só o que falta, nas duas listas (07/10)
 
