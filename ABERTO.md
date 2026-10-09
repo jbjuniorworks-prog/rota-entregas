@@ -5,7 +5,7 @@ decisão está na mensagem do commit que a fez, não aqui.
 
 Atualizado em 09/10/2026.
 
-## Rota marcada de uma vez, longe das portas (04/10), apagar
+## Rota marcada de uma vez, longe das portas (04/10), apagada
 
 O Edilson não terminou a rota de 03/10 (Atalaia) e entregou parte no dia seguinte. Na manhã de
 04/10 carregou a rota no app (10h27) e marcou as 42 entregas em 5 minutos, a 2,7 s uma da outra,
@@ -14,7 +14,8 @@ de um ponto só, a 8 km das portas: é todo o histórico dele no banco. O botão
 passagem do mesmo motorista já verificam, 017). Alguns são endereços que voltam nas rotas do
 Pedro. No resto do banco é o normal: de 1.263 endereços verificados, os outros 8 que dependem de
 marcação em lote são ruas cheias, com a porta mudando a cada marcação. Falta:
-- apagar as 42 passagens e 35 correções dele (o dono autorizou em 09/10; rodar no SQL Editor);
+- apagadas em 09/10 as 42 passagens e 35 correções dele (o dono rodou no SQL Editor); os 33
+  endereços deixaram de sair verificados;
 - sem pressa, a pedido dele: uma trava no celular para portas de endereços diferentes, cujos
   pinos estavam longe uns dos outros, gravadas no mesmo ponto em poucos minutos.
 
