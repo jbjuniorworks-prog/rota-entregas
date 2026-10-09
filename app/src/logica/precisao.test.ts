@@ -179,6 +179,13 @@ describe('planilha e censo do IBGE discordando', () => {
       const outra = {...entrega(), texto: 'Rua E, 40, Jardins, CEP 49000-300'};
       await levarParaOCenso([outra], 'Aracaju', {porta: async () => ruaB('Jardins', 'Rua F'), rua: async () => [], cep: async () => doCep});
       expect(outra.precisao).toBe('planilha');
+      // o "e" no meio de outro nome não é a Rua E; a letra no começo do nome do censo é
+      const noMeio = {...entrega(), texto: 'Travessa E, 40, Jardins, CEP 49000-300'};
+      await levarParaOCenso([noMeio], 'Aracaju', {porta: async () => ruaB('Jardins', 'Travessa Trinta e Um de Março'), rua: async () => [], cep: async () => doCep});
+      expect(noMeio.precisao).toBe('planilha');
+      const doLoteamento = entrega();
+      await levarParaOCenso([doLoteamento], 'Aracaju', {porta: async () => ruaB('Jardins', 'Rua B Moradas do Rio Doce'), rua: async () => [], cep: async () => doCep});
+      expect(doLoteamento.precisao).toBe('censo');
     });
 
     it('o bairro do censo vale escrito no endereço também', async () => {

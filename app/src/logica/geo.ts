@@ -250,10 +250,12 @@ const soLetras = (s: string) => normal(s).replace(/[^a-z0-9]/g, '');
 
 // O mesmaRua deixa de fora as palavras vazias, e na "Rua E" a única palavra é o "e": a rua ficava
 // sem nome nenhum e não batia com nada (Luan, 09/10). Aqui o nome genérico é só a letra, e conta.
+// E conta como começo do nome achado: "Rua B" é a "Rua B Moradas do Rio Doce" do censo, mas
+// "Travessa E" não é a "Travessa Trinta e Um de Março", que só tem um "e" no meio.
 const palavrasDoNome = (rua: string) => normal(rua).replace(TIPOS_RUA, '').replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(Boolean);
 const mesmaRuaGenerica = (pedida: string, achada: string) => {
-  const a = palavrasDoNome(pedida), b = new Set(palavrasDoNome(achada));
-  return a.length > 0 && a.every(w => b.has(w));
+  const a = palavrasDoNome(pedida), b = palavrasDoNome(achada);
+  return a.length > 0 && a.every((w, i) => b[i] === w);
 };
 
 export function foraDasPortasDoCep(p: Parada, porta: Candidato | null, doCep: Ponto[]): number | null {
