@@ -25,6 +25,16 @@ describe('voltarDoBairro', () => {
     expect(sozinha.precisao).toBe('bairro');
     expect(entregue.precisao).toBe('bairro');
   });
+  it('a porta verificada e o pino arrumado à mão ficam, mesmo com a planilha guardada nas opções', () => {
+    const verificada = levada(-10.8500, -37.0745, {precisao: 'confirmado', fonte: 'outro motorista', lat: -10.86, lng: -37.08});
+    const amao = levada(-10.8510, -37.0750, {precisao: 'manual', fonte: 'manual', lat: -10.861, lng: -37.081});
+    const grupoLevado = [levada(-10.8490, -37.0760), levada(-10.8495, -37.0755)];
+    expect(voltarDoBairro([...grupo(), verificada, amao, ...grupoLevado])).toEqual(grupoLevado);
+    expect(verificada).toMatchObject({precisao: 'confirmado', lat: -10.86});
+    expect(amao).toMatchObject({precisao: 'manual', lat: -10.861});
+    // de novo, nada mais muda
+    expect(voltarDoBairro([...grupo(), verificada, amao, ...grupoLevado])).toEqual([]);
+  });
 });
 
 // Leudy, 09/10: na rodovia o portão do condomínio tem o número dela, e a casa lá dentro outro

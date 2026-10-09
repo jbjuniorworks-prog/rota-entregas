@@ -136,6 +136,14 @@ test('ao abrir, o grupo que a versão de antes levou para o bairro do mapa volta
   await expect(aviso(page)).toContainText('3 parada(s) de um grupo longe do resto da rota voltaram para a posição da planilha', {timeout: 30_000});
   expect(await norte()).toEqual(daPlanilha.map(lat => ({lat, precisao: 'planilha'})));
   expect(await rodovia()).toEqual(['planilha', 'planilha']);
+
+  // abrir de novo não muda mais nada
+  const salvo = await page.evaluate(() => localStorage.getItem('rota-entregas-v2'));
+  await page.reload();
+  await expect(page.locator('#app')).toBeVisible();
+  await page.waitForTimeout(2000);
+  await expect(aviso(page)).not.toContainText('voltaram para a posição da planilha');
+  expect(JSON.parse((await page.evaluate(() => localStorage.getItem('rota-entregas-v2')))!).paradas).toEqual(JSON.parse(salvo!).paradas);
 });
 
 // Planilha do Jeferson, 05/10: a Shopee deu o mesmo ponto, a rotatória da Barra dos Coqueiros,
