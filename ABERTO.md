@@ -16,6 +16,11 @@ Aracaju urbana errando em série. O dono pediu para achar todas. Feito até aqui
 - **Número não bate** fica fora de rodovia: o portão do condomínio tem o número dela (4 de 4
   entregues no ponto certo). Em **avenida** acertou 1 de 9 (8 eram portão de condomínio): decidir.
 
+- **Pino marcado durante a busca**: um teste que falhou uma vez mostrou que a resposta atrasada do
+  mapa apagava a porta que o motorista marcou enquanto a lista colada ainda era buscada (sem CEP,
+  como o cartão fechado do Meli, nem a memória devolvia). A resposta agora só grava se a parada
+  ainda está esperando a busca.
+
 Falta passar o resto, cada regra contra as entregas, separado por tipo de rota (Aracaju urbana,
 Zona de Expansão e rodovia, condomínio, Mercado Livre sem coordenada, outra cidade):
 - coordenada com poucas casas decimais ("aproximada");

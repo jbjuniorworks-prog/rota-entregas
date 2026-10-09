@@ -44,12 +44,45 @@ test('pino marcado perto de outro já marcado pode virar uma parada só', async 
   await expect(page.locator('.bloco').filter({hasText: 'Avenida Central, 1500'})).toContainText('2 entregas perto');
 });
 
+// 09/10: a resposta da busca que chegava depois passava por cima da porta marcada no meio dela.
+// Sem CEP, como o cartão fechado do Meli: não há chave para a memória devolver a marcação.
+test('a porta marcada enquanto a busca anda fica, quando a resposta atrasada chega', async ({page}) => {
+  // a resposta do endereço só sai depois da marcação: a ordem não depende do relógio
+  let liberar!: () => void;
+  const marcou = new Promise<void>(ok => { liberar = ok; });
+  let presas = 0, respondidas = 0;
+  await page.route('**://nominatim.openstreetmap.org/**', async r => {
+    if (!/Inventada/.test(new URL(r.request().url()).searchParams.get('q') || '')) return r.abort();
+    presas++;
+    await marcou;
+    await r.fulfill({status: 200, contentType: 'application/json', headers: {'access-control-allow-origin': '*'},
+      body: JSON.stringify([{lat: '-10.9000', lon: '-37.1000', display_name: 'Avenida Inventada das Flores, Aracaju', category: 'highway', addresstype: 'road', address: {road: 'Avenida Inventada das Flores', city: 'Aracaju', state: 'Sergipe'}}])});
+    respondidas++;
+  });
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await colar(page);
+  await page.getByLabel(/Endereços da área/).fill('Avenida Inventada das Flores 1500');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await expect.poll(() => presas, {timeout: 30_000}).toBeGreaterThan(0);
+  await aba(page, '2. Conferir');
+  await linhaDe(page, 'Avenida Inventada das Flores 1500', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+  await clicarMapa(page, -10.9412, -37.0456);
+  liberar();
+  await expect.poll(() => respondidas > 0 && respondidas === presas, {timeout: 30_000}).toBe(true);
+  await page.waitForTimeout(1500);
+  const p = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.startsWith('Avenida Inventada das Flores 1500')));
+  expect({lat: p.lat, lng: p.lng, precisao: p.precisao}).toEqual({lat: -10.9412, lng: -37.0456, precisao: 'manual'});
+});
+
 test('arrumar o pino de um condomínio ensina o nome dele para a base', async ({page, nuvem}) => {
   await abrir(page);
   await carregar(page, ROTA_A);
   await colar(page);
   await page.getByLabel(/Endereços da área/).fill('Avenida das Flores, 1500, Ed Villa Sorrento apto 101, CEP 49000-102');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
+  // a busca termina antes da marcação: o aviso final dela cobria o "Local definido" (09/10)
+  await expect(aviso(page)).toContainText(/Pronto|falharam/, {timeout: 30_000});
   await aba(page, '2. Conferir');
   await linhaDe(page, 'Avenida das Flores, 1500', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
   await clicarMapa(page, -10.9412, -37.0456);

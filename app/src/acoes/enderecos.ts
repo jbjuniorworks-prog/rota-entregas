@@ -48,8 +48,13 @@ export function centroDasEntregas() {
 export async function buscarParada(p: Parada) {
   if (memoria.aplicar(p)) return;
   await garantirRegiao();
+  // Enquanto a busca anda, ele pode marcar a porta no mapa, e a resposta que chega depois não passa
+  // por cima da marcação dele. Numa lista de 60 a busca leva mais de um minuto; um teste que
+  // falhou uma vez em 09/10 mostrou a resposta atrasada apagando o "Local definido".
+  const marcouNoMeio = () => p.precisao !== 'pendente';
   try {
     const cands = await geocodificar(p.texto, {cidade: p.cidade || e().cidade, perto: centroDasEntregas(), bairro: p.bairro || ''});
+    if (marcouNoMeio()) return;
     p.candidatos = cands;
     // A linha do Mercado Livre com o cartão fechado vem só "Avenida Tal 184": sem CEP e sem
     // bairro, `chaveLugar` devolve null e a marcação que o motorista faz na porta não tem onde
@@ -65,6 +70,7 @@ export async function buscarParada(p: Parada) {
     if (cands.length) Object.assign(p, {lat: cands[0].lat, lng: cands[0].lng, exibido: cands[0].exibido, precisao: cands[0].precisao, fonte: cands[0].fonte});
     else Object.assign(p, {lat: null, lng: null, exibido: '', precisao: 'nao', fonte: 'nao achou'});
   } catch (err) {
+    if (marcouNoMeio()) return;
     p.precisao = 'pendente';
     throw err;
   }
@@ -81,6 +87,8 @@ export async function buscarPendentes(resumoAntes = '') {
   let erro: Error | null = null;
   for (let i = 0; i < alvo.length; i++) {
     status(`Buscando endereços… ${i + 1} de ${alvo.length}`);
+    // a que ele já marcou enquanto a lista andava não é mais buscada
+    if (alvo[i].precisao !== 'pendente') continue;
     try { await buscarParada(alvo[i]); } catch (err) { erro = err as Error; }
     loja.mudou();
   }
