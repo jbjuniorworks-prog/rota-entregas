@@ -19,6 +19,20 @@ marcação em lote são ruas cheias, com a porta mudando a cada marcação. Falt
 - sem pressa, a pedido dele: uma trava no celular para portas de endereços diferentes, cujos
   pinos estavam longe uns dos outros, gravadas no mesmo ponto em poucos minutos.
 
+## Mapear com os celulares deles (09/10), medido, não construir ainda
+
+- **Rastrear só de andar** não dá com o app como está: com o Waze na frente, o navegador para de
+  dar o GPS à página, e é o Waze que fica na frente a maior parte do tempo. Daria com um app de
+  Android próprio, ou um gravador de trajeto instalado nos celulares, mas o trajeto diz por onde
+  passaram, não qual número é qual casa. Serviria para desenhar no OpenStreetMap as ruas que
+  faltam nos loteamentos novos (melhora a rota, não o pino).
+- **Numeração aprendida das entregas**: para uma porta entregue, a posição estimada pelo número,
+  entre a porta entregue logo abaixo e a logo acima na mesma rua (vão até 300 números). Dá para
+  estimar 473 das 1.650 portas, mediana 19 m. Onde o censo tem a porta (343), ele é melhor
+  (10 m; a estimada piora 54 e melhora 28). Onde não tem (130), a estimada fica em 70 m de
+  mediana, 92 a até 150 m e 17 a mais de 500 m; falta comparar com a planilha nessas. Na Barra só
+  há 59 portas entregues, e dá para estimar 1 a 6: medir de novo quando houver umas 300.
+
 ## Regras que não servem para todo tipo de rota (09/10), levantamento
 
 A rota da Leudy (Zona de Expansão da Barra, 17 km de rodovia) mostrou duas regras pensadas para
