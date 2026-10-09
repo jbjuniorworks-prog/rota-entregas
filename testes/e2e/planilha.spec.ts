@@ -146,6 +146,44 @@ test('ao abrir, o grupo que a versão de antes levou para o bairro do mapa volta
   expect(JSON.parse((await page.evaluate(() => localStorage.getItem('rota-entregas-v2')))!).paradas).toEqual(JSON.parse(salvo!).paradas);
 });
 
+// Leudy, 09/10: duas ADS do Jatobá vieram com o ponto do centro da Barra, a 12,8 km das outras
+// entregas do bairro, e nenhuma regra via: perto do meio da rota, e o censo não tem o CEP delas.
+test('a parada longe das outras do mesmo bairro vai para o meio delas, lendo e ao abrir', async ({page}) => {
+  const XLSX = (await import('xlsx')).default;
+  const cab = ['AT ID', 'Sequence', 'Stop', 'SPX TN', 'Destination Address', 'Bairro', 'City', 'Zipcode/Postal code', 'Latitude', 'Longitude'];
+  const SUL = [-10.887196, -37.003029], NORTE = [-10.775231, -36.950412];
+  const em = ([lat, lng]: number[], d: number) => [+(lat + d).toFixed(6), +(lng - d).toFixed(6)];
+  const linha = (n: number, base: number[], bairro: string, stop: number | string = n) => ['AT-TESTE', stop, stop, `BRTESTEB${n}`, `Rua Inventada ${n}, 10`, bairro, 'Barra dos Coqueiros', `49099-8${String(n).padStart(2, '0')}`, ...em(base, n * 0.0007)];
+  const ws = XLSX.utils.aoa_to_sheet([cab,
+    ...[1, 2, 3, 4, 5, 6].map(n => linha(n, SUL, 'Bairro Sul Teste')),
+    ...[7, 8, 9, 10].map(n => linha(n, NORTE, 'Bairro Norte Teste')),
+    // a ADS com o ponto do centro, escrita com um parêntese a mais
+    linha(20, SUL, 'Bairro Norte Teste)', '-'),
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
+  await abrir(page);
+  await page.locator('input[type=file]').setInputFiles({name: 'bairro.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
+  await expect(aviso(page)).toContainText('levada(s) para o bairro certo');
+  const ads = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((p: any) => p.texto.startsWith('Rua Inventada 20,')));
+  const lida = await ads();
+  expect(lida.precisao).toBe('bairro');
+  expect(Math.abs(lida.lat - NORTE[0])).toBeLessThan(0.01);
+  expect(lida.candidatos.some((c: any) => c.fonte === 'planilha')).toBe(true);
+
+  // como a versão de antes deixava: no ponto do centro, como veio
+  await page.evaluate(([lat, lng]) => {
+    const e = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
+    Object.assign(e.paradas.find((p: any) => p.texto.startsWith('Rua Inventada 20,')), {lat, lng, precisao: 'planilha', fonte: 'planilha', exibido: 'Posição da planilha', candidatos: []});
+    localStorage.setItem('rota-entregas-v2', JSON.stringify(e));
+  }, em(SUL, 20 * 0.0007));
+  await page.reload();
+  await expect(aviso(page)).toContainText('1 parada(s) longe das outras do mesmo bairro, levada(s) para o meio delas', {timeout: 30_000});
+  expect((await ads()).precisao).toBe('bairro');
+  expect(Math.abs((await ads()).lat - NORTE[0])).toBeLessThan(0.01);
+});
+
 // Planilha do Jeferson, 05/10: a Shopee deu o mesmo ponto, a rotatória da Barra dos Coqueiros,
 // para entregas de 7 bairros, e o mapa juntou cinco paradas num pino só. O app tinha Aracaju
 // guardado de ontem, e é com ele que esta planilha chega.

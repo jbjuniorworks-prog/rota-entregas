@@ -1,4 +1,4 @@
-import {haversine, marcarIsoladas, marcarNumerosIncoerentes, noPino, proximaAPe, voltarDoBairro} from './geo';
+import {haversine, marcarIsoladas, marcarNumerosIncoerentes, moverPeloBairro, noPino, proximaAPe, voltarDoBairro} from './geo';
 import {montarRota as montarRotaDoEstado} from './montagem';
 import {agruparPorEndereco, agruparVisitas, gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, trechos} from './otimizacao';
 import type {Parada, Ponto} from './tipos';
@@ -59,6 +59,28 @@ describe('marcarIsoladas', () => {
     const ps = [...grupo(), parada(-10.80, -37.20), parada(-10.8005, -37.2005)];
     expect(marcarIsoladas(ps)).toBe(2);
   });
+  // Leudy, 09/10: duas ADS do Jatobá vieram com o ponto do centro da Barra, a 12,8 km das outras
+  // do bairro, e no meio de entregas de outros bairros
+  it('longe das outras do mesmo bairro, com elas juntas, é marcada e vai para o meio delas', () => {
+    const norte = [-10.8500, -10.8505, -10.8510, -10.8495].map(lat => parada(lat, -37.0745, {bairro: 'Bairro Norte'}));
+    const errada = parada(-10.9605, -37.0455, {bairro: 'Bairro  Norte.'});
+    const ps = [...grupo(), ...grupo(), ...norte, errada];
+    marcarIsoladas(ps);
+    expect(errada.precisao).toBe('longe');
+    expect(norte.map(p => p.precisao)).toEqual(['planilha', 'planilha', 'planilha', 'planilha']);
+    expect(moverPeloBairro(ps)).toEqual([errada]);
+    expect(errada).toMatchObject({precisao: 'bairro', lng: -37.0745});
+    expect(errada.lat).toBeCloseTo(-10.85025, 5);
+  });
+  it('a 3 km das outras do bairro, ou com o bairro espalhado, fica', () => {
+    // as duas no meio da rota: só a regra do bairro poderia marcá-las
+    const perto = [-10.9330, -10.9335, -10.9325, -10.9332].map(lat => parada(lat, -37.0450, {bairro: 'Bairro Perto'}));
+    const a3km = parada(-10.9605, -37.0455, {bairro: 'Bairro Perto'});
+    const espalhado = [-37.10, -37.13, -37.16, -37.19].map(lng => parada(-10.9605, lng, {bairro: 'Bairro Grande'}));
+    const doGrande = parada(-10.9610, -37.0450, {bairro: 'Bairro Grande'});
+    marcarIsoladas([...grupo(), ...grupo(), ...grupo(), ...perto, a3km, ...espalhado, doGrande]);
+    expect([a3km.precisao, doGrande.precisao]).toEqual(['planilha', 'planilha']);
+  });
   // Leudy, 09/10: 15 entregas no Jatobá a 13 km das outras eram outra parte da rota, não erro
   it('um grupo de três ou mais longe do meio da rota é outra parte dela, e não é marcado', () => {
     const longe = [parada(-10.8500, -37.0745), parada(-10.8510, -37.0750), parada(-10.8490, -37.0760)];
@@ -66,10 +88,10 @@ describe('marcarIsoladas', () => {
     expect(marcarIsoladas(ps)).toBe(0);
     expect(longe.map(p => p.precisao)).toEqual(['planilha', 'planilha', 'planilha']);
   });
-  it('vale para posição de busca e lembrada, não para a ajustada à mão', () => {
-    const ps = [...grupo(), parada(-9.66, -35.73, {precisao: 'exato'}), parada(-11.30, -37.40, {precisao: 'lembrado'}), parada(-11.40, -37.50, {precisao: 'manual'})];
+  it('vale para posição de busca e lembrada, não para a ajustada à mão nem a verificada', () => {
+    const ps = [...grupo(), parada(-9.66, -35.73, {precisao: 'exato'}), parada(-11.30, -37.40, {precisao: 'lembrado'}), parada(-11.40, -37.50, {precisao: 'manual'}), parada(-11.50, -37.60, {precisao: 'confirmado'})];
     expect(marcarIsoladas(ps)).toBe(2);
-    expect(ps.map(p => p.precisao).slice(-3)).toEqual(['longe', 'longe', 'manual']);
+    expect(ps.map(p => p.precisao).slice(-4)).toEqual(['longe', 'longe', 'manual', 'confirmado']);
   });
   it('volta à precisão de antes quando a parada volta para perto', () => {
     const ps = [...grupo(), parada(-9.66, -35.73, {precisao: 'exato'})];

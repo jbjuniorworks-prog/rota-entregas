@@ -21,6 +21,41 @@ Aracaju urbana errando em série. O dono pediu para achar todas. Feito até aqui
   como o cartão fechado do Meli, nem a memória devolvia). A resposta agora só grava se a parada
   ainda está esperando a busca.
 
+- **Longe das outras do mesmo bairro**: duas ADS do Jatobá vieram com um ponto do centro da Barra,
+  a 12,8 km das outras 15 do bairro, e nenhuma regra via (perto do meio da rota, censo sem o CEP).
+  A mais de 5 km do meio de 3 ou mais do mesmo bairro, com elas juntas, vai para o meio delas,
+  vermelha. Entre 2 e 5 km a planilha acertou 8 de 9; acima, só sobram essas e a do Robalo.
+
+## Ler melhor a Barra dos Coqueiros (09/10), proposto
+
+Nas 173 linhas da Barra guardadas (Jeferson 05/10, Leudy 09/10):
+- **O censo cobre a Barra pelo nome, não pelo CEP.** São 7.839 portas e os bairros da Zona de
+  Expansão (Jatobá, Olhos d'Água, Capuã, Luar da Barra...), mas só 37 linhas acham a porta pelo
+  CEP: lá o CEP é o geral da cidade (o Google dá 49140-000 para a Rua G do Jatobá). Conferir a
+  posição da planilha pela rua + número + bairro no censo, como já se faz no endereço sem
+  coordenada. Medir antes contra as entregas da Barra.
+- **O ponto padrão do centro**: em -10,9079, -37,0267 (a rotatória de 05/10) a Shopee pôs 8 ADS de
+  7 bairros, entregues de 319 m a 3,9 km dali. A regra do ponto repetido pega quando é idêntico; as
+  duas da Leudy eram 400 m ao lado.
+- **O bairro escrito de muitos jeitos**: 9 grafias de Olhos d'Água num só condomínio. Toda regra
+  que compara bairro sofre (ponto repetido conta "bairros diferentes" que são o mesmo). Unificar
+  pelos 31 nomes de bairro do censo da Barra.
+
+Medido em 09/10, nos 87 lugares da Barra das planilhas guardadas, 47 com GPS de entrega:
+- **A planilha da Barra erra muito**: só 8 das 47 estavam a até 150 m de onde se entregou; 26 a
+  mais de 500 m.
+- **Mapa de ruas com nome (satellites.pro, ruas-brasil.openalfa) não traz nada novo**: os dois
+  mostram o OpenStreetMap, e a Barra já está na nossa base de ruas desde 20/09 (375 nomes; o OSM
+  tem 406 hoje, rodar `npm run ruas -- "Barra dos Coqueiros"` de novo). O OSM da Barra não tem
+  número de porta: diz a rua, não onde nela. Levar a planilha fora da rua para o ponto mais perto
+  da rua de mesmo nome: em 8 casos, melhorou 4 e piorou 3 (uma "Rua I" de outro lugar, a 26 km).
+  Recusado como está.
+- **Censo pela rua + número + bairro**: responde em 32 das 47; melhora 15 e piora 6, três delas
+  tirando do lugar uma planilha que estava a menos de 80 m. Com a trava de "fora de toda porta da
+  rua" sobram 7 a 10 movidas, que ainda pioram 2 a 4: o ganho estava na planilha na rua certa e
+  no trecho errado, que é onde a numeração do loteamento e a do censo também discordam. Juntar
+  mais entregas da Barra antes de decidir.
+
 Falta passar o resto, cada regra contra as entregas, separado por tipo de rota (Aracaju urbana,
 Zona de Expansão e rodovia, condomínio, Mercado Livre sem coordenada, outra cidade):
 - coordenada com poucas casas decimais ("aproximada");

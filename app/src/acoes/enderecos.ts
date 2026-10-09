@@ -1,5 +1,5 @@
 ﻿import {operacoesDaPlanilha} from '../logica/fila';
-import {cidadeDaParada, haversine, levarGenericaAoBairro, levarGenericaParaARua, levarParaOCenso, marcarIsoladas, marcarPontoGenerico, mediana, marcarNumerosIncoerentes, moverGenericasPeloBairro, moverParaOBairro, voltarDoBairro} from '../logica/geo';
+import {cidadeDaParada, haversine, levarGenericaAoBairro, levarGenericaParaARua, levarParaOCenso, marcarIsoladas, marcarPontoGenerico, mediana, marcarNumerosIncoerentes, moverGenericasPeloBairro, moverParaOBairro, moverPeloBairro, voltarDoBairro} from '../logica/geo';
 import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from '../logica/importar';
 import {CORES, DA_PLANILHA} from '../logica/rotulos';
 import {coordenadaNoTexto, decompor, extrairEnderecos, ruaGenerica} from '../logica/texto';
@@ -170,10 +170,18 @@ export async function conferirComOCensoAoAbrir() {
   const tinham = e().paradas.filter(p => p.precisao === 'numero');
   tinham.forEach(p => { p.precisao = 'planilha'; });
   const numerosMudaram = tinham.length !== marcarNumerosIncoerentes(e().paradas);
-  const avisoDeVolta = deVolta ? `${deVolta} parada(s) de um grupo longe do resto da rota voltaram para a posição da planilha.` : '';
+  // a longe das outras do mesmo bairro, que a regra de hoje marca, vai para o meio delas, como na
+  // leitura da planilha (Leudy: duas ADS do Jatobá no centro da Barra)
+  marcarIsoladas(e().paradas);
+  const paraOBairro = moverPeloBairro(e().paradas).length;
+  if (paraOBairro) desatualizarRota(true);
+  const avisoDeVolta = [
+    deVolta ? `${deVolta} parada(s) de um grupo longe do resto da rota voltaram para a posição da planilha.` : '',
+    paraOBairro ? `${paraOBairro} parada(s) longe das outras do mesmo bairro, levada(s) para o meio delas: confira no local.` : '',
+  ].filter(Boolean).join(' ');
   if (!e().paradas.some(p => (p.precisao === 'planilha' || p.pontoGenerico) && !p.entregue)) {
-    if (deVolta || numerosMudaram) loja.mudou();
-    if (deVolta) status(avisoDeVolta, 8000);
+    if (deVolta || numerosMudaram || paraOBairro) loja.mudou();
+    if (avisoDeVolta) status(avisoDeVolta, 8000);
     return;
   }
   // a rota de antes desta versão também tem o ponto genérico, sem marca
@@ -181,9 +189,9 @@ export async function conferirComOCensoAoAbrir() {
   const {levadas, refinadas, genericas: doCenso, foraDoCep} = await conferirComOCenso();
   const noLugar = e().paradas.some(p => p.pontoGenerico) || doCenso
     ? doCenso + (await genericasNoLugar()) + (await levarAoBairroPeloMapa(true)).genericas : 0;
-  if (!levadas && !refinadas && !genericas && !noLugar && !foraDoCep && !deVolta && !numerosMudaram) return;
+  if (!levadas && !refinadas && !genericas && !noLugar && !foraDoCep && !deVolta && !numerosMudaram && !paraOBairro) return;
   loja.mudou();
-  if (levadas || noLugar || foraDoCep || deVolta) status([
+  if (levadas || noLugar || foraDoCep || avisoDeVolta) status([
     avisoDeVolta,
     levadas ? `${levadas} parada(s) levada(s) para a porta do censo do IBGE, longe de onde a planilha punha: confira na porta.` : '',
     foraDoCep ? `${foraDoCep} parada(s) que a planilha punha longe das portas do próprio CEP, levada(s) para a porta do censo do IBGE: confira.` : '',

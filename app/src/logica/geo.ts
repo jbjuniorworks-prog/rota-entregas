@@ -46,6 +46,14 @@ const comPosicao = (p: Parada): p is Parada & Ponto => p.lat != null && p.lng !=
 // vizinha nenhuma a 2 km, e continuam marcadas.
 export const VIZINHAS_RAIO = 2000, VIZINHAS_MIN = 2;
 
+// Longe também é a parada longe das outras do mesmo bairro, com elas juntas, mesmo perto do meio
+// da rota: duas ADS do Jatobá vieram com um ponto do centro da Barra, a 12,8 km das outras 15 do
+// bairro, que estão a menos de 400 m do meio delas (Leudy, 09/10). Medido nas planilhas guardadas,
+// contra as entregas: entre 2 e 5 km das outras do bairro a planilha acertou 8 de 9 (bairro grande);
+// a mais de 5 km, com o bairro junto, só sobram essas duas e a ADS do Robalo de 19/09, entregue a
+// 510 m do meio do bairro e a 12 km da planilha.
+export const LONGE_DO_BAIRRO = 5000, BAIRRO_JUNTO = 1500, BAIRRO_MIN = 3;
+
 export function marcarIsoladas(paradas: Parada[]): number {
   for (const p of paradas) if (p.precisao === 'longe') p.precisao = p.precisaoAntes || 'planilha';
   const com = paradas.filter(p => comPosicao(p) && !p.entregue) as (Parada & Ponto)[];
@@ -53,10 +61,22 @@ export function marcarIsoladas(paradas: Parada[]): number {
   const centro = {lat: mediana(com.map(p => p.lat)), lng: mediana(com.map(p => p.lng))};
   const ds = com.map(p => haversine(p, centro));
   const limite = Math.max(ISOLADA_MIN, ISOLADA_FATOR * mediana(ds));
+  const longeDoBairro = (p: Parada & Ponto) => {
+    const b = bairroDe(p);
+    const outras = b ? com.filter(q => q !== p && bairroDe(q) === b) : [];
+    if (outras.length < BAIRRO_MIN) return false;
+    const meio = {lat: mediana(outras.map(q => q.lat)), lng: mediana(outras.map(q => q.lng))};
+    return mediana(outras.map(q => haversine(q, meio))) <= BAIRRO_JUNTO && haversine(p, meio) > LONGE_DO_BAIRRO;
+  };
+  const temVizinhas = (p: Parada & Ponto, conta: (q: Parada) => boolean) =>
+    com.filter(q => q !== p && conta(q) && haversine(p, q) <= VIZINHAS_RAIO).length >= VIZINHAS_MIN;
   let n = 0;
   com.forEach((p, i) => {
-    if (p.precisao === 'manual' || ds[i] <= limite) return;
-    if (com.filter(q => q !== p && haversine(p, q) <= VIZINHAS_RAIO).length >= VIZINHAS_MIN) return;
+    // a verificada tem entrega feita ali: abrir o app com a regra nova não a põe em dúvida de novo
+    if (p.precisao === 'manual' || p.precisao === 'confirmado') return;
+    const longeDaRota = ds[i] > limite && !temVizinhas(p, () => true);
+    // vizinha de outro bairro não prova nada: o ponto padrão do centro tem entregas de verdade em volta
+    if (!longeDaRota && !(longeDoBairro(p) && !temVizinhas(p, q => bairroDe(q) === bairroDe(p)))) return;
     p.precisaoAntes = p.precisao;
     p.precisao = 'longe';
     n++;
@@ -168,7 +188,9 @@ export function moverPeloBairro(paradas: Parada[]): Parada[] {
   const movidas: Parada[] = [];
   for (const p of paradas) {
     if (p.precisao !== 'longe' || !p.bairro || !DA_PLANILHA.has(p.precisaoAntes!)) continue;
-    const vizinhos = paradas.filter(q => q !== p && comPosicao(q) && q.precisao !== 'longe' && normal(q.bairro) === normal(p.bairro)) as (Parada & Ponto)[];
+    // o mesmo bairro de quem marcou: com "Jatobá)" e "Jatobá" diferentes, a parada ficava marcada
+    // e sem ter para onde ir
+    const vizinhos = paradas.filter(q => q !== p && comPosicao(q) && q.precisao !== 'longe' && bairroDe(q) === bairroDe(p)) as (Parada & Ponto)[];
     if (!vizinhos.length) continue;
     moverParaOBairro(p, {lat: mediana(vizinhos.map(q => q.lat)), lng: mediana(vizinhos.map(q => q.lng))}, p.bairro);
     movidas.push(p);
