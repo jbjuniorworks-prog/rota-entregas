@@ -119,14 +119,14 @@ async function levarAoBairroPeloMapa(soGenericas = false): Promise<{longe: numbe
 // Antes da nuvem: a porta que alguém já entregou passa por cima do censo também.
 // As refinadas andam poucos metros: a sequência e o tempo da rota continuam valendo, e a barra de
 // "as posições mudaram, refazer rota" seria barulho, ainda mais ao abrir o app no meio do dia.
-async function conferirComOCenso(): Promise<{levadas: number; refinadas: number; genericas: number; homonimas: number}> {
-  const {levadas, refinadas, genericas, homonimas} = await levarParaOCenso(e().paradas, e().cidade,
+async function conferirComOCenso(): Promise<{levadas: number; refinadas: number; genericas: number; foraDoCep: number}> {
+  const {levadas, refinadas, genericas, foraDoCep} = await levarParaOCenso(e().paradas, e().cidade,
     {porta: (cep, numero, cidade) => enderecoDoIbge(cep, numero, cidade, true), rua: portasDaRuaNoIbge, cep: portasDoCep});
-  // O desatualizar também marca as isoladas. A que sai da outra rua de mesmo nome costuma cair
-  // longe do resto da rota, e o vermelho de longe das outras entregas é o aviso de que ela nem é
-  // deste trajeto (Pedro, 08/10: 11,7 km).
-  if (levadas.length || genericas.length || homonimas.length) desatualizarRota(true);
-  return {levadas: levadas.length, refinadas: refinadas.length, genericas: genericas.length, homonimas: homonimas.length};
+  // O desatualizar também marca as isoladas. A que sai de longe do próprio CEP pode cair longe do
+  // resto da rota, e o vermelho de longe das outras entregas é o aviso de que ela nem é deste
+  // trajeto (Pedro, 08/10: 11,7 km).
+  if (levadas.length || genericas.length || foraDoCep.length) desatualizarRota(true);
+  return {levadas: levadas.length, refinadas: refinadas.length, genericas: genericas.length, foraDoCep: foraDoCep.length};
 }
 
 // O ponto que a planilha repete para vários bairros: a porta do censo, se ele tem; senão a rua,
@@ -157,14 +157,14 @@ export async function conferirComOCensoAoAbrir() {
   if (!e().paradas.some(p => (p.precisao === 'planilha' || p.pontoGenerico) && !p.entregue)) return;
   // a rota de antes desta versão também tem o ponto genérico, sem marca
   const genericas = marcarPontoGenerico(e().paradas);
-  const {levadas, refinadas, genericas: doCenso, homonimas} = await conferirComOCenso();
+  const {levadas, refinadas, genericas: doCenso, foraDoCep} = await conferirComOCenso();
   const noLugar = e().paradas.some(p => p.pontoGenerico) || doCenso
     ? doCenso + (await genericasNoLugar()) + (await levarAoBairroPeloMapa(true)).genericas : 0;
-  if (!levadas && !refinadas && !genericas && !noLugar && !homonimas) return;
+  if (!levadas && !refinadas && !genericas && !noLugar && !foraDoCep) return;
   loja.mudou();
-  if (levadas || noLugar || homonimas) status([
+  if (levadas || noLugar || foraDoCep) status([
     levadas ? `${levadas} parada(s) levada(s) para a porta do censo do IBGE, porque a planilha punha fora da rua: confira na porta.` : '',
-    homonimas ? `${homonimas} parada(s) que a planilha punha numa rua de mesmo nome longe do CEP, levada(s) para a porta do censo do IBGE: confira.` : '',
+    foraDoCep ? `${foraDoCep} parada(s) que a planilha punha longe das portas do próprio CEP, levada(s) para a porta do censo do IBGE: confira.` : '',
     noLugar ? `${noLugar} parada(s) que a planilha punha num mesmo ponto para vários bairros, levada(s) para a porta ou o bairro: confira no local.` : '',
   ].filter(Boolean).join(' '), 8000);
 }
@@ -177,7 +177,7 @@ async function importarPlanilhas(files: Blob[]) {
   // o censo antes do bairro: a porta vale mais que o meio do bairro
   const censo = await conferirComOCenso();
   resumo.censo = censo.levadas;
-  resumo.homonimas = censo.homonimas;
+  resumo.foraDoCep = censo.foraDoCep;
   const pelaRuaOuBairro = await genericasNoLugar();
   const peloMapa = await levarAoBairroPeloMapa();
   resumo.noBairro += peloMapa.longe;

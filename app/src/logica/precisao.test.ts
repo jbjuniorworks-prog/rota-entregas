@@ -135,7 +135,8 @@ describe('planilha e censo do IBGE discordando', () => {
   });
 
   // Pedro, 08/10: a planilha pôs uma Rua B do Industrial noutra Rua B, a 11,7 km, sem aviso.
-  describe('rua de nome genérico numa rua de mesmo nome, longe do próprio CEP', () => {
+  // Luan, 09/10: uma Rua E a 460 m da porta, noutra rua, a 345 m da porta mais perto do CEP.
+  describe('rua de nome genérico longe das portas do próprio CEP', () => {
     const LONGE = 3000;
     const doCep = [0, 20, 40].map(m => ({lat: -10.94 + (LONGE + m) * NORTE, lng: -37.06}));
     const ruaB = (bairro = 'Jardins', rua = 'Rua B') => ({...porta(LONGE, rua), bairro});
@@ -148,18 +149,36 @@ describe('planilha e censo do IBGE discordando', () => {
 
     it('vai para a porta exata do censo, com a planilha como opção', async () => {
       const {p, r} = await conferir(ruaB());
-      expect(r.homonimas).toEqual([p]);
+      expect(r.foraDoCep).toEqual([p]);
       expect(p).toMatchObject({lat: ruaB().lat, lng: -37.06, precisao: 'censo', fonte: 'IBGE'});
-      expect(p.exibido).toContain('a planilha punha este pino a 3,0 km, numa rua de mesmo nome fora do CEP');
+      expect(p.exibido).toContain('a planilha punha este pino a 3,0 km, longe das portas do CEP dela');
       expect(p.candidatos.map(c => c.fonte)).toEqual(['IBGE', 'planilha']);
     });
 
     it('fica como veio: bairro do censo diferente, ponto dentro do CEP, rua de outro nome', async () => {
       // com o bairro do censo diferente, nas medidas, quem errava era o CEP
       expect((await conferir(ruaB('Santa Maria'))).p.precisao).toBe('planilha');
-      expect((await conferir(ruaB(), [{lat: -10.94 + 300 * NORTE, lng: -37.06}, ...doCep])).p.precisao).toBe('planilha');
+      expect((await conferir(ruaB(), [{lat: -10.94 + 80 * NORTE, lng: -37.06}, ...doCep])).p.precisao).toBe('planilha');
       expect((await conferir(ruaB('Jardins', 'Rua C'))).p.precisao).toBe('planilha');
       expect((await conferir(ruaB(), doCep, false)).p.precisao).toBe('planilha');
+    });
+
+    it('a poucas centenas de metros também vai, e o aviso diz em metros', async () => {
+      const p = entrega();
+      const perto = [0, 20].map(m => ({lat: -10.94 + (345 + m) * NORTE, lng: -37.06}));
+      await levarParaOCenso([p], 'Aracaju', {porta: async () => ({...porta(460, 'Rua B'), bairro: 'Jardins'}), rua: async () => [], cep: async () => perto});
+      expect(p.precisao).toBe('censo');
+      expect(p.exibido).toMatch(/a planilha punha este pino a 4\d\d m, longe das portas do CEP dela/);
+    });
+
+    // o "e" da Rua E é palavra vazia para o mesmaRua, e ela não batia nem com ela mesma
+    it('a Rua E também', async () => {
+      const p = {...entrega(), texto: 'Rua E, 40, Jardins, CEP 49000-300'};
+      await levarParaOCenso([p], 'Aracaju', {porta: async () => ruaB('Jardins', 'Rua E'), rua: async () => [], cep: async () => doCep});
+      expect(p.precisao).toBe('censo');
+      const outra = {...entrega(), texto: 'Rua E, 40, Jardins, CEP 49000-300'};
+      await levarParaOCenso([outra], 'Aracaju', {porta: async () => ruaB('Jardins', 'Rua F'), rua: async () => [], cep: async () => doCep});
+      expect(outra.precisao).toBe('planilha');
     });
 
     it('o bairro do censo vale escrito no endereço também', async () => {

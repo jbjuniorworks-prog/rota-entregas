@@ -3,20 +3,24 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 08/10/2026.
+Atualizado em 09/10/2026.
 
-## Rua de nome genérico noutra rua de mesmo nome (08/10), para olhar na rua
+## Rua de nome genérico longe das portas do próprio CEP (08/10 e 09/10), para olhar na rua
 
-- A planilha do Pedro pôs uma "Rua B" do Industrial noutra Rua B, perto do aeroporto, a 11,8 km,
-  no meio das paradas daquela região, e o app não disse nada: a conferência pelo censo pulava rua
-  de nome genérico inteira, até pelo CEP.
-- Agora vai para a porta do censo quando: rua de nome genérico, planilha a mais de 500 m de toda
+- A planilha do Pedro pôs uma "Rua B" do Industrial noutra Rua B, perto do aeroporto, a 11,8 km; a
+  do Luan pôs uma ADS da "Rua E" a 435 m da porta, noutra rua. Nos dois o app não disse nada: a
+  conferência pelo censo pulava rua de nome genérico inteira, até pelo CEP.
+- Agora vai para a porta do censo quando: rua de nome genérico, planilha a mais de 100 m de toda
   porta do CEP, e o censo com o número exato do CEP, na rua de mesmo nome e no bairro que a
   planilha diz (no campo ou no texto). Fica laranja, e vermelha quando cai longe da rota.
-- Medido contra o GPS das entregas, de 18/09 a 08/10: longe do próprio CEP, em geral quem erra é o
+- Medido contra o GPS das entregas, de 18/09 a 09/10: longe do próprio CEP, em geral quem erra é o
   CEP (21 de 27 a mais de 1 km foram entregues no ponto da planilha). Por isso a regra só vale
-  para nome genérico e pede o bairro. Nas 39 planilhas guardadas ela mexe em 5 paradas; das 3 com
-  entrega, 2 foram na porta do censo e 1 mais perto dela que da planilha.
+  para nome genérico e pede o bairro. Com 100 m ela mexe em 13 paradas; das 7 já entregues, nas 7
+  a entrega foi mais perto da porta do censo (a Rua E do Luan, a 4 m dela). Começou em 500 m, e a
+  Rua E mostrou que era alto.
+- **"Rua E" não batia com nada no `mesmaRua`**: o "e" é palavra vazia, e a rua fica sem nome. A
+  regra do CEP usa uma comparação própria. O `mesmaRua` é usado em mais 10 lugares (busca, leitor,
+  censo) e continua assim: medir antes se a Rua E perde alguma coisa neles.
 - Olhar se aparece alguma levada para a porta errada: a planilha fica como opção em Conferir.
 
 ## Só o que falta, nas duas listas (07/10)

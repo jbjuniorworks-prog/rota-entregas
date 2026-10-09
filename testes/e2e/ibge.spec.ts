@@ -115,13 +115,13 @@ test('a Rua B que a planilha pôs noutra Rua B vai para a porta do CEP, e fica v
   await abrir(page);
   await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
-  await expect(page.locator('#status')).toContainText('1 estava(m) numa rua de mesmo nome longe do CEP', {timeout: 30_000});
+  await expect(page.locator('#status')).toContainText('1 estava(m) longe das portas do próprio CEP', {timeout: 30_000});
 
   const ruaB = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas.find((x: any) => x.texto.startsWith('Rua B, 23')));
   expect({lat: ruaB.lat, lng: ruaB.lng}).toEqual(PORTA);
   // a 10 km do resto da rota: vermelho, e o texto diz de onde ela saiu
   expect(ruaB.precisao).toBe('longe');
-  expect(ruaB.exibido).toContain('numa rua de mesmo nome fora do CEP');
+  expect(ruaB.exibido).toContain('longe das portas do CEP dela');
 });
 
 // Luan, 02/10: a rota lida pela versão antiga continuava errada depois de atualizar o app.

@@ -5,7 +5,7 @@
 export const LONGE_DA_ANCORA = 3000;
 
 import {DA_PLANILHA, DUVIDA} from './rotulos';
-import {chaveLugar, decompor, emCondominio, mesmaRua, normal, ruaGenerica} from './texto';
+import {chaveLugar, decompor, emCondominio, mesmaRua, normal, ruaGenerica, TIPOS_RUA} from './texto';
 import type {Candidato, Parada, Ponto} from './tipos';
 
 export const RAIO_BLOCO = 10;
@@ -236,28 +236,39 @@ export function refinarPeloCenso(p: Parada & Ponto, porta: Candidato, metros: nu
 
 // Rua de nome genérico ("Rua B") fica de fora da conferência pela rua, mas não pelo CEP: a
 // planilha do Pedro (08/10) pôs uma Rua B do Industrial noutra Rua B, perto do aeroporto, a 11,7
-// km, e o app não disse nada. Medido nas planilhas de 18/09 a 08/10 contra o GPS das entregas:
-// longe do próprio CEP, quem costuma errar é o CEP (21 de 27 entregas a mais de 1 km dele foram no
-// ponto da planilha), e por isso a regra pede mais. Rua de nome genérico, planilha a mais de 500 m
-// de toda porta do CEP, e o censo com a porta exata dele, na rua de mesmo nome e no bairro que a
-// planilha diz. Nos 3 casos com entrega assim, 2 foram na porta do censo e 1 mais perto dela que da
-// planilha. O bairro separa o que restava: com o do censo diferente (Santa Maria para uma
-// entrega do Aruana), a planilha estava certa e o CEP errado.
-export const LONGE_DO_CEP = 500;
+// km, e a do Luan (09/10) pôs uma Rua E a 460 m da porta, noutra rua, e o app não disse nada.
+// Medido nas planilhas de 18/09 a 09/10 contra o GPS das entregas: longe do próprio CEP, quem
+// costuma errar é o CEP (21 de 27 entregas a mais de 1 km dele foram no ponto da planilha), e por
+// isso a regra pede mais. Rua de nome genérico, o censo com a porta exata do CEP, na rua de mesmo
+// nome e no bairro que a planilha diz, e a planilha a mais de 100 m de toda porta do CEP: 13
+// paradas, 7 já entregues, e nas 7 a entrega foi mais perto da porta do censo (em 6, a até 22 m
+// dela; a Rua E do Luan, a 4 m). Abaixo de 100 m aparece a planilha certa (um condomínio, que já
+// fica de fora). O bairro separa o caso em que o CEP é que estava errado: Santa Maria no censo para uma
+// entrega do Aruana, feita no ponto da planilha.
+export const LONGE_DO_CEP = 100;
 const soLetras = (s: string) => normal(s).replace(/[^a-z0-9]/g, '');
 
-export function deOutraRuaDeMesmoNome(p: Parada, porta: Candidato | null, doCep: Ponto[]): number | null {
+// O mesmaRua deixa de fora as palavras vazias, e na "Rua E" a única palavra é o "e": a rua ficava
+// sem nome nenhum e não batia com nada (Luan, 09/10). Aqui o nome genérico é só a letra, e conta.
+const palavrasDoNome = (rua: string) => normal(rua).replace(TIPOS_RUA, '').replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(Boolean);
+const mesmaRuaGenerica = (pedida: string, achada: string) => {
+  const a = palavrasDoNome(pedida), b = new Set(palavrasDoNome(achada));
+  return a.length > 0 && a.every(w => b.has(w));
+};
+
+export function foraDasPortasDoCep(p: Parada, porta: Candidato | null, doCep: Ponto[]): number | null {
   if (!porta || !porta.rua || p.precisao !== 'planilha' || p.entregue || !comPosicao(p) || !doCep.length) return null;
   const d = decompor(p.texto);
-  if (!ruaGenerica(d.rua) || !mesmaRua(d.rua, porta.rua)) return null;
+  if (!ruaGenerica(d.rua) || !mesmaRuaGenerica(d.rua, porta.rua)) return null;
   const bairro = soLetras(porta.bairro || '');
   if (!bairro || !(soLetras(p.bairro || '') + soLetras(p.texto)).includes(bairro)) return null;
   return Math.min(...doCep.map(x => haversine(p, x))) > LONGE_DO_CEP ? haversine(p, porta) : null;
 }
 
-export function levarDaRuaDeMesmoNome(p: Parada & Ponto, porta: Candidato, metros: number) {
+export function levarParaAPortaDoCep(p: Parada & Ponto, porta: Candidato, metros: number) {
   levarParaAPortaDoCenso(p, porta, metros);
-  p.exibido = `Porta do censo do IBGE: a planilha punha este pino a ${(metros / 1000).toFixed(1).replace('.', ',')} km, numa rua de mesmo nome fora do CEP. Confira na porta`;
+  const distancia = metros < 1000 ? `${Math.round(metros)} m` : `${(metros / 1000).toFixed(1).replace('.', ',')} km`;
+  p.exibido = `Porta do censo do IBGE: a planilha punha este pino a ${distancia}, longe das portas do CEP dela. Confira na porta`;
 }
 
 export interface Censo {
@@ -271,14 +282,14 @@ export interface Censo {
 // O mesmo número decide junto. Com complementos diferentes (o bloco, a casa), metade num pino e
 // metade no outro seria pior que qualquer um dos dois.
 // levadas: a planilha punha fora da rua, e o pino andou muito; refinadas: as duas concordavam.
-export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: Censo): Promise<{levadas: Parada[]; refinadas: Parada[]; genericas: Parada[]; homonimas: Parada[]}> {
+export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: Censo): Promise<{levadas: Parada[]; refinadas: Parada[]; genericas: Parada[]; foraDoCep: Parada[]}> {
   const porLugar = new Map<string, Parada[]>();
   for (const p of paradas) {
     if (p.entregue || !(p.precisao === 'planilha' || (p.pontoGenerico && p.precisao === 'aproximada'))) continue;
     const k = chaveLugar(p.texto, p.bairro, cidade);
     if (k) porLugar.set(k, [...(porLugar.get(k) || []), p]);
   }
-  const levadas: Parada[] = [], refinadas: Parada[] = [], genericas: Parada[] = [], homonimas: Parada[] = [];
+  const levadas: Parada[] = [], refinadas: Parada[] = [], genericas: Parada[] = [], foraDoCep: Parada[] = [];
   for (const ps of porLugar.values()) {
     if (ps.some(p => emCondominio(p.texto))) continue;
     const d = decompor(ps[0].texto);
@@ -292,8 +303,8 @@ export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: 
         if (!porta) continue;
         const doCep = await censo.cep(d.cep, daCidade);
         for (const p of ps) {
-          const metros = deOutraRuaDeMesmoNome(p, porta, doCep);
-          if (metros != null) { levarDaRuaDeMesmoNome(p as Parada & Ponto, porta, metros); homonimas.push(p); }
+          const metros = foraDasPortasDoCep(p, porta, doCep);
+          if (metros != null) { levarParaAPortaDoCep(p as Parada & Ponto, porta, metros); foraDoCep.push(p); }
         }
       } catch {}
       continue;
@@ -320,7 +331,7 @@ export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: 
       }
     } catch {}
   }
-  return {levadas, refinadas, genericas, homonimas};
+  return {levadas, refinadas, genericas, foraDoCep};
 }
 
 export function proximaAPe(feita: Parada, proxima: Parada | undefined): number | null {
