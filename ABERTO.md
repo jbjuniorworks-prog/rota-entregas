@@ -5,6 +5,18 @@ decisão está na mensagem do commit que a fez, não aqui.
 
 Atualizado em 09/10/2026.
 
+## Rota marcada de uma vez, longe das portas (04/10), decidir
+
+O Edilson marcou as 42 entregas da rota de 03/10 (Atalaia) na manhã de 04/10, em 5 minutos, de um
+ponto só, a 8 km das portas. O botão grande do cartão é "Entreguei aqui", que grava a porta no GPS:
+35 correções e 42 passagens nesse ponto, e 33 endereços ficaram verificados ali (correção mais
+passagem do mesmo motorista já verificam, 017). Alguns são endereços que voltam nas rotas do
+Pedro. No resto do banco é o normal: de 1.263 endereços verificados, os outros 8 que dependem de
+marcação em lote são ruas cheias, com a porta mudando a cada marcação. Falta:
+- apagar essas passagens e correções (ele roda, ou autoriza);
+- uma trava no celular: várias portas de endereços diferentes, cujos pinos estavam longe uns dos
+  outros, gravadas no mesmo ponto em poucos minutos, não viram porta. Medir antes no histórico.
+
 ## Regras que não servem para todo tipo de rota (09/10), levantamento
 
 A rota da Leudy (Zona de Expansão da Barra, 17 km de rodovia) mostrou duas regras pensadas para
@@ -31,7 +43,7 @@ Aracaju urbana errando em série. O dono pediu para achar todas. Feito até aqui
 Nas 173 linhas da Barra guardadas (Jeferson 05/10, Leudy 09/10):
 - **O censo cobre a Barra pelo nome, não pelo CEP.** São 7.839 portas e os bairros da Zona de
   Expansão (Jatobá, Olhos d'Água, Capuã, Luar da Barra...), mas só 37 linhas acham a porta pelo
-  CEP: lá o CEP é o geral da cidade (o Google dá 49140-000 para a Rua G do Jatobá). Conferir a
+  CEP. Não é o CEP geral: só 1 das 173 linhas traz 49140-000 (o Google é que o dá). Conferir a
   posição da planilha pela rua + número + bairro no censo, como já se faz no endereço sem
   coordenada. Medir antes contra as entregas da Barra.
 - **O ponto padrão do centro**: em -10,9079, -37,0267 (a rotatória de 05/10) a Shopee pôs 8 ADS de
@@ -55,6 +67,9 @@ Medido em 09/10, nos 87 lugares da Barra das planilhas guardadas, 47 com GPS de 
   rua" sobram 7 a 10 movidas, que ainda pioram 2 a 4: o ganho estava na planilha na rua certa e
   no trecho errado, que é onde a numeração do loteamento e a do censo também discordam. Juntar
   mais entregas da Barra antes de decidir.
+- **A memória de entregas quase não ajuda lá ainda**: só 1 das 172 linhas era de endereço já
+  entregue em outro dia. As entregas de lá juntam o dado sozinhas (GPS na porta); rodar de novo a
+  medição do censo pela rua quando houver umas 150 entregas da Barra.
 
 Falta passar o resto, cada regra contra as entregas, separado por tipo de rota (Aracaju urbana,
 Zona de Expansão e rodovia, condomínio, Mercado Livre sem coordenada, outra cidade):
