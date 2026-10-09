@@ -26,6 +26,10 @@ marcação em lote são ruas cheias, com a porta mudando a cada marcação. Falt
   Android próprio, ou um gravador de trajeto instalado nos celulares, mas o trajeto diz por onde
   passaram, não qual número é qual casa. Serviria para desenhar no OpenStreetMap as ruas que
   faltam nos loteamentos novos (melhora a rota, não o pino).
+- **Faltam ruas no mapa?** Das 1.675 portas entregues, a mediana fica a 3 m de uma rua do
+  OpenStreetMap, e só 15 (1%) a mais de 40 m. Na zona sul de Aracaju quase nenhuma: Atalaia 1 de
+  167, Aruana 1 de 153, Aeroporto, Farolândia e Coroa do Meio nenhuma. Gravar trajeto lá não
+  acrescenta rua; o que erra o pino é qual número é qual casa.
 - **Numeração aprendida das entregas**: para uma porta entregue, a posição estimada pelo número,
   entre a porta entregue logo abaixo e a logo acima na mesma rua (vão até 300 números). Dá para
   estimar 473 das 1.650 portas, mediana 19 m. Onde o censo tem a porta (343), ele é melhor
