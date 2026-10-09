@@ -19,9 +19,36 @@ Atualizado em 09/10/2026.
   a entrega foi mais perto da porta do censo (a Rua E do Luan, a 4 m dela). Começou em 500 m, e a
   Rua E mostrou que era alto.
 - **"Rua E" não batia com nada no `mesmaRua`**: o "e" é palavra vazia, e a rua fica sem nome. A
-  regra do CEP usa uma comparação própria. O `mesmaRua` é usado em mais 10 lugares (busca, leitor,
-  censo) e continua assim: medir antes se a Rua E perde alguma coisa neles.
+  regra do CEP usa uma comparação própria, em que a letra é o começo do nome do censo ("Travessa
+  E" não é a "Travessa Trinta e Um de Março").
 - Olhar se aparece alguma levada para a porta errada: a planilha fica como opção em Conferir.
+
+## O `mesmaRua` e a Rua E nos outros usos (09/10): medido, não mudar
+
+Só "Rua E" e "Travessa E" ficam sem nome: 19 de 3.900 linhas de planilha, nenhuma nas 4 gravações.
+- Censo pela rua (`geo.ts` discordaDaPorta e refinoPeloCenso, `ibge.ts` portasDaRuaNoIbge): nome
+  vazio é rua genérica, e a genérica sai antes. Não muda nada.
+- Ponto genérico da planilha (`geo.ts`, 3 bairros no mesmo ponto): nenhuma Rua E nesse caso.
+- Leitor (`juntarLeituras`, `juntarQuadros`): nenhuma Rua E nas gravações; sem evidência.
+- Busca no mapa (`geocodificacao.ts` validar): hoje toda Rua E do mapa sai "ruim" (vermelho). Com
+  a comparação nova as 15 seriam aceitas, e das 13 com entrega 6 estavam a mais de 600 m (o
+  Aruana tem várias Rua E). O vermelho, nascido do defeito, protege. Não aplicar.
+
+## O mapa erra a rua de nome genérico (09/10), medir no caminho inteiro
+
+Consultado como o app faz para endereço sem coordenada (texto livre, sem o CEP), o mapa devolveu
+rua de mesmo nome para 117 de 130 ruas genéricas com entrega (Rua A, B, Dois...), e 52 estavam a
+mais de 500 m da entrega: outra Rua C do mesmo bairro. O app aceita como "rua certa". Só pesa no
+endereço sem coordenada (Meli, colado), e depois que o censo não achou o número pelo CEP. Falta
+medir dentro do `geoOSM` de verdade, com o CEP e a âncora dele, antes de decidir.
+
+## Planilha em cima da rua, longe do número (09/10), decisão pendente
+
+A regra de 01/10 (de 10 casos) deixa a planilha quando ela está em cima da rua, a mais de 80 m da
+porta do censo, porque quem errava era o censo. Medida de novo contra as entregas: censo certo em
+13, planilha em 6, nenhum em 1. Fora da rua, onde o app já leva para o censo: 21 a 7. A distância
+não separa (os dois lados entre 85 e 130 m). Mudar conserta 13 e estraga 6: o dono decide. Caso de
+09/10: uma ADS do Pedro a 274 m da porta, ainda sem entrega.
 
 ## Só o que falta, nas duas listas (07/10)
 
