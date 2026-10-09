@@ -53,15 +53,17 @@ test('endereço que o censo não tem continua indo pelo caminho de sempre', asyn
 });
 
 // Luan, 01/10: a planilha pôs a porta a 168 m e a 773 m do lugar, e o censo tinha as duas certas.
-// Quem desempata é a rua: planilha fora dela errou o lugar; em cima dela, o censo pode ter errado o número.
-test('planilha fora da rua vai para a porta do censo; em cima da rua, fica como veio', async ({page}) => {
+// Até 09/10 a planilha em cima da rua ficava; medido contra as entregas, o censo acertou 13 e ela
+// 6, e passou a ir também. O aviso diz se ela estava fora da rua ou em outro trecho dela.
+test('planilha a mais de 80 m da porta do censo vai para ela, fora da rua ou em outro trecho', async ({page}) => {
   const XLSX = (await import('xlsx')).default;
   const PORTA_170 = {lat: -10.935879, lng: -37.078077};
+  const PORTA_802 = {lat: -10.93604, lng: -37.076566};
   const FORA_DA_RUA = {lat: -10.938579, lng: -37.078077};
   const cab = ['AT ID', 'Sequence', 'Stop', 'SPX TN', 'Destination Address', 'Bairro', 'City', 'Zipcode/Postal code', 'Latitude', 'Longitude'];
   const ws = XLSX.utils.aoa_to_sheet([cab,
     ['AT-TESTE', 1, 1, '', 'Rua Francisco de Assis Delmondes Pereira Freitas, 170', 'Ponto Novo', 'Aracaju', '49097-710', FORA_DA_RUA.lat, FORA_DA_RUA.lng],
-    // o censo põe o 802 a 166 m daqui, mas a planilha está em cima da rua: fica
+    // o censo põe o 802 a 166 m daqui, com a planilha em cima da rua: vai também
     ['AT-TESTE', 2, 2, '', 'Rua Francisco de Assis Delmondes Pereira Freitas, 802', 'Ponto Novo', 'Aracaju', '49097-710', PORTA_170.lat, PORTA_170.lng],
     // o censo não tem este CEP
     ['AT-TESTE', 3, 3, '', 'Rua Que Não Existe, 12', 'Ponto Novo', 'Aracaju', '49999-999', -10.9372, -37.0790],
@@ -71,20 +73,21 @@ test('planilha fora da rua vai para a porta do censo; em cima da rua, fica como 
   await abrir(page);
   await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
-  await expect(page.locator('#status')).toContainText('1 levada(s) para a porta do censo do IBGE', {timeout: 30_000});
+  await expect(page.locator('#status')).toContainText('2 levada(s) para a porta do censo do IBGE', {timeout: 30_000});
 
   const como = (inicio: string) => page.evaluate(t => {
     const p = JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas.find((x: any) => x.texto.startsWith(t));
     return {lat: p.lat, lng: p.lng, precisao: p.precisao};
   }, inicio);
   expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 170')).toEqual({...PORTA_170, precisao: 'censo'});
-  expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 802')).toEqual({...PORTA_170, precisao: 'planilha'});
+  expect(await como('Rua Francisco de Assis Delmondes Pereira Freitas, 802')).toEqual({...PORTA_802, precisao: 'censo'});
   expect((await como('Rua Que Não Existe')).precisao).toBe('planilha');
 
   // e a planilha continua a um toque, em Conferir, abrindo o cartão
   await aba(page, '2. Conferir');
   const linha = linhaDe(page, 'Rua Francisco de Assis Delmondes Pereira Freitas, 170', 'Editar');
   await expect(linha).toContainText('a planilha punha este pino a 300 m, fora da rua');
+  await expect(linhaDe(page, 'Rua Francisco de Assis Delmondes Pereira Freitas, 802', 'Editar')).toContainText('em outro trecho da mesma rua');
   await linha.locator('.topo').click();
   await linha.getByRole('button', {name: /A posição que veio na planilha/}).click();
   // a escolha dele fica: nem abrir o app de novo leva para o censo outra vez

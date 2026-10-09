@@ -42,13 +42,17 @@ mais de 500 m da entrega: outra Rua C do mesmo bairro. O app aceita como "rua ce
 endereço sem coordenada (Meli, colado), e depois que o censo não achou o número pelo CEP. Falta
 medir dentro do `geoOSM` de verdade, com o CEP e a âncora dele, antes de decidir.
 
-## Planilha em cima da rua, longe do número (09/10), decisão pendente
+## Planilha em cima da rua, longe do número (09/10), para olhar na rua
 
-A regra de 01/10 (de 10 casos) deixa a planilha quando ela está em cima da rua, a mais de 80 m da
-porta do censo, porque quem errava era o censo. Medida de novo contra as entregas: censo certo em
-13, planilha em 6, nenhum em 1. Fora da rua, onde o app já leva para o censo: 21 a 7. A distância
-não separa (os dois lados entre 85 e 130 m). Mudar conserta 13 e estraga 6: o dono decide. Caso de
-09/10: uma ADS do Pedro a 274 m da porta, ainda sem entrega.
+- A regra de 01/10 (de 10 casos) deixava a planilha quando ela estava em cima da rua, a mais de
+  80 m da porta do censo. Medida de novo contra as entregas: censo certo em 13, planilha em 6,
+  nenhum em 1 (fora da rua, onde já ia para o censo: 21 a 7). A distância não separa. O dono
+  decidiu mudar: vai para a porta do censo, laranja, e o aviso diz "em outro trecho da mesma rua".
+- A porta verificada continua vencendo o censo. Na planilha do Pedro de 09/10 foram 3: a ADS que
+  ele mesmo arrumou à mão para a porta do censo, e duas que o censo erra mas que já tinham entrega
+  verificada no pino (e voltam para ela).
+- Em commit próprio, para desfazer sem levar a Rua E junto. Medir as próximas entregas desse caso:
+  as levadas ficam com fonte IBGE, e a posição da planilha nos candidatos.
 
 ## Só o que falta, nas duas listas (07/10)
 

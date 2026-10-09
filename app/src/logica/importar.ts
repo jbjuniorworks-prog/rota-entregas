@@ -24,7 +24,7 @@ export interface ResumoPlanilha {
   sugestoes: number;
   // endereços de cliente que já reclamou (018), vindos da nuvem depois da busca
   xaropes?: number;
-  // levadas para a porta do censo do IBGE: a planilha punha o pino fora da rua
+  // levadas para a porta do censo do IBGE: a planilha punha o pino a mais de 80 m dela
   censo?: number;
   // rua de nome genérico que a planilha punha longe das portas do próprio CEP, levadas para a porta
   foraDoCep?: number;
@@ -97,7 +97,7 @@ export function resumoPlanilha(r: ResumoPlanilha): string {
     + (r.longe ? ` ${r.longe} com posição longe das outras entregas: ${r.noBairro === r.longe ? 'levada(s) para o bairro certo, confira no local.' : r.noBairro ? `${r.noBairro} levada(s) para o bairro certo, confira o pino das outras.` : 'confira o pino antes de sair.'}` : '')
     + (r.aproximadas ? ` ${r.aproximadas} com posição aproximada na planilha: confira o pino.` : '')
     + (r.numeros ? ` ${r.numeros} com número que não bate com a posição: confira.` : '')
-    + (r.censo ? ` ${r.censo} levada(s) para a porta do censo do IBGE, porque a planilha punha fora da rua: confira na porta.` : '')
+    + (r.censo ? ` ${r.censo} levada(s) para a porta do censo do IBGE, longe de onde a planilha punha: confira na porta.` : '')
     + (r.foraDoCep ? ` ${r.foraDoCep} estava(m) longe das portas do próprio CEP: levada(s) para a porta do censo do IBGE, confira.` : '')
     + (r.genericas ? ` ${r.genericas} com um ponto que a planilha repete para bairros diferentes: ${(r.genericasNoLugar || 0) === r.genericas ? 'levada(s) para a porta do censo ou para o bairro, confira no local.' : `${r.genericasNoLugar || 0} levada(s) para a porta do censo ou para o bairro, confira o pino das outras.`}` : '')
     + (r.semPosicao ? ` ${r.semPosicao} sem posição, buscando no mapa…` : '');

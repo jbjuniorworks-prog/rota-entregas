@@ -42,6 +42,16 @@ describe('posições de outros motoristas', () => {
     aplicar([p], [pos('a|1', 'confirmado', {motoristas: 1})]);
     expect(p.exibido).toBe('Endereço verificado por quem administra');
   });
+  // A porta do censo é palpite até alguém entregar: a verificada passa por cima dela, mesmo com o
+  // censo levando a parada de onde a planilha punha (Pedro, 09/10: entregue a 8 m da planilha).
+  it('a porta verificada vence a porta do censo; a sugestão só aparece, sem mover', () => {
+    const a = parada('a|1', {precisao: 'censo', fonte: 'IBGE'}), b = parada('b|1', {precisao: 'censo', fonte: 'IBGE'});
+    aplicar([a, b], [pos('a|1', 'confirmado', {fonte: 'entrega', motoristas: 0, entregas: 1}), pos('b|1', 'sugestao')]);
+    expect(a).toMatchObject({lat: -11.04, lng: -37.10, precisao: 'confirmado'});
+    expect(a.candidatos[0]).toMatchObject({lat: -10.90, precisao: 'censo', fonte: 'original'});
+    expect(b).toMatchObject({lat: -10.90, precisao: 'censo'});
+    expect(b.sugestao).toMatchObject({lat: -11.04});
+  });
   it('de 1 motorista só: não move, vira sugestão com a distância', () => {
     const p = parada('a|1');
     expect(aplicar([p], [pos('a|1', 'sugestao')])).toEqual({confirmadas: 0, sugestoes: 1, minhas: 0});

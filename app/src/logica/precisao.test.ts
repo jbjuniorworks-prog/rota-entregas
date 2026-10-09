@@ -86,10 +86,18 @@ describe('planilha e censo do IBGE discordando', () => {
     expect(p.candidatos.map(c => [c.fonte, c.lat])).toEqual([['IBGE', porta(170).lat], ['planilha', -10.94]]);
   });
 
-  // nos medidos, quem estava em cima da rua e longe do número era o censo errando a numeração
-  it('planilha em cima da rua, longe do número: fica como veio', () => {
+  // Até 09/10 a planilha em cima da rua ficava: em 10 casos de 01/10 quem errava era o censo. Medido
+  // de novo contra as entregas: o censo acertou 13, a planilha 6. Vai, com outro aviso.
+  it('planilha em cima da rua, longe do número: também vai, e o aviso diz que é a mesma rua', async () => {
     const ruaComAPlanilha = [...ruaAoNorte, {lat: -10.94 + 30 * NORTE, lng: -37.06}];
     expect(planilhaForaDaRua(parada(), porta(170), ruaComAPlanilha)).toBeNull();
+    const p = parada();
+    const r = await levarParaOCenso([p], 'Aracaju', {porta: async () => porta(170), rua: async () => ruaComAPlanilha});
+    expect(r.levadas).toEqual([p]);
+    expect(p).toMatchObject({lat: porta(170).lat, precisao: 'censo'});
+    expect(p.exibido).toContain('170 m, em outro trecho da mesma rua');
+    expect(p.exibido).not.toContain('fora da rua');
+    expect(p.candidatos.map(c => [c.fonte, c.lat])).toEqual([['IBGE', porta(170).lat], ['planilha', -10.94]]);
   });
 
   it('perto do número, com o número em outra rua, ou com posição que não veio só da planilha: fica como veio', () => {

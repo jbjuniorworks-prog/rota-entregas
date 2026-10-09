@@ -163,7 +163,7 @@ export async function conferirComOCensoAoAbrir() {
   if (!levadas && !refinadas && !genericas && !noLugar && !foraDoCep) return;
   loja.mudou();
   if (levadas || noLugar || foraDoCep) status([
-    levadas ? `${levadas} parada(s) levada(s) para a porta do censo do IBGE, porque a planilha punha fora da rua: confira na porta.` : '',
+    levadas ? `${levadas} parada(s) levada(s) para a porta do censo do IBGE, longe de onde a planilha punha: confira na porta.` : '',
     foraDoCep ? `${foraDoCep} parada(s) que a planilha punha longe das portas do próprio CEP, levada(s) para a porta do censo do IBGE: confira.` : '',
     noLugar ? `${noLugar} parada(s) que a planilha punha num mesmo ponto para vários bairros, levada(s) para a porta ou o bairro: confira no local.` : '',
   ].filter(Boolean).join(' '), 8000);

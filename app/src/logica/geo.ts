@@ -175,6 +175,10 @@ export function marcarNumerosIncoerentes(paradas: Parada[]): number {
 // que a planilha acertava, ela estava a até 50 m de uma porta da rua, e quem errava o número era o
 // censo. Errado com esta regra sobra um: planilha certa a 152 m da porta mais perto no censo.
 // Os dois limites saíram desses 10 casos; o ABERTO.md pede medir de novo.
+// Medido de novo em 09/10, nas planilhas de 18/09 a 09/10, contra o GPS das entregas: com a
+// planilha em cima da rua e a mais de 80 m da porta, o censo acertou 13 e a planilha 6 (nenhum,
+// 1); fora da rua, 21 a 7. A rua não separava quem acerta, e a planilha em cima da rua passou a ir
+// para o censo também. Ela continua de opção em Conferir, e o aviso diz qual dos dois casos era.
 // Repassado depois em 24 planilhas reais (1572 paradas), contra o GPS de cada entrega. Os que
 // pioravam eram de dois tipos, e ficam de fora:
 // - rua de nome genérico, como "Rua B1" ou "Rua Onze": o censo achava outra rua de mesmo nome, e
@@ -199,16 +203,17 @@ export function planilhaForaDaRua(p: Parada, porta: Candidato | null, rua: Ponto
   return Math.min(...rua.map(x => haversine(p, x))) > FORA_DA_RUA ? d : null;
 }
 
-// A planilha fica como opção em 2. Conferir: em um caso de sete quem errava era o censo.
-// `metros` nulo: o ponto da planilha era o mesmo para vários bairros, e não há distância que conte.
-export function levarParaAPortaDoCenso(p: Parada & Ponto, porta: Candidato, metros: number | null) {
+// A planilha fica como opção em 2. Conferir: das 50 levadas medidas em 09/10, em 13 quem acertava
+// era ela. `metros` nulo: o ponto da planilha era o mesmo para vários bairros, e não há distância
+// que conte. `naRua`: a planilha estava na rua certa, em outro trecho; o aviso não diz "fora da rua".
+export function levarParaAPortaDoCenso(p: Parada & Ponto, porta: Candidato, metros: number | null, naRua = false) {
   p.candidatos = [porta, metros == null
     ? {lat: p.lat, lng: p.lng, exibido: 'O ponto que veio na planilha (o mesmo para vários bairros)', precisao: 'aproximada', fonte: 'planilha'}
     : {lat: p.lat, lng: p.lng, exibido: 'A posição que veio na planilha', precisao: 'planilha', fonte: 'planilha'}];
   Object.assign(p, {lat: porta.lat, lng: porta.lng, precisao: 'censo', fonte: 'IBGE',
     exibido: metros == null
       ? 'Porta do censo do IBGE: a planilha deu o mesmo ponto para vários bairros. Confira na porta'
-      : `Porta do censo do IBGE: a planilha punha este pino a ${Math.round(metros)} m, fora da rua. Confira na porta`});
+      : `Porta do censo do IBGE: a planilha punha este pino a ${Math.round(metros)} m, ${naRua ? 'em outro trecho da mesma rua' : 'fora da rua'}. Confira na porta`});
   delete p.pontoGenerico;
 }
 
@@ -283,7 +288,8 @@ export interface Censo {
 
 // O mesmo número decide junto. Com complementos diferentes (o bloco, a casa), metade num pino e
 // metade no outro seria pior que qualquer um dos dois.
-// levadas: a planilha punha fora da rua, e o pino andou muito; refinadas: as duas concordavam.
+// levadas: a planilha punha a mais de 80 m da porta, fora da rua ou em outro trecho dela; refinadas:
+// as duas concordavam.
 export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: Censo): Promise<{levadas: Parada[]; refinadas: Parada[]; genericas: Parada[]; foraDoCep: Parada[]}> {
   const porLugar = new Map<string, Parada[]>();
   for (const p of paradas) {
@@ -326,10 +332,13 @@ export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: 
         if (metros != null) { refinarPeloCenso(p as Parada & Ponto, porta, metros); refinadas.push(p); }
       }
       if (!ps.some(p => discordaDaPorta(p, porta) != null)) continue;
+      // as portas da rua não decidem mais se vai (09/10), só o que o aviso diz
       const rua = await censo.rua(d.rua, porta, daCidade);
       for (const p of ps) {
-        const metros = planilhaForaDaRua(p, porta, rua);
-        if (metros) { levarParaAPortaDoCenso(p as Parada & Ponto, porta, metros); levadas.push(p); }
+        const metros = discordaDaPorta(p, porta);
+        if (metros == null) continue;
+        levarParaAPortaDoCenso(p as Parada & Ponto, porta, metros, planilhaForaDaRua(p, porta, rua) == null);
+        levadas.push(p);
       }
     } catch {}
   }
