@@ -1,5 +1,5 @@
 ﻿import {operacoesDaPlanilha} from '../logica/fila';
-import {cidadeDaParada, haversine, levarGenericaAoBairro, levarGenericaParaARua, levarParaOCenso, marcarIsoladas, marcarPontoGenerico, mediana, moverGenericasPeloBairro, moverParaOBairro} from '../logica/geo';
+import {cidadeDaParada, haversine, levarGenericaAoBairro, levarGenericaParaARua, levarParaOCenso, marcarIsoladas, marcarPontoGenerico, mediana, marcarNumerosIncoerentes, moverGenericasPeloBairro, moverParaOBairro, voltarDoBairro} from '../logica/geo';
 import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from '../logica/importar';
 import {CORES, DA_PLANILHA} from '../logica/rotulos';
 import {coordenadaNoTexto, decompor, extrairEnderecos, ruaGenerica} from '../logica/texto';
@@ -154,15 +154,29 @@ const NA_RUA: ReadonlySet<Precisao> = new Set<Precisao>(['exato', 'bom', 'rua', 
 // com o censo ainda sem baixar, atualizar o app não consertava nada (Luan, 02/10). Quem já está
 // na porta do censo, ou foi escolhido por ele, não é mais 'planilha' e não volta a ser mexido.
 export async function conferirComOCensoAoAbrir() {
-  if (!e().paradas.some(p => (p.precisao === 'planilha' || p.pontoGenerico) && !p.entregue)) return;
+  // a rota lida antes de 09/10 pode ter levado um grupo inteiro para o bairro do mapa (Leudy)
+  const deVolta = voltarDoBairro(e().paradas).length;
+  if (deVolta) desatualizarRota(true);
+  // e o "número não bate" gravado antes vale de novo pela regra de hoje, que deixa a rodovia de
+  // fora: antes do censo, como na leitura da planilha (Leudy: 10 vermelhos na rodovia)
+  const tinham = e().paradas.filter(p => p.precisao === 'numero');
+  tinham.forEach(p => { p.precisao = 'planilha'; });
+  const numerosMudaram = tinham.length !== marcarNumerosIncoerentes(e().paradas);
+  const avisoDeVolta = deVolta ? `${deVolta} parada(s) de um grupo longe do resto da rota voltaram para a posição da planilha.` : '';
+  if (!e().paradas.some(p => (p.precisao === 'planilha' || p.pontoGenerico) && !p.entregue)) {
+    if (deVolta || numerosMudaram) loja.mudou();
+    if (deVolta) status(avisoDeVolta, 8000);
+    return;
+  }
   // a rota de antes desta versão também tem o ponto genérico, sem marca
   const genericas = marcarPontoGenerico(e().paradas);
   const {levadas, refinadas, genericas: doCenso, foraDoCep} = await conferirComOCenso();
   const noLugar = e().paradas.some(p => p.pontoGenerico) || doCenso
     ? doCenso + (await genericasNoLugar()) + (await levarAoBairroPeloMapa(true)).genericas : 0;
-  if (!levadas && !refinadas && !genericas && !noLugar && !foraDoCep) return;
+  if (!levadas && !refinadas && !genericas && !noLugar && !foraDoCep && !deVolta && !numerosMudaram) return;
   loja.mudou();
-  if (levadas || noLugar || foraDoCep) status([
+  if (levadas || noLugar || foraDoCep || deVolta) status([
+    avisoDeVolta,
     levadas ? `${levadas} parada(s) levada(s) para a porta do censo do IBGE, longe de onde a planilha punha: confira na porta.` : '',
     foraDoCep ? `${foraDoCep} parada(s) que a planilha punha longe das portas do próprio CEP, levada(s) para a porta do censo do IBGE: confira.` : '',
     noLugar ? `${noLugar} parada(s) que a planilha punha num mesmo ponto para vários bairros, levada(s) para a porta ou o bairro: confira no local.` : '',

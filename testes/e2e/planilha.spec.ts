@@ -90,6 +90,54 @@ test('a Conferir mostra primeiro o que tem problema, e recolhe os verificados e 
   await expect(page.locator('[data-item]').filter({hasText: entregue})).toBeVisible();
 });
 
+// Leudy, 09/10: a versão de antes marcou o grupo do Jatobá inteiro como longe e o levou para um
+// ponto do mapa a 13 km. Com a rota já na tela, abrir a versão nova tem de trazer o grupo de volta.
+test('ao abrir, o grupo que a versão de antes levou para o bairro do mapa volta para a planilha', async ({page}) => {
+  const XLSX = (await import('xlsx')).default;
+  const cab = ['AT ID', 'Sequence', 'Stop', 'SPX TN', 'Destination Address', 'Bairro', 'City', 'Zipcode/Postal code', 'Latitude', 'Longitude'];
+  const SUL = [-10.887196, -37.003029], NORTE = [-10.775231, -36.950412];
+  const em = ([lat, lng]: number[], d: number) => [+(lat + d).toFixed(6), +(lng - d).toFixed(6)];
+  const linha = (n: number, base: number[], bairro: string) => ['AT-TESTE', n, n, `BRTESTEG${n}`, `Rua Inventada ${n}, 10`, bairro, 'Barra dos Coqueiros', `49099-9${String(n).padStart(2, '0')}`, ...em(base, n * 0.0007)];
+  const ws = XLSX.utils.aoa_to_sheet([cab,
+    ...[1, 2, 3, 4, 5].map(n => linha(n, SUL, 'Bairro Sul Teste')),
+    ...[6, 7, 8].map(n => linha(n, NORTE, 'Bairro Norte Teste')),
+    // o mesmo portão de condomínio na rodovia, com o número dela e o da casa
+    ['AT-TESTE', 9, 9, 'BRTESTEG9', 'Rodovia Inventada, 7300, Cond Teste casa 288', 'Bairro Sul Teste', 'Barra dos Coqueiros', '49099-909', ...em(SUL, 0.0001)],
+    ['AT-TESTE', 10, 10, 'BRTESTEG10', 'Rodovia Inventada, 1120, Cond Teste', 'Bairro Sul Teste', 'Barra dos Coqueiros', '49099-910', ...em(SUL, 0.0001)],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
+  await abrir(page);
+  await page.locator('input[type=file]').setInputFiles({name: 'grupo.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
+  await expect(aviso(page)).toContainText('10 parada(s) da planilha');
+  const rodovia = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas
+    .filter((p: any) => /^Rodovia Inventada/.test(p.texto)).map((p: any) => p.precisao));
+  expect(await rodovia()).toEqual(['planilha', 'planilha']);
+  const norte = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas
+    .filter((p: any) => /Inventada [678],/.test(p.texto)).map((p: any) => ({lat: p.lat, precisao: p.precisao})));
+  // a versão nova já não marca o grupo
+  expect((await norte()).map(p => p.precisao)).toEqual(['planilha', 'planilha', 'planilha']);
+  const daPlanilha = (await norte()).map(p => p.lat);
+
+  // como a versão de antes deixava: o grupo do norte no "bairro" do mapa, longe dele
+  await page.evaluate(() => {
+    const e = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
+    for (const p of e.paradas.filter((x: any) => /Inventada [678],/.test(x.texto))) {
+      p.candidatos = [{lat: -10.95, lng: -37.07, exibido: 'Pelo bairro', precisao: 'bairro', fonte: 'bairro'},
+        {lat: p.lat, lng: p.lng, exibido: 'Posição que veio na planilha (longe das outras entregas)', precisao: 'longe', fonte: 'planilha'}];
+      Object.assign(p, {lat: -10.95, lng: -37.07, precisao: 'bairro', fonte: 'bairro', exibido: 'Posição pelo bairro Bairro Norte Teste'});
+    }
+    // e o "número não bate" que ela punha no portão da rodovia
+    for (const p of e.paradas.filter((x: any) => /^Rodovia Inventada/.test(x.texto))) p.precisao = 'numero';
+    localStorage.setItem('rota-entregas-v2', JSON.stringify(e));
+  });
+  await page.reload();
+  await expect(aviso(page)).toContainText('3 parada(s) de um grupo longe do resto da rota voltaram para a posição da planilha', {timeout: 30_000});
+  expect(await norte()).toEqual(daPlanilha.map(lat => ({lat, precisao: 'planilha'})));
+  expect(await rodovia()).toEqual(['planilha', 'planilha']);
+});
+
 // Planilha do Jeferson, 05/10: a Shopee deu o mesmo ponto, a rotatória da Barra dos Coqueiros,
 // para entregas de 7 bairros, e o mapa juntou cinco paradas num pino só. O app tinha Aracaju
 // guardado de ontem, e é com ele que esta planilha chega.

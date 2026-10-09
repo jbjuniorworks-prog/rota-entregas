@@ -5,6 +5,26 @@ decisão está na mensagem do commit que a fez, não aqui.
 
 Atualizado em 09/10/2026.
 
+## Regras que não servem para todo tipo de rota (09/10), levantamento
+
+A rota da Leudy (Zona de Expansão da Barra, 17 km de rodovia) mostrou duas regras pensadas para
+Aracaju urbana errando em série. O dono pediu para achar todas. Feito até aqui:
+- **Longe das outras entregas** marcava um grupo inteiro (15 no Jatobá, a 13 km do resto), e o
+  app levava 14 para um "bairro" do mapa a 13 km delas. Agora quem tem 2 vizinhas a 2 km não é
+  marcada. Nas 2.224 paradas guardadas só esse grupo muda; as 3 sozinhas continuam. Ao abrir, a
+  rota lida antes volta do bairro para a planilha.
+- **Número não bate** fica fora de rodovia: o portão do condomínio tem o número dela (4 de 4
+  entregues no ponto certo). Em **avenida** acertou 1 de 9 (8 eram portão de condomínio): decidir.
+
+Falta passar o resto, cada regra contra as entregas, separado por tipo de rota (Aracaju urbana,
+Zona de Expansão e rodovia, condomínio, Mercado Livre sem coordenada, outra cidade):
+- coordenada com poucas casas decimais ("aproximada");
+- ponto repetido para 3 bairros ou mais;
+- levar ao bairro pelo mapa: mesmo para a parada sozinha, o centro do bairro que o mapa dá para
+  "Zona de Expansão (Jatobá)" estava a 13 km; falta uma trava de distância do ponto original;
+- censo: refino, fora e em cima da rua, longe do CEP (a Zona de Expansão não tem porta exata);
+- juntar pacotes do mesmo endereço, e a cidade pela faixa do CEP.
+
 ## Rua de nome genérico longe das portas do próprio CEP (08/10 e 09/10), para olhar na rua
 
 - A planilha do Pedro pôs uma "Rua B" do Industrial noutra Rua B, perto do aeroporto, a 11,8 km; a

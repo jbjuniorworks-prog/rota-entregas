@@ -39,6 +39,13 @@ export function mediana(v: number[]): number {
 
 const comPosicao = (p: Parada): p is Parada & Ponto => p.lat != null && p.lng != null;
 
+// Um grupo inteiro longe do meio da rota é outra parte dela, não uma parada perdida. A rota da
+// Leudy (09/10) tinha 15 entregas no Jatobá a 13 km das outras: todas marcadas, e as 14 de bairro
+// achado foram levadas para um ponto do mapa a 13 km delas. Nas 2.224 paradas das planilhas
+// guardadas, das 18 marcadas, 15 eram esse grupo (14 vizinhas a 2 km cada); as outras 3 não tinham
+// vizinha nenhuma a 2 km, e continuam marcadas.
+export const VIZINHAS_RAIO = 2000, VIZINHAS_MIN = 2;
+
 export function marcarIsoladas(paradas: Parada[]): number {
   for (const p of paradas) if (p.precisao === 'longe') p.precisao = p.precisaoAntes || 'planilha';
   const com = paradas.filter(p => comPosicao(p) && !p.entregue) as (Parada & Ponto)[];
@@ -49,11 +56,32 @@ export function marcarIsoladas(paradas: Parada[]): number {
   let n = 0;
   com.forEach((p, i) => {
     if (p.precisao === 'manual' || ds[i] <= limite) return;
+    if (com.filter(q => q !== p && haversine(p, q) <= VIZINHAS_RAIO).length >= VIZINHAS_MIN) return;
     p.precisaoAntes = p.precisao;
     p.precisao = 'longe';
     n++;
   });
   return n;
+}
+
+// A rota lida antes de 09/10 já levou o grupo inteiro para o bairro do mapa, e atualizar o app
+// não o trazia de volta. Ao abrir, volta para o ponto da planilha a parada que tinha vizinhas lá:
+// conta-se pelo ponto de planilha de cada uma, porque o grupo todo foi levado junto.
+export function voltarDoBairro(paradas: Parada[]): Parada[] {
+  const original = (p: Parada) => p.precisao === 'bairro' && p.fonte === 'bairro'
+    ? p.candidatos.find(c => c.fonte === 'planilha' && c.precisao === 'longe') : undefined;
+  const daPlanilha = paradas.map(p => original(p) || (comPosicao(p) ? p : null));
+  const voltaram: Parada[] = [];
+  paradas.forEach((p, i) => {
+    const o = original(p);
+    if (!o || p.entregue) return;
+    const vizinhas = daPlanilha.filter((q, j) => j !== i && q && haversine(o, q) <= VIZINHAS_RAIO).length;
+    if (vizinhas < VIZINHAS_MIN) return;
+    Object.assign(p, {lat: o.lat, lng: o.lng, precisao: 'planilha', fonte: 'planilha', exibido: 'Posição da planilha'});
+    p.candidatos = [];
+    voltaram.push(p);
+  });
+  return voltaram;
 }
 
 export function moverParaOBairro(p: Parada, ponto: Ponto, bairro: string) {
@@ -148,6 +176,13 @@ export function moverPeloBairro(paradas: Parada[]): Parada[] {
   return movidas;
 }
 
+// Rodovia fica de fora: o portão do condomínio leva o número da rodovia e a casa lá dentro outro
+// (Leudy, 09/10: 10 vermelhos na Rodovia Edilson Távora, 7300 e 1120 no mesmo portão). Medido nas
+// planilhas guardadas, contra as entregas: das marcadas e já entregues, o ponto estava certo nas 4
+// de rodovia. Em avenida, em 8 de 9 (condomínio com portão na avenida), mas a 9ª era um erro de
+// verdade (220 m); em rua, em 6 de 10. As duas ficam, e a avenida está no ABERTO.md.
+const NUMERACAO_DE_PORTAO = /^(rodovia|rod)$/;
+
 export function marcarNumerosIncoerentes(paradas: Parada[]): number {
   const porRua = new Map<string, {p: Parada & Ponto; n: number}[]>();
   for (const p of paradas) {
@@ -155,6 +190,7 @@ export function marcarNumerosIncoerentes(paradas: Parada[]): number {
     const d = decompor(p.texto);
     if (!d.numero) continue;
     const rua = normal(d.rua);
+    if (NUMERACAO_DE_PORTAO.test(rua.split(/[\s.]+/)[0])) continue;
     if (!porRua.has(rua)) porRua.set(rua, []);
     porRua.get(rua)!.push({p, n: +d.numero});
   }
