@@ -5,17 +5,18 @@ decisão está na mensagem do commit que a fez, não aqui.
 
 Atualizado em 09/10/2026.
 
-## Rota marcada de uma vez, longe das portas (04/10), decidir
+## Rota marcada de uma vez, longe das portas (04/10), apagar
 
-O Edilson marcou as 42 entregas da rota de 03/10 (Atalaia) na manhã de 04/10, em 5 minutos, de um
-ponto só, a 8 km das portas. O botão grande do cartão é "Entreguei aqui", que grava a porta no GPS:
+O Edilson não terminou a rota de 03/10 (Atalaia) e entregou parte no dia seguinte. Na manhã de
+04/10 carregou a rota no app (10h27) e marcou as 42 entregas em 5 minutos, a 2,7 s uma da outra,
+de um ponto só, a 8 km das portas: é todo o histórico dele no banco. O botão grande do cartão é "Entreguei aqui", que grava a porta no GPS:
 35 correções e 42 passagens nesse ponto, e 33 endereços ficaram verificados ali (correção mais
 passagem do mesmo motorista já verificam, 017). Alguns são endereços que voltam nas rotas do
 Pedro. No resto do banco é o normal: de 1.263 endereços verificados, os outros 8 que dependem de
 marcação em lote são ruas cheias, com a porta mudando a cada marcação. Falta:
-- apagar essas passagens e correções (ele roda, ou autoriza);
-- uma trava no celular: várias portas de endereços diferentes, cujos pinos estavam longe uns dos
-  outros, gravadas no mesmo ponto em poucos minutos, não viram porta. Medir antes no histórico.
+- apagar as 42 passagens e 35 correções dele (o dono autorizou em 09/10; rodar no SQL Editor);
+- sem pressa, a pedido dele: uma trava no celular para portas de endereços diferentes, cujos
+  pinos estavam longe uns dos outros, gravadas no mesmo ponto em poucos minutos.
 
 ## Regras que não servem para todo tipo de rota (09/10), levantamento
 
