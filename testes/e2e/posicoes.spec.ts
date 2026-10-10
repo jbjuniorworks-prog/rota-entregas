@@ -570,3 +570,21 @@ test('colar o link do mapa no Editar põe a parada na porta, guarda, e não troc
   expect(onde.precisao).toBe('manual');
   expect(onde.texto, 'o endereço é o de antes, não o texto colado junto com o link').toBe('Avenida Deputado Sílvio Teixeira 200, CEP 49025-400');
 });
+
+// Pedro, 10/10: 13 endereços da planilha já verificados pelas entregas dele. A memória do celular
+// trazia como "a posição que você já tinha corrigido", a nuvem verificava, e o aviso só contava
+// as verificadas "por outros motoristas": ele não leu "verificado" em lugar nenhum.
+test('a porta verificada pelas entregas dele mesmo diz "verificado" ao carregar, uma vez só', async ({page, nuvem}) => {
+  const CHAVE = '49000106|900', PORTA = {lat: -10.963101, lng: -37.047101};
+  await page.addInitScript(([k, p]) => {
+    if (!localStorage.getItem('rota-entregas-posicoes')) localStorage.setItem('rota-entregas-posicoes', JSON.stringify({[k as string]: {...(p as object), quando: Date.now() - 86_400_000}}));
+  }, [CHAVE, PORTA]);
+  nuvem.rpc = {posicoes: [{chave_lugar: CHAVE, ...PORTA, situacao: 'confirmado', motoristas: 1, entregas: 2, fonte: 'entrega', minha: true}]};
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await expect(aviso(page)).toContainText('1 com endereço verificado.');
+  // o texto de uma vez: um "não contém" que espera passa sozinho quando o aviso é trocado
+  expect(await aviso(page).innerText()).not.toContain('já tinha corrigido');
+  const p = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.startsWith('Rua das Flores, 900')));
+  expect(p.precisao).toBe('confirmado');
+});

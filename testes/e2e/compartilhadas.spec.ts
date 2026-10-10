@@ -87,7 +87,7 @@ test.describe('correções compartilhadas @nuvem', () => {
 
     const c = await comoMotorista(browser, C);
     await carregar(c, ROTA_A);
-    await expect(aviso(c)).toContainText('1 com endereço verificado por outros motoristas');
+    await expect(aviso(c)).toContainText('1 com endereço verificado');
     await aba(c, '2. Conferir');
     await expect(c.locator('[data-item]').filter({hasText: RUA_D})).toContainText('Endereço verificado por 2 motoristas');
     await expect(c.getByText(/\b0 para conferir/)).toBeVisible();

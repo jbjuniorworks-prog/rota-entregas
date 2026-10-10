@@ -13,7 +13,7 @@ const aplicar = (ps: (Parada & {chave: string})[], rs: PosicaoCompartilhada[]) =
 describe('posições de outros motoristas', () => {
   it('confirmada por 2 motoristas: aplica sozinha e guarda a de antes como opção', () => {
     const p = parada('a|1');
-    expect(aplicar([p], [pos('a|1', 'confirmado')])).toEqual({confirmadas: 1, sugestoes: 0, minhas: 0});
+    expect(aplicar([p], [pos('a|1', 'confirmado')])).toEqual({confirmadas: 1, sugestoes: 0, minhas: 0, lembradasVerificadas: 0});
     expect(p).toMatchObject({lat: -11.04, lng: -37.10, precisao: 'confirmado', exibido: 'Endereço verificado por 2 motoristas'});
     expect(p.candidatos[0]).toMatchObject({lat: -10.90, precisao: 'planilha', fonte: 'original'});
   });
@@ -54,7 +54,7 @@ describe('posições de outros motoristas', () => {
   });
   it('de 1 motorista só: não move, vira sugestão com a distância', () => {
     const p = parada('a|1');
-    expect(aplicar([p], [pos('a|1', 'sugestao')])).toEqual({confirmadas: 0, sugestoes: 1, minhas: 0});
+    expect(aplicar([p], [pos('a|1', 'sugestao')])).toEqual({confirmadas: 0, sugestoes: 1, minhas: 0, lembradasVerificadas: 0});
     expect(p.lat).toBe(-10.90);
     expect(p.sugestao).toMatchObject({lat: -11.04, lng: -37.10});
     expect(p.sugestao!.distancia).toBeGreaterThan(15000);
@@ -72,7 +72,7 @@ describe('posições de outros motoristas', () => {
   });
   it('não mexe em entrega já feita nem em parada sem chave', () => {
     const b = parada('b|1', {entregue: true}), c = parada('');
-    expect(aplicar([b, c], [pos('b|1', 'confirmado')])).toEqual({confirmadas: 0, sugestoes: 0, minhas: 0});
+    expect(aplicar([b, c], [pos('b|1', 'confirmado')])).toEqual({confirmadas: 0, sugestoes: 0, minhas: 0, lembradasVerificadas: 0});
     expect(b.lat).toBe(-10.90);
   });
   it('confirmada tira a sugestão antiga e corrige a posição que a planilha jogou longe', () => {
@@ -89,7 +89,7 @@ describe('a posição que o próprio motorista arrumou', () => {
   it('volta para ele em outro aparelho, mesmo sem ninguém mais ter confirmado, como corrigida por ele', () => {
     const p = parada('a|1');
     const r = aplicar([p], [pos('a|1', 'sugestao', {minha: true})]);
-    expect(r).toEqual({confirmadas: 0, sugestoes: 0, minhas: 1});
+    expect(r).toEqual({confirmadas: 0, sugestoes: 0, minhas: 1, lembradasVerificadas: 0});
     expect(p).toMatchObject({lat: -11.04, lng: -37.10, precisao: 'lembrado', exibido: 'Posição que você mesmo arrumou aqui'});
     expect(p.sugestao).toBeUndefined();
   });
@@ -101,10 +101,16 @@ describe('a posição que o próprio motorista arrumou', () => {
     expect(p.precisao).toBe('confirmado');
   });
 
+  // Pedro, 10/10: 13 endereços verificados pelas entregas dele e nenhum "verificado" no aviso
+  it('verificada pelas entregas dele conta como verificada, não como "a que você arrumou"', () => {
+    const p = parada('a|1');
+    expect(aplicar([p], [pos('a|1', 'confirmado', {minha: true})])).toEqual({confirmadas: 1, sugestoes: 0, minhas: 0, lembradasVerificadas: 0});
+  });
+
   it('a de outro motorista continua sendo só sugestão enquanto não confirma', () => {
     const p = parada('a|1');
     const r = aplicar([p], [pos('a|1', 'sugestao', {minha: false})]);
-    expect(r).toEqual({confirmadas: 0, sugestoes: 1, minhas: 0});
+    expect(r).toEqual({confirmadas: 0, sugestoes: 1, minhas: 0, lembradasVerificadas: 0});
     expect(p.precisao).toBe('planilha');
     expect(p.sugestao).toBeTruthy();
   });
@@ -124,6 +130,12 @@ describe('memória deste navegador contra o que os motoristas arrumaram', () => 
     expect(p).toMatchObject({lat: -11.04, lng: -37.10, precisao: 'confirmado'});
     // e o que estava antes continua à mão, para poder voltar
     expect(p.candidatos[0]).toMatchObject({precisao: 'lembrado', fonte: 'original'});
+  });
+
+  it('a lembrada que a nuvem verifica é contada para sair do "já tinha corrigido"', () => {
+    const a = parada('a|1', {precisao: 'lembrado'}), b = parada('b|1', {precisao: 'lembrado'});
+    const r = aplicar([a, b], [pos('a|1', 'confirmado', {minha: true}), pos('b|1', 'sugestao', {minha: true})]);
+    expect(r).toEqual({confirmadas: 1, sugestoes: 0, minhas: 1, lembradasVerificadas: 1});
   });
 
   it('o pino arrastado agora neste aparelho continua ganhando de tudo', () => {

@@ -214,6 +214,8 @@ async function importarPlanilhas(files: Blob[]) {
   if (resumo.genericas) resumo.genericasNoLugar = censo.genericas + pelaRuaOuBairro + peloMapa.genericas;
   const comp = await consultarCompartilhadas();
   resumo.confirmadas = comp.confirmadas;
+  // a que a memória trouxe e a nuvem verificou já sai como verificada: não repete como corrigida
+  resumo.lembradas = Math.max(0, resumo.lembradas - comp.lembradasVerificadas);
   resumo.sugestoes = comp.sugestoes;
   resumo.xaropes = comp.xaropes;
   return resumo;

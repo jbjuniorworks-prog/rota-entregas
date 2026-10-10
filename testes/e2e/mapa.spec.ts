@@ -572,6 +572,10 @@ test.describe('na rua, sem arrumar o que já está certo', () => {
     await page.reload();
     await abrir(page);
     await expect(page.locator('.proxima [data-confirmada]')).toContainText('Endereço verificado');
+    // junto do endereço, acima dos botões: embaixo deles só rolando o cartão, e o Pedro não via (10/10)
+    const selo = (await page.locator('.proxima [data-confirmada]').boundingBox())!;
+    const botao = (await page.locator('.proxima [data-acao=entregue]').first().boundingBox())!;
+    expect(selo.y + selo.height).toBeLessThanOrEqual(botao.y);
     await expect(page.locator('.proxima').getByRole('button', {name: /Estou aqui/})).toHaveCount(0);
     // e o botão grande é o Entreguei simples: marcar a porta de novo é mexer na confirmada
     await expect(page.locator('.proxima [data-acao=aqui]')).toHaveCount(0);

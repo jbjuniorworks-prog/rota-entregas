@@ -3,7 +3,18 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 09/10/2026.
+Atualizado em 10/10/2026.
+
+## "Endereço verificado" que o Pedro não via (10/10), para olhar na rua
+
+- Na planilha dele de 10/10, 13 endereços (39 pacotes) já estavam verificados pelas entregas dele,
+  e o celular aplicou: "confirmado". Mas o aviso de carregar só contava os verificados "por outros
+  motoristas", e dizia "com a posição que você já tinha corrigido" (a memória do celular); no
+  cartão, "Endereço verificado." ficava embaixo dos botões, só rolando.
+- Agora o aviso conta a verificada dele também, sem repetir como corrigida, e o cartão mostra
+  "Endereço verificado" em verde logo abaixo do endereço. Ver com ele se nota na rua.
+- Sobrou: 4 endereços entregues por ele uma vez só, longe do pino (ou duas, a mais de 30 m uma da
+  outra), não verificam; e uma linha veio com outro CEP para o mesmo endereço (chave diferente).
 
 ## Rota marcada de uma vez, longe das portas (04/10), apagada
 

@@ -11,8 +11,8 @@ import {clienteNuvem} from '../servicos/nuvem';
 import {contar, desatualizarRota, e, enviarFila, ESPERA_DA_PORTA, fila, memoria, ui} from './base';
 import {abrir, alturaAgora, voltar} from './navegacao';
 
-export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number; xaropes: number}> {
-  const saida = {confirmadas: 0, sugestoes: 0, minhas: 0, xaropes: 0};
+export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number; lembradasVerificadas: number; xaropes: number}> {
+  const saida = {confirmadas: 0, sugestoes: 0, minhas: 0, lembradasVerificadas: 0, xaropes: 0};
   const c = clienteNuvem();
   if (!c) return saida;
   const chaveDe = (p: Parada) => chaveLugar(p.texto, p.bairro, e().cidade);
@@ -34,7 +34,7 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
 }
 
 export function avisoCompartilhadas(r: {confirmadas: number; sugestoes: number; minhas?: number; xaropes?: number}): string {
-  return (r.confirmadas ? ` ${r.confirmadas} com endereço verificado por outros motoristas.` : '')
+  return (r.confirmadas ? ` ${r.confirmadas} com endereço verificado.` : '')
     + (r.minhas ? ` ${r.minhas} com a posição que você mesmo já arrumou.` : '')
     + (r.sugestoes ? ` ${r.sugestoes} com sugestão de outro motorista: veja em Conferir.` : '')
     + (r.xaropes ? ` ${r.xaropes} de cliente xarope: veja o pino antes de entregar.` : '');

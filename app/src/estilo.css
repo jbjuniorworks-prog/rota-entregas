@@ -57,6 +57,7 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
 .rotulo-proxima{font-size:13px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.02em}
 .endereco{font-size:17px;font-weight:800;line-height:1.25}
 .quase{font-size:14px;font-weight:700;color:var(--laranja);margin-top:2px}
+.verificado{font-size:14px;font-weight:700;color:var(--ok);margin-top:2px}
 /* Só a largura: a altura e a fonte são as do .btn (46px), que vem depois e sempre ganhou daqui.
    O cartão da próxima foi medido assim (03/10); maior, o cartão passa do mínimo de 240px. */
 .grande-btn{width:100%}

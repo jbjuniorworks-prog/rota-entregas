@@ -182,6 +182,8 @@ function CartaoProxima() {
       <div className="txt">
         <div className="rotulo-proxima">Próxima{alvo.stop ? ` · parada ${alvo.stop}` : alvo.adicional ? ' · ADS' : ''}{pacotes > 1 ? ` · ${pacotes} pacotes` : ''}{perna && perna.dur ? ` · ${fmtMin(perna.dur)}` : ''}</div>
         <div className="endereco">{alvo.texto}</div>
+        {/* junto do endereço, à vista sem rolar: embaixo dos botões o Pedro não via (10/10) */}
+        {pend.every(x => x.precisao === 'confirmado') && <div className="verificado" data-confirmada>Endereço verificado</div>}
         {/* de onde veio a posição só importa quando ela é duvidosa */}
         {DUVIDA.has(alvo.precisao) && alvo.exibido && <div className="achado">{alvo.exibido}</div>}
         {QUASE.has(alvo.precisao) && <div className="quase" data-quase>{alvo.precisao === 'censo'
@@ -207,9 +209,7 @@ function CartaoProxima() {
     </>}
     <AvisosDaRota />
     <div className="secundarios">
-      {alvo.precisao === 'confirmado'
-        ? <span data-confirmada>Endereço verificado.</span>
-        : <button className="link" onClick={() => A.estouAqui(alvo)}>Pino errado? Estou aqui</button>}
+      {alvo.precisao !== 'confirmado' && <button className="link" onClick={() => A.estouAqui(alvo)}>Pino errado? Estou aqui</button>}
       <a className="link" href={linkMaps(alvo as Ponto)} target="_blank" rel="noopener">Google Maps</a>
     </div>
     {vizinhas.length > 0 && <div className="info perto">Aqui perto, fora desta parada: {vizinhas.slice(0, 3).map(v =>
