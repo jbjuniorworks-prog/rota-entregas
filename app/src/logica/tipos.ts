@@ -1,6 +1,6 @@
 import type {FotoDaMemoria} from './memoria';
 
-export type Precisao = 'exato' | 'planilha' | 'lembrado' | 'manual' | 'bom' | 'rua' | 'longe' | 'bairro' | 'aproximada' | 'numero' | 'censo' | 'confirmado' | 'ruim' | 'nao' | 'pendente';
+export type Precisao = 'exato' | 'planilha' | 'lembrado' | 'manual' | 'bom' | 'rua' | 'longe' | 'bairro' | 'aproximada' | 'numero' | 'censo' | 'vizinha' | 'confirmado' | 'ruim' | 'nao' | 'pendente';
 
 export interface Ponto {
   lat: number;

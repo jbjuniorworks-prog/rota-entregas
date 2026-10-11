@@ -189,7 +189,9 @@ function CartaoProxima() {
         {QUASE.has(alvo.precisao) && <div className="quase" data-quase>{alvo.precisao === 'censo'
           // até alguém entregar ali, a porta do censo é o lugar mais provável, não o certo (pedido de 01/10)
           ? 'Pino na porta do censo do IBGE, não onde a planilha punha: confira na porta.'
-          : 'Número aproximado: confira na porta.'}</div>}
+          : alvo.precisao === 'vizinha'
+            ? 'Na porta da parada vizinha de mesmo número: confira na porta.'
+            : 'Número aproximado: confira na porta.'}</div>}
       </div>
     </div>
     <AvisoXarope p={pend.find(x => x.reclamacoes?.length) || alvo} />

@@ -1,4 +1,4 @@
-import {haversine, marcarIsoladas, marcarNumerosIncoerentes, moverPeloBairro, noPino, proximaAPe, voltarDoBairro} from './geo';
+import {haversine, juntarVizinhasDeMesmoNumero, marcarIsoladas, marcarNumerosIncoerentes, moverPeloBairro, noPino, proximaAPe, voltarDoBairro} from './geo';
 import {montarRota as montarRotaDoEstado} from './montagem';
 import {agruparPorEndereco, agruparVisitas, gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, trechos} from './otimizacao';
 import type {Parada, Ponto} from './tipos';
@@ -46,6 +46,53 @@ describe('marcarNumerosIncoerentes', () => {
     expect(marcarNumerosIncoerentes([...rua, ...rodovia, ...rod])).toBe(2);
     expect(rua.map(p => p.precisao)).toEqual(['numero', 'numero']);
     expect([...rodovia, ...rod].map(p => p.precisao)).toEqual(['planilha', 'planilha', 'planilha', 'planilha']);
+  });
+});
+
+// 11/10: "Rua Via Inventada 260" e "Rua Quirino Teste 260", paradas 17 e 18 do Meli, no mesmo
+// condomínio; a segunda ficou a 700 m, pelo número aproximado da rua.
+describe('a vizinha de mesmo número em outra rua', () => {
+  const firme = () => parada(-10.9510, -37.0798, {texto: 'Rua Via Inventada 260', precisao: 'manual'});
+  const palpite = (extra: Partial<Parada> = {}) => parada(-10.9450, -37.0700, {texto: 'Rua Quirino Teste 260', precisao: 'rua', ...extra});
+  it('o palpite vai para a porta da vizinha, nos dois sentidos, e diz de onde veio', () => {
+    const [a, b] = [firme(), palpite()];
+    expect(juntarVizinhasDeMesmoNumero([a, b])).toEqual([b]);
+    expect(b).toMatchObject({lat: -10.9510, lng: -37.0798, precisao: 'vizinha', fonte: 'vizinha'});
+    expect(b.exibido).toContain('Rua Via Inventada 260');
+    expect(b.candidatos.map(c => [c.lat, c.precisao])).toEqual([[-10.9510, 'vizinha'], [-10.9450, 'rua']]);
+    const [c, d] = [palpite({precisao: 'nao', lat: null, lng: null}), firme()];
+    expect(juntarVizinhasDeMesmoNumero([c, d])).toEqual([c]);
+    expect(c).toMatchObject({lat: -10.9510, lng: -37.0798, precisao: 'vizinha'});
+    expect(a).toMatchObject({lat: -10.9510, precisao: 'manual'});
+  });
+  it('passa por marcarIsoladas, e segue a vizinha quando ela é arrumada de novo', () => {
+    const [a, b] = [firme(), palpite()];
+    const ps = [...grupo(), a, b];
+    marcarIsoladas(ps);
+    expect(b).toMatchObject({lat: -10.9510, precisao: 'vizinha'});
+    Object.assign(a, {lat: -10.9520, lng: -37.0810});
+    marcarIsoladas(ps);
+    expect(b).toMatchObject({lat: -10.9520, lng: -37.0810});
+  });
+  it('o que o motorista arrumou, a entregue, as duas com palpite, a mesma rua e outro número ficam', () => {
+    const casos = [
+      [firme(), palpite({precisao: 'manual'})],
+      [firme(), palpite({entregue: true})],
+      [firme(), palpite({precisao: 'confirmado'})],
+      // o pino da planilha posto em dúvida estava mais perto da entrega nas duas vezes medidas
+      [firme(), palpite({precisao: 'numero'})],
+      [parada(-10.9510, -37.0798, {texto: 'Rua Via Inventada 260', precisao: 'rua'}), palpite()],
+      [firme(), palpite({texto: 'Rua Via Inventada 260, ap 2'})],
+      [firme(), palpite({texto: 'Rua Quirino Teste 261'})],
+      [firme(), palpite({texto: 'Rua Quirino Teste 260A'})],
+    ];
+    for (const ps of casos) expect(juntarVizinhasDeMesmoNumero(ps)).toEqual([]);
+  });
+  it('só as seguidas: com outra parada no meio, com números de parada longe ou sendo ADS, não', () => {
+    expect(juntarVizinhasDeMesmoNumero([firme(), parada(-10.96, -37.04, {texto: 'Rua Outra Teste 5'}), palpite()])).toEqual([]);
+    expect(juntarVizinhasDeMesmoNumero([{...firme(), stop: '5'}, palpite({stop: '9'})])).toEqual([]);
+    expect(juntarVizinhasDeMesmoNumero([firme(), palpite({adicional: true})])).toEqual([]);
+    expect(juntarVizinhasDeMesmoNumero([{...firme(), ml: '17'}, palpite({ml: '18'})])).toHaveLength(1);
   });
 });
 

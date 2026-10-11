@@ -4,9 +4,9 @@
 // censo de Aracaju, então 3 km também cobre esse uso com folga.
 export const LONGE_DA_ANCORA = 3000;
 
-import {DA_PLANILHA, DUVIDA} from './rotulos';
-import {chaveLugar, decompor, emCondominio, mesmaRua, normal, ruaDoComplemento, ruaGenerica, TIPOS_RUA} from './texto';
-import type {Candidato, Parada, Ponto} from './tipos';
+import {DA_PLANILHA, DUVIDA, NO_NUMERO} from './rotulos';
+import {chaveLugar, decompor, emCondominio, letraDaPorta, mesmaRua, normal, ruaDoComplemento, ruaGenerica, TIPOS_RUA} from './texto';
+import type {Candidato, Parada, Ponto, Precisao} from './tipos';
 
 export const RAIO_BLOCO = 10;
 export const RAIO_VISITA = 25;
@@ -54,8 +54,55 @@ export const VIZINHAS_RAIO = 2000, VIZINHAS_MIN = 2;
 // 510 m do meio do bairro e a 12 km da planilha.
 export const LONGE_DO_BAIRRO = 5000, BAIRRO_JUNTO = 1500, BAIRRO_MIN = 3;
 
+// Duas paradas seguidas com o mesmo número em ruas diferentes são o mesmo lugar: o prédio de esquina
+// ou o condomínio com uma rua de cada lado ("Rua Z 166" e "Rua Josepha Andrade Irmã Fontes 166").
+// Medido nas planilhas de 18/09 a 11/10: de 75 pares, 69 a menos de 50 m no mapa do Meli e nenhum a
+// mais de 300 m. Quando uma tem a porta e a outra só um palpite, o palpite vai para a porta da
+// outra: a Rua Quirino 260 ficou a 700 m da Via Férrea 260, que estava no condomínio (11/10). O que
+// o motorista arrumou é sempre a porta, nunca o palpite.
+const PORTA_FIRME: ReadonlySet<Precisao> = new Set<Precisao>([...NO_NUMERO, 'censo']);
+// 'numero' não: é o pino da planilha posto em dúvida, e nas 2 vezes que a regra o moveria (25/09 e
+// 27/09, condomínios) ele estava mais perto da entrega que a porta da vizinha.
+const PALPITE: ReadonlySet<Precisao> = new Set<Precisao>(['rua', 'bairro', 'aproximada', 'ruim', 'nao', 'vizinha']);
+export function juntarVizinhasDeMesmoNumero(paradas: Parada[]): Parada[] {
+  const porta = (p: Parada) => {
+    const d = decompor(p.texto);
+    return {rua: d.rua, numero: d.numero ? d.numero + letraDaPorta(p.texto, d.numero) : null};
+  };
+  // Seguidas na sequência do Meli. A ADS não tem lugar nela, vem no fim da planilha: estar logo
+  // depois de outra não diz nada.
+  const seguidas = (a: Parada, b: Parada) => {
+    if (a.adicional || b.adicional) return false;
+    const [na, nb] = [a, b].map(p => /^\d+$/.test(p.stop || p.ml || '') ? +(p.stop || p.ml)! : null);
+    return na == null || nb == null || Math.abs(na - nb) <= 1;
+  };
+  const movidas: Parada[] = [];
+  for (let i = 1; i < paradas.length; i++) {
+    const a = paradas[i - 1], b = paradas[i], pa = porta(a), pb = porta(b);
+    if (!pa.numero || pa.numero !== pb.numero || mesmaRua(pa.rua, pb.rua) || mesmaRua(pb.rua, pa.rua) || !seguidas(a, b)) continue;
+    for (const [firme, palpite, rua] of [[a, b, pa.rua], [b, a, pb.rua]] as const) {
+      if (!PORTA_FIRME.has(firme.precisao) || !comPosicao(firme) || !PALPITE.has(palpite.precisao) || palpite.entregue) continue;
+      if (palpite.lat === firme.lat && palpite.lng === firme.lng) break;
+      const vizinha: Candidato = {lat: firme.lat, lng: firme.lng, precisao: 'vizinha', fonte: 'vizinha',
+        exibido: `Na porta da parada vizinha, ${rua} ${pa.numero}: mesmo número, prédio de esquina ou condomínio com duas ruas. Confira na porta`};
+      // a posição de antes continua como opção em Conferir
+      const antes: Candidato[] = comPosicao(palpite) && palpite.precisao !== 'vizinha'
+        && !palpite.candidatos.some(c => c.lat === palpite.lat && c.lng === palpite.lng)
+        ? [{lat: palpite.lat, lng: palpite.lng, precisao: palpite.precisao, fonte: palpite.fonte || '', exibido: palpite.exibido || 'A posição de antes'}] : [];
+      palpite.candidatos = [vizinha, ...antes, ...palpite.candidatos.filter(c => c.fonte !== 'vizinha')];
+      Object.assign(palpite, {lat: vizinha.lat, lng: vizinha.lng, precisao: 'vizinha', fonte: 'vizinha', exibido: vizinha.exibido});
+      movidas.push(palpite);
+      break;
+    }
+  }
+  return movidas;
+}
+
+// Também é aqui que a vizinha de mesmo número vai para a porta da outra: é por onde passa toda
+// mudança de posição, da busca, da planilha e do pino que o motorista arrumou.
 export function marcarIsoladas(paradas: Parada[]): number {
   for (const p of paradas) if (p.precisao === 'longe') p.precisao = p.precisaoAntes || 'planilha';
+  juntarVizinhasDeMesmoNumero(paradas);
   const com = paradas.filter(p => comPosicao(p) && !p.entregue) as (Parada & Ponto)[];
   if (com.length < 4) return 0;
   const centro = {lat: mediana(com.map(p => p.lat)), lng: mediana(com.map(p => p.lng))};

@@ -10,6 +10,7 @@ export const ROTULO: Record<Precisao, string> = {
   aproximada: 'Posição aproximada da planilha — confira o pino',
   numero: 'Número não bate com a posição — confira',
   censo: 'Porta do censo do IBGE — confira na porta',
+  vizinha: 'Na porta da vizinha de mesmo número — confira na porta',
   bom: 'Prédio encontrado',
   rua: 'Rua certa, número aproximado — confira na porta',
   ruim: 'Impreciso — confira o pino',
@@ -19,17 +20,17 @@ export const ROTULO: Record<Precisao, string> = {
 };
 
 export const COR_PRECISAO: Record<Precisao, string> = {
-  exato: '#16a34a', planilha: '#16a34a', lembrado: '#7c3aed', confirmado: '#0d9488', longe: '#dc2626', bairro: '#dc2626', aproximada: '#dc2626', numero: '#dc2626', censo: '#ea580c',
+  exato: '#16a34a', planilha: '#16a34a', lembrado: '#7c3aed', confirmado: '#0d9488', longe: '#dc2626', bairro: '#dc2626', aproximada: '#dc2626', numero: '#dc2626', censo: '#ea580c', vizinha: '#ea580c',
   bom: '#16a34a', rua: '#ea580c', ruim: '#dc2626', nao: '#dc2626', manual: '#7c3aed', pendente: '#6b7280',
 };
 
 export const RANK: Record<Precisao, number> = {
-  exato: 0, planilha: 0, lembrado: 0, confirmado: 0, manual: 0, bom: 1, rua: 2, bairro: 3, aproximada: 3, numero: 3, censo: 2, longe: 3, ruim: 3.5, nao: 4, pendente: 5,
+  exato: 0, planilha: 0, lembrado: 0, confirmado: 0, manual: 0, bom: 1, rua: 2, bairro: 3, aproximada: 3, numero: 3, censo: 2, vizinha: 2, longe: 3, ruim: 3.5, nao: 4, pendente: 5,
 };
 
 export const DUVIDA: ReadonlySet<Precisao> = new Set<Precisao>(['ruim', 'nao', 'longe', 'bairro', 'aproximada', 'numero']);
 // laranja: o lugar mais provável, ainda sem ninguém ter entregado ali
-export const QUASE: ReadonlySet<Precisao> = new Set<Precisao>(['rua', 'censo']);
+export const QUASE: ReadonlySet<Precisao> = new Set<Precisao>(['rua', 'censo', 'vizinha']);
 export const NO_NUMERO: readonly Precisao[] = ['exato', 'bom', 'manual', 'planilha', 'lembrado', 'confirmado'];
 export const DA_PLANILHA: ReadonlySet<Precisao> = new Set<Precisao>(['planilha', 'aproximada', 'numero']);
 

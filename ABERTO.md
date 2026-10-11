@@ -8,7 +8,14 @@ Atualizado em 11/10/2026.
 ## Leitor da gravação do Meli, rota de 11/10 (61 paradas)
 
 Lida pelo app, contada contra um gabarito tirado dos quadros (fora do git): **de 49 para 58
-paradas, de 14 para 5 linhas a mais**. A de 07/10 ficou igual (59 de 62).
+paradas, de 14 para 3 linhas a mais**. A de 07/10 ficou igual (59 de 62).
+- **O nome lido torto em um quadro** ("Avenida Presidente Toncrefi) Neves", "Capitão José Vochoo
+  af)") virava uma parada a mais, "Não encontrado". Agora o leitor troca, em cada quadro, o nome
+  que não existe no censo pela rua do censo de nome mais parecido, com folga sobre a segunda, a
+  porta com esse número e o mesmo CEP, se veio. Medido em 320 nomes fora do censo (planilhas e
+  vídeos): corrige 17, nenhum errado. Sem as travas, "Rua 39" virava "Rua 3" e "Jorge Arruda"
+  virava "Jorge Aruba", a 600 m. Fica de fora: o nome lido torto que por acaso é outra rua de
+  verdade sem a porta com o número.
 - **O selo de "verificado" grudado no número** ("5018", "218", "1878"; 8 paradas de 61). Sai pela
   posição de cada letra (`logica/ocr.ts`): mais largo que um algarismo (0,75 a 1,00 da altura da
   linha, contra 0,65) e depois de um vão grande. Com teto de 1,2, para "II 105" não perder o 105.
@@ -16,8 +23,28 @@ paradas, de 14 para 5 linhas a mais**. A de 07/10 ficou igual (59 de 62).
 - "Itajaí O5": o zero da frente lido como letra.
 - O cabeçalho "ÁREA 3 | 14:15 a 17:40" virava fim do nome da rua sem número.
 
-Ainda falta: 11 e 13 com o selo lidos "1" e "BS" (a parada some ou fica sem número), duas paradas
-na mesma porta viram uma, e o nome lido torto em um quadro ("Toncrefi) Neves") vira linha a mais.
+Ainda falta: 11 e 13 com o selo lidos "1" e "BS" (a parada some ou fica sem número), e duas
+paradas na mesma porta viram uma. O nome corrigido sai como o censo escreve, sem acento.
+
+## Vizinha de mesmo número em outra rua (11/10), para olhar na rua
+
+"Rua Via Férrea 260" e "Rua Quirino 260", paradas 17 e 18 do Meli, no mesmo condomínio
+(Residencial Alameda dos Pássaros): a segunda ficou a 700 m, "número aproximado" na Avenida
+Quirino. A Via Férrea não está no censo, na base nem no mapa aberto; o censo tem "Avenida Quirino
+260", mas a 550 m do condomínio, numa área industrial — a regra "mesmo nome com outro tipo" só
+apareceu em 2 endereços das planilhas e aqui erraria, e ficou de fora.
+- Medido nas planilhas: de 75 pares de paradas seguidas com o mesmo número em ruas diferentes, 69
+  ficam a menos de 50 m no mapa do Meli e nenhum a mais de 300 m.
+- Regra: quando uma tem porta firme (planilha, censo, achada no número, marcada, lembrada ou
+  verificada) e a outra só um palpite (número aproximado, bairro, não encontrada, planilha de
+  poucas casas decimais), o palpite vai para a porta da outra, laranja, "na porta da vizinha de
+  mesmo número". Só as seguidas na sequência do Meli; ADS não conta. Roda em toda reavaliação de
+  posição (`marcarIsoladas`): ao marcar ou entregar "aqui" numa das duas, a outra vai junto.
+- O pino da planilha com "número não bate" não é palpite: nas 2 vezes em que a regra o moveria
+  (condomínios, 25/09 e 27/09) ele estava mais perto da entrega (21 e 14 m) que a porta da
+  vizinha (24 e 32 m). Sem ele, a regra não mexe em nenhuma das 3.425 paradas das planilhas
+  guardadas: é para rota lida de vídeo, print ou texto, onde a busca chuta o número.
+- Se as duas são palpite, nada muda até alguém marcar ou entregar "aqui" numa delas.
 
 ## Duas paradas do Pedro de 11/10
 

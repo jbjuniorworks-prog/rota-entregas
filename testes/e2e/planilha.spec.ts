@@ -222,3 +222,27 @@ test('o ponto que a planilha repete para vários bairros não vira o pino de nin
   // cada uma sabe a cidade dela, com Aracaju guardado no app
   expect(ps.every((p: any) => p.cidade === 'Barra dos Coqueiros')).toBe(true);
 });
+
+// 11/10: "Rua Via Férrea 260" e "Rua Quirino 260", seguidas no Meli, no mesmo condomínio; a segunda
+// ficou a 700 m, pela rua. Medido nas planilhas: a vizinha de mesmo número em outra rua é o mesmo
+// lugar. Aqui a primeira veio com a posição aproximada da planilha, a 1 km. Endereços inventados.
+test('a vizinha de mesmo número em outra rua vai para a porta da outra, e diz isso', async ({page}) => {
+  const XLSX = (await import('xlsx')).default;
+  const PORTA = {lat: -10.951012, lng: -37.079823};
+  const cab = ['AT ID', 'Sequence', 'Stop', 'SPX TN', 'Destination Address', 'Bairro', 'City', 'Zipcode/Postal code', 'Latitude', 'Longitude'];
+  const ws = XLSX.utils.aoa_to_sheet([cab,
+    ['AT-VIZINHA', 1, 1, 'TN-V1', 'Rua Quirino Inventada, 260', 'Inácio Barbosa', 'Aracaju', '', -10.94, -37.07],
+    ['AT-VIZINHA', 2, 2, 'TN-V2', 'Rua Via Ferrea Inventada, 260', 'Inácio Barbosa', 'Aracaju', '', PORTA.lat, PORTA.lng]]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
+  await abrir(page);
+  await page.locator('input[type=file]').setInputFiles({name: 'vizinha.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
+  await expect(aviso(page)).toContainText('2 parada(s) da planilha', {timeout: 30_000});
+  const q = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.startsWith('Rua Quirino')));
+  expect(q).toMatchObject({lat: PORTA.lat, lng: PORTA.lng, precisao: 'vizinha'});
+  await aba(page, '2. Conferir');
+  await expect(page.getByText('Na porta da vizinha de mesmo número — confira na porta')).toBeVisible();
+  await montar(page);
+  await expect(page.locator('.proxima [data-quase]').first()).toHaveText('Na porta da parada vizinha de mesmo número: confira na porta.');
+});
