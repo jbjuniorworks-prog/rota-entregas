@@ -1,7 +1,7 @@
 import {readFileSync, readdirSync} from 'node:fs';
 import {describe, expect, it} from 'vitest';
 import {montar} from '../../../ferramentas/cnefe.mjs';
-import {acharAncoraDoBairro, apelidoDaCidade, candidatoDaRua, lerTabela, procurar, procurarRua} from './ibge';
+import {acharAncoraDoBairro, apelidoDaCidade, candidatoDaRua, lerTabela, portaNoBairro, procurar, procurarRua, ruaNoCenso} from './ibge';
 import {chaveRua} from '../logica/texto';
 
 const CABECA = 'COD_UNICO_ENDERECO;COD_UF;COD_MUNICIPIO;COD_DISTRITO;COD_SUBDISTRITO;COD_SETOR;NUM_QUADRA;'
@@ -326,5 +326,31 @@ describe('um arquivo de censo por cidade', () => {
         expect(t.lngs[i] / 1e6, nome).toBeLessThan(-36.3);
       }
     }
+  });
+});
+
+// "Rua M" existe em dez bairros de Aracaju: o bairro escrito diz qual, e só com o número exato
+describe('a rua do complemento no bairro escrito', () => {
+  const t = () => tabelaDe([
+    linha('49000301', 'M', 24, -11.0022, -37.0939, '', 'ARUANA'),
+    linha('49000302', 'M', 24, -10.9851, -37.0950, '', 'SANTA MARIA'),
+    linha('49000302', 'M', 30, -10.9853, -37.0951, '', 'SANTA MARIA'),
+    linha('49000302', 'M', 300, -10.9870, -37.0960, '', 'SANTA MARIA'),
+    linha('49000303', 'K', 5, -10.9452, -37.0827, '', 'JABOTIANA'),
+  ]);
+  it('acha a porta com o número exato no bairro escrito', () => {
+    expect(portaNoBairro(t(), 'Rua M', 24, 'Santa Maria')).toMatchObject({lat: -10.9851, lng: -37.095, rua: 'Rua M', bairro: 'Santa Maria', fonte: 'IBGE'});
+  });
+  it('sem o número exato, ou em bairro que não tem a rua, não responde', () => {
+    expect(portaNoBairro(t(), 'Rua M', 26, 'Santa Maria')).toBeNull();
+    expect(portaNoBairro(t(), 'Rua M', 24, 'Jabotiana')).toBeNull();
+    // o 300 só cabe na Rua M de Santa Maria: escrito Jabotiana, não é ela
+    expect(portaNoBairro(t(), 'Rua M', 300, 'Jabotiana')).toBeNull();
+    expect(portaNoBairro(t(), 'Rua M', 24, 'Bairro Que Nao Existe')).toBeNull();
+    expect(portaNoBairro(t(), 'Rua M', 24, '')).toBeNull();
+  });
+  it('diz se a rua do endereço existe no censo', () => {
+    expect(ruaNoCenso(t(), 'Rua M')).toBe(true);
+    expect(ruaNoCenso(t(), 'Recanto das Mangueiras')).toBe(false);
   });
 });

@@ -120,6 +120,27 @@ describe('planilha e censo do IBGE discordando', () => {
     expect(planilhaForaDaRua(com('Rua das Acácias, 109, Casa, Jardins, CEP 49000-100'), porta(170), ruaAoNorte)).not.toBeNull();
   });
 
+  // Pedro, 11/10: a planilha pôs na Rua M de outro bairro, a 1,9 km. A rua do endereço nem existe
+  // no censo, e a do complemento tem o número exato no bairro escrito.
+  it('a rua do endereço fora do censo e a do complemento no bairro escrito: vai para essa porta', async () => {
+    const TEXTO = 'Recanto das Mangueiras, 24, Rua M atrás do mercado, Santa Maria, CEP 49000-300';
+    const portaM = {...porta(1900), rua: 'Rua M', bairro: 'Santa Maria'};
+    const perguntas: string[] = [];
+    const censo = (existe: boolean) => ({porta: async () => null, rua: async () => ruaAoNorte, existe: async () => existe,
+      noBairro: async (rua: string, numero: string, bairro: string) => { perguntas.push(`${rua}|${numero}|${bairro}`); return portaM; }});
+    const p = {...parada(), texto: TEXTO, bairro: 'Santa Maria'};
+    expect((await levarParaOCenso([p], 'Aracaju', censo(false))).levadas).toEqual([p]);
+    expect(perguntas).toEqual(['rua m|24|Santa Maria']);
+    expect(p).toMatchObject({lat: portaM.lat, precisao: 'censo', fonte: 'IBGE'});
+    expect(p.exibido).toContain('Rua M, que o complemento diz');
+    expect(p.candidatos.map(c => c.fonte)).toEqual(['IBGE', 'planilha']);
+    // a rua do endereço existe no censo: o complemento não decide
+    expect((await levarParaOCenso([{...parada(), texto: TEXTO, bairro: 'Santa Maria'}], 'Aracaju', censo(true))).levadas).toEqual([]);
+    // a planilha já está a até 80 m da porta, ou o motorista já arrumou: fica
+    for (const x of [{...parada(), lat: portaM.lat, texto: TEXTO, bairro: 'Santa Maria'}, {...parada('lembrado'), texto: TEXTO, bairro: 'Santa Maria'}])
+      expect((await levarParaOCenso([x], 'Aracaju', censo(false))).levadas).toEqual([]);
+  });
+
   // Pedro, 11/10: "Perto do condomínio Stanza" ficava de fora, com a planilha a 742 m da porta, e ele
   // entregou a 6 m da porta do censo. Nas planilhas guardadas, as duas entregues assim: o censo a 6 m.
   it('"perto do condomínio X" é referência: a casa vai para a porta do censo como qualquer outra', async () => {

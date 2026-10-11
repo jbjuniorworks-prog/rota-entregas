@@ -12,9 +12,11 @@ Atualizado em 11/10/2026.
   de "perto", "próx.", "em frente", "ao lado" agora é referência. Nas planilhas guardadas mudam 19
   de 2.150 lugares, todos referência; das 2 entregues que mudam o pino, o censo acertou as 2.
 - **"Recanto dos Cajueiros, 24, Rua M atrás do GBarbosa, Santa Maria"**: a planilha pôs na Rua M
-  do Aruana, a 1,9 km. O censo tem Rua M em 10 bairros, e a de Santa Maria fica a 99 m de onde ele
-  entregou. Proposto, medir antes: conferir se o ponto da planilha cai no bairro escrito, pelo
-  censo em volta dele, e procurar a rua do complemento nesse bairro.
+  do Aruana, a 1,9 km; o censo tem Rua M em 10 bairros. Medido e recusado: "a planilha caiu em
+  outro bairro do censo" acontece em 248 lugares, quase sempre nome popular contra o do censo (São
+  Conrado e Orlando Dantas, Atalaia e Coroa do Meio), e procurar a rua no bairro escrito piorou 19 e
+  melhorou 10. Feito o estreito: a rua do endereço não existe no censo, o complemento diz a rua, e
+  ela tem o número exato no bairro escrito. Em 1.894 lugares só este muda: de 1.904 m para 13 m.
 - As duas já ficaram verificadas pelo "Entreguei aqui" dele, e o censo não mexe no que o motorista
   arrumou (marcado na mão, lembrado ou verificado).
 

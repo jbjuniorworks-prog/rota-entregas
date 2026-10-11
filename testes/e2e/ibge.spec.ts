@@ -127,6 +127,31 @@ test('a Rua B que a planilha pôs noutra Rua B vai para a porta do CEP, e fica v
   expect(ruaB.exibido).toContain('longe das portas do CEP dela');
 });
 
+// Pedro, 11/10: a rua do endereço era o nome de um conjunto, que o censo não tem, e a rua de verdade
+// vinha no complemento; a planilha pôs na Rua M de outro bairro. Aqui com a Rua M, 24 do censo em
+// Santa Maria, e a planilha numa Rua M do Aruana.
+test('a rua que vem no complemento acha a porta no bairro escrito', async ({page}) => {
+  const XLSX = (await import('xlsx')).default;
+  const PORTA = {lat: -10.985154, lng: -37.095073};
+  const em = (dLat: number, dLng: number) => [+(PORTA.lat + dLat).toFixed(6), +(PORTA.lng + dLng).toFixed(6)];
+  const cab = ['AT ID', 'Sequence', 'Stop', 'SPX TN', 'Destination Address', 'Bairro', 'City', 'Zipcode/Postal code', 'Latitude', 'Longitude'];
+  const perto = (n: number, dLat: number, dLng: number) => ['AT-TESTE', n, n, '', `Rua Inventada ${n}, 10`, 'Bairro Inventado', 'Aracaju', `49099-90${n}`, ...em(dLat, dLng)];
+  const ws = XLSX.utils.aoa_to_sheet([cab,
+    perto(1, 0.001, 0), perto(2, -0.001, 0.001), perto(3, 0, -0.001), perto(4, 0.0015, 0.0012),
+    ['AT-TESTE', 5, 5, '', 'Recanto das Mangueiras, 24, Rua M atrás do mercado', 'Santa Maria', 'Aracaju', '49099-905', -11.002211, -37.093947],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
+  await abrir(page);
+  await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
+  await expect(page.locator('#status')).toContainText('1 levada(s) para a porta do censo do IBGE', {timeout: 30_000});
+  const p = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas.find((x: any) => x.texto.startsWith('Recanto das Mangueiras')));
+  expect({lat: p.lat, lng: p.lng}).toEqual(PORTA);
+  expect(p.precisao).toBe('censo');
+  expect(p.exibido).toContain('que o complemento diz');
+});
+
 // Luan, 02/10: a rota lida pela versão antiga continuava errada depois de atualizar o app.
 test('ao abrir, a rota que já estava na tela também passa pelo censo', async ({page}) => {
   const XLSX = (await import('xlsx')).default;

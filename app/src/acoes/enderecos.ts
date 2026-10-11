@@ -8,7 +8,7 @@ import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
 import {carregarAncorasDeCep} from '../servicos/base';
 import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from '../servicos/geocodificacao';
-import {enderecoDoIbge, portasDaRuaNoIbge, portasDoCep} from '../servicos/ibge';
+import {enderecoDoIbge, portaNoBairroDoIbge, portasDaRuaNoIbge, portasDoCep, ruaNoIbge} from '../servicos/ibge';
 import {desatualizarRota, e, enviarFila, fila, invalidarRota, memoria, ui} from './base';
 import {irPara} from './navegacao';
 import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, focar} from './posicoes';
@@ -129,7 +129,8 @@ async function levarAoBairroPeloMapa(soGenericas = false): Promise<{longe: numbe
 // "as posições mudaram, refazer rota" seria barulho, ainda mais ao abrir o app no meio do dia.
 async function conferirComOCenso(): Promise<{levadas: number; refinadas: number; genericas: number; foraDoCep: number}> {
   const {levadas, refinadas, genericas, foraDoCep} = await levarParaOCenso(e().paradas, e().cidade,
-    {porta: (cep, numero, cidade) => enderecoDoIbge(cep, numero, cidade, true), rua: portasDaRuaNoIbge, cep: portasDoCep});
+    {porta: (cep, numero, cidade) => enderecoDoIbge(cep, numero, cidade, true), rua: portasDaRuaNoIbge, cep: portasDoCep,
+      existe: ruaNoIbge, noBairro: portaNoBairroDoIbge});
   // O desatualizar também marca as isoladas. A que sai de longe do próprio CEP pode cair longe do
   // resto da rota, e o vermelho de longe das outras entregas é o aviso de que ela nem é deste
   // trajeto (Pedro, 08/10: 11,7 km).

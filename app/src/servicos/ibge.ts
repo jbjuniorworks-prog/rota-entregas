@@ -268,6 +268,36 @@ export async function ruaDoIbge(rua: string, numero: string, cidade: string,
   return candidatoDaRua(procurarRua(t, rua, pedido, perto, bairro), pedido);
 }
 
+// A rua do endereço existe no censo da cidade? Sem ela, quem diz a rua pode ser o complemento.
+export function ruaNoCenso(t: Tabela, rua: string): boolean {
+  return (indicePorNome(t).get(chaveRua(rua)) || []).length > 0;
+}
+
+// A porta com o número exato numa rua do bairro escrito na planilha. Só o exato e só nesse bairro:
+// o nome curto ("Rua M") se repete em dez bairros de Aracaju, e é o bairro que diz qual.
+export function portaNoBairro(t: Tabela, rua: string, numero: number, bairro: string): Candidato | null {
+  const ancora = bairro ? acharAncoraDoBairro(t, bairro) : null;
+  if (!ancora || !Number.isFinite(numero)) return null;
+  const a = procurarRua(t, rua, numero, null, ancora.nome);
+  if (!a || a.salto !== 0 || normal(a.bairro) !== normal(ancora.nome)) return null;
+  const nome = bonito(a.rua);
+  return {lat: a.lat, lng: a.lng, exibido: `${nome}, ${numero} — ${bonito(a.bairro)}`, precisao: 'bom', rua: nome, bairro: bonito(a.bairro), fonte: 'IBGE'};
+}
+
+async function tabelaDaCidade(cidade: string): Promise<Tabela | null> {
+  const t = await tabela(cidade);
+  const daCidade = normal(String(cidade || '').split(/[,\-\/]/)[0]);
+  return t && (!daCidade || daCidade === t.cidade) ? t : null;
+}
+export async function ruaNoIbge(rua: string, cidade: string): Promise<boolean | null> {
+  const t = await tabelaDaCidade(cidade);
+  return t ? ruaNoCenso(t, rua) : null;
+}
+export async function portaNoBairroDoIbge(rua: string, numero: string, bairro: string, cidade: string): Promise<Candidato | null> {
+  const t = await tabelaDaCidade(cidade);
+  return t ? portaNoBairro(t, rua, parseInt(numero, 10), bairro) : null;
+}
+
 // Âncora: onde fica, grosso modo, o bairro (ou o setor do CEP) daquele endereço. Serve de piso —
 // nenhuma resposta pode cair longe demais dela. Sai do mesmo arquivo do censo, sem rede.
 export interface Ancora {

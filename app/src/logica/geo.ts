@@ -5,7 +5,7 @@
 export const LONGE_DA_ANCORA = 3000;
 
 import {DA_PLANILHA, DUVIDA} from './rotulos';
-import {chaveLugar, decompor, emCondominio, mesmaRua, normal, ruaGenerica, TIPOS_RUA} from './texto';
+import {chaveLugar, decompor, emCondominio, mesmaRua, normal, ruaDoComplemento, ruaGenerica, TIPOS_RUA} from './texto';
 import type {Candidato, Parada, Ponto} from './tipos';
 
 export const RAIO_BLOCO = 10;
@@ -342,6 +342,34 @@ export interface Censo {
   rua: (rua: string, perto: Ponto, cidade: string) => Promise<Ponto[]>;
   // as portas do CEP, para a rua de nome genérico: sem ele, ela fica de fora como antes
   cep?: (cep: string, cidade: string) => Promise<Ponto[]>;
+  // a rua do endereço no censo, e a porta da rua do complemento no bairro escrito
+  existe?: (rua: string, cidade: string) => Promise<boolean | null>;
+  noBairro?: (rua: string, numero: string, bairro: string, cidade: string) => Promise<Candidato | null>;
+}
+
+// Pedro, 11/10: "Recanto dos Cajueiros, 24, Rua M atrás do GBarbosa, Santa Maria". A rua do
+// endereço não existe no censo, e a do complemento existe em dez bairros; no bairro escrito, com o
+// número exato, a 13 m de onde ele entregou. A planilha estava na Rua M de outro bairro, a 1,9 km.
+// Nas 2.130 paradas das planilhas guardadas, foi a única que a regra moveu.
+async function levarParaARuaDoComplemento(ps: Parada[], rua: string, numero: string, cidade: string, censo: Censo, levadas: Parada[]): Promise<boolean> {
+  const daRua = ruaDoComplemento(ps[0].texto);
+  if (!daRua || !ps[0].bairro || !censo.existe || !censo.noBairro) return false;
+  try {
+    if ((await censo.existe(rua, cidade)) !== false) return false;
+    const porta = await censo.noBairro(daRua, numero, ps[0].bairro, cidade);
+    if (!porta) return false;
+    for (const p of ps) {
+      if (p.precisao !== 'planilha' || p.entregue || !comPosicao(p)) continue;
+      const metros = haversine(p, porta);
+      if (metros <= CENSO_DISCORDA) continue;
+      levarParaAPortaDoCenso(p as Parada & Ponto, porta, metros);
+      p.exibido = `Porta do censo do IBGE na ${porta.rua}, que o complemento diz, no bairro ${porta.bairro}: a planilha punha este pino a ${Math.round(metros)} m, noutra rua. Confira na porta`;
+      levadas.push(p);
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // O mesmo número decide junto. Com complementos diferentes (o bloco, a casa), metade num pino e
@@ -359,9 +387,10 @@ export async function levarParaOCenso(paradas: Parada[], cidade: string, censo: 
   for (const ps of porLugar.values()) {
     if (ps.some(p => emCondominio(p.texto))) continue;
     const d = decompor(ps[0].texto);
-    if (!d.cep || !d.numero) continue;
     // a cidade da entrega, não a que o app guardou de ontem
     const daCidade = cidadeDaParada(ps[0], cidade);
+    if (d.numero && await levarParaARuaDoComplemento(ps, d.rua, d.numero, daCidade, censo, levadas)) continue;
+    if (!d.cep || !d.numero) continue;
     if (ruaGenerica(d.rua)) {
       if (!censo.cep) continue;
       try {

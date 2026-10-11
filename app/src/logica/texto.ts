@@ -679,6 +679,22 @@ const semReferencia = (trecho: string) => { const n = normal(trecho), m = SO_REF
 export const emCondominio = (texto: string): boolean =>
   CONDOMINIO.test(decompor(analisarLinha(texto).texto).resto.map(semReferencia).join(' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' '));
 
+// A rua de verdade às vezes vem no complemento, com o nome de um conjunto no lugar dela
+// ("Recanto das Mangueiras, 24, Rua M atrás do mercado"). Corta na referência, como o condomínio,
+// e recusa o que é frase e não nome: "Rua da Assembleia", "rua sem saída", "rua próx. ao X". Recusa
+// também "Rua das Flores", que é nome: perder um caso custa menos que procurar a rua errada.
+const RUA_NO_COMPLEMENTO = /^(rua|r|travessa|tv|avenida|av|alameda|al)\s+([a-z0-9][a-z0-9 ]*)$/;
+const TIPO_POR_EXTENSO: Record<string, string> = {r: 'rua', tv: 'travessa', av: 'avenida', al: 'alameda'};
+const NAO_E_NOME = new Set(['da', 'do', 'das', 'dos', 'de', 'sem', 'que', 'e', 'em', 'no', 'na', 'a', 'o', 'ao', 'principal']);
+export function ruaDoComplemento(texto: string): string | null {
+  for (const s of decompor(analisarLinha(texto).texto).resto) {
+    const m = RUA_NO_COMPLEMENTO.exec(semReferencia(s).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim());
+    if (!m || NAO_E_NOME.has(m[2].split(' ')[0])) continue;
+    return `${TIPO_POR_EXTENSO[m[1]] || m[1]} ${m[2]}`;
+  }
+  return null;
+}
+
 export function chaveLugar(texto: string, bairro: string | undefined, cidade: string): string | null {
   const d = decompor(analisarLinha(texto).texto);
   // "S/N" é endereço de verdade, e justamente o que fonte nenhuma acha — é o que mais precisa

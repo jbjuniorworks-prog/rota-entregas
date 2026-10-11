@@ -1,4 +1,4 @@
-import {coordenadaNoTexto, semLink, chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, mesmaPortaPeloNome, normal, pistasDeLugar, ruaCompleta} from './texto';
+import {coordenadaNoTexto, semLink, chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, mesmaPortaPeloNome, normal, pistasDeLugar, ruaCompleta, ruaDoComplemento} from './texto';
 
 describe('mesmo condomínio, endereços diferentes', () => {
   const p = (texto: string, bairro = 'Jardins') => ({texto, bairro});
@@ -723,5 +723,19 @@ describe('endereço sem número também precisa de chave', () => {
     expect(chaveLugar('Alameda Vereador Lucilo da Costa Pinto SN', '', 'Aracaju, SE')).toBeNull();
     // e o que nem S/N tem segue de fora
     expect(chaveLugar('Alameda Vereador Lucilo da Costa Pinto, CEP 49025-100', '', 'Aracaju')).toBeNull();
+  });
+});
+
+// Pedro, 11/10: o nome de um conjunto no lugar da rua, e a rua de verdade no complemento
+describe('a rua que vem no complemento', () => {
+  it('acha a rua dita no complemento, até a referência', () => {
+    expect(ruaDoComplemento('Recanto das Mangueiras, 24, Rua M atrás do mercado, Bairro Sul, CEP 49000-300')).toBe('rua m');
+    expect(ruaDoComplemento('Conjunto Inventado, 10, Tv. B, Casa 2')).toBe('travessa b');
+    expect(ruaDoComplemento('Conjunto Inventado, 10, R 2')).toBe('rua 2');
+  });
+  it('frase com "rua" não é nome de rua', () => {
+    for (const c of ['Rua da Assembleia de Deus', 'Rua sem saída', 'rua próx. ao condomínio X', 'Rua em frente à praça', 'Rua do mercadinho'])
+      expect(ruaDoComplemento(`Conjunto Inventado, 10, ${c}`), c).toBeNull();
+    expect(ruaDoComplemento('Rua das Acácias, 109, Casa 3, Jardins')).toBeNull();
   });
 });
