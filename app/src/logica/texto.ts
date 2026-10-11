@@ -180,9 +180,11 @@ interface Aberto {
 }
 
 // A faixa de horário ("08:15h a 12:15h", "Habilita as 13:50 h") é o alto de cada cartão do
-// Mercado Livre: o que vem antes dela é do cartão anterior.
+// Mercado Livre: o que vem antes dela é do cartão anterior. O cabeçalho do grupo ("ÁREA 3 | 14:15
+// a 17:40 hs") também: sem isso a rua só com nome, sem número, levava "ÁREA 3" como fim do nome (11/10).
 const FAIXA = '\u0000faixa';
-const soFaixa = (l: string) => !limparRuido(l) && new RegExp(FAIXA_DE_HORARIO.source, 'i').test(l);
+const CABECALHO_DA_AREA = /^\W*[áa]rea\s+\d{1,2}\b/i;
+const soFaixa = (l: string) => (!limparRuido(l) || CABECALHO_DA_AREA.test(l)) && new RegExp(FAIXA_DE_HORARIO.source, 'i').test(l);
 
 const DE_COMANDA = /(id do pedido|localizador|c[oó]digo de coleta|entrega para [aà]s|pedido\s*#?\s*\d|documento fiscal|taxa de entrega|goomer|itens\s*\(=\)|\(\+\))/i;
 const ANTES_DO_ENDERECO = /^(telefone|localizador|id do pedido|cliente)\b|\(\d{2}\)\s*\d{4,5}-?\d{4}|^\w{0,4}:\s*\(?\d{2}\)?\s*\d{4,5}-\d{4}/i;
@@ -391,6 +393,7 @@ export function extrairEnderecos(bruto: string): string[] {
     const mn = l.match(/^[#(]?(\d{1,3})(?:[).:\]\-]|\s|$)/);
     numeroSolto = mn && !TEM_CEP.test(l) && !/^\d{1,2}:\d{2}/.test(l) ? mn[1] : null;
   }
+  for (const e of out) e.texto = portaLegivel(e.texto);
   return out
     // Sem número e sem CEP normalmente é sobra de leitura. Mas "S/N" é endereço de verdade — o
     // Mercado Livre manda assim — e sumir com a parada é pior que mostrá-la só com a rua: some
@@ -401,6 +404,17 @@ export function extrairEnderecos(bruto: string): string[] {
     .filter(e => (/\s\d{1,5}[a-z]?\b/i.test(e.texto) || TEM_CEP.test(e.texto) || SEM_NUMERO.test(e.texto)
       || (e.inteiro && palavrasRua(e.texto).length >= 3)) && pareceEndereco(e.texto))
     .map(e => (e.ml ? e.ml + ' ' : '') + e.texto.replace(/\s[Oo0](?=\s)/g, '') + (e.unidades ? ` · ${e.unidades} unid` : '') + (e.comercial ? ' · comercial' : ''));
+}
+
+// Na linha da rua do Meli a porta vem por último. Duas leituras a tiravam de lá (11/10): o zero da
+// frente lido como letra ("Itajaí O5"), e a rua que acaba em número ("Rua Projetada 3 262"), em que
+// o 3 do nome ficava sendo a porta e as duas portas da Projetada 3 viravam uma parada só. A vírgula
+// separa a porta do nome; só depois da palavra que costuma levar número, para "Avenida Tal 1500
+// 302" (porta e apartamento) continuar como está.
+function portaLegivel(texto: string): string {
+  return texto
+    .replace(/^([^,]*[a-zà-ÿ]{3,}\s+[^,\s]*[a-zà-ÿ]{3,}\s+)[Oo](\d{1,4})(?=\s*(?:,|$))/i, (_, antes: string, n: string) => antes + '0' + n)
+    .replace(/^([^,]*\b(?:projetada|rua|travessa|avenida|alameda|quadra|beco|via)\s+\d{1,3})\s+(\d{1,5}[a-z]?)(?=\s*(?:,|$))/i, '$1, $2');
 }
 
 // Tira do fim do nome da rua a letra solta que sobrou onde o número estava tapado. Só quando

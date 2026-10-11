@@ -337,6 +337,26 @@ describe('leitura da lista do Meli: o que a gravação de 07/10 ensinou', () => 
   });
 });
 
+// Gravação de 11/10, 61 paradas: cada caso, com endereço inventado.
+describe('leitura da lista do Meli: o que a gravação de 11/10 ensinou', () => {
+  it('a rua que acaba em número fica com o nome, e a porta é o último número da linha', () => {
+    const lidas = extrairEnderecos('Rua Projetada 7 262 &\nCondomínio Teste Park, CEP 49000700\nEntrega 1 unidade | ETIQUETA\n\n10:15h a 14:00h\nRua Projetada 7 460 &\nCondomínio Teste Dois, CEP 49000700');
+    expect(lidas.map(l => decompor(l))).toMatchObject([{rua: 'Rua Projetada 7', numero: '262'}, {rua: 'Rua Projetada 7', numero: '460'}]);
+    expect(juntarQuadros([lidas])).toHaveLength(2);
+    // porta e apartamento sem vírgula continuam como estavam
+    expect(extrairEnderecos('Avenida Teste Inventada 1500 302')).toEqual(['Avenida Teste Inventada 1500 302']);
+    expect(extrairEnderecos('Rua Q7 120')).toEqual(['Rua Q7 120']);
+  });
+  it('o zero da frente da porta lido como letra volta a ser zero', () => {
+    expect(extrairEnderecos('Rua Teste Batista Inventado O5')).toEqual(['Rua Teste Batista Inventado 05']);
+    expect(extrairEnderecos('Rua O3, CEP 49000800')).toEqual(['Rua O3, CEP 49000800']);
+  });
+  it('o cabeçalho da área fecha o cartão de cima, e não vira fim do nome da rua', () => {
+    expect(extrairEnderecos('& Habilita as 13:50 h\nRua Francisco de Inventado\nSobrenome Teste Freitas\n\nÁREA 3 | 14:15 a 17:40 hs                     nn\n\n& Habilita as 14:15 h\nAvenida Inventada 3500'))
+      .toEqual(['Rua Francisco de Inventado Sobrenome Teste Freitas', 'Avenida Inventada 3500']);
+  });
+});
+
 describe('conjunto do endereço', () => {
   it('acha conjunto, loteamento e condomínio, no complemento ou no bairro', () => {
     expect(conjuntoDoEndereco('Rua B, 120, Conjunto Augusto Franco, CEP 49040-000')).toBe('Conjunto Augusto Franco');

@@ -5,6 +5,20 @@ decisão está na mensagem do commit que a fez, não aqui.
 
 Atualizado em 11/10/2026.
 
+## Leitor da gravação do Meli, rota de 11/10 (61 paradas)
+
+Lida pelo app, contada contra um gabarito tirado dos quadros (fora do git): **de 49 para 58
+paradas, de 14 para 5 linhas a mais**. A de 07/10 ficou igual (59 de 62).
+- **O selo de "verificado" grudado no número** ("5018", "218", "1878"; 8 paradas de 61). Sai pela
+  posição de cada letra (`logica/ocr.ts`): mais largo que um algarismo (0,75 a 1,00 da altura da
+  linha, contra 0,65) e depois de um vão grande. Com teto de 1,2, para "II 105" não perder o 105.
+- "Rua Projetada 3 262" ficava com a porta 3, e as duas portas da Projetada 3 viravam uma parada.
+- "Itajaí O5": o zero da frente lido como letra.
+- O cabeçalho "ÁREA 3 | 14:15 a 17:40" virava fim do nome da rua sem número.
+
+Ainda falta: 11 e 13 com o selo lidos "1" e "BS" (a parada some ou fica sem número), duas paradas
+na mesma porta viram uma, e o nome lido torto em um quadro ("Toncrefi) Neves") vira linha a mais.
+
 ## Duas paradas do Pedro de 11/10
 
 - **"Perto do condomínio Stanza"** contava como morar no condomínio, e o censo não mexia: a
@@ -205,7 +219,8 @@ números pela etiqueta.
   escudo quando os dois brigam. Pacote dividido ("##AZ-25.1") sem o ponto fica sem número.
 
 Ainda erra, sem conserto bom à vista:
-- o selo de verificado grudado no número da porta, igual em todos os quadros ("3278");
+- o selo de verificado grudado no número da porta: sai pela posição das letras desde 11/10, mas
+  aqui a imagem tratada lê "32/78", com uma barra no meio, e esse continua;
 - algarismo romano no nome da rua ("II 105" sai "11105");
 - duas leituras do mesmo cartão com um dígito diferente viram duas paradas;
 - o escudo do cartão bloqueado ("Habilita as") lido errado quando não há etiqueta;
