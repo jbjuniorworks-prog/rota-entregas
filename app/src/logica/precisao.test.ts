@@ -120,6 +120,27 @@ describe('planilha e censo do IBGE discordando', () => {
     expect(planilhaForaDaRua(com('Rua das Acácias, 109, Casa, Jardins, CEP 49000-100'), porta(170), ruaAoNorte)).not.toBeNull();
   });
 
+  // Pedro, 11/10: "Perto do condomínio Stanza" ficava de fora, com a planilha a 742 m da porta, e ele
+  // entregou a 6 m da porta do censo. Nas planilhas guardadas, as duas entregues assim: o censo a 6 m.
+  it('"perto do condomínio X" é referência: a casa vai para a porta do censo como qualquer outra', async () => {
+    const censo = {porta: async () => porta(170), rua: async () => ruaAoNorte};
+    for (const c of ['Perto do condomínio Stanza', 'Prox. ao cond. Vista Bela', 'Ao lado do Residencial Solar']) {
+      const p = {...parada(), texto: `Rua das Acácias, 109, ${c}, Jardins, CEP 49000-100`};
+      expect((await levarParaOCenso([p], 'Aracaju', censo)).levadas, c).toEqual([p]);
+    }
+    // quem mora dentro continua de fora, mesmo citando um lugar perto, com ou sem vírgula
+    for (const c of ['Cond. Solar casa 18, perto da padaria', 'Cond. Solar casa 18 perto da padaria']) {
+      const p = {...parada(), texto: `Rua das Acácias, 109, ${c}, Jardins, CEP 49000-100`};
+      expect((await levarParaOCenso([p], 'Aracaju', censo)).levadas, c).toEqual([]);
+    }
+    // e o que o motorista já arrumou na rua não sai do lugar (pedido de 11/10)
+    for (const pr of ['manual', 'lembrado', 'confirmado'] as Precisao[]) {
+      const p = {...parada(pr), texto: 'Rua das Acácias, 109, Perto do condomínio Stanza, Jardins, CEP 49000-100'};
+      expect((await levarParaOCenso([p], 'Aracaju', censo)).levadas, pr).toEqual([]);
+      expect(p).toMatchObject({lat: -10.94, precisao: pr});
+    }
+  });
+
   it('o mesmo número decide junto, e as portas da rua só são buscadas para quem discorda', async () => {
     let ruas = 0;
     const censo = {

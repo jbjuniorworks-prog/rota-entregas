@@ -3,7 +3,20 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 10/10/2026.
+Atualizado em 11/10/2026.
+
+## Duas paradas do Pedro de 11/10
+
+- **"Perto do condomínio Stanza"** contava como morar no condomínio, e o censo não mexia: a
+  planilha a 742 m, a porta do censo a 6 m de onde ele entregou. A palavra de condomínio depois
+  de "perto", "próx.", "em frente", "ao lado" agora é referência. Nas planilhas guardadas mudam 19
+  de 2.150 lugares, todos referência; das 2 entregues que mudam o pino, o censo acertou as 2.
+- **"Recanto dos Cajueiros, 24, Rua M atrás do GBarbosa, Santa Maria"**: a planilha pôs na Rua M
+  do Aruana, a 1,9 km. O censo tem Rua M em 10 bairros, e a de Santa Maria fica a 99 m de onde ele
+  entregou. Proposto, medir antes: conferir se o ponto da planilha cai no bairro escrito, pelo
+  censo em volta dele, e procurar a rua do complemento nesse bairro.
+- As duas já ficaram verificadas pelo "Entreguei aqui" dele, e o censo não mexe no que o motorista
+  arrumou (marcado na mão, lembrado ou verificado).
 
 ## "Endereço verificado" que o Pedro não via (10/10), para olhar na rua
 

@@ -577,7 +577,8 @@ const LUGAR_GENERICO = new Set([
 
 // Até 29/09 os dois \b estavam gravados como o caractere de controle backspace, e a expressão não
 // casava com nada: "próximo ao cond. X" contava como morar no X, e juntava pinos de ruas diferentes.
-const SO_REFERENCIA = /\b(perto|proxim[oa]|frente|defronte|atras|referencia|ref|depois|antes|fica)\b/;
+// "Prox." abreviado e "ao lado" entraram em 11/10, com o "Prox. ao cond. Vista Aruana" real.
+const SO_REFERENCIA = /\b(perto|prox\w*|frente|defronte|atras|referencia|ref|depois|antes|fica|ao lado)\b/;
 
 export function pistasDeLugar(texto: string, bairro = ''): string[] {
   const d = decompor(analisarLinha(texto).texto);
@@ -671,8 +672,12 @@ export const ruaGenerica = (rua: string): boolean => palavrasRua(rua).join('').l
 // (Cond. São Lourenço, a 150 m da portaria). Prédio sozinho ("Ed.", "apto") fica de fora: o censo
 // marca o prédio.
 const CONDOMINIO = /\b(cond\w*|cdm|cd|resid\w*|bloc\w*|blc|bl|bl\d+\w*|torre|casa \d+|cs \d+)\b/;
+// "Perto do condomínio X" é referência: a casa fica fora dele, e a porta do censo vale (Pedro, 11/10:
+// a 6 m de onde ele entregou, com a planilha a 742 m). Corta cada trecho na referência, e não o
+// joga fora inteiro: "Cond. Solar casa 18 perto da padaria" continua sendo condomínio.
+const semReferencia = (trecho: string) => { const n = normal(trecho), m = SO_REFERENCIA.exec(n); return m ? n.slice(0, m.index) : n; };
 export const emCondominio = (texto: string): boolean =>
-  CONDOMINIO.test(normal(decompor(analisarLinha(texto).texto).resto.join(' ')).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' '));
+  CONDOMINIO.test(decompor(analisarLinha(texto).texto).resto.map(semReferencia).join(' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' '));
 
 export function chaveLugar(texto: string, bairro: string | undefined, cidade: string): string | null {
   const d = decompor(analisarLinha(texto).texto);
