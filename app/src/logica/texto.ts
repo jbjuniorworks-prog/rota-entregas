@@ -559,6 +559,21 @@ export function conjuntoDoEndereco(texto: string, bairro = ''): string {
   return achado.replace(/\s+\b(ap(to|artamento)?|bl(oco|c)?|casa|sala|loja)\b.*$/i, '').replace(/[,;].*$/, '').trim();
 }
 
+// Quantas letras trocar, pôr ou tirar para ir de um texto ao outro.
+export function distanciaDeEdicao(a: string, b: string): number {
+  const v = Array.from({length: b.length + 1}, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let diagonal = v[0];
+    v[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const acima = v[j];
+      v[j] = Math.min(v[j] + 1, v[j - 1] + 1, diagonal + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diagonal = acima;
+    }
+  }
+  return v[b.length];
+}
+
 export function quaseIgual(a: string, b: string): boolean {
   if (a === b) return true;
   if (a.length < 5 || Math.abs(a.length - b.length) > 1) return false;

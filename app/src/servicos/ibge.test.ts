@@ -1,8 +1,8 @@
 import {readFileSync, readdirSync} from 'node:fs';
 import {describe, expect, it} from 'vitest';
 import {montar} from '../../../ferramentas/cnefe.mjs';
-import {acharAncoraDoBairro, apelidoDaCidade, candidatoDaRua, lerTabela, portaNoBairro, procurar, procurarRua, ruaNoCenso} from './ibge';
-import {chaveRua} from '../logica/texto';
+import {acharAncoraDoBairro, apelidoDaCidade, candidatoDaRua, corrigirLinhaLida, lerTabela, portaNoBairro, procurar, procurarRua, ruaNoCenso} from './ibge';
+import {chaveRua, juntarQuadros} from '../logica/texto';
 
 const CABECA = 'COD_UNICO_ENDERECO;COD_UF;COD_MUNICIPIO;COD_DISTRITO;COD_SUBDISTRITO;COD_SETOR;NUM_QUADRA;'
   + 'NUM_FACE;CEP;DSC_LOCALIDADE;NOM_TIPO_SEGLOGR;NOM_TITULO_SEGLOGR;NOM_SEGLOGR;NUM_ENDERECO;DSC_MODIFICADOR;'
@@ -352,5 +352,42 @@ describe('a rua do complemento no bairro escrito', () => {
   it('diz se a rua do endereço existe no censo', () => {
     expect(ruaNoCenso(t(), 'Rua M')).toBe(true);
     expect(ruaNoCenso(t(), 'Recanto das Mangueiras')).toBe(false);
+  });
+});
+
+// Gravação de 11/10: "Toncrefi) Neves" num quadro e "Tancredo Neves" nos outros viravam duas
+// paradas, e a torta ficava sem posição. Nomes inventados.
+describe('o nome da rua lido torto, pelo censo', () => {
+  const t = () => tabelaDe([
+    linha('49000010', 'PRESIDENTE TANCREDO INVENTADO', 3515, -10.9440, -37.0640, '', 'PONTO NOVO', 'AVENIDA'),
+    linha('49000010', 'PRESIDENTE TANCREDO INVENTADO', 3790, -10.9460, -37.0660, '', 'PONTO NOVO', 'AVENIDA'),
+    linha('49000011', 'CAPITAO INVENTADO MACHADO', 16, -10.9300, -37.0600, '', 'PONTO NOVO'),
+    linha('49000012', 'JOSE INVENTADO SILVA', 40, -10.9200, -37.0500),
+    linha('49000016', 'JOSE INVENTADO SILVO', 40, -10.9210, -37.0510),
+    linha('49000013', 'PROJETADA 13 INVENTADA', 50, -10.9100, -37.0400),
+    linha('49000014', 'MARIA INVENTADA', 60, -10.9000, -37.0300),
+    linha('49000015', 'MARIO INVENTADO', 60, -10.9010, -37.0310),
+  ]);
+  it('troca pelo nome do censo, mantendo o resto da linha', () => {
+    expect(corrigirLinhaLida(t(), 'Avenida Presidente Toncrefi) Inventado 3515')).toBe('Avenida Presidente Tancredo Inventado 3515');
+    expect(corrigirLinhaLida(t(), '#24 Rua Capitão Inventado Vochoo af) 16, CEP 49000011 · 1 unid'))
+      .toBe('#24 Rua Capitao Inventado Machado 16, CEP 49000011 · 1 unid');
+  });
+  it('a leitura torta e a certa, em quadros diferentes, viram uma parada', () => {
+    const quadros = [['Avenida Presidente Toncrefi) Inventado 3515'], ['Avenida Presidente Tancredo Inventado 3515'], ['Avenida Presidente Tancredo Inventado 3515']];
+    expect(juntarQuadros(quadros)).toHaveLength(2);
+    expect(juntarQuadros(quadros.map(q => q.map(l => corrigirLinhaLida(t(), l))))).toEqual(['Avenida Presidente Tancredo Inventado 3515']);
+  });
+  it('sem a porta com esse número, com outro CEP, empatada, com outros algarismos, longe demais ou já certa, fica como veio', () => {
+    for (const l of [
+      'Avenida Presidente Toncrefi) Inventado 3516',
+      'Avenida Presidente Toncrefi) Inventado 3515, CEP 49000099',
+      'Rua Jose Inventado Silvu 40',
+      'Rua Mariu Inventadu 60',
+      'Rua Projetada 12 Inventadx 50',
+      'Avenida Tancredo Kwyzpq 3515',
+      'Avenida Presidente Tancredo Inventado 3790',
+      'Rua Desconhecida Daqui Mesmo 3515',
+    ]) expect(corrigirLinhaLida(t(), l)).toBe(l);
   });
 });

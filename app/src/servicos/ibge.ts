@@ -1,8 +1,8 @@
 // Endereços do CNEFE/IBGE (Censo 2022) guardados no próprio app: CEP + número -> coordenada.
 // Vale menos que a correção do motorista e mais que o mapa aberto, e funciona sem internet.
 // O arquivo é gerado por `npm run cnefe`.
-import {haversine} from '../logica/geo';
-import {chaveBairro, chaveRua, jeitosDeLerBairro, mesmaRua, normal, tipoDaRua} from '../logica/texto';
+import {cidadeDoCep, haversine} from '../logica/geo';
+import {analisarLinha, chaveBairro, chaveEndereco, chaveRua, decompor, distanciaDeEdicao, jeitosDeLerBairro, mesmaRua, normal, tipoDaRua} from '../logica/texto';
 import type {Candidato, Ponto} from '../logica/tipos';
 
 // Um arquivo por cidade: aracaju-v1.bin, nossa-senhora-do-socorro-v1.bin… O mesmo apelido que
@@ -282,6 +282,73 @@ export function portaNoBairro(t: Tabela, rua: string, numero: number, bairro: st
   if (!a || a.salto !== 0 || normal(a.bairro) !== normal(ancora.nome)) return null;
   const nome = bonito(a.rua);
   return {lat: a.lat, lng: a.lng, exibido: `${nome}, ${numero} — ${bonito(a.bairro)}`, precisao: 'bom', rua: nome, bairro: bonito(a.bairro), fonte: 'IBGE'};
+}
+
+// O nome lido torto não existe no censo ("Avenida Presidente Toncrefi) Neves", "Rua Capitão José
+// Vochoo af)", 11/10): vale a rua do censo de nome mais parecido, quando ela ganha das outras com
+// folga, tem a porta com esse número e, se veio CEP, o mesmo CEP. Medido nos 320 nomes fora do
+// censo das planilhas guardadas e das leituras de vídeo: corrige 17, nenhum errado — as 13 de
+// planilha com o CEP batendo e a porta a até 28 m do pino do Meli. Sem a folga, "Jorge Arruda"
+// virava "Jorge Aruba" a 600 m; sem os algarismos iguais, "Rua 39" virava "Rua 3".
+const portasPorNome = new WeakMap<Tabela, Map<string, number[]>>();
+function portasDoNome(t: Tabela): Map<string, number[]> {
+  let m = portasPorNome.get(t);
+  if (!m) {
+    const chaveDaRua = t.ruas.map(chaveRua);
+    m = new Map();
+    for (let i = 0; i < t.iRua.length; i++) {
+      const k = chaveDaRua[t.iRua[i]];
+      const lista = m.get(k);
+      if (lista) lista.push(i); else m.set(k, [i]);
+    }
+    portasPorNome.set(t, m);
+  }
+  return m;
+}
+
+const algarismos = (k: string) => (k.match(/\d+/g) || []).join(' ');
+
+export function ruaParecida(t: Tabela, rua: string, numero: number, cep: string | null): string | null {
+  const k = chaveRua(rua);
+  const nomes = indicePorNome(t);
+  if (k.length < 8 || nomes.has(k) || !Number.isFinite(numero) || numero <= 0) return null;
+  // escrita de outro jeito, mas a mesma rua: as outras buscas já acham
+  if (t.ruas.some(n => mesmaRua(rua, n) && mesmaRua(n, rua))) return null;
+  let melhor = '', primeira = Infinity, segunda = Infinity;
+  for (const x of nomes.keys()) {
+    if (Math.abs(x.length - k.length) >= segunda) continue;
+    const d = distanciaDeEdicao(k, x);
+    if (d < primeira) { segunda = primeira; primeira = d; melhor = x; } else if (d < segunda) segunda = d;
+  }
+  if (!melhor || algarismos(melhor) !== algarismos(k) || primeira > 0.35 * k.length || segunda - primeira < 3) return null;
+  const portas = (portasDoNome(t).get(melhor) || []).filter(i => t.numeros[i] === numero);
+  if (!portas.length || (cep && !portas.some(i => String(t.ceps[i]) === cep))) return null;
+  return t.ruas[t.iRua[portas[0]]];
+}
+
+// A linha lida de print ou de vídeo com o nome da rua do censo, quando ele foi lido torto.
+export function corrigirLinhaLida(t: Tabela, linha: string): string {
+  const d = decompor(analisarLinha(linha).texto);
+  if (!d.rua || !d.numero || !linha.includes(d.rua)) return linha;
+  const daCidade = d.cep ? cidadeDoCep(d.cep) : null;
+  if (daCidade && normal(daCidade) !== t.cidade) return linha;
+  const nome = ruaParecida(t, d.rua, parseInt(d.numero, 10), d.cep);
+  return nome ? linha.replace(d.rua, bonito(nome)) : linha;
+}
+
+// Para o leitor, que corrige cada quadro antes de juntar: a mesma porta lida certa num quadro e
+// torta em outro virava duas paradas, e corrigida ela se junta às outras leituras dela.
+export async function corretorDeNomes(cidade: string): Promise<{corrigir: (linhas: string[]) => string[]; corrigidas: Set<string>}> {
+  const t = await tabelaDaCidade(cidade).catch(() => null);
+  const corrigidas = new Set<string>();
+  return {
+    corrigidas,
+    corrigir: linhas => !t ? linhas : linhas.map(l => {
+      const c = corrigirLinhaLida(t, l);
+      if (c !== l) corrigidas.add(chaveEndereco(c));
+      return c;
+    }),
+  };
 }
 
 async function tabelaDaCidade(cidade: string): Promise<Tabela | null> {

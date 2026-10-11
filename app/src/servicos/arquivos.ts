@@ -209,7 +209,8 @@ async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo
   return juntas;
 }
 
-export async function lerArquivos(files: Arquivo[], aviso: Aviso): Promise<string[] & {avisos: string[]}> {
+// `corrigir` passa em cada quadro antes de juntar: o nome da rua lido torto, trocado pelo do censo.
+export async function lerArquivos(files: Arquivo[], aviso: Aviso, corrigir: (linhas: string[]) => string[] = x => x): Promise<string[] & {avisos: string[]}> {
   const imagens: Imagem[] = [], grupos: string[][] = [], avisos: string[] = [];
   const videos: Arquivo[] = [];
   for (const f of files) {
@@ -261,5 +262,5 @@ export async function lerArquivos(files: Arquivo[], aviso: Aviso): Promise<strin
       ? `Nenhuma das ${falhas} parte(s) deu para ler. Se estava sem sinal, tente de novo com internet.`
       : `${falhas} parte(s) não deram para ler: confira se faltou alguma parada.`);
   }
-  return Object.assign(juntarQuadros(grupos), {avisos});
+  return Object.assign(juntarQuadros(grupos.map(corrigir)), {avisos});
 }

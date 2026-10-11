@@ -8,7 +8,7 @@ import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
 import {carregarAncorasDeCep} from '../servicos/base';
 import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from '../servicos/geocodificacao';
-import {enderecoDoIbge, portaNoBairroDoIbge, portasDaRuaNoIbge, portasDoCep, ruaNoIbge} from '../servicos/ibge';
+import {corretorDeNomes, enderecoDoIbge, portaNoBairroDoIbge, portasDaRuaNoIbge, portasDoCep, ruaNoIbge} from '../servicos/ibge';
 import {desatualizarRota, e, enviarFila, fila, invalidarRota, memoria, ui} from './base';
 import {irPara} from './navegacao';
 import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, focar} from './posicoes';
@@ -246,12 +246,14 @@ async function lerPrintsAgora(files: File[], textoAtual: string): Promise<string
   }
   status('Carregando leitor de texto (a primeira vez demora)…');
   try {
-    const unicos = await lerArquivos(files, m => status(m));
+    const nomes = await corretorDeNomes(e().cidade);
+    const unicos = await lerArquivos(files, m => status(m), nomes.corrigir);
     // sem nenhum endereço o app culpava a gravação; quando a leitura é que falhou, o aviso dela
     // é que tem de aparecer, senão o motorista grava tudo de novo à toa
     const avisos = unicos.avisos.map(a => ' ' + a).join('');
+    const corrigidas = nomes.corrigidas.size ? ` ${nomes.corrigidas.size} nome(s) de rua lido(s) torto(s), corrigido(s) pelo censo.` : '';
     status(unicos.length
-      ? `${unicos.length} endereço(s) lido(s). Confira o texto e toque em "Adicionar".${avisos}`
+      ? `${unicos.length} endereço(s) lido(s).${corrigidas} Confira o texto e toque em "Adicionar".${avisos}`
       : avisos
         ? `Não consegui ler.${avisos}`
         : 'Não achei endereços. Use o print ou a gravação da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
@@ -285,7 +287,7 @@ async function lerCompartilhado() {
   try {
     const {planilhas, outros} = await separarPlanilhas(files);
     const daPlanilha = planilhas.length ? await importarPlanilhas(planilhas) : null;
-    const linhas: string[] = outros.length ? await lerArquivos(outros, m => status(m)) : [];
+    const linhas: string[] = outros.length ? await lerArquivos(outros, m => status(m), (await corretorDeNomes(e().cidade)).corrigir) : [];
     if (texto.trim()) {
       const doTexto = extrairEnderecos(texto);
       linhas.push(...(doTexto.length ? doTexto : texto.split('\n').map(l => l.trim()).filter(Boolean)));
