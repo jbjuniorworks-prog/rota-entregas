@@ -114,6 +114,51 @@ test.describe('administrador', () => {
     await expect(page.locator('[data-motorista="Você Teste"]').getByRole('button')).toHaveCount(0);
   });
 
+  // 11/10: o Admin levava uns 6 s para abrir. A contagem das rotas baixava os 6 mil pacotes de 14
+  // dias para contar, e a tela esperava ela para mostrar o que esperava decisão.
+  const umaRota = (nuvem: {tabelas: Record<string, Record<string, unknown>[]>; rpc: Record<string, unknown[]>}) => {
+    nuvem.tabelas = {
+      rotas: [{id: 'r1', dia: hoje, arquivo: 'rota-luan.xlsx', criado_em: agora, motorista_id: 'm1', perfis: {nome: 'Luan'}}],
+      pacotes: [
+        {rota_id: 'r1', spx_tn: 'BR1', sequencia: 1, endereco: 'Rua das Acácias, 10', bairro: 'Centro', lat: -10.91, lng: -37.05, entregue_em: agora, chave_lugar: '49000100|10'},
+        {rota_id: 'r1', spx_tn: 'BR2', sequencia: 2, endereco: 'Rua B, 20', bairro: 'Centro', lat: -10.92, lng: -37.06, entregue_em: null, chave_lugar: CHAVE},
+      ],
+      correcoes: [{chave_lugar: CHAVE, lat: -10.9201, lng: -37.0601, criado_em: agora, motorista_id: 'm1', perfis: {nome: 'Luan', papel: 'motorista'}}],
+    };
+    nuvem.rpc = {posicoes: [{chave_lugar: CHAVE, lat: -10.9201, lng: -37.0601, situacao: 'sugestao', motoristas: 1, minha: false}]};
+  };
+  const contando = (nuvem: {pedidos: {caminho: string; busca: string}[]}) =>
+    nuvem.pedidos.filter(p => p.caminho === 'pacotes' && decodeURIComponent(p.busca).includes('rota_id=in.'));
+
+  test('com a função do banco, as rotas são contadas numa ida, sem baixar os pacotes', async ({page, nuvem}) => {
+    umaRota(nuvem);
+    nuvem.rpc.contagem_das_rotas = [{rota_id: 'r1', pacotes: 52, entregues: 40}];
+    await abrir(page);
+    await menu(page, /^Admin/);
+    await expect(page.locator('[data-rota="r1"]')).toContainText('Luan · 40/52 entregues');
+    expect(nuvem.pedidos.find(p => p.caminho === 'rpc/contagem_das_rotas')?.corpo).toEqual({ids: ['r1']});
+    expect(contando(nuvem)).toHaveLength(0);
+  });
+
+  test('sem a função no banco, ou sem uma linha para cada rota, conta baixando, como antes', async ({page, nuvem}) => {
+    umaRota(nuvem);
+    nuvem.rpc.contagem_das_rotas = [{rota_id: 'outra', pacotes: 9, entregues: 9}];
+    await abrir(page);
+    await menu(page, /^Admin/);
+    await expect(page.locator('[data-rota="r1"]')).toContainText('Luan · 1/2 entregues');
+    expect(contando(nuvem).length).toBeGreaterThan(0);
+  });
+
+  test('o que espera decisão aparece sem esperar a contagem das rotas', async ({page, nuvem}) => {
+    umaRota(nuvem);
+    await page.route('**/rest/v1/rotas**', async r => { await new Promise(ok => setTimeout(ok, 4000)); await r.fallback(); });
+    await abrir(page);
+    await menu(page, /^Admin/);
+    await expect(page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${CHAVE}"]`)).toContainText('Rua B, 20', {timeout: 3000});
+    await expect(page.locator('[data-rota="r1"]')).toHaveCount(0);
+    await expect(page.locator('[data-rota="r1"]')).toContainText('Luan · 1/2 entregues', {timeout: 10_000});
+  });
+
   // Pedido de 03/10: colar o e-mail e sair com a senha, em vez do terminal. Que a conta entra de
   // verdade com ela, quem garante é o teste @nuvem; aqui é a tela.
   test('cria a conta de um motorista colando o e-mail, e a senha sai pronta para o WhatsApp', async ({page, context, nuvem}) => {

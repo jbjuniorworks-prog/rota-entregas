@@ -105,18 +105,37 @@ export async function listarRotas(dias = 14): Promise<RotaResumo[]> {
   const {data, error} = await s.from('rotas').select('id, dia, arquivo, criado_em, perfis(nome)').gte('dia', desde).order('dia', {ascending: false}).order('criado_em', {ascending: false});
   falhou(error);
   const rotas = (data || []) as any[];
-  const contagem = new Map<string, {pacotes: number; entregues: number}>(rotas.map(r => [r.id, {pacotes: 0, entregues: 0}]));
-  for (const ids of pedacos(rotas.map(r => r.id), 50)) {
+  const ids = rotas.map(r => r.id as string);
+  const contagem = await contarNoBanco(s, ids) || await contarBaixando(s, ids);
+  return rotas.map(r => ({id: r.id, dia: r.dia, arquivo: r.arquivo, criado_em: r.criado_em, motorista: r.perfis?.nome || '?', ...contagem.get(r.id)!}));
+}
+
+type Contagem = Map<string, {pacotes: number; entregues: number}>;
+
+// Uma ida e uma linha por rota (020_contagem_das_rotas.sql), em vez de baixar os 6 mil pacotes de
+// 14 dias só para contar. Sem a função no banco, ou sem uma linha para cada rota, conta baixando.
+async function contarNoBanco(s: SupabaseClient, ids: string[]): Promise<Contagem | null> {
+  if (!ids.length) return new Map();
+  const {data, error} = await s.rpc('contagem_das_rotas', {ids});
+  if (error || !Array.isArray(data)) return null;
+  const contagem: Contagem = new Map(data.map((x: any) => [x.rota_id, {pacotes: x.pacotes, entregues: x.entregues}]));
+  return ids.every(id => contagem.has(id)) ? contagem : null;
+}
+
+async function contarBaixando(s: SupabaseClient, ids: string[]): Promise<Contagem> {
+  const contagem: Contagem = new Map(ids.map(id => [id, {pacotes: 0, entregues: 0}]));
+  // os pedaços ao mesmo tempo: um depois do outro, cada ida esperava a anterior
+  await Promise.all(pedacos(ids, 50).map(async parte => {
     const pacotes = await paginado<{rota_id: string; entregue_em: string | null}>((de, ate) =>
-      s.from('pacotes').select('rota_id, entregue_em').in('rota_id', ids).order('id').range(de, ate));
+      s.from('pacotes').select('rota_id, entregue_em').in('rota_id', parte).order('id').range(de, ate));
     for (const p of pacotes) {
       const c = contagem.get(p.rota_id);
       if (!c) continue;
       c.pacotes++;
       if (p.entregue_em) c.entregues++;
     }
-  }
-  return rotas.map(r => ({id: r.id, dia: r.dia, arquivo: r.arquivo, criado_em: r.criado_em, motorista: r.perfis?.nome || '?', ...contagem.get(r.id)!}));
+  }));
+  return contagem;
 }
 
 export async function pacotesDaRota(id: string): Promise<PacoteAdmin[]> {
@@ -139,20 +158,24 @@ export async function listarCorrecoes(limite = 500): Promise<LugarCorrigido[]> {
     l.marcacoes.push({motorista_id: c.motorista_id, nome: c.perfis?.nome || '?', papel: c.perfis?.papel || 'motorista', lat: c.lat, lng: c.lng, criado_em: c.criado_em, vezes: 1});
   }
   const chaves = [...lugares.keys()];
-  for (const parte of pedacos(chaves, 100)) {
-    const {data: pos, error: e1} = await s.rpc('posicoes', {chaves: parte});
+  // Os 300 lugares em pedaços de 100, todos ao mesmo tempo: um depois do outro eram 8 idas em fila,
+  // 1,7 s só de espera (11/10). Cada pedaço tem chaves só dele, então a ordem de chegada não importa.
+  await Promise.all(pedacos(chaves, 100).map(async parte => {
+    const [{data: pos, error: e1}, {data: pac, error: e2}] = await Promise.all([
+      s.rpc('posicoes', {chaves: parte}),
+      s.from('pacotes').select('chave_lugar, endereco, bairro').in('chave_lugar', parte).order('criado_em', {ascending: false}).limit(1000),
+    ]);
     falhou(e1);
+    falhou(e2);
     for (const p of (pos || []) as any[]) {
       const l = lugares.get(p.chave_lugar);
       if (l) Object.assign(l, {situacao: p.situacao, escolhida: {lat: p.lat, lng: p.lng}, fonte: p.fonte, motoristas: p.motoristas, entregas: p.entregas});
     }
-    const {data: pac, error: e2} = await s.from('pacotes').select('chave_lugar, endereco, bairro').in('chave_lugar', parte).order('criado_em', {ascending: false}).limit(1000);
-    falhou(e2);
     for (const p of (pac || []) as any[]) {
       const l = lugares.get(p.chave_lugar);
       if (l && !l.endereco) { l.endereco = p.endereco; l.bairro = p.bairro || ''; }
     }
-  }
+  }));
   return [...lugares.values()];
 }
 

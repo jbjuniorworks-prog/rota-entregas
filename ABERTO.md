@@ -5,6 +5,14 @@ decisão está na mensagem do commit que a fez, não aqui.
 
 Atualizado em 11/10/2026.
 
+## Admin mais rápido (11/10): falta rodar a `020_contagem_das_rotas.sql`
+
+O Admin esperava as três partes para mostrar qualquer coisa, e a mais lenta era contar os pacotes
+das rotas de 14 dias, baixando os 6 mil para contar. Agora cada parte entra quando chega, os
+pedaços vão ao mesmo tempo, e a contagem é uma função do banco. Medido daqui, só lendo, mediana
+de 5: o "Precisa de você" na tela de 3,4 s para 1,0 s; tudo de 3,4 s para 2,6 s, que deve cair
+para perto de 1 s com a 020 rodada. Sem ela o app conta do jeito antigo, sem quebrar nada.
+
 ## Leitor da gravação do Meli, rota de 11/10 (61 paradas)
 
 Lida pelo app, contada contra um gabarito tirado dos quadros (fora do git): **de 49 para 58

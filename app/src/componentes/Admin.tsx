@@ -54,22 +54,25 @@ export function TelaAdmin() {
   const [visto] = useState(() => guarda.ler<number | null>(CHAVES.adminVisto, null));
 
   const [lendo, setLendo] = useState(false);
+  // Cada parte entra na tela quando chega: esperar as três segurava o "Precisa de você" atrás da
+  // contagem das rotas, a parte mais lenta (11/10). Uma que falha não esconde as outras.
   const carregar = async () => {
     if (lendo) return;
     setErro('');
     setLendo(true);
-    try {
-      const [m, r, l] = await Promise.all([Adm.listarMotoristas(), Adm.listarRotas(), Adm.listarCorrecoes()]);
-      setMotoristas(m); setRotas(r); setLugares(l);
-      guarda.gravar(CHAVES.adminVisto, Date.now());
-      // o número da aba acompanha o que ele acabou de confirmar ou apagar
-      loja.ui.esperandoAdmin = triar(l, Date.now(), null).decidir.length;
-      loja.mudou(false);
-    } catch (err) {
-      setErro((err as Error).message);
-    } finally {
-      setLendo(false);
-    }
+    const falha = (err: unknown) => setErro((err as Error).message);
+    await Promise.all([
+      Adm.listarMotoristas().then(setMotoristas, falha),
+      Adm.listarRotas().then(setRotas, falha),
+      Adm.listarCorrecoes().then(l => {
+        setLugares(l);
+        guarda.gravar(CHAVES.adminVisto, Date.now());
+        // o número da aba acompanha o que ele acabou de confirmar ou apagar
+        loja.ui.esperandoAdmin = triar(l, Date.now(), null).decidir.length;
+        loja.mudou(false);
+      }, falha),
+    ]);
+    setLendo(false);
   };
   useEffect(() => { carregar(); }, []);
 
@@ -85,7 +88,7 @@ export function TelaAdmin() {
     <h2>Administração</h2>
     <div className="linha" style={{marginTop: 0}}><button className="btn" onClick={carregar} disabled={lendo}>{lendo ? 'Buscando…' : '↻ Atualizar'}</button></div>
     {erro && <div className="aviso">Não consegui carregar: {erro}</div>}
-    {!motoristas && !erro && <div className="info">Carregando…</div>}
+    {(!motoristas || !rotas || !lugares) && !erro && <div className="info">Carregando…</div>}
     {t && <div className={t.decidir.length ? 'aviso laranja' : 'info'} data-resumo>
       {t.decidir.length ? <b>📌 {t.decidir.length} esperando você.</b> : '✓ Nada esperando você.'}
       {visto != null && (t.novas
