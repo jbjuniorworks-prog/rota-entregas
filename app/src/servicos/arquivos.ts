@@ -1,3 +1,4 @@
+import {textoSemSelo} from '../logica/ocr';
 import {ehArquivoZip, itensDaPlanilha, pareceNomeDePlanilha, type ItemPlanilha} from '../logica/planilha';
 import {enderecosDaLista, extrairEnderecos, juntarComandas, juntarLeituras, juntarQuadros, pareceComanda, partesDaComanda} from '../logica/texto';
 import {escolherQuadros} from '../logica/video';
@@ -194,9 +195,11 @@ async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo
   const leituras: string[] = [], apoio: string[] = [], textos: string[] = [];
   for (const t of tentativas) {
     await worker.setParameters({tessedit_pageseg_mode: t.psm, preserve_interword_spaces: '1'});
-    const {data} = await worker.recognize(t.imagem);
-    textos.push(data.text);
-    (t.imagem === blob ? apoio : leituras).push(...extrairEnderecos(data.text));
+    // com a posição de cada letra, para tirar o selo de "verificado" grudado no número
+    const {data} = await worker.recognize(t.imagem, {}, {text: true, blocks: true});
+    const texto = textoSemSelo(data);
+    textos.push(texto);
+    (t.imagem === blob ? apoio : leituras).push(...extrairEnderecos(texto));
   }
   const juntas = juntarLeituras(leituras, apoio);
   if (juntas.length <= 1 && !textos.some(t => enderecosDaLista(t).length) && textos.some(pareceComanda)) {
