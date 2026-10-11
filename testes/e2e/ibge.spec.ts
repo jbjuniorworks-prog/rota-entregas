@@ -52,6 +52,24 @@ test('endereço que o censo não tem continua indo pelo caminho de sempre', asyn
   expect(buscas.length).toBeGreaterThan(0);
 });
 
+// 11/10: o cartão bloqueado do Meli dá só rua e número. Na Augusto Franco o censo para no 4120, e
+// a base de ruas, que não sabe o número, punha o pino no meio da avenida, a 900 m. Número
+// inventado, depois da última porta do censo.
+test('sem CEP, o número depois da última porta do censo vai para ela, e não para o meio da avenida', async ({page}) => {
+  const buscas = await espiar(page);
+  await abrir(page);
+  await colar(page);
+  await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+  await page.getByLabel(/Endereços da área/).fill('Avenida Augusto Franco 4160');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await aba(page, '2. Conferir');
+  await expect(page.getByRole('button', {name: /sem posição/})).toBeHidden({timeout: 30_000});
+  const p = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas[0]);
+  expect(p).toMatchObject({precisao: 'rua', fonte: 'IBGE', bairro: 'Ponto Novo'});
+  expect(p.exibido).toContain('nº 4120');
+  expect(buscas).toEqual([]);
+});
+
 // Luan, 01/10: a planilha pôs a porta a 168 m e a 773 m do lugar, e o censo tinha as duas certas.
 // Até 09/10 a planilha em cima da rua ficava; medido contra as entregas, o censo acertou 13 e ela
 // 6, e passou a ir também. O aviso diz se ela estava fora da rua ou em outro trecho dela.

@@ -1,7 +1,7 @@
 import {readFileSync, readdirSync} from 'node:fs';
 import {describe, expect, it} from 'vitest';
 import {montar} from '../../../ferramentas/cnefe.mjs';
-import {acharAncoraDoBairro, apelidoDaCidade, candidatoDaRua, corrigirLinhaLida, lerTabela, portaNoBairro, procurar, procurarRua, ruaNoCenso} from './ibge';
+import {acharAncoraDoBairro, apelidoDaCidade, candidatoDaRua, candidatoSemCep, corrigirLinhaLida, lerTabela, portaNoBairro, procurar, procurarRua, ruaNoCenso} from './ibge';
 import {chaveRua, juntarQuadros} from '../logica/texto';
 
 const CABECA = 'COD_UNICO_ENDERECO;COD_UF;COD_MUNICIPIO;COD_DISTRITO;COD_SUBDISTRITO;COD_SETOR;NUM_QUADRA;'
@@ -199,6 +199,33 @@ describe('rua de um bairro só: a porta do censo vale mais que o meio da rua', (
 
   it('em vários bairros continua respondendo mesmo aproximando o número', () => {
     expect(candidatoDaRua({...um(6), bairros: 3}, 100)!.precisao).toBe('rua');
+  });
+});
+
+// 11/10: "Avenida Augusto Franco 4141", cartão bloqueado do Meli, sem CEP nem bairro. O censo para
+// no 4120, a 21 números, e o pino foi para o meio da avenida, a 900 m. Nomes inventados.
+describe('sem CEP, a avenida de vários bairros aceita a porta do censo mais longe no número', () => {
+  const t = () => tabelaDe([
+    linha('49000201', 'AUGUSTO INVENTADO', 500, -10.9100, -37.0600, '', 'CENTRO TESTE', 'AVENIDA'),
+    linha('49000202', 'AUGUSTO INVENTADO', 2500, -10.9300, -37.0700, '', 'BAIRRO MEIO TESTE', 'AVENIDA'),
+    linha('49000203', 'AUGUSTO INVENTADO', 4101, -10.9417, -37.0773, '', 'PONTA TESTE', 'AVENIDA'),
+    linha('49000203', 'AUGUSTO INVENTADO', 4120, -10.9404, -37.0775, '', 'PONTA TESTE', 'AVENIDA'),
+    linha('49000204', 'F', 10, -10.9500, -37.0500, '', 'CENTRO TESTE'),
+    linha('49000205', 'F', 10, -10.9600, -37.0400, '', 'PONTA TESTE'),
+    linha('49000206', 'RUA SO DE UM BAIRRO TESTE', 10, -10.9700, -37.0300, '', 'PONTA TESTE'),
+  ]);
+  const meioDaRota = {lat: -10.9300, lng: -37.0700};
+  it('a 21 números da última porta, vai para ela, e diz que o número é aproximado', () => {
+    expect(procurarRua(t(), 'Avenida Augusto Inventado', 4141, meioDaRota)).toBeNull();
+    const c = candidatoSemCep(t(), 'Avenida Augusto Inventado', 4141, meioDaRota)!;
+    expect(c).toMatchObject({lat: -10.9404, lng: -37.0775, precisao: 'rua', fonte: 'IBGE'});
+    expect(c.exibido).toContain('nº 4120');
+    expect(candidatoSemCep(t(), 'Avenida Augusto Inventado', 4200, meioDaRota)).toMatchObject({lat: -10.9404});
+  });
+  it('a mais de 100 números, o nome genérico e a rua de um bairro só continuam sem resposta do censo', () => {
+    expect(candidatoSemCep(t(), 'Avenida Augusto Inventado', 4300, meioDaRota)).toBeNull();
+    expect(candidatoSemCep(t(), 'Rua F', 40, meioDaRota)).toBeNull();
+    expect(candidatoSemCep(t(), 'Rua So de Um Bairro Teste', 40, meioDaRota)).toBeNull();
   });
 });
 

@@ -2,7 +2,7 @@
 // Vale menos que a correção do motorista e mais que o mapa aberto, e funciona sem internet.
 // O arquivo é gerado por `npm run cnefe`.
 import {cidadeDoCep, haversine} from '../logica/geo';
-import {analisarLinha, chaveBairro, chaveEndereco, chaveRua, decompor, distanciaDeEdicao, jeitosDeLerBairro, mesmaRua, normal, tipoDaRua} from '../logica/texto';
+import {analisarLinha, chaveBairro, chaveEndereco, chaveRua, decompor, distanciaDeEdicao, jeitosDeLerBairro, mesmaRua, normal, ruaGenerica, tipoDaRua} from '../logica/texto';
 import type {Candidato, Ponto} from '../logica/tipos';
 
 // Um arquivo por cidade: aracaju-v1.bin, nossa-senhora-do-socorro-v1.bin… O mesmo apelido que
@@ -206,7 +206,7 @@ export interface AchadoDeRua extends AchadoIbge {
   bairros: number;
 }
 
-export function procurarRua(t: Tabela, rua: string, numero: number, perto: Ponto | null, bairro = ''): AchadoDeRua | null {
+export function procurarRua(t: Tabela, rua: string, numero: number, perto: Ponto | null, bairro = '', saltoMaximo = t.saltoMaximo): AchadoDeRua | null {
   // A chave ignora o tipo, então "Rua Principal" casa com "Avenida Principal": são ruas diferentes.
   const tipo = tipoDaRua(rua);
   const todas = indicePorNome(t).get(chaveRua(rua)) || [];
@@ -225,7 +225,7 @@ export function procurarRua(t: Tabela, rua: string, numero: number, perto: Ponto
     if (!atual || salto < atual.salto) melhorNoBairro.set(t.iBairro[i], {i, salto});
   }
   const ponto = (x: {i: number}) => ({lat: t.lats[x.i] / 1e6, lng: t.lngs[x.i] / 1e6});
-  const cabem = [...melhorNoBairro.values()].filter(x => x.salto <= t.saltoMaximo);
+  const cabem = [...melhorNoBairro.values()].filter(x => x.salto <= saltoMaximo);
   const dito = normal(bairro);
   const doBairro = dito ? cabem.filter(x => normal(t.bairros[t.iBairro[x.i]]) === dito) : [];
   const lista = doBairro.length ? doBairro : cabem;
@@ -258,6 +258,19 @@ export function candidatoDaRua(achado: AchadoDeRua | null, pedido: number): Cand
   };
 }
 
+// Sem CEP e sem bairro (o cartão bloqueado do Meli só mostra rua e número), a rua de vários bairros
+// aceita a porta do censo até 100 números longe, e não só 20: o número diz em que ponto da avenida
+// a casa fica, e a base de ruas, que não sabe o número, põe o pino no trecho mais perto do meio da
+// rota. Augusto Franco 4141 (11/10): o censo para no 4120, e o pino ficou no meio da avenida, a
+// 900 m. Medido nas planilhas guardadas, ruas de vários bairros sem nome genérico: de 21 a 100
+// números a porta do censo ficou mais perto do pino do Meli em 13 e mais longe em 4; de 101 a 200
+// empata, acima disso perde. Nome genérico ("Rua F") fica nos 20: com mais folga ele cabe em mais
+// bairros, e o chute entre eles piora.
+export const SALTO_SEM_CEP = 100;
+export function candidatoSemCep(t: Tabela, rua: string, numero: number, perto: Ponto | null): Candidato | null {
+  return candidatoDaRua(procurarRua(t, rua, numero, perto, '', ruaGenerica(rua) ? t.saltoMaximo : SALTO_SEM_CEP), numero);
+}
+
 export async function ruaDoIbge(rua: string, numero: string, cidade: string,
   perto: Ponto | null, bairro = ''): Promise<Candidato | null> {
   const t = await tabela(cidade);
@@ -265,7 +278,7 @@ export async function ruaDoIbge(rua: string, numero: string, cidade: string,
   const daCidade = normal(String(cidade || '').split(/[,\-\/]/)[0]);
   if (daCidade && daCidade !== t.cidade) return null;
   const pedido = parseInt(numero, 10);
-  return candidatoDaRua(procurarRua(t, rua, pedido, perto, bairro), pedido);
+  return bairro ? candidatoDaRua(procurarRua(t, rua, pedido, perto, bairro), pedido) : candidatoSemCep(t, rua, pedido, perto);
 }
 
 // A rua do endereço existe no censo da cidade? Sem ela, quem diz a rua pode ser o complemento.

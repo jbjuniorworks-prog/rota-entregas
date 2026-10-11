@@ -35,6 +35,16 @@ paradas, de 14 para 3 linhas a mais**. A de 07/10 ficou igual (59 de 62).
 Ainda falta: 11 e 13 com o selo lidos "1" e "BS" (a parada some ou fica sem número), e duas
 paradas na mesma porta viram uma. O nome corrigido sai como o censo escreve, sem acento.
 
+## Sem CEP, número depois da última porta do censo (11/10), para olhar na rua
+
+"Avenida Augusto Franco 4141" (Poesia Art Home), cartão bloqueado do Meli: só rua e número. O
+censo para no 4120, a 21 números, e o limite era 20; a base de ruas, que não sabe o número, pôs o
+pino no trecho mais perto do meio da rota, a 900 m. Agora, sem CEP e sem bairro, a rua de vários
+bairros aceita a porta do censo até 100 números longe (laranja, "o IBGE tem o nº X"). Medido nas
+planilhas, ruas de vários bairros sem nome genérico: de 21 a 100 números, 13 mais perto do pino
+do Meli e 4 mais longe; de 101 a 200 empata, acima perde. A porta do mesmo lado (par/ímpar) foi
+pior, ficou de fora. Aqui o pino vai para a 4120, a ~230 m; a 4101, do mesmo lado, fica a 80 m.
+
 ## Vizinha de mesmo número em outra rua (11/10), para olhar na rua
 
 "Rua Via Férrea 260" e "Rua Quirino 260", paradas 17 e 18 do Meli, no mesmo condomínio
