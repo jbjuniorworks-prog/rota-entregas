@@ -3,7 +3,7 @@ import {RANK} from '../logica/rotulos';
 import {conjuntoDoEndereco, decompor, mesmaRua, normal} from '../logica/texto';
 import type {Candidato, Ponto, Precisao, Regiao} from '../logica/tipos';
 import {ancoraDeCep, ruaNaBase} from './base';
-import {ancoraDoIbge, bonito, enderecoDoIbge, ruaDoIbge, type Ancora} from './ibge';
+import {ancoraDoIbge, bonito, enderecoDoIbge, nomeCorrigidoPeloCenso, ruaDoIbge, type Ancora} from './ibge';
 import {buscarJson, espacado} from './rede';
 
 interface Cep {
@@ -222,8 +222,21 @@ export async function ancoraDoEndereco(txt: string, cidade: string, bairro: stri
 // A chave do Google saiu em 02/10: com ela a busca ia só ao Google e deixava de lado o censo e a
 // nossa base de ruas, que são o que mais acerta aqui. Sem a tela dela, um celular com chave salva
 // não teria como tirá-la, então ela não é mais lida.
+// Achou a rua, mesmo sem a porta. O resto é chute de bairro, mapa com outro nome, ou nada.
+const ACHOU: ReadonlySet<Precisao> = new Set<Precisao>(['exato', 'bom', 'rua', 'censo']);
+
 export async function geocodificar(txt: string, opcoes: {cidade: string; perto?: Ponto | null; bairro?: string}): Promise<Candidato[]> {
   let cands = await geoOSM(txt, opcoes.cidade, opcoes.perto || null, opcoes.bairro || '');
+  // Nada achou a rua: o nome pode ter vindo torto ("Capitão José Vochoo af)", de um quadro do vídeo,
+  // ou digitado errado). Com o nome do censo, a busca vai de novo — a mesma regra do leitor (11/10).
+  if (!cands.some(c => ACHOU.has(c.precisao))) {
+    const certo = await nomeCorrigidoPeloCenso(txt, opcoes.cidade);
+    const deNovo = certo ? await geoOSM(certo, opcoes.cidade, opcoes.perto || null, opcoes.bairro || '') : [];
+    if (deNovo.some(c => ACHOU.has(c.precisao))) {
+      cands = deNovo.map(c => ({...c, exibido: `${c.exibido} (o nome da rua veio torto, corrigido pelo censo)`}));
+      txt = certo!;
+    }
+  }
   const vistos = new Set<string>();
   cands = cands.filter(c => {
     const k = c.lat.toFixed(5) + ',' + c.lng.toFixed(5);

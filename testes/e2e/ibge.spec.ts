@@ -193,6 +193,39 @@ test('ao abrir, a rota que já estava na tela também passa pelo censo', async (
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas[0].precisao)).toBe('censo');
 });
 
+// 11/10: "Rua Capitão José Vochoo af) 16", lida torta de um quadro do vídeo antes da correção de
+// nomes, ficou "Não encontrado" na rota. A busca só voltava a ela se alguém editasse o texto. Aqui
+// uma rua do censo escrita torta de propósito, em três palavras.
+const TORTA = 'Rua Francisko de Asis Delmondes Pereira Frietas, 170';
+test('o nome da rua escrito torto é corrigido pelo censo na busca', async ({page}) => {
+  await espiar(page);
+  await abrir(page);
+  await colar(page);
+  await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+  await page.getByLabel(/Endereços da área/).fill(TORTA);
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await aba(page, '2. Conferir');
+  await expect(page.getByRole('button', {name: /sem posição/})).toBeHidden({timeout: 30_000});
+  const p = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas[0]);
+  expect(p).toMatchObject({precisao: 'bom', fonte: 'IBGE', bairro: 'Ponto Novo', texto: TORTA});
+  expect(p.exibido).toContain('corrigido pelo censo');
+});
+
+test('ao abrir, a "Não encontrado" que o censo sabe corrigir é buscada de novo; a outra fica', async ({page}) => {
+  await espiar(page);
+  await abrir(page);
+  await page.evaluate(t => {
+    const vazia = (texto: string, id: string) => ({id, area: 'a1', ml: null, texto, unidades: null, comercial: false, lat: null, lng: null, exibido: '', precisao: 'nao', fonte: 'nao achou', candidatos: [], entregue: false});
+    localStorage.setItem('rota-entregas-v2', JSON.stringify({cidade: 'Aracaju, SE', regiao: null, tamTrecho: 9, inicio: null, voltar: false, ordemDoApp: false,
+      areas: [{id: 'a1', nome: 'Verde', cor: '#16a34a', prazo: ''}], areaAtual: 'a1', areasManual: false,
+      paradas: [vazia(t, 'p1'), vazia('Rua Que Não Existe Em Lugar Nenhum, 12', 'p2')], rota: null, pernas: {}}));
+  }, TORTA);
+  await page.reload();
+  const ps = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas);
+  await expect.poll(async () => (await ps())[0].precisao, {timeout: 30_000}).toBe('bom');
+  expect((await ps())[1].precisao).toBe('nao');
+});
+
 // Pedido de 01/10: a porta do censo é o lugar mais provável, não o certo. Fica laranja, "confira
 // na porta", até alguém entregar ali; com "Entreguei aqui" ela vira porta marcada e vai para a nuvem.
 test('a porta do censo fica laranja até entregarem ali', async ({page, context}) => {

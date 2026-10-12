@@ -8,7 +8,7 @@ import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
 import {carregarAncorasDeCep} from '../servicos/base';
 import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from '../servicos/geocodificacao';
-import {corretorDeNomes, enderecoDoIbge, portaNoBairroDoIbge, portasDaRuaNoIbge, portasDoCep, ruaNoIbge} from '../servicos/ibge';
+import {corretorDeNomes, enderecoDoIbge, nomeCorrigidoPeloCenso, portaNoBairroDoIbge, portasDaRuaNoIbge, portasDoCep, ruaNoIbge} from '../servicos/ibge';
 import {desatualizarRota, e, enviarFila, fila, invalidarRota, memoria, ui} from './base';
 import {irPara} from './navegacao';
 import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, focar} from './posicoes';
@@ -158,6 +158,20 @@ async function genericasNoLugar(): Promise<number> {
   return n;
 }
 const NA_RUA: ReadonlySet<Precisao> = new Set<Precisao>(['exato', 'bom', 'rua', 'censo']);
+
+// A "Não encontrado" de uma leitura de antes da correção de nomes (11/10) ficava assim para sempre: a
+// busca só volta a ela se alguém editar o texto. Ao abrir, a que o censo sabe corrigir é buscada de
+// novo, e a busca agora tenta o nome do censo. As outras ficam, para não perguntar ao mapa, a cada
+// abertura, o que ele já disse que não tem.
+export async function buscarDeNovoOsNomesTortos() {
+  const tortas: Parada[] = [];
+  for (const p of e().paradas) {
+    if (p.precisao === 'nao' && !p.entregue && await nomeCorrigidoPeloCenso(p.texto, cidadeDaParada(p, e().cidade))) tortas.push(p);
+  }
+  if (!tortas.length) return;
+  for (const p of tortas) p.precisao = 'pendente';
+  await buscarPendentes();
+}
 
 // A rota que já estava na tela também passa pelo censo: lida por uma versão de antes da regra, ou
 // com o censo ainda sem baixar, atualizar o app não consertava nada (Luan, 02/10). Quem já está

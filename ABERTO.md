@@ -25,6 +25,10 @@ paradas, de 14 para 3 linhas a mais**. A de 07/10 ficou igual (59 de 62).
   vídeos): corrige 17, nenhum errado. Sem as travas, "Rua 39" virava "Rua 3" e "Jorge Arruda"
   virava "Jorge Aruba", a 600 m. Fica de fora: o nome lido torto que por acaso é outra rua de
   verdade sem a porta com o número.
+- A mesma correção vale na busca: quando nada acha a rua, ela tenta o nome do censo (endereço
+  colado, digitado, editado). Ao abrir, a "Não encontrado" que o censo sabe corrigir é buscada de
+  novo — a rota lida antes da correção se conserta sozinha. O texto da parada fica como veio; o
+  achado diz que o nome foi corrigido.
 - **O selo de "verificado" grudado no número** ("5018", "218", "1878"; 8 paradas de 61). Sai pela
   posição de cada letra (`logica/ocr.ts`): mais largo que um algarismo (0,75 a 1,00 da altura da
   linha, contra 0,65) e depois de um vão grande. Com teto de 1,2, para "II 105" não perder o 105.

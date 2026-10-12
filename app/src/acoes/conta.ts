@@ -3,7 +3,7 @@ import {usarRegiao} from '../servicos/geocodificacao';
 import {entrar as entrarNaNuvem, iniciarNuvem, nuvem, sair as sairDaNuvem} from '../servicos/nuvem';
 import {e, enviarFila, ui} from './base';
 import {iniciarNavegacao, irPara, telaBase} from './navegacao';
-import {conferirComOCensoAoAbrir, processarCompartilhado} from './enderecos';
+import {buscarDeNovoOsNomesTortos, conferirComOCensoAoAbrir, processarCompartilhado} from './enderecos';
 import {avisoCompartilhadas, consultarCompartilhadas} from './posicoes';
 import {saiuDaTela, verVersao} from './versao';
 
@@ -39,7 +39,7 @@ export async function iniciar() {
   if (new URLSearchParams(location.search).has('compartilhado')) processarCompartilhado();
   verPendenciasDoAdmin(true);
   verVersao(true);
-  conferirComOCensoAoAbrir();
+  conferirComOCensoAoAbrir().finally(buscarDeNovoOsNomesTortos);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') { saiuDaTela(); return; }
     verPendenciasDoAdmin();

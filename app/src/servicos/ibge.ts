@@ -349,6 +349,13 @@ export function corrigirLinhaLida(t: Tabela, linha: string): string {
   return nome ? linha.replace(d.rua, bonito(nome)) : linha;
 }
 
+// O endereço com o nome da rua do censo, ou null se ele não precisa ou não tem conserto.
+export async function nomeCorrigidoPeloCenso(texto: string, cidade: string): Promise<string | null> {
+  const t = await tabelaDaCidade(cidade).catch(() => null);
+  const c = t ? corrigirLinhaLida(t, texto) : texto;
+  return c !== texto ? c : null;
+}
+
 // Para o leitor, que corrige cada quadro antes de juntar: a mesma porta lida certa num quadro e
 // torta em outro virava duas paradas, e corrigida ela se junta às outras leituras dela.
 export async function corretorDeNomes(cidade: string): Promise<{corrigir: (linhas: string[]) => string[]; corrigidas: Set<string>}> {
