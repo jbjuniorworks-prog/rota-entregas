@@ -5,6 +5,39 @@ decisão está na mensagem do commit que a fez, não aqui.
 
 Atualizado em 12/10/2026.
 
+## Próximos passos, nesta ordem (12/10)
+
+1. **Auditoria de entregar e desfazer**, numa conversa nova. Começa por dois achados de leitura do
+   código, ainda não reproduzidos:
+   - **a gravação no celular que falha passa calada.** `salvarEstado` devolve false (memória do
+     navegador cheia, por exemplo) e `loja.mudou` ignora: a tela mostraria "Entregue" sem ter
+     gravado. O mesmo vale para a fila e para as seguradas (`g.gravar` sem olhar a resposta);
+   - **a fila corta em 3.000 itens** (`slice(-FILA_MAX)`) e descarta os mais antigos sem avisar,
+     entregas e correções incluídas. Só chega lá quem fica muitos dias sem enviar (deslogado, por
+     exemplo). Definir o que fazer no limite, não só parar de descartar.
+   Cada um com a sua reprodução e o seu teste.
+2. **Desfazer retira a passagem** (decisão A, abaixo em "Desfazer a entrega"). O motorista não pode
+   apagar passagem no banco (`observacoes` não tem permissão de apagar): precisa de migração, e
+   estreita, que tire só a passagem daquela marcação. A confirmação é calculada na consulta
+   (`posicoes`), mas conferir quando o celular volta a consultar depois do desfazer.
+3. **Resumo da leitura com o total do Meli.** O topo da lista diz "Seu percurso tem N paradas" e "N
+   unidades no veículo", e o leitor já lê: o total em 11/10, 07/10 e 26/09 (as gravações que começam
+   no topo), as unidades em 5 das 6. O app sabe quantas linhas leu, não quantas estão certas: em
+   11/10 seriam 62 linhas para 61 paradas (uma faltando e duas a mais se compensam), em 07/10, 64
+   para 67. Mostrar como diferença para o total, nunca como "faltam N". Unidades: comparar só quando
+   cada cartão trouxe a sua.
+4. **Várias entregas na mesma porta** (paradas 43 a 47 de 07/10). Quantas vezes uma mesma leitura
+   viu a porta preserva os cartões; o total do topo só aponta a diferença, não decide onde
+   acrescentar. Teste central: oito cartões da mesma porta continuam oito entregas, e reler os
+   mesmos cartões em outro quadro não multiplica.
+5. **Diagnóstico curto no Admin** ("teve problema nesta rota?"), com motivos fechados.
+
+Olhados em 12/10 e deixados de fora: PostGIS (as contas de lugar já rodam no banco; o limite de
+1.000 linhas pega os scripts de medição, não o app), bloquear vídeo pela memória do aparelho (o pico
+de 763 MB caiu para 410 MB em 20/09, sem travamento relatado), índice espacial do censo (o problema
+da Barra é a decisão, não a velocidade) e cancelar o pedido de rota mais cedo (o prazo de 12 s já
+existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
+
 ## Admin mais rápido (11/10)
 
 O Admin esperava as três partes para mostrar qualquer coisa, e a mais lenta era contar os pacotes
