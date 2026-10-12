@@ -41,6 +41,10 @@ test.describe('nuvem @nuvem', () => {
     const r = await api('/auth/v1/admin/users', {method: 'POST', body: JSON.stringify({email: EMAIL, password: SENHA, email_confirm: true, user_metadata: {nome: 'Motorista Teste'}})});
     expect(r.status).toBe(200);
     uid = r.corpo.id;
+    // Criada por fora da aba Admin (como o cadastro aberto por engano criaria), nasce desativada:
+    // 021_conta_nasce_desativada.sql. O teste a ativa como o `npm run motoristas -- criar` faz.
+    expect((await api(`/rest/v1/perfis?id=eq.${uid}&select=ativo`)).corpo[0].ativo).toBe(false);
+    await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({ativo: true})});
   });
   test.afterAll(apagarMotoristaDeTeste);
 

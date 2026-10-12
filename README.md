@@ -42,6 +42,10 @@ Nenhuma posição pode cair longe do bairro do endereço — o censo do IBGE dá
 - `ferramentas/motoristas.mjs`: criar conta (também dá pela aba Admin, colando o e-mail), trocar senha, desativar
   (`npm run motoristas -- listar | criar email Nome | senha email | desativar email | ativar email`).
   Precisa do `.env` com `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`, fora do git.
+  Conta só nasce ativa pela aba Admin; criada por outro caminho (o painel do Supabase, por exemplo)
+  nasce desativada e se ativa no Admin. No projeto do Supabase, "Allow new users to sign up"
+  (Authentication > Sign In / Providers) fica **desligado**, também em projeto novo, que vem com ele
+  ligado: a chave do app é pública, e ligado qualquer um cria a própria conta.
 
 ## Backup
 

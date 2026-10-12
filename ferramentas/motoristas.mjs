@@ -38,7 +38,9 @@ const acoes = {
   async criar() {
     const nome = resto.join(' ') || email.split('@')[0];
     const s = senha();
-    await api('/auth/v1/admin/users', {method: 'POST', body: JSON.stringify({email, password: s, email_confirm: true, user_metadata: {nome}})});
+    const u = await api('/auth/v1/admin/users', {method: 'POST', body: JSON.stringify({email, password: s, email_confirm: true, user_metadata: {nome}})});
+    // criada por fora da aba Admin, a conta nasce desativada (021_conta_nasce_desativada.sql)
+    await api(`/rest/v1/perfis?id=eq.${u.id}`, {method: 'PATCH', body: JSON.stringify({ativo: true})});
     console.log(`Conta criada: ${nome} <${email}>\nSenha: ${s}`);
   },
   async senha() {
