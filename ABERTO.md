@@ -38,6 +38,31 @@ de 763 MB caiu para 410 MB em 20/09, sem travamento relatado), índice espacial 
 da Barra é a decisão, não a velocidade) e cancelar o pedido de rota mais cedo (o prazo de 12 s já
 existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
 
+## Revisão de segurança (12/10)
+
+- Conferido e já certo: RLS em todas as tabelas, toda função `security definer` com `search_path`
+  fixo, nenhum SQL montado com texto, nada de HTML cru no React, e o `npm audit` do que vai para o
+  celular dá 0. O teste da nuvem já tenta forjar rota no nome do admin, se promover a admin e criar
+  conta sendo motorista.
+- Feito:
+  - o leitor de texto (Tesseract) tem versão fixa (5.1.1) e o resumo do arquivo (SRI). Se o arquivo
+    no CDN for outro, ele não roda. Ao abrir o app com sinal, o celular baixa o leitor no endereço
+    novo, para não perder a leitura sem sinal;
+  - o balão do pino passa pelo `esc`;
+  - as ações do GitHub ficam presas ao commit. Atualizar é à mão: trocar o commit e o comentário;
+  - **021_conta_nasce_desativada.sql, falta rodar.** A conta criada fora da aba Admin nasce
+    desativada. "Allow new users to sign up" está desligado (conferido em 12/10 na configuração
+    pública do login), mas era a única coisa segurando, e um projeto novo vem com essa opção ligada.
+    Testada num Postgres local com o `banco-inteiro.sql` inteiro. O teste da nuvem foi ajustado
+    para isso e só passa depois da 021.
+- Deixado de fora:
+  - o vitest tem 4 alertas, 2 "críticos". É a ferramenta de teste e não vai para o celular; o
+    conserto pede o vitest 5, uma versão principal nova;
+  - o pdf.js vem por `import()`, que não aceita o resumo do arquivo. Fica a versão exata, 4.8.69,
+    posterior à CVE-2024-4367;
+  - o `sw.js` guarda a resposta do CDN sem olhar `r.ok`: um erro do CDN na primeira leitura ficaria
+    guardado no lugar do leitor. Visto lendo o código, não reproduzido.
+
 ## Condomínio com muitas entregas no cartão do pino (12/10), para olhar na rua
 
 - O cartão juntava os números das entregas do mesmo endereço numa faixa só ("#62+#63+…", 23 no
