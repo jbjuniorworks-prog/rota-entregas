@@ -362,6 +362,78 @@ describe('leitura da lista do Meli: o que a gravação de 11/10 ensinou', () => 
   });
 });
 
+// Paradas 48 e 49 da gravação de 11/10: a mesma porta, uma com o condomínio e 9 unidades, a outra
+// com o bairro e 1 unidade, cada uma com a sua etiqueta. As duas leituras do quadro leram as duas
+// certas; a junção fazia delas uma só, com o texto da 48 e a etiqueta da 49.
+describe('duas paradas na mesma porta, cada uma com a sua etiqueta', () => {
+  const de49 = '#49 Rua Teste Inventada da Silva 201, Bairro Teste, CEP 49000900 · 1 unid';
+  const de48 = '#48 Rua Teste Inventada da Silva 201, Condomínio Teste Nova, CEP 49000900 · 9 unid';
+
+  it('no mesmo quadro continuam duas, cada uma com o seu texto e as suas unidades', () => {
+    expect(juntarLeituras([de49, de48], [de49, de48])).toEqual([de49, de48]);
+  });
+
+  it('entre quadros também, sem a etiqueta de uma ir para o texto da outra', () => {
+    expect(juntarQuadros([[de49], [de49, de48], [de48]])).toEqual([
+      '49 Rua Teste Inventada da Silva 201, Bairro Teste, CEP 49000900 · 1 unid',
+      '48 Rua Teste Inventada da Silva 201, Condomínio Teste Nova, CEP 49000900 · 9 unid',
+    ]);
+  });
+
+  // Gravação de 26/09: duas lojas na mesma porta. A mistura deixava a mesma etiqueta nas duas, e as
+  // duas perdiam o número da parada.
+  it('duas lojas na mesma porta não trocam de etiqueta', () => {
+    const loja23 = '#23 Avenida Teste Sobral 215, Loja Teste Jardins, CEP 49000901 · 1 unid';
+    const loja24 = '#24 Avenida Teste Sobral 215, Loja Outra Joias, CEP 49000901 · 1 unid';
+    expect(juntarLeituras([loja23, loja24])).toEqual([loja23, loja24]);
+  });
+
+  it('a mesma parada lida com e sem a etiqueta continua uma só, com a etiqueta', () => {
+    const semEtiqueta = 'Rua Teste Inventada da Silva 201, Bairro Teste, CEP 49000900 · 1 unid';
+    expect(juntarLeituras([[de49], [semEtiqueta]])).toEqual([de49]);
+    expect(juntarQuadros([[semEtiqueta], [de49]])).toEqual(['49 Rua Teste Inventada da Silva 201, Bairro Teste, CEP 49000900 · 1 unid']);
+  });
+
+  // Print de 07/10: a leitura tratada viu a etiqueta #36 e a sem contraste viu #30, o 6 lido como 0.
+  // Etiquetas diferentes que nenhuma leitura viu juntas não separam a parada.
+  it('a etiqueta lida diferente por duas leituras não dobra a parada', () => {
+    const de36 = '#36 Rua Teste Dom Inventado 11 105, Loja Teste Auto, CEP 49000903 · 1 unid';
+    const de30 = '#30 Rua Teste Dom Inventado 11 105, Loja Teste Auto, CEP 49000903 · 1 unid';
+    expect(juntarLeituras([[de36], [de30]], [de36])).toEqual([de36]);
+    expect(juntarQuadros([[de36], [de30]])).toEqual(['36 Rua Teste Dom Inventado 11 105, Loja Teste Auto, CEP 49000903 · 1 unid']);
+  });
+
+  // A leitura A viu as duas; a B leu a 48 de novo e a 49 com a etiqueta trocada ou sem etiqueta, e com
+  // mais texto que a 48. Em qualquer ordem: duas paradas, cada uma com o seu texto e as suas unidades.
+  describe('as duas leituras juntas, em qualquer ordem', () => {
+    const de43 = '#43 Rua Teste Inventada da Silva 201, Bairro Teste, CEP 49000900 · 1 unid';
+    const semEtiqueta = 'Rua Teste Inventada da Silva 201, Bairro Teste, Perto da Praça Inventada, CEP 49000900 · 1 unid';
+    const semMistura = (r: string[]) => {
+      expect(r).toHaveLength(2);
+      const condominio = r.filter(l => l.includes('Condomínio Teste Nova')), bairro = r.filter(l => l.includes('Bairro Teste'));
+      expect(condominio).toHaveLength(1);
+      expect(bairro).toHaveLength(1);
+      expect(condominio[0]).toMatch(/^#?48 .* · 9 unid$/);
+      expect(bairro[0]).toMatch(/· 1 unid$/);
+      expect(bairro[0]).not.toMatch(/^#?48 /);
+    };
+    for (const outra of [de43, semEtiqueta]) {
+      it(`a 49 da leitura B: ${outra.slice(0, 4)}`, () => {
+        const a = [de49, de48], b = [de48, outra];
+        semMistura(juntarLeituras([a, b]));
+        semMistura(juntarLeituras([b, a]));
+        semMistura(juntarLeituras([[...a].reverse(), [...b].reverse()]));
+        semMistura(juntarQuadros([[de49], a, [de48], [outra]]));
+        semMistura(juntarQuadros([[outra], [de48], a, [de49]]));
+        semMistura(juntarQuadros([[outra], b, a]));
+        // a da B se junta à 49 primeiro; a 48 continua separada da junção das duas
+        semMistura(juntarLeituras([[outra], a]));
+        semMistura(juntarQuadros([[outra], a]));
+      });
+    }
+  });
+});
+
 describe('conjunto do endereço', () => {
   it('acha conjunto, loteamento e condomínio, no complemento ou no bairro', () => {
     expect(conjuntoDoEndereco('Rua B, 120, Conjunto Augusto Franco, CEP 49040-000')).toBe('Conjunto Augusto Franco');

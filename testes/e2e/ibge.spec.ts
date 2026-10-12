@@ -226,6 +226,40 @@ test('ao abrir, a "Não encontrado" que o censo sabe corrigir é buscada de novo
   expect((await ps())[1].precisao).toBe('nao');
 });
 
+// Print de 11/10: a mesma parada saiu "Capitão José Voc 16" numa leitura da imagem e "Capitão José
+// Vachoo fo) 16" na outra, e as duas só se reconhecem depois da correção pelo censo. Corrigidas
+// depois de juntar o quadro, sobravam duas linhas da mesma porta no mesmo quadro, e a junção dos
+// quadros as tomava por dois cartões. Aqui um leitor falso devolve um texto por leitura.
+test('a mesma parada lida torta de dois jeitos no mesmo print vira uma só', async ({page}, info) => {
+  await espiar(page);
+  await page.addInitScript(() => {
+    const porLeitura: Record<string, string> = {
+      '4': 'Rua Francisco de Assis Delmondes Pereira Fr 170',
+      '6': 'Rua Francisko de Asis Delmondes Pereira Frietas 170',
+      '3': '',
+    };
+    (window as any).Tesseract = {createWorker: async () => {
+      let psm = '3';
+      return {
+        setParameters: async (p: any) => { psm = p.tessedit_pageseg_mode; },
+        recognize: async () => ({data: {text: porLeitura[psm], blocks: null}}),
+        terminate: async () => {},
+      };
+    }};
+  });
+  const print = info.outputPath('print.png');
+  await page.setContent('<body style="margin:0;background:#fff;font:600 30px system-ui;padding:24px">print</body>');
+  await page.screenshot({path: print});
+  await abrir(page);
+  await colar(page);
+  await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+  await page.locator('#arquivo').setInputFiles(print);
+  await expect(page.locator('#status')).toContainText(/lido\(s\)/, {timeout: 30_000});
+  const lidas = (await page.locator('#lista').inputValue()).split('\n').filter(Boolean);
+  expect(lidas).toHaveLength(1);
+  expect(lidas[0]).toMatch(/Delmondes Pereira Freitas 170$/i);
+});
+
 // Pedido de 01/10: a porta do censo é o lugar mais provável, não o certo. Fica laranja, "confira
 // na porta", até alguém entregar ali; com "Entreguei aqui" ela vira porta marcada e vai para a nuvem.
 test('a porta do censo fica laranja até entregarem ali', async ({page, context}) => {

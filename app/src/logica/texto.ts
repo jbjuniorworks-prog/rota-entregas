@@ -425,11 +425,12 @@ function semLetraTapada(rua: string): string {
 }
 
 export function juntarQuadros(quadros: string[][]): string[] {
-  const vistos = new Map<string, {e: string; n: number}>();
+  const separadas = vistasJuntas(quadros);
+  const vistos = new Map<string, {e: string; n: number; ks: string[]}>();
   for (const q of quadros) {
     for (const e of new Set(q)) {
-      const k = chaveEndereco(e), v = vistos.get(k);
-      if (!v) vistos.set(k, {e, n: 1});
+      const k = chaveDaLeitura(e), v = vistos.get(k);
+      if (!v) vistos.set(k, {e, n: 1, ks: [k]});
       else { v.n++; v.e = melhorLeitura(v.e, e); }
     }
   }
@@ -459,13 +460,18 @@ export function juntarQuadros(quadros: string[][]): string[] {
   // contrário. Fica a que mais quadros leram.
   const juntas: typeof restantes = [];
   for (const x of restantes) {
-    const par = juntas.find(y => !!x.d.numero && y.d.numero === x.d.numero
+    const par = juntas.find(y => !!x.d.numero && y.d.numero === x.d.numero && !separadas(x.ks, y.ks)
       && letraDaPorta(analisarLinha(x.e).texto, x.d.numero) === letraDaPorta(analisarLinha(y.e).texto, y.d.numero)
       && (!x.d.cep || !y.d.cep || x.d.cep === y.d.cep) && complementoChave(x.d.resto) === complementoChave(y.d.resto)
       && mesmaRua(x.d.rua, y.d.rua) && mesmaRua(y.d.rua, x.d.rua));
     if (!par) { juntas.push(x); continue; }
-    const certo = [x.e, par.e].map(e => e.match(NUMERO_CERTO)?.[0]).find(Boolean);
-    if (x.n > par.n || (x.n === par.n && x.e.length > par.e.length)) Object.assign(par, x);
+    // a etiqueta é a da leitura que fica, e a da outra só quando esta não tem: com a #36 e a #30 da
+    // mesma parada, a que mais quadros leram
+    const fica = x.n > par.n || (x.n === par.n && x.e.length > par.e.length);
+    const certo = (fica ? [x.e, par.e] : [par.e, x.e]).map(e => e.match(NUMERO_CERTO)?.[0]).find(Boolean);
+    const ks = [...par.ks, ...x.ks];
+    if (fica) Object.assign(par, x);
+    par.ks = ks;
     if (certo && !par.e.startsWith(certo + ' ')) par.e = certo + ' ' + par.e.replace(/^#?\d{1,3}\s+/, '');
   }
   const saida = juntas.map(x => x.e);
@@ -496,6 +502,25 @@ export function juntarQuadros(quadros: string[][]): string[] {
 // "#24 Rua Tal": o número da parada veio da etiqueta, não do escudo. Entre duas leituras da mesma
 // parada fica o texto mais comprido e, se uma delas tem, o número da etiqueta.
 const NUMERO_CERTO = /^#\d{1,3}(?=\s)/;
+const etiquetaDe = (e: string) => e.match(NUMERO_CERTO)?.[0] || '';
+// Duas linhas da mesma porta que a mesma leitura viu, cada uma no seu cartão, são duas paradas: a 48
+// e a 49 da gravação de 11/10 (condomínio e 9 unidades, bairro e 1 unidade) viravam uma, com o texto
+// de uma e a etiqueta da outra. Nas 472 leituras gravadas (seis vídeos, dois prints), sempre que a
+// mesma leitura trouxe duas linhas da mesma porta eram dois cartões. Vindas de leituras diferentes,
+// a diferença sozinha não separa: no print de 07/10 o 6 lido como 0 fazia da mesma parada a #36 e a
+// #30, e a junção segue pelos critérios de sempre. A chave leva a etiqueta para isso.
+// Entre os quadros, cada quadro já juntou as suas leituras: duas linhas da mesma porta que sobraram
+// no mesmo quadro foram vistas juntas numa leitura. Por isso o nome torto é corrigido antes de
+// juntar o quadro (servicos/arquivos.ts), senão as duas leituras do mesmo cartão sobravam separadas.
+const chaveDaLeitura = (e: string) => chaveEndereco(e) + etiquetaDe(e);
+function vistasJuntas(leituras: string[][]): (a: string[], b: string[]) => boolean {
+  const pares = new Set<string>();
+  for (const l of leituras) {
+    const ks = [...new Set(l.map(chaveDaLeitura))];
+    for (const a of ks) for (const b of ks) if (a !== b) pares.add(a + '\n' + b);
+  }
+  return (a, b) => a.some(x => b.some(y => pares.has(x + '\n' + y)));
+}
 function melhorLeitura(a: string, b: string): string {
   const texto = b.length > a.length ? b : a;
   const certo = [a, b].map(e => e.match(NUMERO_CERTO)?.[0]).find(Boolean);
@@ -504,29 +529,33 @@ function melhorLeitura(a: string, b: string): string {
 
 const quantasDiferentes = (lista: string[]) => new Set(lista.map(chaveEndereco)).size;
 
-export function juntarLeituras(leituras: string[], apoio: string[] = []): string[] {
-  const principais = quantasDiferentes(leituras);
-  if (principais <= 1 && quantasDiferentes(apoio) > principais) [leituras, apoio] = [apoio, leituras];
+// `leituras`: as linhas de cada leitura principal da imagem, à parte; uma lista só conta como uma leitura.
+export function juntarLeituras(leituras: string[] | string[][], apoio: string[] = []): string[] {
+  let porLeitura = (leituras.length && Array.isArray(leituras[0]) ? leituras : [leituras]) as string[][];
+  let principais = porLeitura.flat();
+  if (quantasDiferentes(principais) <= 1 && quantasDiferentes(apoio) > quantasDiferentes(principais)) [principais, porLeitura, apoio] = [apoio, [apoio], principais];
+  const separadas = vistasJuntas(porLeitura);
   const porChave = new Map<string, string>();
-  for (const e of leituras) {
-    const k = chaveEndereco(e), antigo = porChave.get(k);
+  for (const e of principais) {
+    const k = chaveDaLeitura(e), antigo = porChave.get(k);
     porChave.set(k, antigo ? melhorLeitura(antigo, e) : e);
   }
-  const decomposto = (e: string) => {
+  const decomposto = ([k, e]: [string, string]) => {
     const t = analisarLinha(e).texto, d = decompor(t);
-    return {e, d, letra: letraDaPorta(t, d.numero)};
+    return {e, d, letra: letraDaPorta(t, d.numero), ks: [k]};
   };
   // O selo grudado no número sai pela posição das letras (logica/ocr.ts). A regra que tirava o
   // algarismo a mais comparando com outra leitura ("21518" e "2151") saiu em 12/10: nas seis
   // gravações e nos 73 quadros lidos como print ela só disparou entre dois cartões da mesma rua, e
   // nunca acertou. Trocava o 19 da parada 10 pelo "1" da parada 9 (11/10).
-  const itens = [...porChave.values()].map(decomposto);
+  const itens = [...porChave].map(decomposto);
   const juntas: typeof itens = [];
   for (const x of itens) {
     // 85 e 85B são portas diferentes, mesmo com a rua e os dígitos iguais
-    const parecida = juntas.find(y => y.d.numero && x.d.numero === y.d.numero && x.letra === y.letra && mesmaRua(x.d.rua, y.d.rua) && mesmaRua(y.d.rua, x.d.rua));
+    const parecida = juntas.find(y => y.d.numero && x.d.numero === y.d.numero && !separadas(x.ks, y.ks) && x.letra === y.letra && mesmaRua(x.d.rua, y.d.rua) && mesmaRua(y.d.rua, x.d.rua));
     if (!parecida) { juntas.push(x); continue; }
     parecida.e = melhorLeitura(parecida.e, x.e);
+    parecida.ks.push(...x.ks);
   }
   return juntas.map(x => x.e);
 }

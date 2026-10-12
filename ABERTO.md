@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 11/10/2026.
+Atualizado em 12/10/2026.
 
 ## Admin mais rápido (11/10)
 
@@ -36,8 +36,32 @@ paradas, de 14 para 3 linhas a mais**. A de 07/10 ficou igual (59 de 62).
 - "Itajaí O5": o zero da frente lido como letra.
 - O cabeçalho "ÁREA 3 | 14:15 a 17:40" virava fim do nome da rua sem número.
 
-Ainda falta: 11 e 13 com o selo lidos "1" e "BS" (a parada some ou fica sem número), e duas
-paradas na mesma porta viram uma. O nome corrigido sai como o censo escreve, sem acento.
+- **Duas paradas na mesma porta (12/10).** A 48 e a 49 (condomínio e 9 unidades, bairro e 1
+  unidade, cada uma com a sua etiqueta) viravam uma, com o texto de uma e a etiqueta da outra.
+  Agora duas linhas da mesma porta que a mesma leitura da imagem viu não se juntam; vindas de
+  leituras diferentes, seguem os critérios de sempre (a #36 e a #30 de um print, o 6 lido como 0,
+  continuam uma parada). O nome torto passou a ser corrigido em cada leitura, antes de juntar.
+  Pelo app, nos seis vídeos e em 73 quadros lidos como print: voltam a 48/49, as duas lojas da
+  mesma porta de 26/09 (que tinham perdido o número da parada) e o "APTO 1601" de 21/09, que se
+  juntava ao "ap 1002" do mesmo prédio; nenhuma parada dobrou, nenhuma outra linha mudou. A regra
+  antiga do selo grudado ("21518" e "2151") saiu: só disparava entre cartões diferentes.
+
+Placar de 11/10 agora, no vídeo: 59 certas, a 20 na lista sem número, a 9 ausente. Antes eram 58:
+a linha que sobrava da 48/49 tinha o texto e as unidades da 48 e a etiqueta da 49, e a entrega da
+49 (bairro, 1 unidade) sumia. Lidos como print, os mesmos quadros dão as 61, com 8 linhas a mais,
+as mesmas de antes da mudança. Fica de fora:
+- **A 9, "11" num cartão bloqueado, cinza, sem selo**: lido "1" numa leitura (dois "1" colados num
+  símbolo só, quase tão largo quanto alto) e "n" na outra. Não dá para recuperar o número com essas
+  leituras, e a parada some na junção (o "1" passa por número cortado do 19 da parada 10). Mantê-la
+  na lista sem número é outra decisão, não feita.
+- **A 20, "13 ✓" lido "BS"**: fica na lista sem número e vai pela rua e o CEP. O "B" tem a largura
+  de dois algarismos, mas "13" e "18" viram "B" do mesmo jeito; não se inventa a porta.
+- **Várias entregas com o mesmo texto na mesma porta** ainda viram uma ou duas linhas: Augusto
+  Franco 2000 de 07/10, paradas 43 a 47 no mesmo condomínio. O gabarito de 07/10 conta portas, não
+  paradas, e não mostrava isso.
+- Uma leitura sem etiqueta que nunca apareceu junto com a outra parada da mesma porta vai para a
+  primeira delas na ordem. Não aconteceu nas gravações.
+- O nome corrigido sai como o censo escreve, sem acento.
 
 ## Sem CEP, número depois da última porta do censo (11/10), para olhar na rua
 

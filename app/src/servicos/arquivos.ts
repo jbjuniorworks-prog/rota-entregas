@@ -179,7 +179,9 @@ async function abrirLeitor() {
   return w.Tesseract.createWorker('por');
 }
 
-async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo: string): Promise<string[]> {
+type Corretor = (linhas: string[]) => string[];
+
+async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo: string, corrigir: Corretor): Promise<string[]> {
   aviso(`Lendo os endereços…${rotulo}`);
   // O leitor joga um erro solto na página quando recebe algo que não é imagem. Barrar aqui é
   // mais honesto: o arquivo é que não abre, e isso vira um aviso em vez de sujeira no console.
@@ -192,34 +194,39 @@ async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo
   const tentativas = doVideo
     ? [{imagem: tratada, psm: '4'}, {imagem: blob, psm: '3'}]
     : [{imagem: tratada, psm: '4'}, {imagem: await prepararImagem(blob, 1700, false), psm: '6'}, {imagem: blob, psm: '3'}];
-  const leituras: string[] = [], apoio: string[] = [], textos: string[] = [];
+  // Cada leitura principal à parte: duas linhas da mesma porta que a mesma leitura viu são duas
+  // paradas. O nome torto é corrigido em cada leitura, antes de juntar: "Capitão José Voc" e
+  // "Capitão José Vachoo" (o mesmo cartão, em duas leituras de um print de 11/10) só se reconhecem
+  // depois da correção, e a junção do quadro e a dos quadros têm de comparar o mesmo texto.
+  const leituras: string[][] = [], apoio: string[] = [], textos: string[] = [];
   for (const t of tentativas) {
     await worker.setParameters({tessedit_pageseg_mode: t.psm, preserve_interword_spaces: '1'});
     // com a posição de cada letra, para tirar o selo de "verificado" grudado no número
     const {data} = await worker.recognize(t.imagem, {}, {text: true, blocks: true});
     const texto = textoSemSelo(data);
     textos.push(texto);
-    (t.imagem === blob ? apoio : leituras).push(...extrairEnderecos(texto));
+    if (t.imagem === blob) apoio.push(...corrigir(extrairEnderecos(texto)));
+    else leituras.push(corrigir(extrairEnderecos(texto)));
   }
   const juntas = juntarLeituras(leituras, apoio);
   if (juntas.length <= 1 && !textos.some(t => enderecosDaLista(t).length) && textos.some(pareceComanda)) {
     const daComanda = juntarComandas(textos.map(t => partesDaComanda(t, true)));
-    if (daComanda.length) return daComanda;
+    if (daComanda.length) return corrigir(daComanda);
   }
   return juntas;
 }
 
-// `corrigir` passa em cada quadro antes de juntar: o nome da rua lido torto, trocado pelo do censo.
-export async function lerArquivos(files: Arquivo[], aviso: Aviso, corrigir: (linhas: string[]) => string[] = x => x): Promise<string[] & {avisos: string[]}> {
+// `corrigir` passa em cada leitura antes de juntar: o nome da rua lido torto, trocado pelo do censo.
+export async function lerArquivos(files: Arquivo[], aviso: Aviso, corrigir: Corretor = x => x): Promise<string[] & {avisos: string[]}> {
   const imagens: Imagem[] = [], grupos: string[][] = [], avisos: string[] = [];
   const videos: Arquivo[] = [];
   for (const f of files) {
     if ((f.type || '').includes('pdf') || /\.pdf$/i.test(f.name || '')) {
       const r = await lerPdf(f, aviso);
-      grupos.push(r.linhas);
+      grupos.push(corrigir(r.linhas));
       imagens.push(...r.imagens.map(blob => ({blob, doVideo: false})));
     } else if ((f.type || '').startsWith('text/') || /\.txt$/i.test(f.name || '')) {
-      grupos.push(extrairEnderecos(await f.text()));
+      grupos.push(corrigir(extrairEnderecos(await f.text())));
     } else if (ehVideo(f)) {
       videos.push(f);
     } else imagens.push({blob: f, doVideo: false});
@@ -239,7 +246,7 @@ export async function lerArquivos(files: Arquivo[], aviso: Aviso, corrigir: (lin
     // Uma parte ruim não pode levar embora as que já foram lidas: numa gravação com trinta
     // quadros, um tropeço de sinal custava a rota inteira.
     const ler = async (img: Imagem, rotulo: string) => {
-      try { grupos.push(await lerUma(worker, img, aviso, rotulo)); } catch { falhas++; }
+      try { grupos.push(await lerUma(worker, img, aviso, rotulo, corrigir)); } catch { falhas++; }
       await descansar();
     };
     try {
@@ -262,5 +269,5 @@ export async function lerArquivos(files: Arquivo[], aviso: Aviso, corrigir: (lin
       ? `Nenhuma das ${falhas} parte(s) deu para ler. Se estava sem sinal, tente de novo com internet.`
       : `${falhas} parte(s) não deram para ler: confira se faltou alguma parada.`);
   }
-  return Object.assign(juntarQuadros(grupos.map(corrigir)), {avisos});
+  return Object.assign(juntarQuadros(grupos), {avisos});
 }
