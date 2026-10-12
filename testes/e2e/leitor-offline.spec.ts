@@ -39,6 +39,38 @@ test('@leitor a gravação da lista ainda é lida quando o sinal cai', async ({p
   console.log(`  aviso na tela: ${await aviso(page).innerText()}`);
 });
 
+// 12/10: o leitor passou a vir de um endereço com a versão fixa. O celular que já tinha lido com
+// sinal guarda o motor e o português, mas não o leitor no endereço novo; sem baixá-lo ao abrir o app
+// com sinal, a primeira leitura sem sinal depois da atualização não sairia.
+test('@leitor quando o leitor muda de endereço, abrir o app com sinal basta para ler sem sinal', async ({page, context}, info) => {
+  const print = info.outputPath('lista3.png');
+  await page.setContent(LISTA);
+  await page.screenshot({path: print, fullPage: true});
+  const temOLeitor = () => page.evaluate(async () => {
+    const c = await caches.open('bibliotecas-v1');
+    return (await c.keys()).some(k => k.url.endsWith('/tesseract.min.js'));
+  });
+
+  await abrir(page);
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, {timeout: 30_000});
+  await page.locator('input[type=file]').setInputFiles(print);
+  await expect(aviso(page)).toContainText(/endereço\(s\) lido\(s\)/, {timeout: 5 * 60_000});
+
+  // o celular depois da atualização: tudo guardado, menos o leitor no endereço novo
+  await page.evaluate(async () => {
+    const c = await caches.open('bibliotecas-v1');
+    for (const k of await c.keys()) if (k.url.endsWith('/tesseract.min.js')) await c.delete(k);
+  });
+  expect(await temOLeitor()).toBe(false);
+  await page.reload();
+  await abrir(page);
+  await expect.poll(temOLeitor, {timeout: 30_000, message: 'abrir com sinal tinha de guardar o leitor'}).toBe(true);
+
+  await context.setOffline(true);
+  await page.locator('input[type=file]').setInputFiles(print);
+  await expect(aviso(page)).toContainText(/endereço\(s\) lido\(s\)/, {timeout: 5 * 60_000});
+});
+
 test('@leitor sem sinal e sem nunca ter lido antes, o app diz o que houve', async ({page, context}, info) => {
   const print = info.outputPath('lista2.png');
   await page.setContent(LISTA);
@@ -50,7 +82,9 @@ test('@leitor sem sinal e sem nunca ter lido antes, o app diz o que houve', asyn
   await context.setOffline(true);
   await page.locator('input[type=file]').setInputFiles(print);
   await expect(aviso(page)).toContainText(/endereço\(s\) lido\(s\)|Não achei|Não consegui/, {timeout: 3 * 60_000});
-  const lidos = (await page.locator('#lista').inputValue()).split('\n').filter(Boolean);
+  // sem nada lido, a caixa da lista nem aparece
+  const lista = page.locator('#lista');
+  const lidos = (await lista.count() ? await lista.inputValue() : '').split('\n').filter(Boolean);
   console.log(`\n  PRIMEIRA vez sem sinal: ${lidos.length} endereços`);
   console.log(`  aviso na tela: ${await aviso(page).innerText()}`);
 });

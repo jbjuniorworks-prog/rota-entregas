@@ -7,7 +7,21 @@ type Arquivo = Blob & {name?: string};
 type Aviso = (msg: string) => void;
 
 const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.8.69/build/';
-const TESSERACT = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+// O leitor de texto roda dentro do app, ao lado da sessão de quem entrou. Com a versão solta
+// ("@5"), uma 5.x nova, publicada por quem tomasse a conta do autor, entraria sem ninguém ver. Com
+// a versão fixa e o resumo do arquivo, o navegador recusa qualquer arquivo que não seja este.
+// Trocar de versão é trocar os dois: openssl dgst -sha384 -binary tesseract.min.js | openssl base64 -A
+const TESSERACT = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const TESSERACT_SRI = 'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F';
+
+// O sw.js guarda o leitor na primeira leitura com sinal, e é isso que deixa ler a gravação sem
+// sinal na rua. Quando o endereço acima muda, o guardado é o do endereço antigo, e o celular que já
+// lia sem sinal deixaria de ler até ler de novo com sinal. Baixar já, enquanto há sinal, devolve
+// isso: as outras peças do leitor (o motor e o português) continuam nos mesmos endereços.
+export function guardarLeitor() {
+  if (!navigator.onLine || !navigator.serviceWorker?.controller) return;
+  fetch(TESSERACT, {integrity: TESSERACT_SRI, mode: 'cors'}).catch(() => {});
+}
 
 export async function ehPlanilha(f: Arquivo): Promise<boolean> {
   const pelo = pareceNomeDePlanilha(f.name || '', f.type || '');
@@ -32,10 +46,12 @@ export async function lerPlanilhas(files: Arquivo[]): Promise<ItemPlanilha[]> {
   return itens;
 }
 
-function carregarScript(src: string, erro: string): Promise<void> {
+function carregarScript(src: string, integridade: string, erro: string): Promise<void> {
   return new Promise((ok, falha) => {
     const s = document.createElement('script');
     s.src = src;
+    s.integrity = integridade;
+    s.crossOrigin = 'anonymous';
     s.onload = () => ok();
     s.onerror = () => falha(new Error(erro));
     document.head.appendChild(s);
@@ -175,7 +191,7 @@ interface Imagem {
 
 async function abrirLeitor() {
   const w = window as any;
-  if (!w.Tesseract) await carregarScript(TESSERACT, 'sem internet para o leitor');
+  if (!w.Tesseract) await carregarScript(TESSERACT, TESSERACT_SRI, 'sem internet para o leitor');
   return w.Tesseract.createWorker('por');
 }
 

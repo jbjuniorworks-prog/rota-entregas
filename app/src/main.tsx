@@ -11,6 +11,7 @@ import {TelaInicio} from './componentes/TelaInicio';
 import {FolhaRota, SobreOMapa, TopoRota} from './componentes/TelaRota';
 import {loja, useLoja} from './loja';
 import {rotuloDe} from './logica/rotulo';
+import {guardarLeitor} from './servicos/arquivos';
 import {nuvem} from './servicos/nuvem';
 
 const Mapa = lazy(() => import('./componentes/Mapa'));
@@ -102,4 +103,7 @@ function App() {
 // antes de desenhar: o Chrome pode avisar que dá para instalar logo que a página carrega
 A.ouvirInstalacao();
 createRoot(document.getElementById('raiz')!).render(<App />);
-if ('serviceWorker' in navigator && import.meta.env.PROD) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+  addEventListener('load', guardarLeitor);
+}
