@@ -19,6 +19,26 @@ test('o balão do mapa mostra a parada da Shopee, o ADS sem parada e os pacotes 
     .toEqual(['ADS', 'P1', 'P2 ×4', 'P3', 'P4', 'P5', 'P6', 'P7']);
 });
 
+// O Leaflet põe o balão como HTML. Hoje só entra número de parada com dígitos, mas a parada pode
+// chegar por outro caminho (uma versão antiga guardada, um importador novo): o balão não pode
+// virar código.
+test('o balão do mapa mostra o número da parada como texto, mesmo que ele traga HTML', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
+    s.paradas.find((x: any) => x.stop === '1').stop = '<img src=x onerror="window.invadido=1">';
+    localStorage.setItem('rota-entregas-v2', JSON.stringify(s));
+  });
+  await page.reload();
+  await abrir(page);
+  await garantirMapa(page);
+  await zoom(page, 18);
+  await expect(page.locator('.balao').filter({hasText: '<img'})).toHaveCount(1);
+  await expect(page.locator('.balao img')).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).invadido)).toBeUndefined();
+});
+
 test('pinos em cima uns dos outros viram um pino só, e abrem quando dá zoom', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_A);

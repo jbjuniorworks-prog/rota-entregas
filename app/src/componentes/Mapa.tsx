@@ -156,11 +156,13 @@ export default function Mapa() {
         const xarope = g.ps.some(x => !x.entregue && x.reclamacoes?.length);
         const borda = [duvidosa, proxima && g.ps.some(x => x.id === proxima) ? 'alvo' : '', xarope ? 'xarope' : ''].filter(Boolean).join(' ');
         const pendentes = g.ps.filter(x => !x.entregue);
-        const balao = ((xarope ? '! ' : '') + balaoDoGrupo({
+        // O Leaflet põe o texto do balão como HTML. O número da parada só entra com dígitos
+        // (numeroDaParada), mas essa trava mora longe daqui: escapar aqui não depende dela.
+        const balao = esc(((xarope ? '! ' : '') + balaoDoGrupo({
           stops: [...new Set(pendentes.map(x => x.stop).filter(Boolean) as string[])].sort((a, b) => +a - +b),
           adicionais: pendentes.filter(x => x.adicional).length,
           pacotes: pendentes.reduce((n, x) => n + (x.unidades || 1), 0),
-        })).trim();
+        })).trim());
         const sig = [p.lat, p.lng, rotulo, cor, apagado, borda, balao].join('|');
         const antes = pinos.current[chave];
         if (antes && antes.sig === sig) continue;
