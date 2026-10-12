@@ -516,21 +516,13 @@ export function juntarLeituras(leituras: string[], apoio: string[] = []): string
     const t = analisarLinha(e).texto, d = decompor(t);
     return {e, d, letra: letraDaPorta(t, d.numero)};
   };
+  // O selo grudado no número sai pela posição das letras (logica/ocr.ts). A regra que tirava o
+  // algarismo a mais comparando com outra leitura ("21518" e "2151") saiu em 12/10: nas seis
+  // gravações e nos 73 quadros lidos como print ela só disparou entre dois cartões da mesma rua, e
+  // nunca acertou. Trocava o 19 da parada 10 pelo "1" da parada 9 (11/10).
   const itens = [...porChave.values()].map(decomposto);
-  const referencias = [...itens, ...apoio.map(decomposto)];
-  const fora = new Set<number>();
-  itens.forEach((x, i) => {
-    const y = referencias.find((r, j) => j !== i && !fora.has(j) && r.d.numero && x.d.numero && normal(r.d.rua) === normal(x.d.rua)
-      && x.d.numero.length === r.d.numero.length + 1 && x.d.numero.startsWith(r.d.numero));
-    if (!y) return;
-    const j = itens.indexOf(y);
-    if (j >= 0 && y.e.length > x.e.length) { fora.add(i); return; }
-    x.e = x.e.replace(new RegExp(`\\b${x.d.numero}\\b`), y.d.numero!);
-    if (j >= 0) fora.add(j);
-  });
-  const sobraram = itens.filter((_, i) => !fora.has(i));
-  const juntas: typeof sobraram = [];
-  for (const x of sobraram) {
+  const juntas: typeof itens = [];
+  for (const x of itens) {
     // 85 e 85B são portas diferentes, mesmo com a rua e os dígitos iguais
     const parecida = juntas.find(y => y.d.numero && x.d.numero === y.d.numero && x.letra === y.letra && mesmaRua(x.d.rua, y.d.rua) && mesmaRua(y.d.rua, x.d.rua));
     if (!parecida) { juntas.push(x); continue; }

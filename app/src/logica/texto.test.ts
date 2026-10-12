@@ -228,26 +228,24 @@ describe('extrairEnderecos (texto de print ou PDF)', () => {
     ]);
     expect(juntarQuadros([extrairEnderecos(ocr)])[0]).toBe('40 Avenida das Mangueiras 2850, Condomínio Jardim Teste, CEP 49000100 · 2 unid');
   });
-  it('juntando as leituras do mesmo print, o ícone lido como dígito a mais sai do número', () => {
+  // O ícone de verificado lido como dígito a mais ("21518") sai pela posição das letras, em ocr.ts.
+  it('juntando as leituras do mesmo print, a mesma porta vira uma só', () => {
     expect(juntarLeituras([
-      '5 Avenida Conselheiro Sicrano 21518, Condomínio Pátio Teste, CEP 49000200 · 1 unid',
-      'Avenida Conselheiro Sicrano 2151',
       '63 Avenida das Mangueiras 3580',
       'Avenida das Mangueiras 3580',
       'Rua Um 12',
       'Rua Dois 125',
     ])).toEqual([
-      '5 Avenida Conselheiro Sicrano 2151, Condomínio Pátio Teste, CEP 49000200 · 1 unid',
       '63 Avenida das Mangueiras 3580',
       'Rua Um 12',
       'Rua Dois 125',
     ]);
     expect(analisarLinha('1.63 Avenida das Mangueiras 3580').ml).toBe('63');
   });
-  it('a leitura de apoio corrige número; e vira a principal quando a imagem tratada quase não leu nada', () => {
-    const principais = ['5 Avenida Conselheiro Sicrano 21518, CEP 49000200', 'Rua Beltrano Fontes 190'];
+  it('a leitura de apoio vira a principal quando a imagem tratada quase não leu nada', () => {
     const apoio = ['Avenida Conselheiro Sicrano 2151', 'Rua Beltrano Fontesl) 190', 'Rua Fulana Barbosa 8'];
-    expect(juntarLeituras(principais, apoio)).toEqual(['5 Avenida Conselheiro Sicrano 2151, CEP 49000200', 'Rua Beltrano Fontes 190']);
+    expect(juntarLeituras(['5 Avenida Conselheiro Sicrano 2151, CEP 49000200', 'Rua Beltrano Fontes 190'], apoio))
+      .toEqual(['5 Avenida Conselheiro Sicrano 2151, CEP 49000200', 'Rua Beltrano Fontes 190']);
     expect(juntarLeituras([], apoio)).toEqual(apoio);
     const soUma = ['Rua Beltrano Fontes 190'];
     expect(juntarLeituras(soUma, ['Avenida Um 10', 'Avenida Dois 20', 'Avenida Tres 30'])).toHaveLength(3);
@@ -292,9 +290,8 @@ describe('leitura da lista do Meli: o que a gravação de 07/10 ensinou', () => 
   it('o cartão cortado pela borda não pega os ícones da barra de baixo como número', () => {
     expect(extrairEnderecos('08:15h a 12:15h\nAvenida Senador Inventado\nO          8          O          =\n\nInício     Disponiveis — Agendados       Mais')).toEqual([]);
   });
-  it('rua com número no nome ("Rua Q7") separa o número da porta, e o selo grudado sai', () => {
+  it('rua com número no nome ("Rua Q7") separa o número da porta', () => {
     expect(decompor('Rua Q7 120')).toMatchObject({rua: 'Rua Q7', numero: '120'});
-    expect(juntarLeituras(['Rua Q7 1208, CEP 49000400'], ['Rua Q7 120, CEP 49000400'])).toEqual(['Rua Q7 120, CEP 49000400']);
   });
   it('85, 85A e 85B são portas diferentes, e a porta com letra não é jogada fora', () => {
     expect(chaveEndereco('Avenida Teste de Lima 85A')).not.toBe(chaveEndereco('Avenida Teste de Lima 85'));
@@ -354,6 +351,14 @@ describe('leitura da lista do Meli: o que a gravação de 11/10 ensinou', () => 
   it('o cabeçalho da área fecha o cartão de cima, e não vira fim do nome da rua', () => {
     expect(extrairEnderecos('& Habilita as 13:50 h\nRua Francisco de Inventado\nSobrenome Teste Freitas\n\nÁREA 3 | 14:15 a 17:40 hs                     nn\n\n& Habilita as 14:15 h\nAvenida Inventada 3500'))
       .toEqual(['Rua Francisco de Inventado Sobrenome Teste Freitas', 'Avenida Inventada 3500']);
+  });
+  // Paradas 9 e 10 na mesma rua: a 9, num cartão bloqueado em cinza, teve o 11 lido "1". A regra
+  // antiga do selo grudado tomou o 19 da 10 por esse "1" com o selo, e a 10 saía com a porta 1.
+  it('o número curto de outro cartão da mesma rua não muda a porta de uma parada', () => {
+    const de10 = '#10 Rua Teste Gonçalves Inventado 19, Loja Teste, CEP 49000902 · 1 unid · comercial';
+    const quadro = juntarLeituras([de10, 'Rua Teste Gonçalves Inventado 1']);
+    expect(quadro).toContain(de10);
+    expect(juntarQuadros([quadro])).toContain('10 Rua Teste Gonçalves Inventado 19, Loja Teste, CEP 49000902 · 1 unid · comercial');
   });
 });
 
