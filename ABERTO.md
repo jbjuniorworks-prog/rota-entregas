@@ -320,6 +320,14 @@ dos Coqueiros. Falta ver por que a busca saiu da cidade do CEP.
 - "Entreguei", "Entreguei as N" e "Depois" ganharam Desfazer no aviso. O do Depois devolve ao
   mesmo lugar da sequência, sem refazer a rota. A entrega dá um pulso curto (35 ms); o de 200 ms
   continua sendo "próxima a pé".
+- **Decidido em 12/10, ainda não feito: desfazer depois dos 10 min também tira a passagem.** Hoje
+  o desfazer pela lista, depois que a porta já subiu, volta o pino e a correção, mas a passagem
+  fica na nuvem e soma com outra para verificar a porta. A regra decidida: desfazer a entrega
+  retira a prova de lugar que aquela marcação produziu, antes ou depois do envio. Outras passagens
+  independentes do mesmo endereço continuam valendo. Sem rede, a retirada fica na fila; um reenvio
+  antigo não pode trazer de volta a passagem desfeita. Fica para a auditoria de entregar e
+  desfazer: conferir o caminho inteiro e dizer se precisa de migração (se precisar, o SQL vai
+  pronto para o dono rodar).
 
 ## Tela nova (02/10 e 03/10), para olhar na rua
 
