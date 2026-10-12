@@ -1,6 +1,6 @@
 import * as A from '../acoes';
 import {haversine, RAIO_BLOCO} from '../logica/geo';
-import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, porPerto, trechos} from '../logica/otimizacao';
+import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, partesDoEndereco, porPerto, trechos} from '../logica/otimizacao';
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
@@ -55,20 +55,24 @@ function EntregasDoPonto({ps}: {ps: Parada[]}) {
     {agruparPorEndereco(ps).map(g => {
     const abertas = g.ps.filter(p => !p.entregue);
     const ids = g.ps.map(p => p.id).join('+');
+    const varias = g.ps.length > 1;
+    const quantas = abertas.length > 1 ? ` as ${abertas.length}` : '';
     return <div className="entrega" key={g.chave} data-item={g.ps[0].id}>
       <div className="linha-entrega">
-        <div className="badge" style={{background: loja.area(g.ps[0].area).cor}}>{g.ps.map(rotuloDe).join('+')}</div>
+        {/* como no pino do mapa: o primeiro número e quantas mais. Os 23 numa faixa só não
+            quebravam linha e espremiam o endereço para fora da tela (12/10) */}
+        <div className="badge" style={{background: loja.area(g.ps[0].area).cor}}>{rotuloDe(g.ps[0])}{varias ? `+${g.ps.length - 1}` : ''}</div>
         <div className="txt">
-          <div className="end">{g.ps[0].texto}</div>
-          <Meta p={g.ps[0]} />{g.ps.length > 1 && <div className="achado">{g.ps.length} pacotes</div>}
+          <div className="end">{varias ? partesDoEndereco(g.ps).comum : g.ps[0].texto}</div>
+          {varias ? <div className="achado">{g.ps.length} entregas · {g.pacotes} pacotes</div> : <Meta p={g.ps[0]} />}
           {(DUVIDA.has(g.ps[0].precisao) || QUASE.has(g.ps[0].precisao)) && <Tag p={g.ps[0]} />}
           <AvisoXarope p={g.ps.find(p => p.reclamacoes?.length) || g.ps[0]} />
         </div>
       </div>
       {abertas.length > 0 ? <div className="botoes-entrega">
         {/* porta confirmada não se marca de novo na rua: o botão ali é toque errado esperando (28/09) */}
-        {noChao && abertas[0].precisao !== 'confirmado' && <button className="btn ok" data-acao="aqui" data-ids={ids} onClick={() => { A.contar('balao-aqui'); A.entregueAqui(abertas); }}>Entreguei aqui</button>}
-        <button className="btn contorno-ok" data-acao="entregue" data-ids={ids} onClick={() => { A.contar('balao-entreguei'); abertas.length > 1 ? A.entregarTodas(abertas) : A.marcarEntregue(abertas[0], true); }}>Entreguei</button>
+        {noChao && abertas[0].precisao !== 'confirmado' && <button className="btn ok" data-acao="aqui" data-ids={ids} onClick={() => { A.contar('balao-aqui'); A.entregueAqui(abertas); }}>Entreguei aqui{quantas}</button>}
+        <button className="btn contorno-ok" data-acao="entregue" data-ids={ids} onClick={() => { A.contar('balao-entreguei'); abertas.length > 1 ? A.entregarTodas(abertas) : A.marcarEntregue(abertas[0], true); }}>Entreguei{quantas}</button>
         {abertas[0].precisao !== 'confirmado' && <button className="btn contorno" data-acao="arrumar" data-ids={abertas[0].id} onClick={() => A.posicionar(abertas[0].id)}>Arrumar o pino</button>}
         {/* "Cadê o botão do Waze?" (Luan, 06/10): ele toca no pino para ir até ele. Um por endereço,
             porque um pino de ruas diferentes tem mais de um destino. */}
@@ -85,8 +89,25 @@ function EntregasDoPonto({ps}: {ps: Parada[]}) {
         <button className="btn contorno" onClick={() => A.abrirXarope(g.ps[0])}>Cliente reclamou</button>
       </div>}
       {g.ps.some(p => loja.ui.xarope === p.id) && <MarcarXarope p={g.ps[0]} />}
+      {varias && <EntregasDoEndereco ps={g.ps} />}
     </div>;
   })}</>;
+}
+
+// Cada entrega de um mesmo endereço numa linha: o número, o que é só dela (apartamento, bloco) e os
+// pacotes. Fechado quando são muitas, para os botões do endereço continuarem à vista.
+function EntregasDoEndereco({ps}: {ps: Parada[]}) {
+  const {proprio} = partesDoEndereco(ps);
+  return <details className="do-endereco" open={ps.length <= 3}>
+    <summary>As {ps.length} entregas deste endereço</summary>
+    {ps.map((p, i) => <div className={`sub-entrega${p.entregue ? ' feito' : ''}`} key={p.id} data-item={p.id}>
+      <span className="badge" style={{background: loja.area(p.area).cor}}>{rotuloDe(p)}</span>
+      <span className="o-que-muda">{proprio[i] || 'Sem complemento'}{(p.unidades || 1) > 1 ? ` · ${p.unidades} pacotes` : ''}</span>
+      {p.entregue
+        ? <span className="feita">Entregue</span>
+        : <button className="quadrado ok" aria-label={`Entregue ${rotuloDe(p)}`} data-acao="entregue-uma" onClick={() => A.marcarEntregue(p, true)}><Icone nome="check" /></button>}
+    </div>)}
+  </details>;
 }
 
 function CartaoPino({ids}: {ids: string[]}) {
@@ -205,6 +226,7 @@ function CartaoProxima() {
         {podeAqui && entreguei('btn contorno-ok')}
         <button className="btn contorno" onClick={() => A.deixarParaDepois(...pend)}>Depois</button>
       </div>
+      {pend.length > 1 && <EntregasDoEndereco ps={pend} />}
     </> : <>
       <div className="info">{pend.length} entregas {mesmoEndereco(pend.map(p => p.texto)) ? 'no mesmo endereço' : 'aqui perto'}:</div>
       <EntregasDoPonto ps={pend} />

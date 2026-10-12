@@ -590,6 +590,70 @@ test.describe('na rua, sem arrumar o que já está certo', () => {
   });
 });
 
+// Print de 12/10: as 23 entregas de um condomínio no mesmo pino. O cartão juntava os 23 números numa
+// faixa só ("#62+#63+…") que não quebra linha, e o endereço e os botões saíam da tela pela direita.
+// O bloco ainda dizia "23 pacotes" para 23 entregas, e só mostrava o apartamento da primeira.
+test.describe('um condomínio com muitas entregas no mesmo pino', () => {
+  test.use({viewport: {width: 412, height: 915}});
+  const PORTA = {lat: -10.980123, lng: -37.050456};
+
+  test('o cartão do pino cabe na tela, conta os pacotes e mostra o apartamento de cada entrega', async ({page}) => {
+    const XLSX = (await import('xlsx')).default;
+    const {garantirMapa, verNoMapa} = await import('./apoio');
+    const cab = ['AT ID', 'Sequence', 'Stop', 'SPX TN', 'Destination Address', 'Bairro', 'City', 'Zipcode/Postal code', 'Latitude', 'Longitude'];
+    const linhas: unknown[][] = [];
+    let seq = 61;
+    for (let i = 1; i <= 23; i++) {
+      // de três em três, um apartamento com dois pacotes: 23 entregas, 30 pacotes
+      for (let k = 0; k < (i % 3 === 0 ? 2 : 1); k++) {
+        linhas.push(['AT-TESTE', ++seq, 12, '', `Rua Inventada Teste Oliveira, 200, Bloco ${Math.ceil(i / 4)} Apto ${100 + i}, Condomínio Teste Mar 2`,
+          'Bairro Inventado', 'Aracaju', '49099-950', PORTA.lat, PORTA.lng]);
+      }
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cab, ...linhas]), 'Planilha');
+    await abrir(page);
+    await page.locator('input[type=file]').setInputFiles({name: 'condominio.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
+    await expect(page.locator('#status')).toContainText('parada(s) da planilha', {timeout: 30_000});
+
+    await garantirMapa(page);
+    await verNoMapa(page, PORTA.lat, PORTA.lng);
+    await page.locator('.leaflet-marker-icon .pino').filter({hasText: '+22'}).click();
+    const cartao = page.locator(PINO);
+    await expect(cartao).toContainText('Neste pino: 23 entregas');
+
+    // A faixa com os números não passava da borda do bloco: ela vazava por cima e espremia o
+    // endereço numa coluna de uma letra por linha, que empurrava os botões para baixo da tela.
+    const selo = (await cartao.locator('.entrega .badge').first().boundingBox())!;
+    expect(selo.x + selo.width, 'o selo cabe na largura do celular').toBeLessThanOrEqual(412);
+    const endereco = (await cartao.locator('.entrega .end').first().boundingBox())!;
+    expect(endereco.width, 'o endereço tem largura para ser lido').toBeGreaterThan(200);
+    expect(endereco.x + endereco.width).toBeLessThanOrEqual(412);
+    const entreguei = (await cartao.locator('[data-acao=entregue]').first().boundingBox())!;
+    expect(entreguei.y + entreguei.height, 'o Entreguei aparece sem rolar o cartão').toBeLessThanOrEqual(915);
+
+    await expect(cartao).toContainText('23 entregas · 30 pacotes');
+    // o que muda de uma entrega para a outra é o apartamento; o resto do endereço aparece uma vez
+    const doEndereco = cartao.locator('.do-endereco');
+    await doEndereco.locator('summary').click();
+    await expect(doEndereco).toContainText('Bloco 1 Apto 101');
+    await expect(doEndereco).toContainText('Bloco 6 Apto 123');
+    await expect(cartao.locator('.entrega .end').first()).toHaveText('Rua Inventada Teste Oliveira, 200, Condomínio Teste Mar 2, Bairro Inventado');
+
+    // uma entrega só, pela linha dela: o morador do 101 recebeu, o resto fica
+    await doEndereco.locator('.sub-entrega').filter({hasText: 'Bloco 1 Apto 101'}).locator('[data-acao=entregue-uma]').click();
+    const feitas = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas
+      .filter((p: any) => p.entregue).map((p: any) => p.texto));
+    expect(feitas).toEqual([expect.stringContaining('Bloco 1 Apto 101')]);
+    await expect(cartao.locator('[data-acao=entregue]').first()).toHaveText('Entreguei as 22');
+
+    // e a próxima entrega, quando é o condomínio, tem a mesma lista
+    await montar(page);
+    await expect(page.locator('.proxima .do-endereco summary')).toHaveText('As 22 entregas deste endereço');
+  });
+});
+
 // O caso do Luan, 26/09: "Rua Diamante Negro 320" e "Rua Wilson Almeida Santana 31" caíram no
 // mesmo pino. São portas diferentes — uma é o restaurante, a outra é "próx. ao restaurante". Ele
 // tentou separar e o app ofereceu juntar de novo, porque a zero metro a vizinha está sempre

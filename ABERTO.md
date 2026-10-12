@@ -38,6 +38,19 @@ de 763 MB caiu para 410 MB em 20/09, sem travamento relatado), índice espacial 
 da Barra é a decisão, não a velocidade) e cancelar o pedido de rota mais cedo (o prazo de 12 s já
 existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
 
+## Condomínio com muitas entregas no cartão do pino (12/10), para olhar na rua
+
+- O cartão juntava os números das entregas do mesmo endereço numa faixa só ("#62+#63+…", 23 no
+  print de 12/10), que não quebra linha: espremia o endereço numa coluna de uma letra por linha e
+  jogava os botões para baixo da tela. E dizia "23 pacotes" para 23 entregas que eram 42 pacotes.
+- Agora o selo é como o do pino no mapa ("#62+22"), o endereço comum aparece uma vez, a linha de
+  baixo diz "23 entregas · 42 pacotes", os botões dizem "as 23", e "As 23 entregas deste endereço"
+  lista cada uma com o que é só dela (apartamento, bloco), os pacotes e um botão para entregar só
+  aquela. Fechada quando são mais de 3. A mesma lista vai no cartão da próxima quando ela é um
+  condomínio.
+- Olhar na rua: se o que sobra de cada entrega é mesmo o apartamento (no teste é; numa planilha que
+  escreve o complemento de jeitos diferentes pode sobrar mais coisa), e se alguém usa a lista.
+
 ## Admin mais rápido (11/10)
 
 O Admin esperava as três partes para mostrar qualquer coisa, e a mais lenta era contar os pacotes

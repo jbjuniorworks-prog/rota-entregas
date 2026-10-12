@@ -1,5 +1,5 @@
 import {haversine, MESMO_LUGAR, PERTO_A_PE, RAIO_BLOCO, RAIO_VISITA} from './geo';
-import {chaveEndereco, mesmaPortaPeloNome, mesmoEndereco} from './texto';
+import {analisarLinha, chaveEndereco, decompor, mesmaPortaPeloNome, mesmoEndereco, normal} from './texto';
 import type {Local, Parada, Ponto} from './tipos';
 
 export type Matriz = number[][];
@@ -135,6 +135,21 @@ export function agruparPorEndereco(paradas: Parada[]): PorEndereco[] {
     out.push({chave, titulo: p.texto.split(',').slice(0, 2).join(',').trim(), ps: [p], pacotes});
   }
   return out;
+}
+
+// O endereço que as entregas de uma mesma porta têm em comum, e o que é só de cada uma (o
+// apartamento, o bloco). Num condomínio com 23 entregas, o cartão mostrava o endereço inteiro da
+// primeira e os 23 números numa faixa só, que espremia o endereço para fora da tela (12/10).
+export function partesDoEndereco(ps: Parada[]): {comum: string; proprio: string[]} {
+  const ds = ps.map(p => decompor(analisarLinha(p.texto).texto));
+  const partes = ds.map(d => d.resto.map(s => s.trim()).filter(Boolean));
+  const emTodas = (s: string) => partes.every(ls => ls.some(x => normal(x) === normal(s)));
+  const comuns = partes[0] ? partes[0].filter(emTodas) : [];
+  const d = ds[0];
+  return {
+    comum: [d ? (d.numero ? `${d.rua}, ${d.numero}` : d.rua) : '', ...comuns].filter(Boolean).join(', '),
+    proprio: partes.map(ls => ls.filter(s => !emTodas(s)).join(', ')),
+  };
 }
 
 export function blocos(ordem: string[], parada: (id: string) => Parada | undefined, raio = RAIO_BLOCO): string[][] {

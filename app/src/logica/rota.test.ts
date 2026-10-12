@@ -1,6 +1,6 @@
 import {haversine, juntarVizinhasDeMesmoNumero, marcarIsoladas, marcarNumerosIncoerentes, moverPeloBairro, noPino, proximaAPe, voltarDoBairro} from './geo';
 import {montarRota as montarRotaDoEstado} from './montagem';
-import {agruparPorEndereco, agruparVisitas, gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, trechos} from './otimizacao';
+import {agruparPorEndereco, agruparVisitas, gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, partesDoEndereco, trechos} from './otimizacao';
 import type {Parada, Ponto} from './tipos';
 
 let seq = 0;
@@ -356,6 +356,16 @@ describe('condomínio e casa do lado na mesma parada', () => {
       parada2('1', 'Rua dos Ipês, 300, Bloco A ap 101'),
       parada2('2', 'Rua dos Ipês, 300, Bloco B ap 202'),
     ])).toHaveLength(1);
+  });
+  // Print de 12/10: 23 entregas de um condomínio, e o cartão só mostrava o apartamento da primeira.
+  it('o endereço comum aparece uma vez, e cada entrega fica com o que é só dela', () => {
+    const r = partesDoEndereco([
+      parada2('1', 'Rua dos Ipês, 300, Bloco A ap 101, Condomínio Teste, Bairro Inventado, CEP 49000-950'),
+      parada2('2', 'Rua dos Ipês, 300, Bloco B ap 202, Condominio Teste, Bairro Inventado, CEP 49000-950'),
+      parada2('3', 'Rua dos Ipês, 300, Condomínio Teste, Bairro Inventado, CEP 49000-950'),
+    ]);
+    expect(r.comum).toBe('Rua dos Ipês, 300, Condomínio Teste, Bairro Inventado');
+    expect(r.proprio).toEqual(['Bloco A ap 101', 'Bloco B ap 202', '']);
   });
 });
 

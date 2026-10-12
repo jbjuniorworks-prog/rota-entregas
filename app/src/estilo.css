@@ -72,6 +72,12 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
 .botoes-entrega{display:flex;gap:8px;flex-wrap:wrap}
 .botoes-entrega .btn{flex:1 1 30%}
 .feita{align-self:center;font-weight:700;color:var(--ok);padding:0 6px}
+/* as entregas de um mesmo endereço, uma por linha */
+.do-endereco summary{display:flex;align-items:center;min-height:40px;font-size:14px;font-weight:700;color:var(--pri);cursor:pointer}
+.sub-entrega{display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--bd);font-size:14px}
+.sub-entrega .badge{min-width:30px;height:28px;font-size:12px}
+.sub-entrega .o-que-muda{flex:1;min-width:0;word-break:break-word}
+.sub-entrega.feito .o-que-muda{color:var(--mut);text-decoration:line-through}
 .grande{font-size:19px;font-weight:700;margin:4px 0}
 
 /* a lista puxada para cima */
