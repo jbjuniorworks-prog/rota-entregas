@@ -47,6 +47,9 @@ existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
   - **Por que o censo não salvou:** com CEP, o caminho aceita a porta até 20 números longe. A mais
     perto é a 4101, a 40 números. O conserto de 11/10 (bf2013c) valeu só para endereço sem CEP.
   - **Nenhuma porta conhecida:** ninguém marcou o 4141 na nuvem, em chave nenhuma.
+  - **Porta gravada em 13/10:** pelo `npm run portas`, como admin, no ponto do Poesia Art Home
+    copiado do Google, nas chaves com CEP e pela rua. Fica a 39 m da porta 4101 do censo. Os
+    celulares a recebem na próxima planilha, busca ou entrada na conta.
 - **Medido nas 1.232 portas conhecidas com posição da planilha:**
   - **Aceitar até 100 números também com CEP:** a planilha ficou mais perto da porta em 53 casos e
     o censo em 3. Fica como está.
@@ -60,7 +63,8 @@ existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
   - **O que acontecia:** um link do Google aberto a partir da página da avenida traz dois pares
     `!3d!4d`, e o app pegava o primeiro, que é o da avenida. O link do Poesia levava o pino 1,8 km
     para longe.
-  - **O conserto:** agora o app pega o último par, que é o do lugar.
+  - **O conserto:** agora o app e o `npm run portas` pegam o último par, que é o do lugar. Um teste
+    confere que os dois leem o mesmo ponto do mesmo link.
 - Possível, não decidido: no "número não bate", não pintar de vermelho o número que a porta do
   censo confirma no ponto (o 3553), só o outro.
 
