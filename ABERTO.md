@@ -38,6 +38,32 @@ de 763 MB caiu para 410 MB em 20/09, sem travamento relatado), índice espacial 
 da Barra é a decisão, não a velocidade) e cancelar o pedido de rota mais cedo (o prazo de 12 s já
 existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
 
+## Rota do Luan de 13/10: Augusto Franco 4141 e Visconde de Maracaju 800, medidos
+
+- **Augusto Franco 4141, Condomínio Poesia (CEP 49047-040).**
+  - **O erro:** a planilha pôs o 4141 no ponto do 3553, na mesma parada (Stop 2). O "número não
+    bate" marcou os dois de vermelho, e nenhum se mexeu. A porta do censo do 3553 está a 58 m do
+    ponto, então o errado é o 4141. O Poesia Art Home fica a uns 390 m.
+  - **Por que o censo não salvou:** com CEP, o caminho aceita a porta até 20 números longe. A mais
+    perto é a 4101, a 40 números. O conserto de 11/10 (bf2013c) valeu só para endereço sem CEP.
+  - **Nenhuma porta conhecida:** ninguém marcou o 4141 na nuvem, em chave nenhuma.
+- **Medido nas 1.232 portas conhecidas com posição da planilha:**
+  - **Aceitar até 100 números também com CEP:** a planilha ficou mais perto da porta em 53 casos e
+    o censo em 3. Fica como está.
+  - **Com "número não bate" no mesmo ponto:** 2 casos, a planilha certa nos dois.
+- **Visconde de Maracaju 800, Condomínio Vista Bela (CEP 49070-070, Cidade Nova).**
+  - **A discordância:** a planilha pôs em Pereira Lobo. O censo tem a avenida, nesse CEP e em
+    Cidade Nova, uns 4 km ao norte, sem o 800 (848 e 856).
+  - **Medido:** com a planilha a mais de 1 km de toda porta do próprio CEP, ela estava certa em 31
+    de 32 casos. Não mover. Saber onde fica vai depender da entrega.
+- **Defeito achado e consertado:**
+  - **O que acontecia:** um link do Google aberto a partir da página da avenida traz dois pares
+    `!3d!4d`, e o app pegava o primeiro, que é o da avenida. O link do Poesia levava o pino 1,8 km
+    para longe.
+  - **O conserto:** agora o app pega o último par, que é o do lugar.
+- Possível, não decidido: no "número não bate", não pintar de vermelho o número que a porta do
+  censo confirma no ponto (o 3553), só o outro.
+
 ## Mesmo endereço em dois lugares da planilha (13/10), medido, não decidido
 
 - Rota do Pedro de 13/10: Parque Alameda Real, Av. Jornalista Juarez Conrado Dantas 1125,
