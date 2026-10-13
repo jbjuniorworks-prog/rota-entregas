@@ -50,7 +50,7 @@ existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
     novo, para não perder a leitura sem sinal;
   - o balão do pino passa pelo `esc`;
   - as ações do GitHub ficam presas ao commit. Atualizar é à mão: trocar o commit e o comentário;
-  - **021_conta_nasce_desativada.sql, falta rodar.** A conta criada fora da aba Admin nasce
+  - **021_conta_nasce_desativada.sql, rodada em 12/10.** A conta criada fora da aba Admin nasce
     desativada. "Allow new users to sign up" está desligado (conferido em 12/10 na configuração
     pública do login), mas era a única coisa segurando, e um projeto novo vem com essa opção ligada.
     Testada num Postgres local com o `banco-inteiro.sql` inteiro. O teste da nuvem foi ajustado
