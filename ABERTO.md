@@ -38,6 +38,21 @@ de 763 MB caiu para 410 MB em 20/09, sem travamento relatado), índice espacial 
 da Barra é a decisão, não a velocidade) e cancelar o pedido de rota mais cedo (o prazo de 12 s já
 existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
 
+## Porta verificada que chega com a rota já montada (13/10), para olhar na rua
+
+- **O problema:** as portas da nuvem só chegavam ao ler planilha, buscar ou entrar na conta. Em
+  13/10 o dono arrumou no computador, às 12:57, o Vista Bela, que a planilha pôs a 4 km. O Luan
+  tinha carregado a rota às 12:15 e ia lá sem saber.
+- **O que mudou, ideia do Pedro:** o app pergunta à nuvem ao abrir e ao voltar para a tela, no
+  máximo uma vez por minuto e só com sinal, como faz com a versão nova.
+  - **Entra sem perguntar:** o que não mexe em pino, como a porta verificada onde o pino já está
+    ou a sugestão de outro motorista.
+  - **Espera o toque:** o que leva o pino para outro lugar mostra a barra "Endereço verificado na
+    nuvem para N entregas" com Atualizar. Ao tocar, os pinos vão e a ordem da rota fica,
+    desatualizada, até ele refazer. Entregue e arrumada à mão neste aparelho ficam de fora.
+- **Olhar na rua:** se a barra aparece e é tocada, e se uma por minuto pesa nos dados móveis (é uma
+  consulta pequena, só das pendentes).
+
 ## Rota do Luan de 13/10: Augusto Franco 4141 e Visconde de Maracaju 800, medidos
 
 - **Augusto Franco 4141, Condomínio Poesia (CEP 49047-040).**
