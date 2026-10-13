@@ -789,6 +789,13 @@ describe('coordenada colada junto com o endereço', () => {
     expect(c.lng).toBeCloseTo(-37.0527487, 6);
   });
 
+  // Aberto a partir da página da avenida, o link do lugar traz o par da avenida antes do dele
+  // (13/10: o primeiro par caía 1,8 km longe da porta). Coordenadas inventadas.
+  it('com dois pares no link, pega o do lugar, que vem por último', () => {
+    const DOIS = 'https://www.google.com/maps/place/Residencial+Inventado/@-10.9400000,-37.0700000,18.5z/data=!4m15!1m8!3m7!1s0x0:0x1!2sAv.+Inventada,+Aracaju+-+SE!3b1!8m2!3d-10.9200000!4d-37.0650000!16s%2Fg%2Fa1!3m5!1s0x0:0x2!8m2!3d-10.9450000!4d-37.0750000!16s%2Fg%2Fb2?entry=ttu';
+    expect(coordenadaNoTexto(DOIS)).toEqual({lat: -10.945, lng: -37.075});
+  });
+
   it('aceita o link de compartilhar e o par solto', () => {
     expect(coordenadaNoTexto('https://maps.google.com/?q=-10.9436218,-37.0527487')).toMatchObject({lat: -10.9436218});
     expect(coordenadaNoTexto('Rua X 100, -10.943622, -37.052749')).toMatchObject({lng: -37.052749});

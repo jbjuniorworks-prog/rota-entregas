@@ -41,13 +41,21 @@ export const limparRuido = (l: string): string => {
 // enquadramento do mapa — em dois links reais da Sílvio Teixeira os dois diferiam 250 m, então o
 // `@` só entra quando não há mais nada.
 const COORD = /(-?\d{1,3}\.\d{4,})[,\s]+(-?\d{1,3}\.\d{4,})/;
-const PORTA_DO_GOOGLE = /!3d(-?\d{1,3}\.\d{4,})!4d(-?\d{1,3}\.\d{4,})/;
+const PORTA_DO_GOOGLE = /!3d(-?\d{1,3}\.\d{4,})!4d(-?\d{1,3}\.\d{4,})/g;
 const CONSULTA = /[?&](?:q|query|destination|ll)=(-?\d{1,3}\.\d{4,})(?:,|%2C)(-?\d{1,3}\.\d{4,})/i;
 const ENQUADRAMENTO = /@(-?\d{1,3}\.\d{4,}),(-?\d{1,3}\.\d{4,})/;
 const LINK = /https?:\/\/\S+/g;
 
 export function coordenadaNoTexto(texto: string): {lat: number; lng: number} | null {
-  for (const re of [PORTA_DO_GOOGLE, CONSULTA, ENQUADRAMENTO]) {
+  // O lugar aberto a partir de outro (a avenida, por exemplo) traz os dois pares: o do lugar de
+  // antes primeiro e o do lugar do link por último. No link do Poesia Art Home (13/10) o primeiro
+  // era o meio da Av. Augusto Franco, a 1,8 km da porta.
+  const portas = [...texto.matchAll(PORTA_DO_GOOGLE)];
+  if (portas.length) {
+    const m = portas[portas.length - 1];
+    return {lat: +m[1], lng: +m[2]};
+  }
+  for (const re of [CONSULTA, ENQUADRAMENTO]) {
     const m = texto.match(re);
     if (m) return {lat: +m[1], lng: +m[2]};
   }
