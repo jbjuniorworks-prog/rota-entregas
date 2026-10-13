@@ -1,4 +1,4 @@
-﻿import {aplicarCompartilhadas} from '../logica/compartilhadas';
+﻿import {aplicarCompartilhadas, separarAsQueMovem} from '../logica/compartilhadas';
 import {aplicarReclamacoes, chaveCliente} from '../logica/reclamacoes';
 import {haversine, marcarIsoladas, noPino} from '../logica/geo';
 import type {Operacao} from '../logica/fila';
@@ -21,6 +21,8 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
   try {
     Object.assign(saida, aplicarCompartilhadas(e().paradas, await c.posicoes(chaves), chaveDe));
     if (saida.confirmadas || saida.minhas) desatualizarRota();
+    // o que a barra oferecia acabou de entrar
+    ui.pinosNovos = null;
   } catch {}
   // Separada da de cima: sem a 018 rodada ela falha, e as posições têm de chegar mesmo assim.
   // Chave própria: num condomínio a reclamação é do apartamento, não do prédio.
@@ -31,6 +33,43 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
   } catch {}
   loja.mudou();
   return saida;
+}
+
+// As portas da nuvem só chegavam ao ler planilha, buscar ou entrar na conta. Em 13/10 o dono
+// arrumou no computador um condomínio que a planilha pôs a 4 km, e o Luan, com a rota carregada
+// antes, ia lá sem saber. Agora o app pergunta ao abrir e ao voltar para a tela, como faz com a
+// versão nova; o que mexe em pino espera ele tocar em Atualizar.
+const PINOS_DE_NOVO = 60000;
+let pinosPerguntados = 0;
+
+export async function verPinosNovos() {
+  if (!navigator.onLine || Date.now() - pinosPerguntados < PINOS_DE_NOVO) return;
+  const c = clienteNuvem();
+  if (!c) return;
+  const chaveDe = (p: Parada) => chaveLugar(p.texto, p.bairro, e().cidade);
+  const chaves = [...new Set(e().paradas.filter(p => !p.entregue).map(chaveDe).filter((k): k is string => !!k))];
+  if (!chaves.length) return;
+  pinosPerguntados = Date.now();
+  let resultados;
+  try { resultados = await c.posicoes(chaves); } catch { return; }
+  const {movem, ficam, entregas} = separarAsQueMovem(e().paradas, resultados, chaveDe);
+  if (ficam.length) aplicarCompartilhadas(e().paradas, ficam, chaveDe);
+  ui.pinosNovos = movem.length ? {resultados: movem, entregas} : null;
+  loja.mudou(ficam.length > 0);
+}
+
+export function atualizarPinos() {
+  const novos = ui.pinosNovos;
+  if (!novos) return;
+  const chaveDe = (p: Parada) => chaveLugar(p.texto, p.bairro, e().cidade);
+  const r = aplicarCompartilhadas(e().paradas, novos.resultados, chaveDe);
+  const movidas = r.confirmadas + r.minhas;
+  ui.pinosNovos = null;
+  if (movidas) desatualizarRota();
+  loja.mudou();
+  status(movidas
+    ? `${movidas === 1 ? '1 pino foi' : movidas + ' pinos foram'} para o endereço verificado.${e().rota ? ' A ordem da rota não mudou: refaça quando quiser.' : ''}`
+    : 'Os pinos já estavam atualizados.', 6000);
 }
 
 export function avisoCompartilhadas(r: {confirmadas: number; sugestoes: number; minhas?: number; xaropes?: number}): string {

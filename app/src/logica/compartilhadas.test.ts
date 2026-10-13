@@ -1,4 +1,4 @@
-import {aplicarCompartilhadas, type PosicaoCompartilhada} from './compartilhadas';
+import {aplicarCompartilhadas, separarAsQueMovem, type PosicaoCompartilhada} from './compartilhadas';
 import type {Parada} from './tipos';
 
 let n = 0;
@@ -149,5 +149,29 @@ describe('memória deste navegador contra o que os motoristas arrumaram', () => 
     aplicar([p], [pos('a|1', 'sugestao')]);
     expect(p.precisao).toBe('lembrado');
     expect(p.sugestao).toBeTruthy();
+  });
+});
+
+// Ideia do Pedro, 13/10: a porta que o dono arrumou no computador depois da rota carregada chega como
+// a versão nova do app, numa barra com Atualizar. Só espera o toque o que leva o pino para outro lugar.
+describe('o que a nuvem traz com a rota já montada', () => {
+  const separar = (ps: (Parada & {chave: string})[], rs: PosicaoCompartilhada[]) => separarAsQueMovem(ps, rs, p => (p as any).chave);
+  it('a porta verificada longe do pino espera o toque, e conta as entregas que mudariam', () => {
+    const ps = [parada('a|1'), parada('a|1'), parada('b|2')];
+    const r = separar(ps, [pos('a|1', 'confirmado')]);
+    expect(r).toMatchObject({entregas: 2, ficam: []});
+    expect(r.movem.map(x => x.chave_lugar)).toEqual(['a|1']);
+    // separar não mexe em nada
+    expect(ps[0]).toMatchObject({lat: -10.90, precisao: 'planilha'});
+  });
+  it('a verificada onde o pino já está e a sugestão de outro motorista entram sem perguntar', () => {
+    const ps = [parada('a|1'), parada('b|2')];
+    const r = separar(ps, [pos('a|1', 'confirmado', {lat: -10.9001, lng: -37.0501}), pos('b|2', 'sugestao')]);
+    expect(r.movem).toEqual([]);
+    expect(r.ficam.map(x => x.chave_lugar)).toEqual(['a|1', 'b|2']);
+  });
+  it('entregue e arrumada à mão neste aparelho não entram na conta', () => {
+    const ps = [parada('a|1', {entregue: true}), parada('b|2', {precisao: 'manual'})];
+    expect(separar(ps, [pos('a|1', 'confirmado'), pos('b|2', 'confirmado')])).toEqual({movem: [], ficam: [], entregas: 0});
   });
 });

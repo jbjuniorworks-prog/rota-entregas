@@ -1,5 +1,6 @@
 import {useSyncExternalStore} from 'react';
 import {carregarEstado, guardaEm, salvarEstado} from './logica/guarda';
+import type {PosicaoCompartilhada} from './logica/compartilhadas';
 import type {Estado, Parada} from './logica/tipos';
 
 // Uma tela por vez, e o mapa só nas que trabalham nele: a Rota e o Admin.
@@ -43,6 +44,9 @@ export interface Ui {
   xarope: string | null;
   // versão publicada mais nova que a que está rodando, com rota andando: a barra de atualizar
   versaoNova: {id: string; quando: string} | null;
+  // portas verificadas na nuvem depois da rota montada, que levariam pinos para outro lugar: a
+  // barra de atualizar os pinos
+  pinosNovos: {resultados: PosicaoCompartilhada[]; entregas: number} | null;
   // o Chrome avisou que dá para instalar, e ele não pediu para deixar para depois
   podeInstalar: boolean;
   // o cartão da próxima reduzido a uma linha, e o mapa com quase a tela toda (pedido de 03/10)
@@ -60,7 +64,7 @@ const ui: Ui = {
   tela: estado.paradas.length ? 'rota' : 'inicio', folha: 'proxima', pino: null, menu: false,
   // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
   posicionando: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
-  euAqui: null, irParaMim: 0, seguindo: true, esperandoAdmin: 0, xarope: null, versaoNova: null, podeInstalar: false,
+  euAqui: null, irParaMim: 0, seguindo: true, esperandoAdmin: 0, xarope: null, versaoNova: null, pinosNovos: null, podeInstalar: false,
   minimizado: lerMinimizado(),
 };
 

@@ -176,7 +176,7 @@ details summary{font-weight:600;cursor:pointer;padding:8px 0}
 #app.tela-rota .cima>#status{position:absolute;left:0;right:0;top:100%}
 #status{flex:none;background:#111827;color:#fff;padding:10px 14px;font-size:14px;display:none}
 #status.on{display:block}
-#status .armado,#status .versao-nova,#status .instalar{display:flex;align-items:center;gap:8px;justify-content:space-between}
+#status .armado,#status .versao-nova,#status .pinos-novos,#status .instalar{display:flex;align-items:center;gap:8px;justify-content:space-between}
 #status .instalar .botoes{display:flex;gap:6px;flex-shrink:0}
 #status.flutua{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));border-radius:12px;padding:12px 14px;z-index:1000}
 

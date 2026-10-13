@@ -588,3 +588,52 @@ test('a porta verificada pelas entregas dele mesmo diz "verificado" ao carregar,
   const p = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.startsWith('Rua das Flores, 900')));
   expect(p.precisao).toBe('confirmado');
 });
+
+// Luan, 13/10: o dono arrumou no computador, às 12:57, um condomínio que a planilha pôs a 4 km; o Luan
+// tinha carregado a rota às 12:15 e só veria a porta nova lendo a planilha de novo. Ideia do Pedro:
+// avisar como a versão nova do app, e o pino só muda quando ele toca em Atualizar.
+test.describe('porta verificada depois da rota montada', () => {
+  test.use({viewport: {width: 412, height: 915}});
+  const CHAVE = '49000106|900', PORTA = {lat: -10.975, lng: -37.04};
+  const flores = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.startsWith('Rua das Flores, 900')));
+  const voltarParaOApp = (page, minutos: number) => page.evaluate(m => {
+    Object.defineProperty(document, 'visibilityState', {value: 'hidden', configurable: true});
+    document.dispatchEvent(new Event('visibilitychange'));
+    const agora = Date.now.bind(Date);
+    Date.now = () => agora() + m * 60000;
+    Object.defineProperty(document, 'visibilityState', {value: 'visible', configurable: true});
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, minutos);
+
+  test('ao voltar para o app, avisa; o pino só vai quando ele toca em Atualizar, e a ordem fica', async ({page, nuvem}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const antes = await flores(page);
+    const ordem = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).rota.areas.map((a: any) => a.ordem));
+    expect(ordem.flat().length).toBeGreaterThan(0);
+    nuvem.rpc = {posicoes: [{chave_lugar: CHAVE, ...PORTA, situacao: 'confirmado', motoristas: 1, fonte: 'admin', minha: false}]};
+    await voltarParaOApp(page, 2);
+    const barra = page.locator('[data-pinos-novos]');
+    await expect(barra).toContainText('Endereço verificado na nuvem para 1 entrega');
+    expect(await flores(page), 'antes do toque o pino não mexe').toMatchObject({lat: antes.lat, lng: antes.lng, precisao: antes.precisao});
+    await barra.getByRole('button', {name: 'Atualizar'}).click();
+    await expect(barra).toHaveCount(0);
+    expect(await flores(page)).toMatchObject({lat: PORTA.lat, lng: PORTA.lng, precisao: 'confirmado', exibido: 'Endereço verificado por quem administra'});
+    await expect(aviso(page)).toContainText('1 pino foi para o endereço verificado');
+    const rota = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).rota);
+    expect(rota.areas.map((a: any) => a.ordem), 'a ordem só muda quando ele refaz').toEqual(ordem);
+    expect(rota.desatualizada).toBe(true);
+  });
+
+  test('a porta verificada onde o pino já está entra sem barra', async ({page, nuvem}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const antes = await flores(page);
+    nuvem.rpc = {posicoes: [{chave_lugar: CHAVE, lat: antes.lat, lng: antes.lng, situacao: 'confirmado', motoristas: 1, fonte: 'admin', minha: false}]};
+    await voltarParaOApp(page, 2);
+    await expect.poll(async () => (await flores(page)).precisao).toBe('confirmado');
+    await expect(page.locator('[data-pinos-novos]')).toHaveCount(0);
+  });
+});

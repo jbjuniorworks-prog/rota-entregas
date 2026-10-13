@@ -23,6 +23,26 @@ export function comoFoiConfirmada(r: PosicaoCompartilhada): string {
   return `Endereço verificado por ${r.motoristas} motoristas`;
 }
 
+// O que a nuvem traz depois da rota montada (o dono arrumou no computador, outro motorista entregou
+// ali), separado pelo que faz com os pinos. O que só verifica a porta onde o pino já está, ou deixa
+// uma sugestão no cartão, entra sem perguntar. O que leva o pino para outro lugar espera o motorista
+// tocar em Atualizar: a ideia do Pedro, de 13/10, é que seja igual à versão nova do app.
+export function separarAsQueMovem(
+  paradas: Parada[], resultados: PosicaoCompartilhada[], chaveDe: (p: Parada) => string | null,
+): {movem: PosicaoCompartilhada[]; ficam: PosicaoCompartilhada[]; entregas: number} {
+  const pendentes = paradas.filter(p => !p.entregue && !ESCOLHA_DO_MOTORISTA.has(p.precisao));
+  const movem: PosicaoCompartilhada[] = [], ficam: PosicaoCompartilhada[] = [];
+  let entregas = 0;
+  for (const r of resultados) {
+    const ps = pendentes.filter(p => chaveDe(p) === r.chave_lugar);
+    if (!ps.length) continue;
+    const leva = (r.situacao === 'confirmado' || r.minha)
+      ? ps.filter(p => p.lat == null || p.lng == null || haversine(p as {lat: number; lng: number}, r) >= 30) : [];
+    if (leva.length) { movem.push(r); entregas += leva.length; } else ficam.push(r);
+  }
+  return {movem, ficam, entregas};
+}
+
 // 'manual' é o motorista arrastando o pino agora, neste aparelho: ninguém passa na frente disso.
 // 'lembrado' é só o eco do que este navegador guardou — e pode ter vindo de um toque numa opção
 // da lista, que é palpite e não sai deste aparelho. Palpite antigo não pode vencer quem foi lá.

@@ -4,7 +4,7 @@ import {entrar as entrarNaNuvem, iniciarNuvem, nuvem, sair as sairDaNuvem} from 
 import {e, enviarFila, ui} from './base';
 import {iniciarNavegacao, irPara, telaBase} from './navegacao';
 import {buscarDeNovoOsNomesTortos, conferirComOCensoAoAbrir, processarCompartilhado} from './enderecos';
-import {avisoCompartilhadas, consultarCompartilhadas} from './posicoes';
+import {avisoCompartilhadas, consultarCompartilhadas, verPinosNovos} from './posicoes';
 import {saiuDaTela, verVersao} from './versao';
 
 // Pedido de 28/09: um motorista mexendo numa porta confirmada tem de chegar no dono sem ele ir
@@ -39,11 +39,12 @@ export async function iniciar() {
   if (new URLSearchParams(location.search).has('compartilhado')) processarCompartilhado();
   verPendenciasDoAdmin(true);
   verVersao(true);
-  conferirComOCensoAoAbrir().finally(buscarDeNovoOsNomesTortos);
+  conferirComOCensoAoAbrir().finally(buscarDeNovoOsNomesTortos).finally(verPinosNovos);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') { saiuDaTela(); return; }
     verPendenciasDoAdmin();
     verVersao(false);
+    verPinosNovos();
   });
 }
 
