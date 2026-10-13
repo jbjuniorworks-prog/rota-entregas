@@ -54,8 +54,14 @@ existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
     Só 11 estavam a mais de 150 m uns dos outros, 6 delas com um ADS.
   - **Quem estava certo, onde a porta é conhecida:** o ADS em 1 caso (este), o pacote com Stop em
     nenhum, nenhum dos dois em 2. Os outros 7 eram entre paradas normais.
+  - **A maioria também não decide.** Dos 8 casos distintos com uma porta que diz algo (outros 2
+    tinham a porta a 7–9 km de todos os pontos, e 1 era a mesma planilha carregada duas vezes):
+    - o monte com mais pacotes acertou 3 vezes e o com menos acertou 2;
+    - nenhum dos dois estava certo em 2;
+    - o de hoje era 1 contra 1.
   - **Conclusão:** não há lado que se possa preferir.
-- No mesmo dia: Morada Feliz, 1001. O ADS ficou a 230 a 270 m dos outros 7 pacotes do mesmo número.
+- No mesmo dia: Morada Feliz, 1001. O ADS ficou a 230 a 270 m dos outros 7 pacotes do mesmo número,
+  e a entrega mostrou que os 7 estavam certos (a 3 m) e o ADS não.
 - Possível, não decidido:
   - quando o mesmo CEP e número caem a mais de 150 m e nada arbitra, pintar de laranja com a outra
     posição como opção;
