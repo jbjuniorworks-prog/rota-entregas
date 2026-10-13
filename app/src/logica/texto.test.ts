@@ -791,9 +791,23 @@ describe('coordenada colada junto com o endereço', () => {
 
   // Aberto a partir da página da avenida, o link do lugar traz o par da avenida antes do dele
   // (13/10: o primeiro par caía 1,8 km longe da porta). Coordenadas inventadas.
+  const DOIS = 'https://www.google.com/maps/place/Residencial+Inventado/@-10.9400000,-37.0700000,18.5z/data=!4m15!1m8!3m7!1s0x0:0x1!2sAv.+Inventada,+Aracaju+-+SE!3b1!8m2!3d-10.9200000!4d-37.0650000!16s%2Fg%2Fa1!3m5!1s0x0:0x2!8m2!3d-10.9450000!4d-37.0750000!16s%2Fg%2Fb2?entry=ttu';
   it('com dois pares no link, pega o do lugar, que vem por último', () => {
-    const DOIS = 'https://www.google.com/maps/place/Residencial+Inventado/@-10.9400000,-37.0700000,18.5z/data=!4m15!1m8!3m7!1s0x0:0x1!2sAv.+Inventada,+Aracaju+-+SE!3b1!8m2!3d-10.9200000!4d-37.0650000!16s%2Fg%2Fa1!3m5!1s0x0:0x2!8m2!3d-10.9450000!4d-37.0750000!16s%2Fg%2Fb2?entry=ttu';
     expect(coordenadaNoTexto(DOIS)).toEqual({lat: -10.945, lng: -37.075});
+  });
+
+  // `npm run portas` grava a porta do link como confirmada para todos: ela tem de ler do link o
+  // mesmo ponto que o app lê.
+  it('a ferramenta que grava portas lê o mesmo ponto do link que o app', async () => {
+    const {coordenada} = await import('../../../ferramentas/coordenada.mjs');
+    const linhas = [
+      LINK, DOIS,
+      'https://maps.google.com/?q=-10.9436218,-37.0527487',
+      'https://www.google.com/maps/@-10.9400000,-37.0600000,17z',
+      'Rua X 100, -10.943622, -37.052749',
+      'Rua X 100, Jardins, CEP 49025-100',
+    ];
+    for (const l of linhas) expect([l, coordenada(l)]).toEqual([l, coordenadaNoTexto(l)]);
   });
 
   it('aceita o link de compartilhar e o par solto', () => {

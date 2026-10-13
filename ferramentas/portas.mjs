@@ -10,6 +10,7 @@
 //   Av. Deputado Sílvio Teixeira, 184 - Jardins, Aracaju - SE, 49025-100 https://www.google.com/...
 import {readFileSync} from 'node:fs';
 import {chavesDoLugar, grafiasDaRua} from './chave-rua.mjs';
+import {coordenada} from './coordenada.mjs';
 
 const env = Object.fromEntries(readFileSync(new URL('../.env', import.meta.url), 'utf8')
   .split(/\r?\n/).filter(l => /^\w+=/.test(l)).map(l => l.split(/=(.*)/s).slice(0, 2)));
@@ -23,23 +24,6 @@ async function api(caminho, init = {}) {
   return t ? JSON.parse(t) : null;
 }
 
-// No link de lugar do Google o `!3d!4d` é a PORTA e o `@` é só o enquadramento do mapa: em links
-// reais os dois chegaram a diferir 250 m. Por isso a ordem aqui não é decorativa.
-// Literais de regex, não strings montadas: `'\d'` numa string JS vira só `d`, e a coordenada
-// deixava de ser achada sem erro nenhum.
-const PORTA = /!3d(-?\d{1,3}\.\d{4,})!4d(-?\d{1,3}\.\d{4,})/;
-const CONSULTA = /[?&](?:q|query|destination|ll)=(-?\d{1,3}\.\d{4,})(?:,|%2C)(-?\d{1,3}\.\d{4,})/i;
-const ENQUADRAMENTO = /@(-?\d{1,3}\.\d{4,}),(-?\d{1,3}\.\d{4,})/;
-const PAR_SOLTO = /(-?\d{1,3}\.\d{4,})[,\s]+(-?\d{1,3}\.\d{4,})/;
-
-function coordenada(linha) {
-  for (const re of [PORTA, CONSULTA, ENQUADRAMENTO]) {
-    const m = linha.match(re);
-    if (m) return {lat: +m[1], lng: +m[2]};
-  }
-  const m = linha.replace(/https?:\/\/\S+/g, ' ').match(PAR_SOLTO);
-  return m ? {lat: +m[1], lng: +m[2]} : null;
-}
 
 // O título que o Google copia é regular: "<rua>, <número> - <bairro>, <cidade> - <UF>[, <CEP>]".
 // Rua sem número vem sem a parte do número, e aí a porta é "sn" — que é endereço de verdade.
