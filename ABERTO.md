@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 12/10/2026.
+Atualizado em 13/10/2026.
 
 ## Próximos passos, nesta ordem (12/10)
 
@@ -37,6 +37,29 @@ Olhados em 12/10 e deixados de fora: PostGIS (as contas de lugar já rodam no ba
 de 763 MB caiu para 410 MB em 20/09, sem travamento relatado), índice espacial do censo (o problema
 da Barra é a decisão, não a velocidade) e cancelar o pedido de rota mais cedo (o prazo de 12 s já
 existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
+
+## Mesmo endereço em dois lugares da planilha (13/10), medido, não decidido
+
+- Rota do Pedro de 13/10: Parque Alameda Real, Av. Jornalista Juarez Conrado Dantas 1125,
+  CEP 49039-083.
+  - **Os dois pacotes:** a parada 31 e um ADS. A planilha pôs a parada 31 na avenida e o ADS dentro
+    do condomínio, a 740 m um do outro: dois pinos, os dois verdes, "Posição da planilha".
+  - **Por que nada arbitrou:** o censo não tem o 1125 nesse CEP (vai até o 1000), e não havia porta
+    conhecida.
+  - **O que o Pedro fez:** arrumou o pino às 08:01 e entregou os dois juntos às 08:30, no lugar do
+    ADS. A correção e a passagem caíram a 2 m uma da outra, então daqui em diante essa porta é
+    verificada.
+- Medido em 95 rotas (9.096 pacotes da Shopee):
+  - **Quantas vezes:** 1.246 vezes a mesma rota trouxe 2 ou mais pacotes com o mesmo CEP e número.
+    Só 11 estavam a mais de 150 m uns dos outros, 6 delas com um ADS.
+  - **Quem estava certo, onde a porta é conhecida:** o ADS em 1 caso (este), o pacote com Stop em
+    nenhum, nenhum dos dois em 2. Os outros 7 eram entre paradas normais.
+  - **Conclusão:** não há lado que se possa preferir.
+- No mesmo dia: Morada Feliz, 1001. O ADS ficou a 230 a 270 m dos outros 7 pacotes do mesmo número.
+- Possível, não decidido:
+  - quando o mesmo CEP e número caem a mais de 150 m e nada arbitra, pintar de laranja com a outra
+    posição como opção;
+  - ao arrumar um, levar junto os de mesmo CEP e número sem o limite de 300 m.
 
 ## Revisão de segurança (12/10)
 
