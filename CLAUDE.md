@@ -6,6 +6,14 @@ pior que uma tela feia, e uma ação que precisa de rede para se desfazer é uma
 
 O repositório é **público**.
 
+## Regras do produto, ditas pelo dono (01/10)
+
+- **Decidir em vez de avisar.** Quando os dados dizem qual posição é a certa, o app põe o pino lá.
+  A outra opção fica a um toque, em Conferir. Aviso só quando os dados não decidem, e dizendo
+  quanto ele custa.
+- **Poucos emojis.** Nada de emoji em texto novo do app. Os que já existem ficam até alguém mexer
+  naquele texto.
+
 ## O jeito de trabalhar
 
 - **Medir antes de construir.** Ideia boa que os dados não sustentam não entra. Já foram medidas
