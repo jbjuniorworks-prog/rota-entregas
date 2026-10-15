@@ -38,12 +38,17 @@ de 763 MB caiu para 410 MB em 20/09, sem travamento relatado), índice espacial 
 da Barra é a decisão, não a velocidade) e cancelar o pedido de rota mais cedo (o prazo de 12 s já
 existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
 
-## Rota do Meli do dono, 14/10: leitura e Editar feitos, sem publicar; entregas sem causa fechada
+## Rota do Meli do dono, 14/10: leitura e Editar publicados, aguardando a rua; entregas sem causa fechada
 
-**Estado (15/10).** Os commits do Editar e da leitura foram enviados separados para a branch
-`leitura-editar-1410` do GitHub, e não estão publicados (só a `main` publica). Falta publicar,
-quando o dono pedir, e acompanhar a primeira leitura de gravação de verdade depois disso, antes de
-dar esta frente por fechada.
+**Estado (15/10): publicado na `main` (`60e555d`), aguardando a primeira validação em campo.** A
+frente só fecha quando houver:
+- uma leitura de gravação de verdade, feita no celular, conferida parada por parada, sem duplicação
+  nova e sem perda nova;
+- o Editar conferido com um link sem posição;
+- as pendências abaixo registradas sem virar regressão.
+
+Uma gravação mandada como Documento é o melhor caso para comparar com as cópias do WhatsApp. A
+branch `leitura-editar-1410` ficou no GitHub, igual ao que foi publicado.
 
 **Medido: os erros de leitura de 14/10.** O vídeo que chegou pelo WhatsApp tem 480 px de largura; o
 celular leu a gravação original. Lido pelo app no computador, contra um gabarito dos 48 quadros
