@@ -83,8 +83,10 @@ passagem ficou no lugar errado (sozinha não confirma nada). 16 paradas sem rast
 A Lista só tem o "Entreguei" simples, e a Conferir não tem entregar.
 
 **Editar** pede o endereço novo ou um link com a posição. O link do "Compartilhar" do Maps no celular
-(maps.app.goo.gl) não traz coordenada, e o texto colado vira o endereço; o do computador traz.
-Proposta: link sem coordenada não troca o endereço, e OK sem mudar nada não busca de novo.
+(maps.app.goo.gl) não traz coordenada, e o texto colado virava o endereço; o do computador traz.
+Feito em 14/10: link sem coordenada não troca nada e avisa "Seu endereço não foi alterado"; OK sem
+mudar nada não busca de novo (a busca passava por cima da porta verificada). O colar em Endereços
+(`adicionarLinhas`) não foi mexido, e o que ele faz com link sem coordenada não foi conferido.
 
 ## Porta verificada que chega com a rota já montada (13/10), para olhar na rua
 

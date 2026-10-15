@@ -67,6 +67,29 @@ export function coordenadaNoTexto(texto: string): {lat: number; lng: number} | n
 export const semLink = (texto: string): string =>
   texto.replace(LINK, ' ').replace(COORD, ' ').replace(/\s*[,;]\s*(?=[,;]|$)/g, '').replace(/\s+/g, ' ').trim().replace(/[\s,;]+$/, '');
 
+// Com ou sem o https da frente: "maps.app.goo.gl/..." copiado da barra também é link.
+const PARECE_LINK = /https?:\/\/|\bwww\.|\b(?:maps\.app\.goo\.gl|goo\.gl|maps\.google\.[a-z.]+|waze\.com)\//i;
+
+export type Edicao =
+  | {tipo: 'nada'}
+  | {tipo: 'posicao'; lat: number; lng: number}
+  | {tipo: 'link sem posicao'}
+  | {tipo: 'endereco'; texto: string};
+
+// O que fazer com o que ele confirmou no Editar. O link do "Compartilhar" do Maps no celular
+// (maps.app.goo.gl) não traz a coordenada, e virava o endereço da parada: o nome mudou em vez de o
+// pino ir para o lugar (14/10). Link nenhum é endereço. E OK sem mudar nada buscava de novo, e a
+// busca passava por cima da porta verificada que estava ali.
+export function lerEdicao(antes: string, novo: string | null): Edicao {
+  const t = (novo || '').trim();
+  const igual = (s: string) => s.replace(/\s+/g, ' ').trim();
+  if (!t || igual(t) === igual(antes)) return {tipo: 'nada'};
+  const c = coordenadaNoTexto(t);
+  if (c) return {tipo: 'posicao', ...c};
+  if (PARECE_LINK.test(t)) return {tipo: 'link sem posicao'};
+  return {tipo: 'endereco', texto: t};
+}
+
 export interface LinhaAnalisada {
   ml: string | null;
   texto: string;

@@ -1,4 +1,4 @@
-import {coordenadaNoTexto, semLink, chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, mesmaPortaPeloNome, normal, pistasDeLugar, ruaCompleta, ruaDoComplemento} from './texto';
+import {coordenadaNoTexto, lerEdicao, semLink,chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, enderecoDaComanda, enderecosDaLista, juntarComandas, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, mesmaPortaPeloNome, normal, pistasDeLugar, ruaCompleta, ruaDoComplemento} from './texto';
 
 describe('mesmo condomínio, endereços diferentes', () => {
   const p = (texto: string, bairro = 'Jardins') => ({texto, bairro});
@@ -820,6 +820,34 @@ describe('coordenada colada junto com o endereço', () => {
     expect(semLink(`Av. Deputado Sílvio Teixeira, 184 - Jardins, Aracaju - SE, 49025-100 ${LINK}`))
       .toBe('Av. Deputado Sílvio Teixeira, 184 - Jardins, Aracaju - SE, 49025-100');
     expect(semLink('Rua X 100, -10.943622, -37.052749')).toBe('Rua X 100');
+  });
+});
+
+// 14/10: o link do "Compartilhar" do Maps no celular não traz coordenada, e virava o nome da
+// parada. E OK sem mudar nada buscava de novo por cima da porta que estava ali. Links inventados.
+describe('o que o Editar faz com o que ele confirmou', () => {
+  const ANTES = 'Rua Inventada 120, CEP 49000-100';
+
+  it('confirmar sem mudar nada, ou com espaços a mais, não faz nada', () => {
+    expect(lerEdicao(ANTES, ANTES)).toEqual({tipo: 'nada'});
+    expect(lerEdicao(ANTES, '  Rua Inventada  120, CEP 49000-100 ')).toEqual({tipo: 'nada'});
+    expect(lerEdicao(ANTES, null)).toEqual({tipo: 'nada'});
+    expect(lerEdicao(ANTES, '   ')).toEqual({tipo: 'nada'});
+  });
+
+  it('o link do celular, sem coordenada, não vira endereço', () => {
+    for (const l of [
+      'https://maps.app.goo.gl/AbCdEf123Inventado',
+      'Condomínio Inventado\nRua Inventada, 120\nhttps://maps.app.goo.gl/AbCdEf123Inventado?g_st=aw',
+      'maps.app.goo.gl/AbCdEf123Inventado',
+      'https://www.google.com/maps/place/Lugar+Inventado',
+    ]) expect([l, lerEdicao(ANTES, l)]).toEqual([l, {tipo: 'link sem posicao'}]);
+  });
+
+  it('o link com a posição arruma o pino, e o endereço novo troca o endereço', () => {
+    expect(lerEdicao(ANTES, 'https://maps.google.com/?q=-10.9436218,-37.0527487')).toEqual({tipo: 'posicao', lat: -10.9436218, lng: -37.0527487});
+    expect(lerEdicao(ANTES, '-10.943622, -37.052749')).toEqual({tipo: 'posicao', lat: -10.943622, lng: -37.052749});
+    expect(lerEdicao(ANTES, ' Rua Inventada 210, CEP 49000-100 ')).toEqual({tipo: 'endereco', texto: 'Rua Inventada 210, CEP 49000-100'});
   });
 });
 

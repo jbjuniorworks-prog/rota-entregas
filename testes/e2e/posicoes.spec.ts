@@ -571,6 +571,50 @@ test('colar o link do mapa no Editar põe a parada na porta, guarda, e não troc
   expect(onde.texto, 'o endereço é o de antes, não o texto colado junto com o link').toBe('Avenida Deputado Sílvio Teixeira 200, CEP 49025-400');
 });
 
+const paradaQueComeca = (page, inicio: string) => page.evaluate(t => {
+  const p = JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.startsWith(t));
+  return p && {texto: p.texto, lat: p.lat, lng: p.lng, precisao: p.precisao, exibido: p.exibido, fonte: p.fonte};
+}, inicio);
+
+// 14/10, na rua: o link do "Compartilhar" do Maps no celular (maps.app.goo.gl) não traz a
+// coordenada, e o texto colado virava o endereço da parada. A porta que ele já tinha arrumado fica.
+test('link do Maps sem posição no Editar não mexe no endereço, no pino nem na correção de antes', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await corrigirRuaD(page);
+  await expect(aviso(page)).toContainText('guardado para as próximas rotas');
+  const antes = {parada: await paradaQueComeca(page, RUA_D), memoria: await page.evaluate(() => localStorage.getItem('rota-entregas-posicoes'))};
+  expect(antes.parada.precisao).toBe('manual');
+  page.on('dialog', d => d.type() === 'prompt' ? d.accept('Condomínio Inventado\nhttps://maps.app.goo.gl/AbCdEf123Inventado') : d.dismiss());
+  await linhaDe(page, RUA_D, 'Editar').getByRole('button', {name: 'Editar'}).click();
+  await expect(aviso(page)).toContainText('Seu endereço não foi alterado');
+  expect({parada: await paradaQueComeca(page, RUA_D), memoria: await page.evaluate(() => localStorage.getItem('rota-entregas-posicoes'))}).toEqual(antes);
+});
+
+// E o OK sem mudar nada buscava de novo: a busca passava por cima da porta verificada da nuvem.
+test('confirmar o Editar sem mudar nada não busca de novo, e editar de verdade continua valendo', async ({page, nuvem}) => {
+  const PORTA = {lat: -10.963101, lng: -37.047101};
+  nuvem.rpc = {posicoes: [{chave_lugar: '49000106|900', ...PORTA, situacao: 'confirmado', motoristas: 2, entregas: 2, fonte: 'entrega', minha: false}]};
+  let novo: string | null = null;
+  page.on('dialog', d => d.type() === 'prompt' ? d.accept(novo ?? d.defaultValue()) : d.dismiss());
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  const antes = await paradaQueComeca(page, 'Rua das Flores, 900');
+  expect(antes).toMatchObject({...PORTA, precisao: 'confirmado'});
+  await aba(page, '2. Conferir');
+  // a verificada fica no grupo recolhido do fim da lista
+  await page.locator('[data-grupo="verificadas"] summary').click();
+  const editar = page.locator('[data-item]').filter({hasText: 'Rua das Flores, 900'}).getByRole('button', {name: 'Editar'});
+  await editar.click();
+  // a busca, quando havia, começava na hora; o tempo é para a resposta dela aparecer no estado
+  await page.waitForTimeout(1500);
+  expect(await paradaQueComeca(page, 'Rua das Flores, 900')).toEqual(antes);
+
+  novo = 'Rua das Flores, 910';
+  await editar.click();
+  await expect.poll(() => paradaQueComeca(page, 'Rua das Flores, 910')).toMatchObject({texto: 'Rua das Flores, 910'});
+});
+
 // Pedro, 10/10: 13 endereços da planilha já verificados pelas entregas dele. A memória do celular
 // trazia como "a posição que você já tinha corrigido", a nuvem verificava, e o aviso só contava
 // as verificadas "por outros motoristas": ele não leu "verificado" em lugar nenhum.
