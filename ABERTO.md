@@ -67,8 +67,18 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     - **Marcação em lote** (5 ou mais endereços em 10 min, a até 30 m do primeiro): 22 levas, de 5
       a 36 endereços. Muito acima do esperado: pode ser entrega na portaria de condomínio. A conta
       mede só esse padrão, e zero não provaria que o risco sumiu.
-    - Próximo: a amostra, com autorização própria. Em cada caso da amostra, a porta e a origem que o
-      "Procurar um endereço" mostra servem de conferência com a nuvem.
+    - **Amostra (15/10), 10 de cada grupo,** decidida pela porta do censo com o número exato. O censo
+      é referência, não juiz: "problema real" seria suspeita forte, não certeza.
+      - Longe da planilha: nenhum problema real, 2 falsos alertas (a porta que vale bate com o censo)
+        e 8 ambíguos, todos por o censo não ter o número.
+      - Disputa com outro motorista: nenhum problema real, 5 falsos alertas (a porta que vale bate
+        com o censo; quem errou foi a outra prova) e 5 ambíguos.
+      - Lote: nenhum problema real, 1 falso alerta, 5 ambíguos e 4 em que nenhuma porta que vale
+        ficou no ponto da leva, inclusive a de 36 endereços. Elas nunca chegaram a valer.
+    - **Conclusão: nenhum dos três tipos entra no painel agora.** Nenhum chega a 7 de 10. Nos
+      ambíguos, o admin não teria na tela o que decide, e o lote não tem ação. O que é acionável já
+      tem caminho: "Precisa de você" e "Procurar um endereço". Voltar a isto só com um dado novo
+      que decida os ambíguos, que são quase sempre endereço sem o número no censo.
 
 Resolvida: **várias entregas na mesma porta** (item 4 de 12/10). Cartões iguais viram uma parada
 cada (`26a82c1`, publicada em `60e555d`), e os cinco da Augusto Franco 2000 de 07/10 voltaram a ser
