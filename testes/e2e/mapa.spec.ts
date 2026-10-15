@@ -163,7 +163,30 @@ test.describe('o mapa anda junto com ele', () => {
 
   // O dono, em 15/10, trabalhando quase todo pela Lista: o mapa parava de segui-lo e só voltava
   // na mira. Tocar numa parada da Lista desligava o seguir de vez.
-  test('olhar uma parada pela lista não desliga o seguir: fechou, o mapa volta para ele', async ({page, context}) => {
+  test('olhar paradas pela lista não desliga o seguir: fechou, o mapa volta para ele', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+
+    await lista(page);
+    for (const n of [0, 1]) {
+      await page.locator('[data-folha="lista"] .parada .txt').nth(n).click();
+      await expect(page.locator(PINO)).toBeVisible();
+      await page.locator(PINO).getByRole('button', {name: 'Fechar'}).click();
+      await expect(page.locator('[data-folha="lista"]')).toBeVisible();
+    }
+    await page.getByRole('button', {name: 'Voltar ao mapa'}).click();
+    await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
+
+    await context.setGeolocation(LONGE);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  // Arrastar é ir olhar outro lugar, com o cartão aberto também: fechar o cartão não religa o
+  // seguir por cima do dedo, só a mira.
+  test('arrastar com o cartão aberto desliga o seguir, e fechar o cartão não religa', async ({page, context}) => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
@@ -172,8 +195,48 @@ test.describe('o mapa anda junto com ele', () => {
     await lista(page);
     await page.locator('[data-folha="lista"] .parada .txt').first().click();
     await expect(page.locator(PINO)).toBeVisible();
+    // em cima, longe do cartão e da parada, que fica no meio
+    const caixa = (await page.locator('#map').boundingBox())!;
+    await page.mouse.move(caixa.x + caixa.width / 2, caixa.y + 150);
+    await page.mouse.down();
+    await page.mouse.move(caixa.x + caixa.width / 2 + 80, caixa.y + 190, {steps: 8});
+    await page.mouse.up();
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'false');
     await page.locator(PINO).getByRole('button', {name: 'Fechar'}).click();
     await page.getByRole('button', {name: 'Voltar ao mapa'}).click();
+    await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
+
+    await context.setGeolocation(LONGE);
+    await page.waitForTimeout(1500);
+    expect(await foraDoMapa(page, '.eu'), 'fechar o cartão religou o seguir por cima do arrasto').toBe(1);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'false');
+
+    await page.locator('#btnEu').click();
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+  });
+
+  // Pelas outras telas, o mesmo: o "Ver no mapa" e o Editar da Conferir abrem o pino na Rota, e
+  // voltar devolve à Conferir. De volta à Rota, o mapa segue sem a mira.
+  test('ver no mapa e editar pela Conferir não desligam o seguir', async ({page, context}) => {
+    // o primeiro Editar é cancelado; o segundo cola um link com a posição
+    const respostas: (string | null)[] = [null, 'https://www.google.com/maps/place/x/@-10.9436597,-37.0553986,17z/data=!3m1!4b1!8m2!3d-10.943665!4d-37.0528237'];
+    page.on('dialog', d => { const r = respostas.shift(); return r == null ? d.dismiss() : d.accept(r); });
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+
+    await aba(page, '2. Conferir');
+    const item = page.locator('[data-item]').first();
+    await item.getByRole('button', {name: 'Ver no mapa'}).click();
+    await expect(page.locator(PINO)).toBeVisible();
+    await page.goBack();
+    await item.getByRole('button', {name: 'Editar'}).click();
+    await expect(page.locator(PINO)).toHaveCount(0);
+    await item.getByRole('button', {name: 'Editar'}).click();
+    await expect(page.locator(PINO)).toBeVisible();
+    await page.goBack();
+    await aba(page, '3. Rota');
     await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
 
     await context.setGeolocation(LONGE);

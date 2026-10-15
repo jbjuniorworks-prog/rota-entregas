@@ -662,8 +662,13 @@ voltar avisa e o segundo sai. O que só a rua mostra:
   - **Consertado em 16/10, sem publicar.** Tocar numa parada da Lista chamava `focar`, que desligava
     o seguir de vez (decisão de 02/10, "Ver no mapa desliga"). Fechado o cartão, o mapa ficava na
     parada até a mira. Agora o cartão aberto só pausa, e ao fechar o mapa volta para ele. Vale
-    também para o "Aqui perto", o Ver no mapa da Conferir, o Editar e escolher um local. Reproduzido
-    num teste de ponta a ponta, que falha sem o conserto.
+    também para o "Aqui perto", o Ver no mapa da Conferir, o Editar e escolher um local.
+    - Testado de ponta a ponta, cada teste sabotado:
+      - duas paradas seguidas pela Lista;
+      - o Ver no mapa e o Editar (cancelado, e com link) pela Conferir, voltando à Rota;
+      - o arrasto com o cartão aberto continua desligando, e fechar o cartão não religa.
+    - Só conferido no código: o "Aqui perto" passa pelo mesmo `focar`. Ir ao Waze não mexe no
+      seguir, e depois de muito tempo fora o app recarrega já seguindo.
   - **Não mexido, para olhar na rua:** o arrasto continua desligando o seguir até a mira, como no
     Google Maps. Se ele ainda sentir falta, a saída é voltar sozinho depois de alguns segundos sem
     tocar, como no Waze. A margem do GPS acima de 300 m pausa sem aviso, e volta sozinha.
