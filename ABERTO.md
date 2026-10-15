@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 13/10/2026.
+Atualizado em 14/10/2026.
 
 ## Próximos passos, nesta ordem (12/10)
 
@@ -37,6 +37,54 @@ Olhados em 12/10 e deixados de fora: PostGIS (as contas de lugar já rodam no ba
 de 763 MB caiu para 410 MB em 20/09, sem travamento relatado), índice espacial do censo (o problema
 da Barra é a decisão, não a velocidade) e cancelar o pedido de rota mais cedo (o prazo de 12 s já
 existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
+
+## Rota do Meli do dono, 14/10: leitura e entregas medidas, nada mudado ainda
+
+**Leitura.** O vídeo que chegou pelo WhatsApp tem 480 px de largura; o celular leu a gravação
+original. Lido pelo app no computador, contra um gabarito dos 48 quadros (fora do git), das 72
+paradas: 67 certas, 4 erradas, 1 faltando e 4 linhas a mais. 3 paradas ficaram com o número errado
+no crachá (82, 67, 62). Cada erro e onde nasceu:
+- **3753 lido "3/53 8" e "3/0538"** (a 12, duas linhas). A leitura de apoio (psm 3) do mesmo quadro
+  leu "#12 ... 3753" nos dois quadros, e `juntarLeituras` só usa o apoio quando a principal tem um
+  endereço ou menos.
+- **"814" em 4 quadros e "8114" em 1** (a 25, uma linha a mais). As duas têm a etiqueta #25, que é
+  única; a junção exige o mesmo número da porta.
+- **"Hermes Fontes Õ 2022" e "Manoel Dias da costo (E) 430"**: o botão azul do mapa, por cima do
+  fim da linha, num quadro; no seguinte, a linha limpa. Empatadas em 1 quadro cada, fica a mais
+  comprida, que é a suja.
+- **"Rua Quirino SN" virou três linhas** (a 7): a cortada pela borda, a sem crachá e a com #7.
+  SN não tem número, e as regras de juntar quadros pedem número.
+- **A 48 e a 49, as duas "Rua Padre Nestor Sampaio 115"**, viraram uma: duas linhas iguais na mesma
+  leitura caem na mesma chave antes da regra das duas paradas na mesma porta.
+- **"2611" lido "26", "261" e "26111"**: fica "26111", o mais comprido. Só o censo desempata.
+- **Crachás**: "82" numa rota de 72 (o total está no topo, já lido); "62" num quadro e "2" no outro;
+  "67" nos dois.
+
+Propostas, a medir nas sete gravações (o `replay` refaz a junção sem OCR) antes de entrar: apoio
+quando o número da principal sai torto; mesma etiqueta é a mesma parada; desempate pela leitura
+limpa, não pela comprida; SN conta como número para juntar; linha repetida na mesma leitura são duas
+paradas; crachá maior que o total ou em desacordo entre quadros sai. Pela conta à mão, não medida,
+as cinco primeiras deixariam este vídeo em 71 de 72. Para medir o que o celular vê, pedir a gravação
+como documento.
+
+No celular (pelos textos das passagens): "260 & 8" virou uma parada a mais (o selo lido "& 8",
+como "3501 &8"), e o 3753 saiu "3/03 8".
+
+**Entregas, pela nuvem.** 44 com "Entreguei aqui"; 2 em porta já verificada, sem o botão de
+propósito; 11 com "Entreguei" e GPS bom (±4 a 10 m), sem marcar a porta. Três delas (Quirino 1100,
+duas, e Quirino SN) marcadas da porta do Poesia, a 1 km, depois de arrumar os pinos à mão: a
+passagem ficou no lugar errado (sozinha não confirma nada). 16 paradas sem rastro. Podem ser:
+- não entregues;
+- entregues sem pino (a "Não encontrado" não está na lista nem no mapa);
+- entregues sem CEP nem bairro (sem chave);
+- entregues com GPS acima de 40 m;
+- ainda na fila do celular.
+
+A Lista só tem o "Entreguei" simples, e a Conferir não tem entregar.
+
+**Editar** pede o endereço novo ou um link com a posição. O link do "Compartilhar" do Maps no celular
+(maps.app.goo.gl) não traz coordenada, e o texto colado vira o endereço; o do computador traz.
+Proposta: link sem coordenada não troca o endereço, e OK sem mudar nada não busca de novo.
 
 ## Porta verificada que chega com a rota já montada (13/10), para olhar na rua
 
