@@ -659,10 +659,13 @@ voltar avisa e o segundo sai. O que só a rua mostra:
 
   **Relato do dono, 15/10: o mapa não fica seguindo.** Ele tem de tocar na mira para o mapa voltar
   a acompanhar, e sente atraso na posição. Ele trabalha quase todo pela Lista.
-  - **Consertado em 16/10, sem publicar.** Tocar numa parada da Lista chamava `focar`, que desligava
-    o seguir de vez (decisão de 02/10, "Ver no mapa desliga"). Fechado o cartão, o mapa ficava na
-    parada até a mira. Agora o cartão aberto só pausa, e ao fechar o mapa volta para ele. Vale
-    também para o "Aqui perto", o Ver no mapa da Conferir, o Editar e escolher um local.
+  - **Consertado e publicado em 16/10** (`f08736e`, aguardando a rua). Para fechar: abrir uma parada
+    pela Lista, fechar o cartão e o mapa voltar a acompanhar sem tocar na mira. O atraso do
+    reenquadramento é outra coisa e não conta para isso.
+    - Tocar numa parada da Lista chamava `focar`, que desligava o seguir de vez (decisão de 02/10,
+      "Ver no mapa desliga"). Fechado o cartão, o mapa ficava na parada até a mira. Agora o cartão
+      aberto só pausa, e ao fechar o mapa volta para ele. Vale também para o "Aqui perto", o Ver
+      no mapa da Conferir, o Editar e escolher um local.
     - Testado de ponta a ponta, cada teste sabotado:
       - duas paradas seguidas pela Lista;
       - o Ver no mapa e o Editar (cancelado, e com link) pela Conferir, voltando à Rota;
