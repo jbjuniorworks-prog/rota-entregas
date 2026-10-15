@@ -2,6 +2,9 @@ import type {Session, SupabaseClient} from '@supabase/supabase-js';
 import {ErroNuvem, type ClienteNuvem} from '../logica/fila';
 import {CHAVES} from '../logica/guarda';
 
+// O projeto do Supabase que o app publicado usa. A chave é a pública (anon), e está no código de
+// propósito: quem protege os dados são as permissões do banco. Para usar outro projeto, troque os
+// dois valores e publique de novo (README, "Outro projeto do Supabase").
 const SUPA_URL = 'https://hkclzmlcfiksaqqspqsy.supabase.co';
 const SUPA_CHAVE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrY2x6bWxjZmlrc2FxcXNwcXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NzcyNDgsImV4cCI6MjEwNTM1MzI0OH0.dPbu04slxXdKtzbfJtbMcxsUAnIoIxHg0eKAVX4K_h8';
 
