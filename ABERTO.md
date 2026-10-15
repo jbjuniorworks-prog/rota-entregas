@@ -38,42 +38,50 @@ de 763 MB caiu para 410 MB em 20/09, sem travamento relatado), índice espacial 
 da Barra é a decisão, não a velocidade) e cancelar o pedido de rota mais cedo (o prazo de 12 s já
 existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
 
-## Rota do Meli do dono, 14/10: quatro regras de leitura feitas, entregas sem causa fechada
+## Rota do Meli do dono, 14/10: leitura e Editar feitos, sem publicar; entregas sem causa fechada
 
-**Leitura.** O vídeo que chegou pelo WhatsApp tem 480 px de largura; o celular leu a gravação
-original. Lido pelo app no computador, contra um gabarito dos 48 quadros (fora do git), das 72
-paradas: 67 certas, 4 erradas, 1 faltando e 4 linhas a mais. 3 paradas ficaram com o número errado
-no crachá (82, 67, 62). Cada erro e onde nasceu:
+**Estado (15/10).** Os commits do Editar e da leitura foram enviados separados para a branch
+`leitura-editar-1410` do GitHub, e não estão publicados (só a `main` publica). Falta publicar,
+quando o dono pedir, e acompanhar a primeira leitura de gravação de verdade depois disso, antes de
+dar esta frente por fechada.
+
+**Medido: os erros de leitura de 14/10.** O vídeo que chegou pelo WhatsApp tem 480 px de largura; o
+celular leu a gravação original. Lido pelo app no computador, contra um gabarito dos 48 quadros
+(fora do git), das 72 paradas: 67 certas, 4 erradas, 1 faltando e 4 linhas a mais. 3 paradas
+ficaram com o número errado no crachá (82, 67, 62). Cada erro e onde nasceu:
 - **3753 lido "3/53 8" e "3/0538"** (a 12, duas linhas). A leitura de apoio (psm 3) do mesmo quadro
-  leu "#12 ... 3753" nos dois quadros, e `juntarLeituras` só usa o apoio quando a principal tem um
-  endereço ou menos.
+  leu "#12 ... 3753" nos dois quadros, e `juntarLeituras` só usava o apoio quando a principal tinha
+  um endereço ou menos.
 - **"814" em 4 quadros e "8114" em 1** (a 25, uma linha a mais). As duas têm a etiqueta #25, que é
   única; a junção exige o mesmo número da porta.
 - **"Hermes Fontes Õ 2022" e "Manoel Dias da costo (E) 430"**: o botão azul do mapa, por cima do
-  fim da linha, num quadro; no seguinte, a linha limpa. Empatadas em 1 quadro cada, fica a mais
+  fim da linha, num quadro; no seguinte, a linha limpa. Empatadas em 1 quadro cada, ficava a mais
   comprida, que é a suja.
 - **"Rua Quirino SN" virou três linhas** (a 7): a cortada pela borda, a sem crachá e a com #7.
-  SN não tem número, e as regras de juntar quadros pedem número.
+  SN não tem número, e as regras de juntar quadros pediam número.
 - **A 48 e a 49, as duas "Rua Padre Nestor Sampaio 115"**, viraram uma: duas linhas iguais na mesma
-  leitura caem na mesma chave antes da regra das duas paradas na mesma porta.
+  leitura caíam na mesma chave antes da regra das duas paradas na mesma porta.
 - **"2611" lido "26", "261" e "26111"**: fica "26111", o mais comprido.
 - **Crachás**: "82" numa rota de 72; "62" num quadro e "2" no outro; "67" nos dois.
 
 No celular (pelos textos das passagens): "260 & 8" virou uma parada a mais (o selo lido "& 8",
 como "3501 &8"), e o 3753 saiu "3/03 8".
 
-**Leitura: as quatro regras feitas (14 e 15/10).** Cada uma está no seu commit, com teste que falha
-sem ela. Todas foram comparadas parada por parada nas sete gravações e nos dois conjuntos de quadros
-lidos como print (07/10 e 11/10), e cada mudança foi conferida no gabarito ou nos quadros. Todas as
-amostras são cópias do WhatsApp (386 a 576 px); a gravação original continua sem medir.
+**Feito: as quatro regras de leitura (14 e 15/10).** Cada uma está no seu commit, com teste que
+falha sem ela. Todas foram comparadas parada por parada nas sete gravações e nos dois conjuntos de
+quadros lidos como print (07/10 e 11/10), e cada mudança foi conferida no gabarito ou nos quadros.
+Todas as amostras são cópias do WhatsApp (386 a 576 px); a gravação original continua sem medir.
 - **Cartões iguais na mesma porta** (`26a82c1`). Quantas vezes uma leitura viu a linha é quantas
   paradas ela é; leituras e quadros diferentes não se somam.
   - Cada cartão sai como a leitura que mais o viu trouxe. Copiar a melhor leitura em todos punha o
     condomínio e a unidade de um cartão nos outros.
   - Os números de parada de outras leituras só vão para cartões idênticos, e só se não sobram.
-  - O `adicionarLinhas` passou a contar: N linhas iguais são N paradas, menos as que a rota já tem.
   - Voltaram 4 paradas em 07/10 (no vídeo e nos prints, estes com os números 44 a 46) e a 49 de
     14/10.
+- **O "Adicionar", decisão do dono de 15/10** (`45f10df`). Só o repetido que a leitura de print ou
+  vídeo viu vira mais de uma parada, e só até quantas vezes ela viu. Colado ou digitado duas vezes,
+  e linha repetida de .txt ou de PDF com texto, continua uma parada só. Ler a mesma gravação de novo
+  não acrescenta. Coberto por um teste de ponta a ponta com leitor falso.
 - **Leitura limpa no empate** (`fad6302`). Mudou:
   - Hermes Fontes e Manoel Dias da Costa, em 14/10;
   - "2082(3)" para "2082", em 19/09;
@@ -91,7 +99,15 @@ amostras são cópias do WhatsApp (386 a 576 px); a gravação original continua
   ("8114" e "3/0538"); falta a 2611. Não é ganho garantido em outra gravação e não valida a
   interação com regras futuras.
 
-**Ficaram de fora:**
+**Feito: o Editar** (`c109826`). Ele pede o endereço novo ou um link com a posição. O link do
+"Compartilhar" do Maps no celular (maps.app.goo.gl) não traz coordenada, e o texto colado virava o
+endereço; o do computador traz. Agora:
+- link sem coordenada não troca nada e avisa "Seu endereço não foi alterado";
+- OK sem mudar nada não busca de novo (a busca passava por cima da porta verificada).
+
+O que o colar em Endereços faz com link sem coordenada não foi conferido.
+
+**Recusado ou pendente na leitura:**
 - **Mesma etiqueta, mesma parada.** A etiqueta sozinha não basta para escolher a porta: no 54/504 de
   26/09 juntou a mesma parada e ficou com o número errado. Pendente, sem promessa de que outro
   desempate a torne segura.
@@ -102,7 +118,7 @@ amostras são cópias do WhatsApp (386 a 576 px); a gravação original continua
 - **O apoio como proposto no começo** (só rua, CEP e complemento): recusado, porque trocava pela
   linha de outro cartão.
 
-**Achados no caminho, não mexidos:**
+**Achados no caminho, confirmados e não mexidos:**
 - **A chave do endereço não olha o nome do condomínio.** Duas SN da mesma rua e do mesmo CEP, em
   condomínios diferentes, viram uma linha. Já era assim antes.
 - **O cartão fechado some quando o aberto da mesma porta traz o CEP.** A regra do cartão cortado
@@ -110,7 +126,7 @@ amostras são cópias do WhatsApp (386 a 576 px); a gravação original continua
   fechados e um aberto com CEP saem como uma parada, antes e depois destas mudanças. Em 07/10 não
   aconteceu só porque o CEP do aberto saiu cortado.
 
-**Entregas, pela nuvem.** As 72 paradas se dividem assim:
+**Medido: as entregas, pela nuvem.** As 72 paradas se dividem assim:
 - **43 com "Entreguei aqui"**, em 44 marcações: no celular a 8 foi lida duas vezes, "260" e
   "260 & 8", e marcada duas vezes.
 - **2 em porta já verificada**, que não tem o botão "aqui", de propósito.
@@ -130,27 +146,24 @@ rastro pode ser:
 
 **Relato do dono sobre as que não deram (14/10).** Quase o tempo todo pela Lista, para ganhar
 tempo. Em algumas, o "Entreguei" deu o aviso de GPS impreciso, e ele bloqueou a tela e seguiu; em
-outras não deu erro, mas o 4G oscilava (na Quirino, principalmente). Conferido no código:
+outras não deu erro, mas o 4G oscilava (na Quirino, principalmente).
+
+**Suspeita de UX, não reproduzida.** No "Entreguei" da Lista, a posição com GPS ruim é descartada
+sem aviso. Investigar na auditoria de entregar e desfazer. Pode explicar algumas das 16, não todas:
+outras podem ser entregas que não aconteceram, pendências no celular ou paradas sem pino. O que
+o código mostra:
 - **O aviso de GPS impreciso só sai do "Entreguei aqui"** (cartão da próxima e balão do pino). Ali a
   entrega fica marcada e nada vai para a nuvem, nem a passagem.
 - **A Lista só tem o "Entreguei" simples.** Ele não avisa nada do GPS: com margem acima de 40 m, a
   passagem é descartada calada.
 - **Rota lida de vídeo não sobe a entrega para a nuvem**, só a passagem e a porta. O que fica na fila
-  espera rede e é reenviado quando o app abre; até 14/10 à noite nada atrasado tinha chegado.
-- Não reproduzido. Os botões de entrega não mudaram.
+  espera rede e é reenviado quando o app abre; até 15/10 nada atrasado tinha chegado.
 
-**Parada sem pino, pendência à parte.** Dá para arrumar, em Conferir, com Estou aqui, Marcar no
-mapa e Editar. Não dá para marcar como entregue em lugar nenhum, e o aviso da rota ("N parada(s)
-sem local") não leva até ela. Os botões de entrega não foram mexidos: só depois de reproduzir.
+Os botões de entrega não mudaram.
 
-**Editar** pede o endereço novo ou um link com a posição. O link do "Compartilhar" do Maps no celular
-(maps.app.goo.gl) não traz coordenada, e o texto colado virava o endereço; o do computador traz.
-Feito em 14/10:
-- link sem coordenada não troca nada e avisa "Seu endereço não foi alterado";
-- OK sem mudar nada não busca de novo (a busca passava por cima da porta verificada).
-
-O colar em Endereços (`adicionarLinhas`) passou a contar linhas iguais, pela regra dos cartões
-iguais; o que ele faz com link sem coordenada não foi conferido.
+**Pendente: parada sem pino.** Dá para arrumar, em Conferir, com Estou aqui, Marcar no mapa e
+Editar. Não dá para marcar como entregue em lugar nenhum, e o aviso da rota ("N parada(s) sem
+local") não leva até ela. Os botões de entrega não foram mexidos: só depois de reproduzir.
 
 ## Porta verificada que chega com a rota já montada (13/10), para olhar na rua
 
