@@ -467,6 +467,8 @@ export function juntarQuadros(quadros: string[][]): string[] {
     }
   }
   const itens = [...vistos.values()].map(v => ({...v, d: decompor(analisarLinha(v.e).texto)}));
+  const sn = (x: typeof itens[number]) => !x.d.numero && SEM_NUMERO.test(analisarLinha(x.e).texto);
+  const complementoDe = (x: typeof itens[number]) => normal(x.d.resto.join(' ')).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   const restantes = itens.filter(x => !itens.some(y => y !== x && (
     // "37" que na verdade era "37A": o número saiu cortado num quadro e inteiro em outro
     (!!x.d.numero && !!y.d.numero && y.n >= x.n && y.d.numero.length > x.d.numero.length
@@ -485,6 +487,11 @@ export function juntarQuadros(quadros: string[][]): string[] {
     // Só a rua, de um cartão que o Meli manda sem número: se a mesma rua aparece com número em
     // outro quadro, era esse cartão com o número escondido, não outra parada.
     || (!x.d.numero && !x.d.cep && !SEM_NUMERO.test(x.e) && !!y.d.numero && mesmaRua(x.d.rua, y.d.rua) && mesmaRua(y.d.rua, x.d.rua))
+    // O cartão SN cortado pela borda: sem CEP, com o começo do complemento do inteiro ("Rua Tal SN,
+    // Condomínio Tal" e, no quadro seguinte, "..., torre 1 apt 104, CEP ..."). Sem complemento
+    // nenhum é o cartão fechado, que pode ser outra entrega, e fica.
+    || (sn(x) && sn(y) && !x.d.cep && !!y.d.cep && y.n >= x.n && !!complementoDe(x) && complementoDe(y).startsWith(complementoDe(x))
+      && !separadas(x.ks, y.ks) && mesmaRua(x.d.rua, y.d.rua) && mesmaRua(y.d.rua, x.d.rua))
   )));
   // A mesma porta lida de dois jeitos em quadros diferentes ("Fulano Andrade 50" e "Fulano de
   // Andrade 50", "Côrtes 100" e "cones É 100") virava duas paradas (07/10). A
@@ -492,7 +499,12 @@ export function juntarQuadros(quadros: string[][]): string[] {
   // contrário. Fica a que mais quadros leram.
   const juntas: typeof restantes = [];
   for (const x of restantes) {
-    const par = juntas.find(y => !!x.d.numero && y.d.numero === x.d.numero && !separadas(x.ks, y.ks)
+    // SN conta como porta (a Quirino SN de 14/10 saía em três linhas). Mas duas entregas SN da mesma
+    // rua podem ser dois lugares: só com o mesmo complemento, ou um começo do outro.
+    const portaIgual = (y: typeof x) => sn(x) && sn(y)
+      ? complementoDe(x) === complementoDe(y) || (!!complementoDe(x) && !!complementoDe(y) && (complementoDe(x).startsWith(complementoDe(y)) || complementoDe(y).startsWith(complementoDe(x))))
+      : !!x.d.numero && y.d.numero === x.d.numero;
+    const par = juntas.find(y => portaIgual(y) && !separadas(x.ks, y.ks)
       && letraDaPorta(analisarLinha(x.e).texto, x.d.numero) === letraDaPorta(analisarLinha(y.e).texto, y.d.numero)
       && (!x.d.cep || !y.d.cep || x.d.cep === y.d.cep) && complementoChave(x.d.resto) === complementoChave(y.d.resto)
       && mesmaRua(x.d.rua, y.d.rua) && mesmaRua(y.d.rua, x.d.rua));

@@ -434,6 +434,30 @@ describe('duas paradas na mesma porta, cada uma com a sua etiqueta', () => {
   });
 });
 
+// Gravação de 14/10: a mesma parada SN saiu em três linhas — cortada pela borda, sem número de
+// parada e com ele. Sem número de porta, nenhuma regra de juntar quadros valia. Endereços inventados.
+describe('a parada SN lida em vários quadros', () => {
+  const cortada = 'Rua Teste Quirino SN, Condomínio Teste Aguas';
+  const inteira = 'Rua Teste Quirino SN, Condomínio Teste Aguas torre 1 apt 104, CEP 49000700 · 1 unid';
+
+  it('vira uma, com o número da parada', () => {
+    expect(juntarQuadros([[cortada], [inteira], ['#7 ' + inteira]])).toEqual(['7 ' + inteira]);
+    expect(juntarQuadros([['#7 ' + inteira], [inteira], [cortada]])).toEqual(['7 ' + inteira]);
+  });
+
+  // (Com o mesmo CEP as duas já tinham a mesma chave, que não olha o nome do condomínio, e viravam
+  // uma antes desta regra: problema à parte, no ABERTO.)
+  it('duas SN da mesma rua em lugares diferentes continuam duas', () => {
+    const a = 'Rua Teste Quirino SN, Condomínio Teste Um', b = 'Rua Teste Quirino SN, Condomínio Teste Dois, CEP 49000700';
+    expect(juntarQuadros([[a], [b]])).toEqual([a, b]);
+  });
+
+  it('o cartão fechado, só com a rua, não some no aberto: pode ser outra entrega', () => {
+    const fechado = 'Rua Teste Quirino SN';
+    expect(juntarQuadros([[fechado], [inteira]])).toEqual([fechado, inteira]);
+  });
+});
+
 // Gravação de 14/10: o botão azul do mapa por cima do fim da linha num quadro, a linha limpa no
 // seguinte. Empatadas em um quadro cada, ficava a mais comprida, que é a suja. Endereços inventados.
 describe('a mesma parada lida limpa e suja', () => {
