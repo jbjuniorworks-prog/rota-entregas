@@ -1,4 +1,4 @@
-import {aba, abrir, carregar, montar, test, expect, ROTA_A} from './apoio';
+import {aba, abrir, carregar, lista, montar, test, expect, ROTA_A} from './apoio';
 
 const PEDACO_DO_MAPA = /\/assets\/Mapa-[^/]+\.(js|css)$/;
 const PINO = '[data-folha="pino"]';
@@ -159,6 +159,26 @@ test.describe('o mapa anda junto com ele', () => {
     await page.locator('#btnEu').click();
     await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+  });
+
+  // O dono, em 15/10, trabalhando quase todo pela Lista: o mapa parava de segui-lo e só voltava
+  // na mira. Tocar numa parada da Lista desligava o seguir de vez.
+  test('olhar uma parada pela lista não desliga o seguir: fechou, o mapa volta para ele', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+
+    await lista(page);
+    await page.locator('[data-folha="lista"] .parada .txt').first().click();
+    await expect(page.locator(PINO)).toBeVisible();
+    await page.locator(PINO).getByRole('button', {name: 'Fechar'}).click();
+    await page.getByRole('button', {name: 'Voltar ao mapa'}).click();
+    await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
+
+    await context.setGeolocation(LONGE);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
   });
 });
 

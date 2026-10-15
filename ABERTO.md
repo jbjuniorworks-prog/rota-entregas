@@ -658,14 +658,17 @@ voltar avisa e o segundo sai. O que só a rua mostra:
   mira apagada é o único sinal). O ponto de saída não tem mais botão: é onde ele estiver.
 
   **Relato do dono, 15/10: o mapa não fica seguindo.** Ele tem de tocar na mira para o mapa voltar
-  a acompanhar, e sente atraso na posição. Não reproduzido; é a próxima frente, a pedido dele. O
-  que o código mostra, para começar:
-  - Tocar no endereço de uma parada na Lista chama `focar`, que desliga o seguir de vez. O mesmo
-    vale para o "Aqui perto", o Ver no mapa da Conferir, o Editar e escolher um local. Ao fechar o
-    cartão do pino, o mapa fica parado até a mira, embora o comentário do `Mapa.tsx` diga que ele
-    volta. Ele trabalha quase todo pela Lista: é o caminho mais provável.
-  - Também param sem aviso: o arrasto e a margem do GPS acima de 300 m.
-  - O atraso pode ser o passo de 30 m: a 30 km/h, um pulo a cada 3 ou 4 segundos.
+  a acompanhar, e sente atraso na posição. Ele trabalha quase todo pela Lista.
+  - **Consertado em 16/10, sem publicar.** Tocar numa parada da Lista chamava `focar`, que desligava
+    o seguir de vez (decisão de 02/10, "Ver no mapa desliga"). Fechado o cartão, o mapa ficava na
+    parada até a mira. Agora o cartão aberto só pausa, e ao fechar o mapa volta para ele. Vale
+    também para o "Aqui perto", o Ver no mapa da Conferir, o Editar e escolher um local. Reproduzido
+    num teste de ponta a ponta, que falha sem o conserto.
+  - **Não mexido, para olhar na rua:** o arrasto continua desligando o seguir até a mira, como no
+    Google Maps. Se ele ainda sentir falta, a saída é voltar sozinho depois de alguns segundos sem
+    tocar, como no Waze. A margem do GPS acima de 300 m pausa sem aviso, e volta sozinha.
+  - **O atraso** pode ser o passo de 30 m: a 30 km/h, o mapa pula a cada 3 ou 4 segundos. A bolinha
+    anda a cada posição do GPS; só o mapa espera. Não medido.
 - **O mapa fica montado depois de aberto**, e só se esconde nas outras telas. Ir à Conferir e
   voltar não baixa nada de novo. O preço é a memória do Leaflet ficar ocupada o dia todo, o que
   num celular fraco pode pesar: olhar se algum reclama de o app fechar sozinho.

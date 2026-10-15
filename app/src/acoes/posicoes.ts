@@ -412,8 +412,9 @@ export function minimizarCartao(sim: boolean) {
 
 // Mostra a entrega no mapa, com o cartão dela embaixo. De outra tela, vai para a Rota.
 export function focar(id: string) {
-  // olhar uma entrega é parar de seguir: o mapa vai até ela e fica lá
-  ui.seguindo = false;
+  // Não desliga o seguir: o cartão do pino aberto já o pausa, e ao fechar o mapa volta para ele.
+  // Desligado, só a mira trazia o mapa de volta, e quem trabalha pela Lista via o mapa parado na
+  // última parada que olhou (relato do dono, 15/10).
   ui.selecionada = id;
   ui.focar = {id, vez: (ui.focar?.vez || 0) + 1};
   abrir({tela: 'rota', pino: [id], folha: 'proxima'});
