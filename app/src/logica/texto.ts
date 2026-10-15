@@ -499,7 +499,7 @@ export function juntarQuadros(quadros: string[][]): string[] {
     if (!par) { juntas.push(x); continue; }
     // a etiqueta é a da leitura que fica, e a da outra só quando esta não tem: com a #36 e a #30 da
     // mesma parada, a que mais quadros leram
-    const fica = x.n > par.n || (x.n === par.n && x.e.length > par.e.length);
+    const fica = x.n > par.n || (x.n === par.n && maisLimpa(x.e, par.e));
     const certo = (fica ? [x.e, par.e] : [par.e, x.e]).map(e => e.match(NUMERO_CERTO)?.[0]).find(Boolean);
     const ks = [...par.ks, ...x.ks];
     if (fica) Object.assign(par, x);
@@ -553,8 +553,20 @@ function vistasJuntas(leituras: string[][]): (a: string[], b: string[]) => boole
   }
   return (a, b) => a.some(x => b.some(y => pares.has(x + '\n' + y)));
 }
+// O botão azul do mapa por cima do fim da linha deixa sujeira na rua: "Hermes Fontes Õ 2022",
+// "Dias da costo (E) 430" (14/10). No quadro seguinte a mesma linha sai limpa, e no empate ficava a
+// mais comprida, que é a suja. Conta o que na rua e na porta não é nome nem número: símbolo solto,
+// parêntese, letra sozinha. Medido em 14/10 nas sete gravações: as duas certas e "2082(3)" virando
+// "2082", sem nenhuma perda.
+function sujeira(e: string): number {
+  return analisarLinha(e).texto.split(',')[0].split(/\s+/).slice(1)
+    .filter(w => /[()[\]{}|&]/.test(w) || /^[^\p{L}\d]+$/u.test(w) || /^\p{L}$/u.test(w)).length;
+}
+// a e b são a mesma parada: fica a mais limpa e, igualando, a mais comprida
+const maisLimpa = (a: string, b: string) => sujeira(a) !== sujeira(b) ? sujeira(a) < sujeira(b) : a.length > b.length;
+
 function melhorLeitura(a: string, b: string): string {
-  const texto = b.length > a.length ? b : a;
+  const texto = maisLimpa(b, a) ? b : a;
   const certo = [a, b].map(e => e.match(NUMERO_CERTO)?.[0]).find(Boolean);
   return certo && !texto.startsWith(certo + ' ') ? certo + ' ' + texto.replace(/^#?\d{1,3}\s+/, '') : texto;
 }

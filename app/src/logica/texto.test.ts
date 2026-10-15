@@ -434,6 +434,28 @@ describe('duas paradas na mesma porta, cada uma com a sua etiqueta', () => {
   });
 });
 
+// Gravação de 14/10: o botão azul do mapa por cima do fim da linha num quadro, a linha limpa no
+// seguinte. Empatadas em um quadro cada, ficava a mais comprida, que é a suja. Endereços inventados.
+describe('a mesma parada lida limpa e suja', () => {
+  const limpa = 'Avenida Teste Inventada 2022', suja = 'Avenida Teste Inventada Õ 2022';
+  const limpa2 = 'Rua Teste Dias da Costa 430', suja2 = '53 Rua Teste Dias da costo (E) 430';
+
+  it('no empate entre quadros fica a limpa, em qualquer ordem', () => {
+    expect(juntarQuadros([[suja], [limpa]])).toEqual([limpa]);
+    expect(juntarQuadros([[limpa], [suja]])).toEqual([limpa]);
+    expect(juntarQuadros([[suja2], ['53 ' + limpa2]])).toEqual(['53 ' + limpa2]);
+  });
+
+  it('na mesma leitura também', () => {
+    expect(juntarLeituras([['Rua Teste Lima 2082(3)'], ['Rua Teste Lima 2082']])).toEqual(['Rua Teste Lima 2082']);
+  });
+
+  it('a que mais quadros leram continua ganhando, e sem sujeira fica a mais comprida', () => {
+    expect(juntarQuadros([[suja], [suja], [limpa]])).toEqual([suja]);
+    expect(juntarQuadros([[limpa], [limpa + ', Condomínio Teste']])).toEqual([limpa + ', Condomínio Teste']);
+  });
+});
+
 // Gravação de 07/10: cinco cartões fechados com o mesmo texto, a mesma porta, saíam como duas
 // paradas. Endereço inventado.
 describe('cartões iguais na mesma porta', () => {
