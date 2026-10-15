@@ -48,8 +48,17 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     passagem no pino sozinha já verifica (`npp >= 1` em `posicoes`). O próprio motorista, marcando
     no mapa, troca a marcação dele, mas a passagem dele continua verificando o lugar errado para os
     outros, embora o cartão diga "Se estiver errado, arrume em Conferir". O Admin só lista lugares
-    com marcação, sem busca. Próximo: busca de endereço no Admin com "marcar como admin", e o painel
-    de problemas do item 8, depois de medir quantos casos de cada tipo a nuvem tem.
+    com marcação, sem busca. **Feito em 15/10, sem publicar:** "Procurar um endereço" no Admin, por
+    rua e número ou CEP e número, nos pacotes e nas chaves das marcações e passagens. Mostra a porta
+    que vale e de onde vem, e "Marcar como admin" grava a certa tocando no mapa, depois de
+    confirmar. O caso do Pedro fica para depois de publicado, pela tela nova.
+14. **Admin retirar a validade de uma passagem** (15/10). Pendente, depois da auditoria de entregar e
+    desfazer. Invalidar a prova ou apagar o registro são decisões diferentes, e dependem de quanta
+    auditoria se quer guardar. Precisa de migração.
+15. **Painel de problemas no Admin** (item 8). Próximo: o dono aprovar o plano de medição (só
+    leitura, saída só com contagens), começando por quatro tipos: porta verificada por um motorista
+    só, porta em disputa, marcação em lote e o mesmo endereço com grafias diferentes. "Motorista sem
+    enviar há dias" depende de saber se a nuvem guarda esse dado.
 
 Resolvida: **várias entregas na mesma porta** (item 4 de 12/10). Cartões iguais viram uma parada
 cada (`26a82c1`, publicada em `60e555d`), e os cinco da Augusto Franco 2000 de 07/10 voltaram a ser
