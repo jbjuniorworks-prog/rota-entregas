@@ -3,11 +3,11 @@
 App (PWA) que os entregadores usam para ordenar as paradas do dia.
 
 Lê a planilha da rota (Shopee, inclusive a que vem como .txt), prints ou PDF
-da lista de paradas, localiza cada endereço, agrupa as entregas próximas e
-calcula a sequência mais curta pelas ruas. Abre cada parada no Waze ou no
-Google Maps, em trechos que respeitam o limite de pontos do Maps.
-Instalável no Android: ao compartilhar prints com o app, a rota é montada
-automaticamente.
+da lista de paradas e a gravação da tela da lista do Meli, localiza cada
+endereço, agrupa as entregas próximas e calcula a sequência mais curta pelas
+ruas. Abre cada parada no Waze ou no Google Maps, em trechos que respeitam o
+limite de pontos do Maps. Instalável no Android: ao compartilhar prints ou a
+gravação com o app, a rota é montada automaticamente.
 
 Só entra quem tem conta (criada pelo administrador). As rotas, as entregas e
 as correções de pino vão para o Supabase; a correção de um motorista vira
@@ -20,6 +20,77 @@ Nenhuma posição pode cair longe do bairro do endereço — o censo do IBGE dá
 
 [ABERTO.md](ABERTO.md) diz o que ainda está em aberto e o que já foi decidido.
 [CLAUDE.md](CLAUDE.md) diz como se trabalha aqui — convenções e as armadilhas que já custaram caro.
+
+## Começar
+
+Precisa do Node 22, o mesmo do GitHub Actions.
+
+```
+npm install
+git config core.hooksPath ferramentas/hooks
+npx playwright install chromium
+```
+
+- `git config core.hooksPath ferramentas/hooks` liga neste clone a trava contra vazar dado (mais
+  abaixo). O git não copia essa configuração: cada clone novo roda uma vez.
+- `npx playwright install chromium` baixa o navegador dos testes de tela.
+
+Conferir, na ordem em que o GitHub confere antes de publicar:
+
+```
+node ferramentas/guarda-segredos.mjs
+npm run tipos
+npm run test:unidade
+npm test
+```
+
+`npm test` monta o build sozinho e roda as telas no tamanho de celular, com a nuvem simulada. Não
+precisa de `.env` nem de rede.
+
+`npm run dev` abre o app em `http://127.0.0.1:5173`. Ele fala com o **banco do app publicado**: para
+entrar é preciso uma conta, e o que se fizer ali vai para os dados de verdade.
+
+### O `.env`
+
+Fica na raiz, uma linha por variável no formato `NOME=valor`. Só é lido pelas ferramentas de
+`ferramentas/` que falam com o banco e pelo `npm run test:nuvem`; o app não o lê. Os nomes:
+
+- `SUPABASE_URL`: o endereço do projeto do Supabase que o app usa (Project Settings > API).
+- `SUPABASE_SERVICE_ROLE_KEY`: a chave de serviço (service_role), que passa por cima de todas as
+  permissões do banco. Fica só no computador do dono: nunca no app, no git, em issue, em commit ou
+  em mensagem.
+- `SUPABASE_URL_DESTINO` e `SUPABASE_SERVICE_ROLE_KEY_DESTINO`: só para o `npm run restaurar`, o
+  projeto de **teste** que recebe o backup.
+
+Não cole valor real neste README nem em lugar nenhum do repositório. O `.env` está no
+`.gitignore`, e a trava recusa qualquer arquivo cujo nome comece com `.env`.
+
+### Outro projeto do Supabase
+
+O app publicado fala com o projeto escrito em `app/src/servicos/nuvem.ts`: o endereço e a chave
+pública (anon). Ela é pública de propósito; quem protege os dados são as permissões do banco. Para
+montar um projeto novo:
+
+1. No SQL Editor do projeto novo, rodar `supabase/banco-inteiro.sql`.
+2. Em Authentication > Sign In / Providers, desligar "Allow new users to sign up" (vem ligado).
+3. Criar a conta do dono com `npm run motoristas -- criar <e-mail> <Nome>`, com o `.env` apontando
+   para o projeto novo, e torná-la admin no SQL Editor:
+   `update public.perfis set papel = 'admin' where id = (select id from auth.users where email = '<e-mail>');`
+4. Trocar os dois valores em `nuvem.ts` e publicar.
+
+## O que entra no app
+
+Pela tela de Endereços ou compartilhando com o app no Android:
+
+- **Planilha da rota** (.xlsx, .xls, .ods, .csv, e o .txt da Shopee): `logica/planilha.ts`.
+- **Prints da lista de paradas**: o leitor de texto (Tesseract) roda no celular, e depois de
+  baixado funciona sem sinal. `servicos/arquivos.ts` prepara a imagem; `logica/texto.ts` e
+  `logica/ocr.ts` leem os endereços e juntam as leituras.
+- **Gravação da tela da lista do Meli** (vídeo): o app escolhe os quadros (`logica/video.ts`), lê
+  cada um como print e junta os quadros, sem contar duas vezes a parada que aparece em vários.
+- **PDF**: o texto da página, quando tem; página sem texto vai para o leitor como imagem.
+- **Endereços colados ou digitados**, um por linha. Um link do mapa com coordenada põe a parada
+  naquele ponto.
 
 ## Código
 
@@ -39,6 +110,13 @@ Nenhuma posição pode cair longe do bairro do endereço — o censo do IBGE dá
   o app carrega sozinho (`npm run cnefe -- "Nossa Senhora do Socorro"`). Um arquivo por cidade em
   `app/public/<cidade>-v1.bin`; hoje vão junto Aracaju, N. S. do Socorro, São Cristóvão e Barra dos
   Coqueiros. Cidade sem arquivo simplesmente não tem essa camada — o resto do app segue igual.
+- `ferramentas/portas.mjs`: grava no banco a porta exata de um endereço, copiada do Google Maps,
+  como correção do admin, que vale para todos os motoristas na hora. Serve para a rua que o censo
+  não tem e o mapa não sabe numerar (`npm run portas` lê `portas.txt`, que fica fora do git, e
+  mostra o que faria; `-- gravar` grava).
+- `ferramentas/rechavear.mjs`: recalcula a chave das ruas já gravadas no banco depois que a regra
+  da chave muda (`npm run rechavear` mostra o que faria; `-- gravar` grava). Mudar a regra e rodar
+  isto são a mesma tarefa: veja o [CLAUDE.md](CLAUDE.md).
 - `ferramentas/motoristas.mjs`: criar conta (também dá pela aba Admin, colando o e-mail), trocar senha, desativar
   (`npm run motoristas -- listar | criar email Nome | senha email | desativar email | ativar email`).
   Precisa do `.env` com `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`, fora do git.
@@ -49,8 +127,8 @@ Nenhuma posição pode cair longe do bairro do endereço — o censo do IBGE dá
 
 ## Backup
 
-- `npm run backup` grava todas as tabelas em `OneDrive/backups/rota-entregas/<data>/`
-  (arquivos `.ndjson.gz` + `resumo.json` com contagem e soma de verificação). Guarda os
+- `npm run backup` grava todas as tabelas em `OneDrive/backups/rota-entregas/<data>/`, ou na
+  pasta de `BACKUP_DIR` (arquivos `.ndjson.gz` + `resumo.json` com contagem e soma de verificação). Guarda os
   últimos 14 dias e o dia 1 de cada mês. Roda sozinho às 21h pela tarefa do Windows
   "Backup rota-entregas" (`ferramentas/backup-diario.cmd`).
 - `npm run restaurar` devolve o último backup num **projeto Supabase de teste**
@@ -65,8 +143,11 @@ Nenhuma posição pode cair longe do bairro do endereço — o censo do IBGE dá
 
 O repositório é público. `node ferramentas/guarda-segredos.mjs` recusa planilha fora de
 `testes/planilhas`, `.txt` solto, `.env`, chave/token, e-mail de pessoa real, código de pacote
-e telefone. Roda no `pre-commit` (`git config core.hooksPath ferramentas/hooks`, já configurado
-neste clone) e na publicação. Em caso de engano: `git commit --no-verify`.
+e telefone. Roda no `pre-commit` e na publicação. Em caso de engano: `git commit --no-verify`.
+
+O hook só roda depois de `git config core.hooksPath ferramentas/hooks`, uma vez em cada clone (veja
+Começar). Sem isso o commit passa sem conferência, e quem barra é a publicação, quando o push já
+pôs o dado no GitHub público.
 
 ## Testes e publicação
 
@@ -79,7 +160,10 @@ neste clone) e na publicação. Em caso de engano: `git commit --no-verify`.
   `test-results/`, para olhar a tela em vez de opinar sobre ela. A planilha não entra no git.
   Fica fora do `npm test` para o CI não depender de rede de fora.
 - `npm run test:nuvem`: contra o banco de verdade (cria e apaga usuários de teste).
+- `npm run planilhas` refaz as planilhas inventadas de `testes/planilhas`.
 - Cada push na `main` roda os testes no GitHub Actions e, se passarem, publica no GitHub Pages.
+  Commit só de documentação leva `[skip ci]` na mensagem: sem isso, o push monta e publica de
+  novo, e o número de versão novo mostra a barra de atualização a todos para o mesmo código.
 - O build grava um número de versão no app e em `versao.json`. O app compara os dois quando abre e
   quando volta para a tela. Sem entrega pendente, ele recarrega sozinho. Com rota andando, mostra a
   barra "Versão nova do app" e espera o motorista tocar em Atualizar. O pé do menu Mais mostra a
