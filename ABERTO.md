@@ -5,6 +5,46 @@ decisão está na mensagem do commit que a fez, não aqui.
 
 Atualizado em 15/10/2026.
 
+## O que vem agora
+
+Uma linha por frente, com o estado e a próxima ação. Esta ordem vale sobre a de 12/10, logo
+abaixo, que fica como registro. O detalhe de cada frente está na seção da data indicada.
+
+1. **Leitura da gravação do Meli e Editar** (14/10). Publicada em 15/10 (`60e555d`), aguardando a
+   rua. Próximo: conferir parada por parada a próxima gravação lida no celular, de preferência
+   mandada como Documento, e tentar o Editar com um link do Maps sem posição.
+2. **Mapa que para de seguir** (15/10, em "Tela nova"). Publicada em 15/10 (`f08736e`), aguardando
+   a rua. Próximo: abrir uma parada pela Lista, fechar o cartão e ver o mapa voltar a acompanhar
+   sem tocar na mira.
+3. **Auditoria de entregar e desfazer** (12/10). Pendente, a primeira de código. Próximo:
+   reproduzir a gravação que falha calada no celular e a fila cortada em 3.000, cada uma com o seu
+   teste. Entra junto o "Entreguei" da Lista, que descarta o GPS ruim sem avisar (suspeita de 14/10).
+4. **Desfazer retira a passagem** (12/10, em "Desfazer a entrega"). Decidida, não feita. Próximo:
+   na auditoria, conferir o caminho e escrever a migração para o dono rodar.
+5. **Parada sem pino** (14/10). Pendente. Próximo: reproduzir. Hoje ela não pode ser marcada como
+   entregue, e o aviso "N parada(s) sem local" não leva até ela.
+6. **Resumo da leitura com o total do Meli** (12/10). Pendente. Próximo: mostrar a diferença entre
+   as linhas lidas e o total do topo da lista, nunca como "faltam N".
+7. **Achados da leitura, não mexidos** (14/10): o cartão aberto com CEP engole os fechados da mesma
+   porta, e a chave do endereço não olha o nome do condomínio. Confirmados com linhas montadas,
+   não vistos errando numa gravação. Próximo: medir nas gravações antes de criar regra.
+8. **Diagnóstico curto no Admin** (12/10). Pendente. Próximo: definir os motivos fechados de "teve
+   problema nesta rota?".
+9. **Leitura sem regra segura** (14/10): a etiqueta para escolher a porta, o total do topo como
+   teto e o censo para desempatar a porta (2611). Suspensas. Próximo: só com medição nova.
+10. **Trava de marcação em lote** (04/10). Pendente, sem pressa, a pedido do dono: portas de
+    endereços diferentes gravadas no mesmo ponto em poucos minutos.
+
+Resolvida: **várias entregas na mesma porta** (item 4 de 12/10). Cartões iguais viram uma parada
+cada (`26a82c1`, publicada em `60e555d`), e os cinco da Augusto Franco 2000 de 07/10 voltaram a ser
+cinco. O que sobra é o item 7.
+
+Fora da lista:
+- as seções "para olhar na rua" esperam um relato da rua, sem trabalho de código antes;
+- "Falha viva" guarda os defeitos conhecidos sem conserto decidido;
+- as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
+  mapa) estão nas seções de 09/10.
+
 ## Próximos passos, nesta ordem (12/10)
 
 1. **Auditoria de entregar e desfazer**, numa conversa nova. Começa por dois achados de leitura do
