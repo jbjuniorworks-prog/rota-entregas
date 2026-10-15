@@ -41,6 +41,15 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     vazia passa e a chave com valor continua barrada.
 12. **Parágrafo repetido em "Falha viva"** (15/10), o da chave do lugar que não normaliza
     abreviação. Pendente. Próximo: tirar só a repetição, sem mudar o conteúdo.
+13. **Porta verificada no lugar errado, sem conserto fácil** (15/10, pedido do Pedro, Avenida
+    Canal de Santa Maria 28). Lido no código, não reproduzido. Hoje só a marcação do admin conserta,
+    e para isso a parada tem de estar no celular dele (a planilha do Pedro) ou ir pelo
+    `npm run portas`. O "Apagar" do Admin tira só a marcação: a passagem da entrega fica, e uma
+    passagem no pino sozinha já verifica (`npp >= 1` em `posicoes`). O próprio motorista, marcando
+    no mapa, troca a marcação dele, mas a passagem dele continua verificando o lugar errado para os
+    outros, embora o cartão diga "Se estiver errado, arrume em Conferir". O Admin só lista lugares
+    com marcação, sem busca. Próximo: busca de endereço no Admin com "marcar como admin", e o painel
+    de problemas do item 8, depois de medir quantos casos de cada tipo a nuvem tem.
 
 Resolvida: **várias entregas na mesma porta** (item 4 de 12/10). Cartões iguais viram uma parada
 cada (`26a82c1`, publicada em `60e555d`), e os cinco da Augusto Franco 2000 de 07/10 voltaram a ser
