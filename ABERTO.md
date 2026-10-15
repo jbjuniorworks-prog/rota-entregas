@@ -656,6 +656,16 @@ voltar avisa e o segundo sai. O que só a rua mostra:
   o + e − só mudam a distância, em volta dele; arrastar para, e a mira azul liga de novo. Na rua,
   olhar se o passo de 30 m incomoda numa moto e se alguém fica sem saber que parou de seguir (a
   mira apagada é o único sinal). O ponto de saída não tem mais botão: é onde ele estiver.
+
+  **Relato do dono, 15/10: o mapa não fica seguindo.** Ele tem de tocar na mira para o mapa voltar
+  a acompanhar, e sente atraso na posição. Não reproduzido; é a próxima frente, a pedido dele. O
+  que o código mostra, para começar:
+  - Tocar no endereço de uma parada na Lista chama `focar`, que desliga o seguir de vez. O mesmo
+    vale para o "Aqui perto", o Ver no mapa da Conferir, o Editar e escolher um local. Ao fechar o
+    cartão do pino, o mapa fica parado até a mira, embora o comentário do `Mapa.tsx` diga que ele
+    volta. Ele trabalha quase todo pela Lista: é o caminho mais provável.
+  - Também param sem aviso: o arrasto e a margem do GPS acima de 300 m.
+  - O atraso pode ser o passo de 30 m: a 30 km/h, um pulo a cada 3 ou 4 segundos.
 - **O mapa fica montado depois de aberto**, e só se esconde nas outras telas. Ir à Conferir e
   voltar não baixa nada de novo. O preço é a memória do Leaflet ficar ocupada o dia todo, o que
   num celular fraco pode pesar: olhar se algum reclama de o app fechar sozinho.
