@@ -34,6 +34,13 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
    teto e o censo para desempatar a porta (2611). Suspensas. Próximo: só com medição nova.
 10. **Trava de marcação em lote** (04/10). Pendente, sem pressa, a pedido do dono: portas de
     endereços diferentes gravadas no mesmo ponto em poucos minutos.
+11. **Falso positivo da trava de segredos** (15/10). Pendente. A linha da chave de serviço sem
+    valor (o nome, o sinal de igual e nada mais), seguida de qualquer outra, conta como chave com
+    valor: o `\s*` de `guarda-segredos.mjs` atravessa a quebra de linha. Até escrever o nome colado
+    ao igual num texto dispara. Próximo: comparar só na mesma linha, com teste nas duas direções: a
+    vazia passa e a chave com valor continua barrada.
+12. **Parágrafo repetido em "Falha viva"** (15/10), o da chave do lugar que não normaliza
+    abreviação. Pendente. Próximo: tirar só a repetição, sem mudar o conteúdo.
 
 Resolvida: **várias entregas na mesma porta** (item 4 de 12/10). Cartões iguais viram uma parada
 cada (`26a82c1`, publicada em `60e555d`), e os cinco da Augusto Franco 2000 de 07/10 voltaram a ser
