@@ -468,7 +468,7 @@ export function juntarQuadros(quadros: string[][]): string[] {
   }
   const itens = [...vistos.values()].map(v => ({...v, d: decompor(analisarLinha(v.e).texto)}));
   const sn = (x: typeof itens[number]) => !x.d.numero && SEM_NUMERO.test(analisarLinha(x.e).texto);
-  const complementoDe = (x: typeof itens[number]) => normal(x.d.resto.join(' ')).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const complementoDe = (x: typeof itens[number]) => complementoNormal(x.d.resto);
   const restantes = itens.filter(x => !itens.some(y => y !== x && (
     // "37" que na verdade era "37A": o número saiu cortado num quadro e inteiro em outro
     (!!x.d.numero && !!y.d.numero && y.n >= x.n && y.d.numero.length > x.d.numero.length
@@ -590,6 +590,7 @@ const quantasDiferentes = (lista: string[]) => new Set(lista.map(chaveEndereco))
 export function juntarLeituras(leituras: string[] | string[][], apoio: string[] = []): string[] {
   const aParte = !!leituras.length && Array.isArray(leituras[0]);
   let porLeitura = (aParte ? leituras : [leituras]) as string[][];
+  if (apoio.length) porLeitura = porLeitura.map(l => l.map(e => portaDoApoio(e, apoio, l)));
   let principais = porLeitura.flat();
   let contar = aParte;
   if (quantasDiferentes(principais) <= 1 && quantasDiferentes(apoio) > quantasDiferentes(principais)) {
@@ -621,6 +622,54 @@ export function juntarLeituras(leituras: string[] | string[][], apoio: string[] 
     parecida.ks.push(...x.ks);
   }
   return juntas.flatMap(x => vezes ? cartoes(x.e, x.ks, vezes) : [x.e]);
+}
+
+// "Avenida Tal 3/53 8": a porta saiu torta na leitura principal (o 7 lido como barra, o selo como 8)
+// e a de apoio, da imagem sem tratar, leu "3753" no mesmo cartão (14/10). A do apoio entra só se é o
+// mesmo cartão: a mesma rua, a porta a um algarismo da torta (o símbolo vale por qualquer
+// algarismo), o mesmo complemento quando os dois têm, e uma candidata só. Pedir só a mesma rua, o CEP
+// e o complemento pegava a linha de outro cartão: o 370 virou 300 e sumiu (medido em 14/10 nas sete
+// gravações; assim, 2 acertos e nenhum erro). E não pode ser uma linha que a própria leitura já
+// trouxe, que aí é outro cartão e viraria uma parada a mais.
+function portaDoApoio(e: string, apoio: string[], leitura: string[]): string {
+  const a = nomeEPorta(e);
+  if (!a || PORTA_LIMPA.test(a.porta)) return e;
+  const d = decompor(analisarLinha(e).texto), ra = complementoNormal(d.resto);
+  const candidatas = apoio.filter(o => {
+    const b = nomeEPorta(o);
+    if (!b || !PORTA_LIMPA.test(b.porta) || !mesmaRua(a.nome, b.nome) || !mesmaRua(b.nome, a.nome)) return false;
+    const db = decompor(analisarLinha(o).texto), rb = complementoNormal(db.resto);
+    return (!d.cep || !db.cep || d.cep === db.cep) && (!ra || !rb || ra === rb) && distanciaCuringa(a.porta, b.porta) <= 1;
+  });
+  if (candidatas.length !== 1 || leitura.some(x => chaveEndereco(x) === chaveEndereco(candidatas[0]))) return e;
+  const numero = numeroDaLinha(e), nova = candidatas[0];
+  return numero && !numeroDaLinha(nova) ? numero + ' ' + nova : nova;
+}
+
+const PORTA_LIMPA = /^\d{1,5}[a-z]?$/i;
+// a rua e o que vem depois dela, até a vírgula: "Avenida Tal" e "3/53 8"
+function nomeEPorta(e: string): {nome: string; porta: string} | null {
+  const seg = analisarLinha(e).texto.split(',')[0].trim().split(/\s+/);
+  const i = seg.findIndex((w, k) => k > 0 && /\d/.test(w));
+  return i < 1 ? null : {nome: seg.slice(0, i).join(' '), porta: seg.slice(i).join(' ')};
+}
+const complementoNormal = (resto: string[]) => normal(resto.join(' ')).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+// Letras a trocar, pôr ou tirar da porta torta até a limpa, com o símbolo da torta valendo por
+// qualquer algarismo: "3/53 8" fica a 1 de "3753".
+function distanciaCuringa(torta: string, limpa: string): number {
+  const a = torta.replace(/\s+/g, ''), b = limpa;
+  const v = Array.from({length: b.length + 1}, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let diagonal = v[0];
+    v[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const acima = v[j], igual = a[i - 1] === b[j - 1] || (!/\d/.test(a[i - 1]) && /\d/.test(b[j - 1]));
+      v[j] = Math.min(v[j] + 1, v[j - 1] + 1, diagonal + (igual ? 0 : 1));
+      diagonal = acima;
+    }
+  }
+  return v[b.length];
 }
 
 // Cartões iguais, sem nada que os diferencie, são entregas diferentes na mesma porta: a Augusto

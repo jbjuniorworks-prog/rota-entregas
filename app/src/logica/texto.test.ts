@@ -434,6 +434,43 @@ describe('duas paradas na mesma porta, cada uma com a sua etiqueta', () => {
   });
 });
 
+// Gravação de 14/10: a leitura principal leu "3/53 8" (o 7 como barra, o selo como 8) e a de apoio,
+// da imagem sem tratar, leu "3753" no mesmo cartão. Endereços inventados.
+describe('a porta torta e a leitura de apoio do mesmo cartão', () => {
+  const torta = 'Avenida Teste Franco 3/53 8, Condomínio Teste Boulevard, CEP 49000040 · 1 unid';
+  const certa = 'Avenida Teste Franco 3753, Condomínio Teste Boulevard, CEP 49000040 · 1 unid';
+  const vizinha = 'Avenida Teste Franco 4141, Condomínio Teste Poesia, CEP 49000040 · 1 unid';
+  const outra = 'Rua Teste Outra 10';
+
+  it('a porta do apoio entra quando é o mesmo cartão, e o da vizinha não confunde', () => {
+    expect(juntarLeituras([[torta, outra]], [vizinha, certa, outra])).toEqual([certa, outra]);
+  });
+
+  it('o número da parada da principal fica', () => {
+    expect(juntarLeituras([['12 ' + torta, outra]], [certa, outra])).toEqual(['12 ' + certa, outra]);
+  });
+
+  // Gravação de 19/09: o apoio leu o 691 do cartão de cima; o 651 da torta não estava nele.
+  it('a porta de outro cartão não entra: longe da torta', () => {
+    const t651 = 'Avenida Teste Sobral 651 8';
+    expect(juntarLeituras([[t651, outra]], ['Avenida Teste Sobral 691', outra])).toEqual([t651, outra]);
+  });
+
+  it('nem com outro complemento', () => {
+    const doVizinho = 'Avenida Teste Franco 3753, Condomínio Teste Outro, CEP 49000040 · 1 unid';
+    expect(juntarLeituras([[torta, outra]], [doVizinho, outra])).toEqual([torta, outra]);
+  });
+
+  it('nem a que a mesma leitura já trouxe, que é outro cartão', () => {
+    expect(juntarLeituras([['Rua Teste Y 1/3', 'Rua Teste Y 12']], ['Rua Teste Y 12'])).toEqual(['Rua Teste Y 1/3', 'Rua Teste Y 12']);
+  });
+
+  it('duas candidatas do apoio: fica como está', () => {
+    const outra3 = 'Avenida Teste Franco 3053, Condomínio Teste Boulevard, CEP 49000040 · 1 unid';
+    expect(juntarLeituras([[torta, outra]], [certa, outra3, outra])).toEqual([torta, outra]);
+  });
+});
+
 // Gravação de 14/10: a mesma parada SN saiu em três linhas — cortada pela borda, sem número de
 // parada e com ele. Sem número de porta, nenhuma regra de juntar quadros valia. Endereços inventados.
 describe('a parada SN lida em vários quadros', () => {
