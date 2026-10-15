@@ -44,8 +44,8 @@ npm run test:unidade
 npm test
 ```
 
-`npm test` monta o build sozinho e roda as telas no tamanho de celular, com a nuvem simulada. Não
-precisa de `.env` nem de rede.
+`npm test` monta o build sozinho e roda as telas no tamanho de celular, com a nuvem simulada e os
+serviços de fora (mapa, rota, busca de endereço e CEP) bloqueados. Não precisa de `.env`.
 
 `npm run dev` abre o app em `http://127.0.0.1:5173`. Ele fala com o **banco do app publicado**: para
 entrar é preciso uma conta, e o que se fizer ali vai para os dados de verdade.
