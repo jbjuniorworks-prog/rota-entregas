@@ -103,15 +103,20 @@ export function resumoPlanilha(r: ResumoPlanilha): string {
     + (r.semPosicao ? ` ${r.semPosicao} sem posição, buscando no mapa…` : '');
 }
 
-export function adicionarLinhas(e: Estado, linhas: string[]): {novas: number; repetidas: number; arrumadas: number; coladas: Parada[]} {
+// `doLeitor`: as linhas que a leitura de print ou vídeo trouxe (podem estar também em `linhas`).
+export function adicionarLinhas(e: Estado, linhas: string[], doLeitor: string[] = []): {novas: number; repetidas: number; arrumadas: number; coladas: Parada[]} {
   const porNumero = new Map(e.paradas.filter(x => x.ml).map(x => [x.ml!, chaveEndereco(x.texto).split('|').slice(0, 2).join('|')]));
   const soRuaNumero = (x: string) => chaveEndereco(x).split('|').slice(0, 2).join('|');
   let novas = 0, repetidas = 0, arrumadas = 0;
   const coladas: Parada[] = [];
-  // A mesma linha N vezes são N entregas (cartões iguais na mesma porta, que o leitor agora devolve
-  // um por cartão). Já ter na rota conta: ler a mesma gravação de novo não acrescenta nada.
-  const naRota = new Map<string, number>(), nestas = new Map<string, number>();
+  // Cartões iguais na mesma porta são entregas diferentes, e o leitor devolve um por cartão: a linha
+  // que a leitura viu N vezes vira até N paradas. Colado ou digitado duas vezes é engano, e continua
+  // uma parada só (decisão de 15/10). Já ter na rota conta: ler a mesma gravação de novo não
+  // acrescenta nada.
+  const chaveDaLinha = (l: string) => chaveEndereco(analisarLinha(coordenadaNoTexto(l) ? semLink(l) : l).texto);
+  const naRota = new Map<string, number>(), nestas = new Map<string, number>(), lidas = new Map<string, number>();
   for (const x of e.paradas) { const k = chaveEndereco(x.texto); naRota.set(k, (naRota.get(k) || 0) + 1); }
+  for (const l of doLeitor) { const k = chaveDaLinha(l); lidas.set(k, (lidas.get(k) || 0) + 1); }
   for (const l of linhas) {
     // Endereço colado junto com um link do mapa: a coordenada é a resposta, não um palpite a
     // conferir. O censo não tem a porta de toda rua, e o dono às vezes chega com ela na mão.
@@ -138,8 +143,9 @@ export function adicionarLinhas(e: Estado, linhas: string[]): {novas: number; re
       }
     }
     if (ml && porNumero.get(ml) === semComplemento) { repetidas++; continue; }
-    nestas.set(chave, (nestas.get(chave) || 0) + 1);
-    if (nestas.get(chave)! <= (naRota.get(chave) || 0)) { repetidas++; continue; }
+    const vez = (nestas.get(chave) || 0) + 1;
+    nestas.set(chave, vez);
+    if (vez > Math.max(1, lidas.get(chave) || 0) || vez <= (naRota.get(chave) || 0)) { repetidas++; continue; }
     if (ml) porNumero.set(ml, semComplemento);
     const p: Parada = {id: novoId(), area: e.areaAtual, ml, texto, unidades, comercial,
       lat: coord ? coord.lat : null, lng: coord ? coord.lng : null,

@@ -236,6 +236,10 @@ async function importarPlanilhas(files: Blob[]) {
   return resumo;
 }
 
+// O que a leitura de prints e vídeo pôs na lista, para o "Adicionar" saber quantos cartões iguais ela
+// viu: repetido colado ou digitado é engano, repetido lido é outro cartão (decisão de 15/10).
+let doLeitor: string[] = [];
+
 export function lerPrints(files: File[], textoAtual: string): Promise<string | null> {
   return semRecarregar(() => lerPrintsAgora(files, textoAtual));
 }
@@ -246,7 +250,7 @@ async function lerPrintsAgora(files: File[], textoAtual: string): Promise<string
     status('Lendo a planilha…');
     try {
       const r = await importarPlanilhas(planilhas);
-      if (outros.length) r.novas += adicionarLinhas(e(), await lerArquivos(outros, m => status(m))).novas;
+      if (outros.length) { const lidas = await lerArquivos(outros, m => status(m)); r.novas += adicionarLinhas(e(), lidas, lidas).novas; }
       irPara('rota');
       ui.enquadrar++;
       loja.mudou();
@@ -271,6 +275,7 @@ async function lerPrintsAgora(files: File[], textoAtual: string): Promise<string
       : avisos
         ? `Não consegui ler.${avisos}`
         : 'Não achei endereços. Use o print ou a gravação da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
+    doLeitor = textoAtual.trim() ? [...doLeitor, ...unicos] : [...unicos];
     return (textoAtual.trim() ? textoAtual.trim() + '\n' : '') + unicos.join('\n');
   } catch (err) {
     status('Não consegui ler a imagem: ' + (err as Error).message, 5000);
@@ -302,6 +307,7 @@ async function lerCompartilhado() {
     const {planilhas, outros} = await separarPlanilhas(files);
     const daPlanilha = planilhas.length ? await importarPlanilhas(planilhas) : null;
     const linhas: string[] = outros.length ? await lerArquivos(outros, m => status(m), (await corretorDeNomes(e().cidade)).corrigir) : [];
+    const lidas = [...linhas];
     if (texto.trim()) {
       const doTexto = extrairEnderecos(texto);
       linhas.push(...(doTexto.length ? doTexto : texto.split('\n').map(l => l.trim()).filter(Boolean)));
@@ -311,7 +317,7 @@ async function lerCompartilhado() {
       status('Não achei endereços. Compartilhe a planilha da rota ou o print da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
       return;
     }
-    const {novas, repetidas} = adicionarLinhas(e(), linhas);
+    const {novas, repetidas} = adicionarLinhas(e(), linhas, lidas);
     status(daPlanilha ? resumoPlanilha(daPlanilha) : `${novas} parada(s) nova(s)${repetidas ? `, ${repetidas} já existia(m)` : ''}. Buscando no mapa…`);
     irPara('rota');
     await buscarPendentes();
@@ -324,7 +330,8 @@ async function lerCompartilhado() {
 export async function adicionarTexto(texto: string) {
   const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
   if (!linhas.length) { status('Cole pelo menos um endereço.', 2500); return false; }
-  const {novas, repetidas, arrumadas, coladas} = adicionarLinhas(e(), linhas);
+  const {novas, repetidas, arrumadas, coladas} = adicionarLinhas(e(), linhas, doLeitor);
+  doLeitor = [];
   // O local colado do mapa é correção, não palpite: fica guardado neste aparelho e vai para os
   // outros motoristas, como se ele tivesse marcado na porta.
   let guardadas = 0;

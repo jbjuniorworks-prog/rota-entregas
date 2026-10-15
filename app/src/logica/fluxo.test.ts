@@ -8,6 +8,7 @@ import {montarRota} from './montagem';
 import {matrizAproximada} from './otimizacao';
 import {itensDaPlanilha} from './planilha';
 import {previsoes} from './previsao';
+import {juntarLeituras, juntarQuadros} from './texto';
 
 const ler = (arq: string) => {
   const wb = XLSX.read(readFileSync(arq), {type: 'buffer'});
@@ -52,14 +53,29 @@ describe('importar planilha', () => {
     expect(adicionarLinhas(e, ['18 Rua A, 10', '18 Rua A, 10', 'Rua B Longa, 20'])).toMatchObject({novas: 2, repetidas: 1});
     expect(e.paradas[0]).toMatchObject({ml: '18', precisao: 'pendente'});
   });
-  // O leitor devolve uma linha por cartão; cartões iguais na mesma porta são entregas diferentes.
-  // E ler a mesma gravação de novo não pode dobrar a rota.
-  it('a mesma linha N vezes são N paradas, e acrescentar de novo não dobra', () => {
-    const e = estadoVazio(), igual = 'Avenida Teste Inventada 2000';
-    expect(adicionarLinhas(e, [igual, igual, igual, 'Rua B Longa, 20'])).toMatchObject({novas: 4, repetidas: 0});
-    expect(adicionarLinhas(e, [igual, igual, igual, 'Rua B Longa, 20'])).toMatchObject({novas: 0, repetidas: 4});
-    expect(adicionarLinhas(e, [igual, igual, igual, igual])).toMatchObject({novas: 1, repetidas: 3});
-    expect(e.paradas.filter(p => p.texto === igual)).toHaveLength(4);
+  // 15/10: o leitor devolve uma linha por cartão, e cartões iguais na mesma porta são entregas
+  // diferentes; colar o mesmo endereço duas vezes é engano. Só o repetido que a leitura viu multiplica.
+  it('repetido colado continua uma parada; lido, uma por cartão, até quantas a leitura viu', () => {
+    const e = estadoVazio(), igual = 'Avenida Teste Inventada 2000', outra = 'Rua B Longa, 20';
+    expect(adicionarLinhas(e, [igual, igual, outra])).toMatchObject({novas: 2, repetidas: 1});
+    const lidas = [igual, igual, igual, outra];
+    expect(adicionarLinhas(e, lidas, lidas)).toMatchObject({novas: 2, repetidas: 2});
+    expect(adicionarLinhas(e, lidas, lidas)).toMatchObject({novas: 0, repetidas: 4});
+    // um quarto digitado a mais do que a leitura viu não vira parada
+    expect(adicionarLinhas(e, [igual, igual, igual, igual], lidas)).toMatchObject({novas: 0, repetidas: 4});
+    expect(e.paradas.filter(p => p.texto === igual)).toHaveLength(3);
+  });
+
+  it('ler a mesma gravação de novo não dobra a rota', () => {
+    const e = estadoVazio(), igual = 'Avenida Teste Inventada 2000', outra = 'Rua B Longa, 20';
+    const quadros = [[igual, igual], [igual, igual, igual, outra], [outra]];
+    const ler = () => juntarQuadros(quadros.map(q => juntarLeituras([q])));
+    const lidas = ler();
+    expect(lidas).toEqual([igual, igual, igual, outra]);
+    expect(adicionarLinhas(e, lidas, lidas)).toMatchObject({novas: 4});
+    const deNovo = ler();
+    expect(adicionarLinhas(e, deNovo, deNovo)).toMatchObject({novas: 0, repetidas: 4});
+    expect(e.paradas).toHaveLength(4);
   });
 });
 

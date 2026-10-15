@@ -236,13 +236,15 @@ async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo
 export async function lerArquivos(files: Arquivo[], aviso: Aviso, corrigir: Corretor = x => x): Promise<string[] & {avisos: string[]}> {
   const imagens: Imagem[] = [], grupos: string[][] = [], avisos: string[] = [];
   const videos: Arquivo[] = [];
+  // Texto de PDF e de .txt não é cartão: linha repetida ali é a mesma entrega escrita duas vezes, e
+  // se junta antes, como no colar. Só a leitura de imagem conta cartões iguais (decisão de 15/10).
   for (const f of files) {
     if ((f.type || '').includes('pdf') || /\.pdf$/i.test(f.name || '')) {
       const r = await lerPdf(f, aviso);
-      grupos.push(corrigir(r.linhas));
+      grupos.push(juntarLeituras(corrigir(r.linhas)));
       imagens.push(...r.imagens.map(blob => ({blob, doVideo: false})));
     } else if ((f.type || '').startsWith('text/') || /\.txt$/i.test(f.name || '')) {
-      grupos.push(corrigir(extrairEnderecos(await f.text())));
+      grupos.push(juntarLeituras(corrigir(extrairEnderecos(await f.text()))));
     } else if (ehVideo(f)) {
       videos.push(f);
     } else imagens.push({blob: f, doVideo: false});
