@@ -659,7 +659,7 @@ voltar avisa e o segundo sai. O que só a rua mostra:
 
   **Relato do dono, 15/10: o mapa não fica seguindo.** Ele tem de tocar na mira para o mapa voltar
   a acompanhar, e sente atraso na posição. Ele trabalha quase todo pela Lista.
-  - **Consertado e publicado em 16/10** (`f08736e`, aguardando a rua). Para fechar: abrir uma parada
+  - **Consertado e publicado em 15/10** (`f08736e`, aguardando a rua). Para fechar: abrir uma parada
     pela Lista, fechar o cartão e o mapa voltar a acompanhar sem tocar na mira. O atraso do
     reenquadramento é outra coisa e não conta para isso.
     - Tocar numa parada da Lista chamava `focar`, que desligava o seguir de vez (decisão de 02/10,
