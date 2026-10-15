@@ -38,7 +38,7 @@ de 763 MB caiu para 410 MB em 20/09, sem travamento relatado), índice espacial 
 da Barra é a decisão, não a velocidade) e cancelar o pedido de rota mais cedo (o prazo de 12 s já
 existe; cair na linha reta antes pioraria a rota em rede lenta que funciona).
 
-## Rota do Meli do dono, 14/10: leitura e entregas medidas, nada mudado ainda
+## Rota do Meli do dono, 14/10: leitura medida, entregas sem causa fechada
 
 **Leitura.** O vídeo que chegou pelo WhatsApp tem 480 px de largura; o celular leu a gravação
 original. Lido pelo app no computador, contra um gabarito dos 48 quadros (fora do git), das 72
@@ -56,37 +56,94 @@ no crachá (82, 67, 62). Cada erro e onde nasceu:
   SN não tem número, e as regras de juntar quadros pedem número.
 - **A 48 e a 49, as duas "Rua Padre Nestor Sampaio 115"**, viraram uma: duas linhas iguais na mesma
   leitura caem na mesma chave antes da regra das duas paradas na mesma porta.
-- **"2611" lido "26", "261" e "26111"**: fica "26111", o mais comprido. Só o censo desempata.
-- **Crachás**: "82" numa rota de 72 (o total está no topo, já lido); "62" num quadro e "2" no outro;
-  "67" nos dois.
-
-Propostas, a medir nas sete gravações (o `replay` refaz a junção sem OCR) antes de entrar: apoio
-quando o número da principal sai torto; mesma etiqueta é a mesma parada; desempate pela leitura
-limpa, não pela comprida; SN conta como número para juntar; linha repetida na mesma leitura são duas
-paradas; crachá maior que o total ou em desacordo entre quadros sai. Pela conta à mão, não medida,
-as cinco primeiras deixariam este vídeo em 71 de 72. Para medir o que o celular vê, pedir a gravação
-como documento.
+- **"2611" lido "26", "261" e "26111"**: fica "26111", o mais comprido.
+- **Crachás**: "82" numa rota de 72; "62" num quadro e "2" no outro; "67" nos dois.
 
 No celular (pelos textos das passagens): "260 & 8" virou uma parada a mais (o selo lido "& 8",
 como "3501 &8"), e o 3753 saiu "3/03 8".
 
-**Entregas, pela nuvem.** 44 com "Entreguei aqui"; 2 em porta já verificada, sem o botão de
-propósito; 11 com "Entreguei" e GPS bom (±4 a 10 m), sem marcar a porta. Três delas (Quirino 1100,
-duas, e Quirino SN) marcadas da porta do Poesia, a 1 km, depois de arrumar os pinos à mão: a
-passagem ficou no lugar errado (sozinha não confirma nada). 16 paradas sem rastro. Podem ser:
-- não entregues;
-- entregues sem pino (a "Não encontrado" não está na lista nem no mapa);
-- entregues sem CEP nem bairro (sem chave);
-- entregues com GPS acima de 40 m;
+**Propostas medidas (14/10), nada no app.** Cada uma sozinha contra a junção de hoje, refeita das
+leituras gravadas das sete gravações, sem OCR. Todas são cópias do WhatsApp (386 a 576 px); a
+gravação original continua sem medir. Os casos sem gabarito foram conferidos nos quadros.
+- **Apoio, como proposto** (mesma rua, CEP e complemento): **recusada.** Acertou 2 (o 327 de 07/10
+  e o 2176 de 26/09) e errou 4, trocando pela linha de outro cartão da mesma rua:
+  - em 19/09, o 651 virou 691 (a 651 voltou por outros quadros) e o 370 virou 300 (a 370 sumiu da
+    lista);
+  - em 26/09, "26387" na 2637;
+  - em 11/10, a Celuta Porto 90 virou 235.
+
+  No 3753 achou duas candidatas e não mexeu.
+- **Apoio do mesmo cartão:** a porta limpa a no máximo um algarismo da torta, com o símbolo valendo
+  por algarismo, e o mesmo resto quando os dois têm. **Candidata.** Acertou 2 (o 3753 de 14/10 e o
+  2176 de 26/09) e não errou nenhuma. Não pega o 327 de 07/10 nem o segundo quadro do 3753:
+  "3/0538" continua como linha a mais.
+- **Mesma etiqueta, mesma parada:** **falta outro desempate.** Juntou três vezes:
+  - certo o 814 de 14/10, por 4 quadros a 1;
+  - em 07/10, "32/78" e "32/88", as duas erradas: uma linha a menos, mas a porta segue errada;
+  - em 26/09, 54 e 504, ficando com 504, errado. Empatou 1 quadro a 1 e ganhou o texto mais
+    comprido, mas o apoio dos dois quadros leu 54.
+- **Leitura limpa no empate:** **candidata.** Mudou três linhas: Hermes Fontes e Manoel Dias da
+  Costa certos em 14/10, e "2082(3)" para "2082" em 19/09 (a porta já era 2082). Nenhuma perda.
+- **SN como número:** **candidata, com pouca amostra.** Só tirou as duas linhas a mais da Quirino
+  SN de 14/10.
+- **Linha repetida na mesma leitura são duas paradas:** **candidata, a que mais rende.** Devolveu 5
+  paradas, conferidas nos quadros:
+  - a Augusto Franco 2000 de 07/10 tem 5 cartões e saíam 2 (o gabarito daquele dia conta portas e
+    as marcava como duplicadas);
+  - a 3500 tem 2 cartões e saía 1;
+  - a 49 de 14/10.
+
+  Sozinha não criou duplicata falsa. Junto com o apoio como proposto, dobrou a 235 de 11/10: regra
+  que reescreve uma linha igual à de outro cartão da mesma leitura vira parada a mais com esta.
+- **Crachá em desacordo entre quadros ou acima do total:** **recusada.** Tirou 3 errados (82 e 62 em
+  14/10, 67 em 26/09) e 5 certos (55 em 14/10, 15 e 31 em 11/10, 65 em 07/10, 53 em 26/09), quase
+  sempre por crachá cortado ("5" contra "55").
+  - Só acima do total: tirou os 2 errados e nenhum certo. Mas em 07/10 o topo dizia 67 paradas e há
+    as paradas 68 e 69: o número passa do total, e a regra não entra sem entender por quê.
+  - Só desacordo de verdade, em que um número não é começo nem fim do outro: não disparou nenhuma
+    vez.
+- **Unidades:** nenhuma proposta mudou. Texto de uma parada com o crachá de outra não apareceu.
+- **Todas as candidatas juntas, mais o "acima do total", em 14/10:** de 75 para 73 linhas, 71 das 72
+  certas e uma linha a mais ("3/0538"). Falta a 2611, e os crachás errados vão de 3 para 2. Nas
+  outras seis gravações, só as mudanças acima.
+- **O censo como desempate do 2611:** não medido.
+
+A ferramenta e os dados estão no rascunho da sessão, fora do git: uma cópia da junção com cada
+proposta atrás de uma chave. Com tudo desligado, ela dá as mesmas linhas que o app nas sete
+gravações.
+
+**Entregas, pela nuvem.** As 72 paradas se dividem assim:
+- **43 com "Entreguei aqui"**, em 44 marcações: no celular a 8 foi lida duas vezes, "260" e
+  "260 & 8", e marcada duas vezes.
+- **2 em porta já verificada**, que não tem o botão "aqui", de propósito.
+- **11 com "Entreguei" simples** e GPS bom (±4 a 10 m), sem marcar a porta. Três delas (Quirino
+  1100, duas, e Quirino SN) foram marcadas da porta do Poesia, a 1 km, depois de ele arrumar os
+  pinos à mão: a passagem ficou no lugar errado, e sozinha ela não confirma nada.
+- **16 sem rastro.**
+
+A nuvem não diz se uma parada foi concluída. Rota lida de vídeo não sobe pacotes, e o banco guarda
+uma passagem por lugar, motorista e dia: a 48 e a 49, e talvez a 85A e a 85B, deixam uma só. Sem
+rastro pode ser:
+- não entregue;
+- entregue sem pino;
+- sem CEP nem bairro (sem chave);
+- GPS acima de 40 m;
 - ainda na fila do celular.
 
-A Lista só tem o "Entreguei" simples, e a Conferir não tem entregar.
+Não concluir a causa pela falta de passagem: falta o relato do que apareceu no celular.
+
+**Parada sem pino, pendência à parte.** Dá para arrumar, em Conferir, com Estou aqui, Marcar no
+mapa e Editar. Não dá para marcar como entregue em lugar nenhum, e o aviso da rota ("N parada(s)
+sem local") não leva até ela. Os botões de entrega não foram mexidos: só depois de reproduzir.
 
 **Editar** pede o endereço novo ou um link com a posição. O link do "Compartilhar" do Maps no celular
 (maps.app.goo.gl) não traz coordenada, e o texto colado virava o endereço; o do computador traz.
-Feito em 14/10: link sem coordenada não troca nada e avisa "Seu endereço não foi alterado"; OK sem
-mudar nada não busca de novo (a busca passava por cima da porta verificada). O colar em Endereços
-(`adicionarLinhas`) não foi mexido, e o que ele faz com link sem coordenada não foi conferido.
+Feito em 14/10:
+- link sem coordenada não troca nada e avisa "Seu endereço não foi alterado";
+- OK sem mudar nada não busca de novo (a busca passava por cima da porta verificada).
+
+O colar em Endereços (`adicionarLinhas`) não foi mexido, e o que ele faz com link sem coordenada
+não foi conferido.
 
 ## Porta verificada que chega com a rota já montada (13/10), para olhar na rua
 
