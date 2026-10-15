@@ -51,7 +51,8 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     com marcação, sem busca. **Publicado em 15/10 (`c162fcb`):** "Procurar um endereço" no Admin, por
     rua e número ou CEP e número, nos pacotes e nas chaves das marcações e passagens. Mostra a porta
     que vale e de onde vem, e "Marcar como admin" grava a certa tocando no mapa, depois de
-    confirmar. Próximo: o dono arrumar a porta do Pedro por ela.
+    confirmar. Próximo: o Pedro dizer onde fica a porta certa; o dono marca pela busca, e confere-se
+    a chave e o celular de outro motorista.
 14. **Admin retirar a validade de uma passagem** (15/10). Pendente, depois da auditoria de entregar e
     desfazer. Invalidar a prova ou apagar o registro são decisões diferentes, e dependem de quanta
     auditoria se quer guardar. Precisa de migração.
@@ -77,8 +78,12 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
         ficou no ponto da leva, inclusive a de 36 endereços. Elas nunca chegaram a valer.
     - **Conclusão: nenhum dos três tipos entra no painel agora.** Nenhum chega a 7 de 10. Nos
       ambíguos, o admin não teria na tela o que decide, e o lote não tem ação. O que é acionável já
-      tem caminho: "Precisa de você" e "Procurar um endereço". Voltar a isto só com um dado novo
-      que decida os ambíguos, que são quase sempre endereço sem o número no censo.
+      tem caminho: "Precisa de você" e "Procurar um endereço". Nos casos que o censo decidiu, a porta
+      que vale bateu com ele, inclusive nas disputas.
+    - **Ressalvas:** a porta foi recalculada no script, sem comparar com a resposta da nuvem; a
+      amostra mede só os critérios definidos, não todos os casos possíveis; a porta do Pedro não
+      entrou nela. Voltar ao painel só com um dado novo que decida os ambíguos, como mais portas
+      confirmadas ou o censo cobrindo mais números.
 
 Resolvida: **várias entregas na mesma porta** (item 4 de 12/10). Cartões iguais viram uma parada
 cada (`26a82c1`, publicada em `60e555d`), e os cinco da Augusto Franco 2000 de 07/10 voltaram a ser
