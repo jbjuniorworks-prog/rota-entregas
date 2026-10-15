@@ -55,11 +55,20 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
 14. **Admin retirar a validade de uma passagem** (15/10). Pendente, depois da auditoria de entregar e
     desfazer. Invalidar a prova ou apagar o registro são decisões diferentes, e dependem de quanta
     auditoria se quer guardar. Precisa de migração.
-15. **Painel de problemas no Admin** (item 8). Próximo: o dono aprovar o plano de medição revisto
-    (só leitura, últimos 30 dias, saída só com contagens), com três tipos: porta verificada por um
-    motorista só e longe de onde a planilha punha, porta em disputa e marcação em lote. Grafias
-    diferentes ficam para uma segunda medição. "Motorista sem enviar há dias" depende de saber se a
-    nuvem guarda esse dado.
+15. **Painel de problemas no Admin** (item 8). Contado em 15/10, só leitura, endereços com marcação
+    ou entrega nos últimos 30 dias: 2.244, com 1.756 portas valendo (1.752 verificadas; 320 pelo
+    admin). A conta refaz a `posicoes` no script: não foi comparada com a nuvem, que só responde a
+    usuário logado. Grafias diferentes e "motorista sem enviar" ficaram fora.
+    - **Verificada por um motorista só:** 1.383, quase toda porta, e sozinha não é problema. Com
+      planilha para comparar, 1.380; a mais de 300 m da planilha, 22 (18 até 1 km, 4 acima).
+    - **Em disputa**, prova a mais de 30 m da porta que vale: de outro motorista, 18 (10 até 100 m,
+      6 até 500 m, 2 acima); só do mesmo motorista, em outro dia, 39 (10, 23 e 6). Outras 80 já
+      foram decididas pelo admin.
+    - **Marcação em lote** (5 ou mais endereços em 10 min, a até 30 m do primeiro): 22 levas, de 5
+      a 36 endereços. Muito acima do esperado: pode ser entrega na portaria de condomínio. A conta
+      mede só esse padrão, e zero não provaria que o risco sumiu.
+    - Próximo: a amostra, com autorização própria. Em cada caso da amostra, a porta e a origem que o
+      "Procurar um endereço" mostra servem de conferência com a nuvem.
 
 Resolvida: **várias entregas na mesma porta** (item 4 de 12/10). Cartões iguais viram uma parada
 cada (`26a82c1`, publicada em `60e555d`), e os cinco da Augusto Franco 2000 de 07/10 voltaram a ser
