@@ -434,6 +434,50 @@ describe('duas paradas na mesma porta, cada uma com a sua etiqueta', () => {
   });
 });
 
+// Gravação de 07/10: cinco cartões fechados com o mesmo texto, a mesma porta, saíam como duas
+// paradas. Endereço inventado.
+describe('cartões iguais na mesma porta', () => {
+  const igual = 'Avenida Teste Inventada 2000';
+  // o cartão aberto da mesma porta, com o condomínio: a chave é a mesma dos fechados
+  const aberto = 'Avenida Teste Inventada 2000, Condomínio Teste Paciente · 1 unid';
+
+  it('quantas vezes uma leitura viu a linha é quantas paradas ela é', () => {
+    expect(juntarLeituras([[igual, igual, igual, igual]])).toEqual([igual, igual, igual, igual]);
+  });
+
+  it('cada cartão com o seu texto: o condomínio e a unidade de um não vão para os outros', () => {
+    expect(juntarLeituras([[igual, igual, aberto]])).toEqual([igual, igual, aberto]);
+    expect(juntarQuadros([[igual, igual, aberto], [aberto]])).toEqual([igual, igual, aberto]);
+  });
+
+  it('leituras do mesmo quadro não se somam: fica a que viu mais', () => {
+    expect(juntarLeituras([[igual, igual], [igual]])).toEqual([igual, igual]);
+  });
+
+  it('quadros também não se somam: a mesma parada vista em três quadros continua uma', () => {
+    expect(juntarQuadros([[igual, igual], [igual, igual, igual, igual], [igual]])).toEqual([igual, igual, igual, igual]);
+    expect(juntarQuadros([[igual], [igual], [igual]])).toEqual([igual]);
+  });
+
+  it('o número da parada lido em outro quadro fica num dos cartões, sem repetir', () => {
+    expect(juntarQuadros([[igual, igual], ['#43 ' + igual]])).toEqual(['43 ' + igual, igual]);
+  });
+
+  // Print de 07/10: uma leitura viu os quatro cartões sem número, a outra viu dois deles com número;
+  // os outros dois números estavam em quadros vizinhos.
+  it('os números lidos em leituras e quadros diferentes vão para os cartões idênticos', () => {
+    expect(juntarQuadros([
+      juntarLeituras([[igual, igual], ['43 ' + igual, '44 ' + igual]]),
+      juntarLeituras([[igual, igual, igual, igual], [igual, '44 ' + igual, '45 ' + igual, igual]]),
+      juntarLeituras([[igual], ['46 ' + igual]]),
+    ])).toEqual(['43 ' + igual, '44 ' + igual, '45 ' + igual, '46 ' + igual]);
+  });
+
+  it('número a mais que cartões não vai para nenhum: algum foi lido errado', () => {
+    expect(juntarQuadros([[igual, igual], ['43 ' + igual], ['44 ' + igual], ['48 ' + igual]])).toEqual([igual, igual]);
+  });
+});
+
 describe('conjunto do endereço', () => {
   it('acha conjunto, loteamento e condomínio, no complemento ou no bairro', () => {
     expect(conjuntoDoEndereco('Rua B, 120, Conjunto Augusto Franco, CEP 49040-000')).toBe('Conjunto Augusto Franco');

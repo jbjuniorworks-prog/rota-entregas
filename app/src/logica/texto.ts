@@ -457,6 +457,7 @@ function semLetraTapada(rua: string): string {
 
 export function juntarQuadros(quadros: string[][]): string[] {
   const separadas = vistasJuntas(quadros);
+  const vezes = vezesNumaLeitura(quadros);
   const vistos = new Map<string, {e: string; n: number; ks: string[]}>();
   for (const q of quadros) {
     for (const e of new Set(q)) {
@@ -505,7 +506,7 @@ export function juntarQuadros(quadros: string[][]): string[] {
     par.ks = ks;
     if (certo && !par.e.startsWith(certo + ' ')) par.e = certo + ' ' + par.e.replace(/^#?\d{1,3}\s+/, '');
   }
-  const saida = juntas.map(x => x.e);
+  const saida = juntas.flatMap(x => cartoes(x.e, x.ks, vezes));
   // Número de parada repetido não é número de parada: no app do Meli ele é único. Quando o mesmo
   // sai em duas paradas diferentes, foi o leitor errando o crachá — e esse número vira o rótulo
   // do cartão e entra na ordenação da rota. Sem ele, a parada fica com a posição na leitura, que
@@ -560,12 +561,19 @@ function melhorLeitura(a: string, b: string): string {
 
 const quantasDiferentes = (lista: string[]) => new Set(lista.map(chaveEndereco)).size;
 
-// `leituras`: as linhas de cada leitura principal da imagem, à parte; uma lista só conta como uma leitura.
+// `leituras`: as linhas de cada leitura principal da imagem, à parte. Uma lista só conta como uma
+// leitura para separar, mas não para multiplicar cartões: não se sabe de que leitura veio cada linha.
 export function juntarLeituras(leituras: string[] | string[][], apoio: string[] = []): string[] {
-  let porLeitura = (leituras.length && Array.isArray(leituras[0]) ? leituras : [leituras]) as string[][];
+  const aParte = !!leituras.length && Array.isArray(leituras[0]);
+  let porLeitura = (aParte ? leituras : [leituras]) as string[][];
   let principais = porLeitura.flat();
-  if (quantasDiferentes(principais) <= 1 && quantasDiferentes(apoio) > quantasDiferentes(principais)) [principais, porLeitura, apoio] = [apoio, [apoio], principais];
+  let contar = aParte;
+  if (quantasDiferentes(principais) <= 1 && quantasDiferentes(apoio) > quantasDiferentes(principais)) {
+    [principais, porLeitura, apoio] = [apoio, [apoio], principais];
+    contar = true;
+  }
   const separadas = vistasJuntas(porLeitura);
+  const vezes = contar ? vezesNumaLeitura(porLeitura) : null;
   const porChave = new Map<string, string>();
   for (const e of principais) {
     const k = chaveDaLeitura(e), antigo = porChave.get(k);
@@ -588,7 +596,54 @@ export function juntarLeituras(leituras: string[] | string[][], apoio: string[] 
     parecida.e = melhorLeitura(parecida.e, x.e);
     parecida.ks.push(...x.ks);
   }
-  return juntas.map(x => x.e);
+  return juntas.flatMap(x => vezes ? cartoes(x.e, x.ks, vezes) : [x.e]);
+}
+
+// Cartões iguais, sem nada que os diferencie, são entregas diferentes na mesma porta: a Augusto
+// Franco 2000 de 07/10 tinha cinco cartões e saíam dois, a 3500 tinha dois e saía um (medido em
+// 14/10 nas sete gravações, conferido nos quadros, sem nenhuma parada a mais). Quantas vezes UMA
+// leitura viu a linha é quantas paradas ela é; leituras e quadros diferentes não se somam, ficam
+// com a que viu mais, senão a mesma parada vista em dois quadros viraria duas.
+interface Vezes {n: number; linhas: string[]; numeros: Map<string, string>}
+// o número da parada na frente da linha, como veio ("43" do crachá, "#43" da etiqueta)
+const numeroDaLinha = (e: string) => (analisarLinha(e).ml && e.match(/^#?\d{1,3}(?=\s)/)?.[0]) || '';
+const comNumero = (linhas: string[]) => linhas.filter(numeroDaLinha).length;
+function vezesNumaLeitura(leituras: string[][]): Map<string, Vezes> {
+  const vezes = new Map<string, Vezes>();
+  for (const l of leituras) {
+    const desta = new Map<string, string[]>();
+    for (const e of l) { const k = chaveDaLeitura(e); desta.set(k, [...(desta.get(k) || []), e]); }
+    for (const [k, linhas] of desta) {
+      const v = vezes.get(k), numeros = new Map(v?.numeros);
+      for (const x of linhas) { const n = numeroDaLinha(x); if (n && !numeros.has(n.replace('#', ''))) numeros.set(n.replace('#', ''), n); }
+      // no empate, a leitura que trouxe mais números de parada
+      if (!v || linhas.length > v.n || (linhas.length === v.n && comNumero(linhas) > comNumero(v.linhas))) vezes.set(k, {n: linhas.length, linhas, numeros});
+      else v.numeros = numeros;
+    }
+  }
+  return vezes;
+}
+
+// Os cartões saem como a leitura que mais os viu trouxe, cada um com o seu texto, as suas unidades
+// e o seu número: copiar a melhor leitura em todos punha o condomínio e a unidade de um cartão nos
+// outros. Com um cartão só, fica a melhor leitura de todas, como sempre.
+function cartoes(e: string, ks: string[], vezes: Map<string, Vezes>): string[] {
+  const grupo = ks.map(k => vezes.get(k)).filter((v): v is Vezes => !!v);
+  const mais = grupo.reduce<Vezes | undefined>((a, b) => a && (a.n > b.n || (a.n === b.n && comNumero(a.linhas) >= comNumero(b.linhas))) ? a : b, undefined);
+  if (!mais || mais.n <= 1) return [e];
+  const linhas = [...mais.linhas];
+  // Os números de parada lidos em outras leituras vão para os cartões que ficaram sem, só quando
+  // esses são idênticos (aí não importa qual leva qual) e não sobram números a mais que cartões.
+  const usados = new Set(linhas.map(x => numeroDaLinha(x).replace('#', '')).filter(Boolean));
+  const outros = new Map<string, string>();
+  for (const [d, n] of [...grupo.flatMap(v => [...v.numeros]), ...(numeroDaLinha(e) ? [[numeroDaLinha(e).replace('#', ''), numeroDaLinha(e)] as [string, string]] : [])]) {
+    if (!usados.has(d) && !outros.has(d)) outros.set(d, n);
+  }
+  const vazios = linhas.flatMap((x, i) => numeroDaLinha(x) ? [] : [i]);
+  if (outros.size && outros.size <= vazios.length && new Set(vazios.map(i => linhas[i])).size === 1) {
+    [...outros].sort((a, b) => +a[0] - +b[0]).forEach(([, n], j) => { linhas[vazios[j]] = n + ' ' + linhas[vazios[j]]; });
+  }
+  return linhas;
 }
 
 // "Rua 25" na planilha do Mercado Livre, "Rua Vinte e Cinco" no OSM e no censo: é a mesma rua da

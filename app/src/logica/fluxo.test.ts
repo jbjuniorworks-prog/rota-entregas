@@ -52,6 +52,15 @@ describe('importar planilha', () => {
     expect(adicionarLinhas(e, ['18 Rua A, 10', '18 Rua A, 10', 'Rua B Longa, 20'])).toMatchObject({novas: 2, repetidas: 1});
     expect(e.paradas[0]).toMatchObject({ml: '18', precisao: 'pendente'});
   });
+  // O leitor devolve uma linha por cartão; cartões iguais na mesma porta são entregas diferentes.
+  // E ler a mesma gravação de novo não pode dobrar a rota.
+  it('a mesma linha N vezes são N paradas, e acrescentar de novo não dobra', () => {
+    const e = estadoVazio(), igual = 'Avenida Teste Inventada 2000';
+    expect(adicionarLinhas(e, [igual, igual, igual, 'Rua B Longa, 20'])).toMatchObject({novas: 4, repetidas: 0});
+    expect(adicionarLinhas(e, [igual, igual, igual, 'Rua B Longa, 20'])).toMatchObject({novas: 0, repetidas: 4});
+    expect(adicionarLinhas(e, [igual, igual, igual, igual])).toMatchObject({novas: 1, repetidas: 3});
+    expect(e.paradas.filter(p => p.texto === igual)).toHaveLength(4);
+  });
 });
 
 describe('memória de posições', () => {
