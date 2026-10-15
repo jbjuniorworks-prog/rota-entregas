@@ -1,4 +1,4 @@
-import {test, expect, abrir, aviso, menu} from './apoio';
+import {test, expect, abrir, aviso, carregar, clicarMapa, menu, ROTA_A} from './apoio';
 
 test.describe('sem conta', () => {
   test.use({papel: null});
@@ -261,6 +261,53 @@ test.describe('administrador', () => {
       await expect(page.locator('[data-resumo]')).toContainText('Nada novo desde');
       await expect(porta).toBeVisible();
       await expect(porta).not.toContainText('novo');
+    });
+
+    // 15/10: a porta que o Pedro verificou no lugar errado só se arrumava carregando a planilha dele.
+    // A chave gravada tem de ser a que uma rota com esse endereço pergunta à nuvem: é por ela que o
+    // celular do motorista recebe a porta ("porta verificada depois da rota montada").
+    test('procurar um endereço mostra a porta que vale e de onde vem; marcar como admin grava na chave da rota, uma vez só, e cancelar não grava', async ({page, nuvem}) => {
+      const FLORES = '49000106|900';
+      await abrir(page);
+      await carregar(page, ROTA_A);
+      await expect.poll(() => nuvem.pedidos.some(p => p.caminho === 'rpc/posicoes' && (p.corpo as any)?.chaves?.includes(FLORES)),
+        'a rota com a Rua das Flores, 900 pergunta por esta chave').toBe(true);
+
+      nuvem.tabelas.pacotes = [
+        {chave_lugar: FLORES, endereco: 'Rua das Flores, 900', bairro: 'Bairro Norte', cep: '49000-106'},
+        {chave_lugar: '49000106|90', endereco: 'Rua das Flores, 90', bairro: 'Bairro Norte', cep: '49000-106'},
+        {chave_lugar: '49000101|10', endereco: 'Rua das Acácias, 10', bairro: 'Bairro Norte', cep: '49000-101'},
+      ];
+      nuvem.rpc = {posicoes: [{chave_lugar: FLORES, lat: -10.963, lng: -37.047, situacao: 'confirmado', motoristas: 0, entregas: 1, fonte: 'entrega', minha: false}]};
+      await menu(page, /^Admin/);
+      const secao = page.locator('[data-secao="Procurar um endereço"]');
+      await secao.getByLabel('Procurar um endereço').fill('flores 900');
+      await secao.getByRole('button', {name: 'Procurar'}).click();
+      const lugar = secao.locator(`[data-lugar-achado="${FLORES}"]`);
+      await expect(lugar).toContainText('Rua das Flores, 900');
+      await expect(lugar).toContainText('Verificada');
+      await expect(lugar).toContainText('Por 1 entrega(s).');
+      await expect(secao.locator('[data-lugar-achado]'), 'nem o 90 da mesma rua, nem outra rua').toHaveCount(1);
+      const gravados = () => nuvem.pedidos.filter(p => p.metodo === 'POST' && p.caminho === 'correcoes');
+
+      page.once('dialog', d => d.dismiss());
+      await lugar.getByRole('button', {name: 'Marcar como admin'}).click();
+      await expect(page.locator('[data-armado]')).toContainText('Toque no mapa, no lugar certo de Rua das Flores, 900.');
+      await clicarMapa(page, -10.97, -37.05);
+      await expect(aviso(page)).toContainText('Nada gravado.');
+      await expect(page.locator('[data-armado]')).toHaveCount(0);
+      expect(gravados(), 'cancelar não grava').toHaveLength(0);
+
+      nuvem.rpc = {posicoes: [{chave_lugar: FLORES, lat: -10.97, lng: -37.05, situacao: 'confirmado', motoristas: 1, entregas: 0, fonte: 'admin', minha: true}]};
+      // daqui em diante toda pergunta é aceita: se o modo não desarmasse, o segundo toque gravaria
+      page.on('dialog', d => d.accept());
+      await lugar.getByRole('button', {name: 'Marcar como admin'}).click();
+      await clicarMapa(page, -10.97, -37.05);
+      await clicarMapa(page, -10.98, -37.06);
+      await expect(aviso(page)).toContainText('Porta gravada: vale para todos os motoristas');
+      await expect(lugar, 'procurou de novo depois de gravar').toContainText('Marcada por quem administra.');
+      expect(gravados()).toHaveLength(1);
+      expect(gravados()[0].corpo).toMatchObject({chave_lugar: FLORES, lat: -10.97, lng: -37.05});
     });
   });
 });

@@ -29,6 +29,7 @@ function aplicar(p: Passo) {
   // sair do mapa (ou cobri-lo com a lista) desarma o "toque no mapa"; ir para ele é justamente
   // como se arruma um pino
   if (p.tela !== 'rota' || p.folha === 'lista') ui.posicionando = null;
+  if (p.tela !== 'admin') ui.marcandoLugar = null;
   ui.tela = p.tela;
   ui.folha = p.folha;
   ui.pino = p.pino;

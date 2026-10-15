@@ -178,7 +178,38 @@ export function pararDePosicionar() {
   terminouDePosicionar();
 }
 
+// "Marcar como admin" (15/10): a porta de um endereço sem ter a parada no celular. O toque é no
+// mapa do próprio Admin.
+export function marcarLugar(alvo: NonNullable<typeof ui.marcandoLugar>) {
+  ui.marcandoLugar = alvo;
+  loja.mudou(false);
+}
+
+export function pararDeMarcarLugar() {
+  ui.marcandoLugar = null;
+  loja.mudou(false);
+}
+
+async function gravarLugar(lat: number, lng: number) {
+  const alvo = ui.marcandoLugar;
+  // desarma antes de perguntar: o segundo toque no mapa não grava de novo
+  ui.marcandoLugar = null;
+  loja.mudou(false);
+  if (!alvo) return;
+  if (!confirm(`Gravar este ponto como a porta de ${alvo.endereco}?\n\nPassa a valer para todos os motoristas, na frente das entregas e das marcações de antes.`)) {
+    status('Nada gravado.', 3000);
+    return;
+  }
+  try {
+    await alvo.gravar(+lat.toFixed(6), +lng.toFixed(6));
+    status('Porta gravada: vale para todos os motoristas. Os celulares recebem ao abrir o app ou voltar para ele.', 6000);
+  } catch (err) {
+    status('Não gravou: ' + (err as Error).message, 6000);
+  }
+}
+
 export function tocouNoMapa(lat: number, lng: number) {
+  if (ui.marcandoLugar) { gravarLugar(lat, lng); return; }
   const alvo = ui.posicionando;
   if (!alvo) return;
   ui.posicionando = null;

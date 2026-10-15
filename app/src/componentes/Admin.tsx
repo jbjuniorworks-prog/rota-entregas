@@ -2,7 +2,8 @@
 import {haversine} from '../logica/geo';
 import {CHAVES} from '../logica/guarda';
 import {fmtKm} from '../logica/otimizacao';
-import {porQuePrecisaDeVoce, situacaoDoLugar, triar} from '../logica/triagem';
+import * as A from '../acoes';
+import {origemDaPorta, porQuePrecisaDeVoce, situacaoDoLugar, triar} from '../logica/triagem';
 import {guarda, loja, status, useLoja, type Marca} from '../loja';
 import * as Adm from '../servicos/admin';
 import {nuvem} from '../servicos/nuvem';
@@ -99,12 +100,62 @@ export function TelaAdmin() {
       vazio="Nenhuma marcação esperando decisão." />}
     {t && <Lugares titulo={`🆕 Marcadas pelos motoristas nos últimos 7 dias (${t.recentes.length})`} lista={t.recentes} aberta {...doLugar}
       vazio="Nenhuma porta marcada nos últimos 7 dias." />}
+    {/* depois do que espera decisão: a busca é de quando ele já sabe o que quer arrumar */}
+    <ProcurarLugar />
     {rotas && <Rotas lista={rotas} />}
     {t && t.outras.length > 0 && <Lugares titulo={`Marcações mais antigas (${t.outras.length})`} lista={t.outras} {...doLugar} vazio="" />}
     {motoristas && <Motoristas lista={motoristas} recarregar={carregar} />}
     <BaseDeRuas />
     <UsoDosBotoes />
   </>;
+}
+
+// A porta que o Pedro verificou no lugar errado (15/10) só se arrumava carregando a planilha dele.
+// Aqui o endereço se acha no que a nuvem guarda, com a porta que vale hoje e de onde ela vem, e a
+// certa se grava como quem administra, tocando no mapa desta tela.
+function ProcurarLugar() {
+  const [busca, setBusca] = useState('');
+  const [estado, setEstado] = useState<'parado' | 'procurando' | {erro: string} | Adm.LugarAchado[]>('parado');
+  const procurar = async (texto: string) => {
+    if (!texto.trim()) return;
+    setEstado('procurando');
+    try {
+      setEstado(await Adm.procurarLugares(texto));
+    } catch (err) {
+      setEstado({erro: navigator.onLine ? (err as Error).message : 'sem internet'});
+    }
+  };
+  const verPorta = (l: Adm.LugarAchado) => mostrarNoMapa(l.porta ? [{lat: l.porta.lat, lng: l.porta.lng, rotulo: 'P', texto: `A porta de hoje · ${l.endereco}`, cor: '#16a34a'}] : []);
+  const marcar = (l: Adm.LugarAchado) => {
+    if (l.porta) verPorta(l);
+    else if (window.innerWidth < 900) window.scrollTo(0, 0);
+    // depois de gravar, procura de novo: a porta nova aparece com a origem dela
+    const texto = busca;
+    A.marcarLugar({endereco: l.endereco, gravar: async (lat, lng) => { await Adm.confirmarPosicao(l.chave, lat, lng); procurar(texto); }});
+  };
+  return <details open data-secao="Procurar um endereço">
+    <summary>Procurar um endereço</summary>
+    <form className="linha" onSubmit={ev => { ev.preventDefault(); procurar(busca); }}>
+      <input type="search" aria-label="Procurar um endereço" placeholder="Rua e número, ou CEP e número" value={busca} onChange={ev => setBusca(ev.target.value)} />
+      <button className="btn" type="submit" disabled={estado === 'procurando' || !busca.trim()}>{estado === 'procurando' ? 'Procurando…' : 'Procurar'}</button>
+    </form>
+    <div className="info">Procura no que a nuvem guarda de todos os motoristas: planilhas, marcações e entregas.</div>
+    {typeof estado === 'object' && !Array.isArray(estado) && <div className="aviso">Não consegui procurar: {estado.erro}</div>}
+    {Array.isArray(estado) && !estado.length && <div className="info">Nada na nuvem com isso.</div>}
+    {Array.isArray(estado) && estado.map(l => {
+      const o = origemDaPorta(l.porta);
+      return <div className="item" key={l.chave} data-lugar-achado={l.chave}>
+        <div className="orig">{l.endereco}</div>
+        {l.bairro && <div className="achado">{l.bairro}</div>}
+        <span className="tag" style={{background: o.cor}}>{o.texto}</span>
+        <div className="achado">{o.detalhe}</div>
+        <div className="linha">
+          {l.porta && <button className="btn peq" onClick={() => verPorta(l)}>Ver no mapa</button>}
+          <button className="btn peq pri" onClick={() => marcar(l)}>Marcar como admin</button>
+        </div>
+      </div>;
+    })}
+  </details>;
 }
 
 // Os nomes gravados no banco ficaram os de antes da tela nova (02/10): o balão do pino virou o

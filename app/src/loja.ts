@@ -23,6 +23,9 @@ export interface Ui {
   // o menu Mais aberto por cima da tela
   menu: boolean;
   posicionando: string | null;
+  // o toque no mapa do Admin armado para gravar a porta de um endereço como quem administra; quem
+  // grava é a tela do Admin, que sabe a chave
+  marcandoLugar: {endereco: string; gravar: (lat: number, lng: number) => Promise<void>} | null;
   selecionada: string | null;
   soDuvidas: boolean;
   ocupado: boolean;
@@ -63,7 +66,7 @@ let estado = carregarEstado(guarda);
 const ui: Ui = {
   tela: estado.paradas.length ? 'rota' : 'inicio', folha: 'proxima', pino: null, menu: false,
   // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
-  posicionando: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
+  posicionando: null, marcandoLugar: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
   euAqui: null, irParaMim: 0, seguindo: true, esperandoAdmin: 0, xarope: null, versaoNova: null, pinosNovos: null, podeInstalar: false,
   minimizado: lerMinimizado(),
 };

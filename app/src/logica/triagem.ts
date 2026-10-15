@@ -70,6 +70,25 @@ export function situacaoDoLugar(l: LugarParaTriar): {texto: string; cor: string}
   return {texto: 'Confirmada', cor: '#16a34a'};
 }
 
+// A porta que vale hoje para um endereço do "Procurar um endereço", e de onde ela vem. Na resposta
+// da `posicoes`, `motoristas` conta as marcações perto da porta escolhida e `entregas` as passagens.
+export interface PortaDaNuvem {
+  situacao: string;
+  fonte?: string | null;
+  motoristas?: number;
+  entregas?: number;
+}
+
+export function origemDaPorta(p: PortaDaNuvem | null): {texto: string; cor: string; detalhe: string} {
+  if (!p) return {texto: 'Sem porta na nuvem', cor: '#6b7280', detalhe: 'Nenhuma marcação nem entrega neste endereço.'};
+  if (p.fonte === 'admin') return {texto: 'Verificada', cor: '#16a34a', detalhe: 'Marcada por quem administra.'};
+  const provas = [p.motoristas ? `${p.motoristas} marcação(ões) de motorista` : '', p.entregas ? `${p.entregas} entrega(s)` : '']
+    .filter(Boolean).join(' e ');
+  if (p.situacao === 'confirmado') return {texto: 'Verificada', cor: '#16a34a', detalhe: `Por ${provas || 'motoristas'}.`};
+  if (p.situacao === 'sugestao') return {texto: 'Sugestão', cor: '#d97706', detalhe: `Marcada por um motorista, sem confirmar${provas ? ` (${provas})` : ''}.`};
+  return {texto: 'Sem confirmar', cor: '#d97706', detalhe: `Só ${provas || 'uma entrega'}, sem confirmar.`};
+}
+
 export function triar<L extends LugarParaTriar>(lugares: L[], agora: number, visto: number | null) {
   const decidir: L[] = [], recentes: L[] = [], outras: L[] = [];
   for (const l of lugares) {

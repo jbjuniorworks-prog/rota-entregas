@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {acharNaParada, peneiraDaNuvem} from './busca';
+import {acharNaParada, bateNaChave, lugaresDaBusca, peneiraDaNuvem, peneiraDeChave, textoDaChave} from './busca';
 import type {Parada} from './tipos';
 
 const parada = (texto: string, extra: Partial<Parada> = {}): Parada => ({
@@ -85,5 +85,48 @@ describe('peneira da busca nos dias anteriores', () => {
 
   it('sem nada digitado, não vai à nuvem', () => {
     expect(peneiraDaNuvem(' # ')).toBeNull();
+  });
+});
+
+// Admin, 15/10: a porta que um motorista verificou no lugar errado, achada sem a planilha dele.
+describe('procurar um endereço no que a nuvem guarda', () => {
+  const pacote = (endereco: string, chave: string | null, cep: string | null = null, bairro = 'Bairro Norte') => ({chave_lugar: chave, endereco, bairro, cep});
+
+  it('a peneira das chaves: o CEP vai pelo começo; sem CEP, a palavra mais comprida do nome; tipo da rua ou número sozinho não vão', () => {
+    expect(peneiraDeChave('49000-150 28')).toBe('49000150|%');
+    expect(peneiraDeChave('Avenida dos Girassóis 28')).toBe('%girassois%');
+    expect(peneiraDeChave('avenida 28')).toBeNull();
+    expect(peneiraDeChave('28')).toBeNull();
+  });
+
+  it('chave com CEP só bate pelo CEP e pelo número da porta; com rua, pelo nome e pelo número', () => {
+    expect(bateNaChave('49000150|28', '49000-150 28')).toBe(true);
+    expect(bateNaChave('49000150|28', '49000150 28 canal')).toBe(true);
+    expect(bateNaChave('49000150|280', '49000-150 28')).toBe(false);
+    expect(bateNaChave('49000150|28', 'canal velho 28')).toBe(false);
+    expect(bateNaChave('r|avenida do canal velho|28|bairro norte|aracaju', 'av canal velho 28')).toBe(true);
+    expect(bateNaChave('r|avenida do canal velho|128|bairro norte|aracaju', 'canal velho 28')).toBe(false);
+    expect(bateNaChave('r|rua do canal novo|28|bairro norte|aracaju', 'canal velho 28')).toBe(false);
+    expect(bateNaChave('r|avenida do canal velho|28|bairro norte|aracaju', '49000-150 28')).toBe(false);
+  });
+
+  it('um lugar por chave: o endereço escrito vem do pacote; a chave só de marcação ou de entrega vira texto', () => {
+    const achados = lugaresDaBusca('canal velho 28', [
+      pacote('Avenida do Canal Velho, 28', '49000150|28', '49000-150'),
+      pacote('Avenida do Canal Velho, 28, casa 2', '49000150|28', '49000-150'),
+      pacote('Avenida do Canal Velho, 280', '49000150|280', '49000-150'),
+      pacote('Avenida do Canal Velho, 28', null),
+    ], ['r|avenida do canal velho|28|bairro sul|aracaju', 'r|avenida do canal velho|30|bairro sul|aracaju', '49000150|28']);
+    expect(achados).toEqual([
+      {chave: '49000150|28', endereco: 'Avenida do Canal Velho, 28', bairro: 'Bairro Norte'},
+      {chave: 'r|avenida do canal velho|28|bairro sul|aracaju', endereco: 'avenida do canal velho, 28', bairro: 'bairro sul'},
+    ]);
+  });
+
+  it('pelo CEP e número acha a porta de rota lida de vídeo, que não sobe pacote', () => {
+    expect(lugaresDaBusca('49000-150 28', [], ['49000150|28', '49000150|30'])).toEqual([
+      {chave: '49000150|28', endereco: 'CEP 49000-150, nº 28', bairro: ''},
+    ]);
+    expect(textoDaChave('r|rua projetada|sn|bairro sul|aracaju').endereco).toBe('rua projetada, S/N');
   });
 });

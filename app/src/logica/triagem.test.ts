@@ -1,4 +1,4 @@
-import {porQuePrecisaDeVoce, situacaoDoLugar, triar, type LugarParaTriar, type MarcaDoLugar} from './triagem';
+import {origemDaPorta, porQuePrecisaDeVoce, situacaoDoLugar, triar, type LugarParaTriar, type MarcaDoLugar} from './triagem';
 
 const AGORA = Date.parse('2026-09-28T12:00:00Z');
 const DIA = 864e5;
@@ -94,5 +94,18 @@ describe('o nome da situação, do jeito que se lê', () => {
     expect(situacaoDoLugar(lugar('a', [], {fonte: 'correcao', motoristas: 2, entregas: 0})).texto).toBe('Confirmada por 2 motoristas');
     expect(situacaoDoLugar(lugar('a', [], {fonte: 'correcao', motoristas: 1, entregas: 1})).texto).toBe('Confirmada na porta, com a entrega');
     expect(situacaoDoLugar(lugar('a', [], {situacao: null})).texto).toBe('Não vale: motorista desativado');
+  });
+});
+
+// Admin, 15/10: no Procurar um endereço, a porta que vale e de onde ela vem. Uma entrega no pino
+// sozinha já verifica, e é o caso da porta errada que só a entrega sustenta.
+describe('a porta que vale para um endereço procurado', () => {
+  it('diz de onde ela vem', () => {
+    expect(origemDaPorta(null)).toMatchObject({texto: 'Sem porta na nuvem'});
+    expect(origemDaPorta({situacao: 'confirmado', fonte: 'admin', motoristas: 1})).toMatchObject({texto: 'Verificada', detalhe: 'Marcada por quem administra.'});
+    expect(origemDaPorta({situacao: 'confirmado', fonte: 'entrega', motoristas: 0, entregas: 1})).toMatchObject({texto: 'Verificada', detalhe: 'Por 1 entrega(s).'});
+    expect(origemDaPorta({situacao: 'confirmado', fonte: 'correcao', motoristas: 1, entregas: 1}).detalhe).toBe('Por 1 marcação(ões) de motorista e 1 entrega(s).');
+    expect(origemDaPorta({situacao: 'sugestao', fonte: 'correcao', motoristas: 1, entregas: 0})).toMatchObject({texto: 'Sugestão', detalhe: 'Marcada por um motorista, sem confirmar (1 marcação(ões) de motorista).'});
+    expect(origemDaPorta({situacao: 'pouco', fonte: 'entrega', motoristas: 0, entregas: 1})).toMatchObject({texto: 'Sem confirmar', detalhe: 'Só 1 entrega(s), sem confirmar.'});
   });
 });

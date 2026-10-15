@@ -60,3 +60,63 @@ export function acharNaParada(p: Parada, busca: string): Achado | null {
   }
   return {pacotes: [...bateram]};
 }
+
+// "Procurar um endereço" do Admin (15/10): a porta que o Pedro verificou no lugar errado só se
+// achava carregando a planilha dele. Marcações e passagens guardam só a chave do lugar: com CEP,
+// "CEP|número", sem o nome da rua; sem CEP, "r|rua|número|bairro|cidade". Rota lida de vídeo não
+// sobe pacote, então a porta dela só se acha pela chave.
+
+const CEP_NA_BUSCA = /\b(\d{5})-?(\d{3})\b/;
+
+export interface LugarDaBusca {
+  chave: string;
+  endereco: string;
+  bairro: string;
+}
+
+// o tipo da rua e o "dos" estão em quase toda chave: peneirar por eles não estreita nada
+const NAO_ESTREITA = new Set(['rua', 'avenida', 'travessa', 'trav', 'praca', 'alameda', 'rodovia', 'estrada', 'via', 'dos', 'das']);
+
+// A peneira das chaves no banco (padrão do ilike), pela palavra mais comprida do nome. Sem CEP nem
+// nome, um número sozinho traria metade das portas.
+export function peneiraDeChave(busca: string): string | null {
+  const cep = busca.match(CEP_NA_BUSCA);
+  if (cep) return `${cep[1]}${cep[2]}|%`;
+  const nome = palavras(busca.replace(CEP_NA_BUSCA, ' ')).filter(w => /^[a-z]{3,}$/.test(w) && !NAO_ESTREITA.has(w))
+    .sort((a, b) => b.length - a.length)[0];
+  return nome ? `%${nome}%` : null;
+}
+
+// Número tem de ser o da porta, não um pedaço. A chave com CEP não tem o nome da rua: ali só o CEP
+// e o número decidem.
+export function bateNaChave(chave: string, busca: string): boolean {
+  const cep = busca.match(CEP_NA_BUSCA);
+  const ps = palavras(busca.replace(CEP_NA_BUSCA, ' ')).map(w => w.replace(/^#/, '')).filter(Boolean);
+  const partes = chave.split('|');
+  const comRua = partes[0] === 'r';
+  const numero = comRua ? partes[2] : partes[1];
+  if (comRua ? !!cep : !cep || partes[0] !== cep[1] + cep[2]) return false;
+  const texto = partes.slice(1).join(' ');
+  return ps.every(w => /^\d+$/.test(w) ? w === numero : !comRua || texto.includes(w));
+}
+
+export function textoDaChave(chave: string): {endereco: string; bairro: string} {
+  const partes = chave.split('|');
+  const numero = (n: string) => n === 'sn' ? 'S/N' : n;
+  if (partes[0] === 'r') return {endereco: `${partes[1]}, ${numero(partes[2])}`, bairro: partes[3] || ''};
+  return {endereco: `CEP ${partes[0].slice(0, 5)}-${partes[0].slice(5)}, nº ${numero(partes[1])}`, bairro: ''};
+}
+
+// Um lugar por chave. O endereço escrito vem do pacote mais novo, quando há; sem pacote, sai da
+// própria chave.
+export function lugaresDaBusca(busca: string, pacotes: {chave_lugar: string | null; endereco: string; bairro: string | null; cep: string | null}[],
+  chaves: string[], limite = 20): LugarDaBusca[] {
+  const lugares = new Map<string, LugarDaBusca>();
+  for (const p of pacotes) {
+    if (!p.chave_lugar || lugares.has(p.chave_lugar)) continue;
+    const comoParada = {texto: p.endereco + (p.cep ? `, CEP ${p.cep}` : ''), bairro: p.bairro || '', pacotes: [], ml: null, stop: null} as unknown as Parada;
+    if (acharNaParada(comoParada, busca)) lugares.set(p.chave_lugar, {chave: p.chave_lugar, endereco: p.endereco, bairro: p.bairro || ''});
+  }
+  for (const k of chaves) if (!lugares.has(k) && bateNaChave(k, busca)) lugares.set(k, {chave: k, ...textoDaChave(k)});
+  return [...lugares.values()].slice(0, limite);
+}

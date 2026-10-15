@@ -46,7 +46,7 @@ function Armado({alvo}: {alvo: string}) {
 
 function Status() {
   const {ui} = useLoja();
-  return <div id="status" className={ui.aviso || ui.posicionando || ui.versaoNova || ui.pinosNovos || ui.podeInstalar ? 'on' : ''}>
+  return <div id="status" className={ui.aviso || ui.posicionando || ui.marcandoLugar || ui.versaoNova || ui.pinosNovos || ui.podeInstalar ? 'on' : ''}>
     {ui.podeInstalar && <div className="instalar" data-instalar>
       <span>Instale o app: fica com ícone na tela inicial, abre em tela cheia, e o Compartilhar do WhatsApp manda os prints direto para cá.</span>
       <span className="botoes"><button className="btn peq pri" onClick={A.instalarApp}>Instalar</button><button className="btn peq" onClick={A.instalarDepois}>Agora não</button></span>
@@ -59,7 +59,11 @@ function Status() {
       <span>{ui.pinosNovos.entregas === 1 ? 'Endereço verificado na nuvem para 1 entrega' : `Endereços verificados na nuvem para ${ui.pinosNovos.entregas} entregas`}: o pino vai para lá. A rota continua como está.</span>
       <button className="btn peq" onClick={A.atualizarPinos}>Atualizar</button>
     </div>}
-    {ui.posicionando && <Armado alvo={ui.posicionando} />}{ui.aviso}
+    {ui.posicionando && <Armado alvo={ui.posicionando} />}
+    {ui.marcandoLugar && <div className="armado" data-armado>
+      <span>Toque no mapa, no lugar certo de {ui.marcandoLugar.endereco}.</span>
+      <button className="btn peq" onClick={A.pararDeMarcarLugar}>Cancelar</button>
+    </div>}{ui.aviso}
     {ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>Desfazer</button></>}
   </div>;
 }

@@ -1,4 +1,6 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
+import {lugaresDaBusca, peneiraDaNuvem, peneiraDeChave, type LugarDaBusca} from '../logica/busca';
+import type {PortaDaNuvem} from '../logica/triagem';
 import {nuvem} from './nuvem';
 
 export interface Motorista {
@@ -232,6 +234,32 @@ export async function criarRuasDasEntregas(): Promise<{gravadas: number; pontos:
   const {data, error} = await cliente().rpc('criar_ruas_das_entregas');
   if (error) throw new Error(error.message);
   return (data && data[0]) || {gravadas: 0, pontos: 0};
+}
+
+export interface LugarAchado extends LugarDaBusca {
+  porta: (PortaDaNuvem & {lat: number; lng: number}) | null;
+}
+
+// "Procurar um endereço" (15/10): procura nos pacotes das planilhas, que têm o endereço escrito, e
+// nas chaves das marcações e passagens, que é onde fica a porta de rota lida de vídeo. A porta que
+// vale é a mesma que os celulares recebem, da `posicoes`.
+export async function procurarLugares(busca: string): Promise<LugarAchado[]> {
+  const s = cliente();
+  const texto = peneiraDaNuvem(busca), chave = peneiraDeChave(busca);
+  const nada = Promise.resolve({data: [] as any[], error: null});
+  const [pac, cor, obs] = await Promise.all([
+    texto ? s.from('pacotes').select('chave_lugar, endereco, bairro, cep').or(texto).order('criado_em', {ascending: false}).limit(200) : nada,
+    chave ? s.from('correcoes').select('chave_lugar').ilike('chave_lugar', chave).order('criado_em', {ascending: false}).limit(200) : nada,
+    chave ? s.from('observacoes').select('chave_lugar').ilike('chave_lugar', chave).order('criado_em', {ascending: false}).limit(200) : nada,
+  ]);
+  for (const r of [pac, cor, obs]) falhou(r.error);
+  const marcadas = [...new Set([...(cor.data || []), ...(obs.data || [])].map((x: any) => x.chave_lugar as string))];
+  const lugares = lugaresDaBusca(busca, (pac.data || []) as any[], marcadas);
+  if (!lugares.length) return [];
+  const {data: pos, error} = await s.rpc('posicoes', {chaves: lugares.map(l => l.chave)});
+  falhou(error);
+  const porChave = new Map(((pos || []) as any[]).map(p => [p.chave_lugar as string, p]));
+  return lugares.map(l => ({...l, porta: porChave.get(l.chave) || null}));
 }
 
 export async function confirmarPosicao(chave: string, lat: number, lng: number) {

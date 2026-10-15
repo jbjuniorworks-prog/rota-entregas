@@ -74,7 +74,7 @@ export default function Mapa() {
     // Tocar fora dos pinos: com o "toque no mapa" armado, é o lugar da entrega; com o cartão de
     // um pino aberto, fecha ele, que nem o voltar.
     m.on('click', ev => {
-      if (loja.ui.posicionando) { tocouNoMapa(ev.latlng.lat, ev.latlng.lng); return; }
+      if (loja.ui.posicionando || loja.ui.marcandoLugar) { tocouNoMapa(ev.latlng.lat, ev.latlng.lng); return; }
       if (loja.ui.pino) voltar();
     });
     m.on('zoomend', () => setZoom(m.getZoom()));
