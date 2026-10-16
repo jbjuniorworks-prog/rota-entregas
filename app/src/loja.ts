@@ -16,8 +16,11 @@ export interface Marca {
 
 export interface Ui {
   tela: Tela;
-  // o cartão de baixo da Rota: a próxima entrega, ou a lista inteira puxada para cima
-  folha: 'proxima' | 'lista';
+  // o cartão de baixo da Rota: a próxima entrega, a lista inteira puxada para cima, ou a escolha
+  // dos pinos para o Maps
+  folha: 'proxima' | 'lista' | 'escolher';
+  // os pinos escolhidos para o Maps, na ordem dos toques (uma entrega de cada pino)
+  escolhidas: string[];
   // as entregas do pino que ele tocou no mapa: o cartão de baixo passa a ser delas
   pino: string[] | null;
   // o menu Mais aberto por cima da tela
@@ -64,7 +67,7 @@ const lerMinimizado = () => { try { return localStorage.getItem(MINIMIZADO) === 
 export const guarda = guardaEm(localStorage);
 let estado = carregarEstado(guarda);
 const ui: Ui = {
-  tela: estado.paradas.length ? 'rota' : 'inicio', folha: 'proxima', pino: null, menu: false,
+  tela: estado.paradas.length ? 'rota' : 'inicio', folha: 'proxima', escolhidas: [], pino: null, menu: false,
   // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
   posicionando: null, marcandoLugar: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
   euAqui: null, irParaMim: 0, seguindo: true, esperandoAdmin: 0, xarope: null, versaoNova: null, pinosNovos: null, podeInstalar: false,

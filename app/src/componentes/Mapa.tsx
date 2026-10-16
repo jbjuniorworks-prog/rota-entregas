@@ -1,7 +1,8 @@
 import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {abrir, pararDeSeguir, seguirMinhaPosicao, tocouNoMapa, trocar, voltar} from '../acoes';
+import {abrir, pararDeSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
+import {letraDoPino} from '../logica/escolha';
 import {haversine} from '../logica/geo';
 import {empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
@@ -10,10 +11,10 @@ import {loja, useLoja} from '../loja';
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]!));
 
-function icone(texto: string, cor: string, apagado = false, borda = '') {
+function icone(texto: string, cor: string, apagado = false, borda = '', ids = '') {
   return L.divIcon({
     className: '', iconSize: [30, 30], iconAnchor: [15, 30],
-    html: `<div class="pino ${borda}" style="background:${cor};opacity:${apagado ? .4 : 1}"><span>${esc(texto)}</span></div>`,
+    html: `<div class="pino ${borda}"${ids ? ` data-ids="${esc(ids)}"` : ''} style="background:${cor};opacity:${apagado ? .4 : 1}"><span>${esc(texto)}</span></div>`,
   });
 }
 
@@ -115,6 +116,7 @@ export default function Mapa() {
     if (e.inicio) limites.push([e.inicio.lat, e.inicio.lng]);
     if (e.fim) limites.push([e.fim.lat, e.fim.lng]);
     const marcasAdmin = ui.tela === 'admin' && ui.marcas ? ui.marcas : null;
+    const escolhendo = ui.tela === 'rota' && ui.folha === 'escolher';
     const alvo = comLocal
       .filter(p => !p.entregue && !p.adiada)
       .map(p => ({p, i: ondeNaRota(p.id)}))
@@ -131,6 +133,7 @@ export default function Mapa() {
       e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0)).join('|'),
       e.areas.map(a => a.id + a.cor).join(','),
       marcasAdmin ? 'admin' + marcasAdmin.vez : '',
+      escolhendo ? 'escolhidas' + ui.escolhidas.join(',') : '',
     ].join('#');
 
     if (desenho !== desenhado.current) {
@@ -147,10 +150,12 @@ export default function Mapa() {
       for (const g of pilhas) {
         const p = g.ps[0];
         const chave = g.ps.map(x => x.id).join('+');
-        const cor = loja.area(p.area).cor;
+        // escolhido para o Maps: a letra que ele vai ter lá, num pino escuro
+        const letra = escolhendo ? letraDoPino(ui.escolhidas, g.ps.map(x => x.id)) : '';
+        const cor = letra ? '#111827' : loja.area(p.area).cor;
         const apagado = p.entregue || !!p.adiada;
         const so = g.ps.length === 1;
-        const rotulo = (p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p)) + (so ? '' : `+${g.ps.length - 1}`);
+        const rotulo = letra || (p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p)) + (so ? '' : `+${g.ps.length - 1}`);
         const duvidosa = g.ps.some(x => DUVIDA.has(x.precisao)) ? 'duvida' : g.ps.some(x => QUASE.has(x.precisao)) ? 'quase' : '';
         // "Cliente xarope" (pedido de 28/09): o pino já chega com outra cor, antes de ele tocar
         const xarope = g.ps.some(x => !x.entregue && x.reclamacoes?.length);
@@ -167,11 +172,12 @@ export default function Mapa() {
         const antes = pinos.current[chave];
         if (antes && antes.sig === sig) continue;
         if (!antes) {
-          const mk = L.marker([p.lat!, p.lng!], {icon: icone(rotulo, cor, apagado, borda)});
+          const mk = L.marker([p.lat!, p.lng!], {icon: icone(rotulo, cor, apagado, borda, chave)});
           // O pino abre o cartão de baixo com as entregas dele, os mesmos botões do cartão da
           // próxima. O balão do Leaflet era pequeno para o dedo e montado em texto, à parte.
           mk.on('click', () => {
             if (loja.ui.tela !== 'rota') return;
+            if (loja.ui.folha === 'escolher') { tocarParaEscolher(chave.split('+')); return; }
             (loja.ui.pino ? trocar : abrir)({pino: chave.split('+'), folha: 'proxima'});
           });
           if (balao) mk.bindTooltip(balao, BALAO);
@@ -184,7 +190,7 @@ export default function Mapa() {
           antes.lat = p.lat!;
           antes.lng = p.lng!;
         }
-        antes.mk.setIcon(icone(rotulo, cor, apagado, borda));
+        antes.mk.setIcon(icone(rotulo, cor, apagado, borda, chave));
         if (antes.balao !== balao) {
           antes.mk.unbindTooltip();
           if (balao) antes.mk.bindTooltip(balao, BALAO);

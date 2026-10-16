@@ -14,6 +14,8 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
    e o resto rola. Os 240px são o endereço de duas linhas com os dois botões, em celular baixo.
    O cartão de um pino tocado fica com os 52vh: ali ele parou para olhar. */
 #app.tela-rota.folha-proxima #painel{max-height:max(32vh,240px)}
+/* escolhendo os pinos para o Maps, o mapa é onde ele toca: o cartão fica baixo como o da próxima */
+#app.tela-rota.folha-escolher #painel{max-height:max(32vh,240px)}
 /* puxada para cima, a lista fica com a tela e o mapa vira uma faixa */
 #app.tela-rota.folha-lista .mapwrap{flex:none;height:14vh}
 #app.tela-rota.folha-lista #painel{flex:1;max-height:none}
@@ -212,6 +214,6 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
   #app.tela-rota>.cima,#app.tela-admin>.cima{grid-column:1;grid-row:1}
   #app.tela-rota .cima>#status{position:static}
   #app.tela-rota>.mapwrap,#app.tela-admin>.mapwrap,#app.tela-rota.folha-lista>.mapwrap{grid-column:2;grid-row:1/-1;height:auto}
-  #app.tela-rota>#painel,#app.tela-rota.folha-proxima>#painel,#app.tela-admin>#painel{grid-column:1;grid-row:2;max-height:none;border-radius:0;margin:0;box-shadow:none;border-right:1px solid var(--bd)}
+  #app.tela-rota>#painel,#app.tela-rota.folha-proxima>#painel,#app.tela-rota.folha-escolher>#painel,#app.tela-admin>#painel{grid-column:1;grid-row:2;max-height:none;border-radius:0;margin:0;box-shadow:none;border-right:1px solid var(--bd)}
   #app:not(.tela-rota):not(.tela-admin){max-width:640px;margin:0 auto;border-left:1px solid var(--bd);border-right:1px solid var(--bd)}
 }

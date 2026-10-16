@@ -168,6 +168,18 @@ Fora da lista:
   ficam numa fileira só. O dono pediu para diminuir os botões, mas medido em 360 e 412 px eles
   cabem do tamanho de sempre, então ficaram assim. Não está no cartão da próxima, que tem o
   "Google Maps" de um destino só. Olhar na rua: se o Maps abre todos os pontos no celular deles.
+- **Escolher os pinos para o Maps (16/10), pedido do dono, no mapa.** "Escolher pinos para o Maps"
+  liga o modo:
+  - fica no alto da Lista, no cartão da próxima (junto do "Google Maps", abaixo da dobra) e no de
+    montar a rota;
+  - cada toque num pino marca ou desmarca, e o pino mostra a letra que terá no Maps, de A a I, na
+    ordem dos toques;
+  - o cartão mostra "N de 9", "Abrir no Maps" e os escolhidos. O voltar ou o X saem, e a escolha
+    some;
+  - pino entregue não entra, e o décimo avisa que o Maps vai até 9;
+  - conta no "Uso dos botões" do Admin.
+
+  Olhar na rua: se acham a entrada e se usam.
 
 ## Próximos passos, nesta ordem (12/10)
 

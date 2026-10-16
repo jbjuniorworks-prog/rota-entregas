@@ -380,6 +380,64 @@ test.describe('agir pelo pino', () => {
       .toEqual(['waze', 'maps', 'depois']);
   });
 
+  // "Ou escolher quais pinos colocar, até 9" (dono, 16/10): tocando nos pinos do mapa.
+  test('escolher pinos para o Maps: a ordem dos toques é a do Maps, tocar de novo tira, e o voltar sai', async ({page}) => {
+    const {garantirMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-d.xlsx');
+    await montar(page);
+    await garantirMapa(page);
+    const {verNoMapa} = await import('./apoio');
+    const estado = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas as {id: string; lat: number; lng: number; entregue?: boolean}[]);
+    const pino = (k: string) => page.locator(`.pino[data-ids="${k}"]`);
+    const proxima = await posicaoDaProxima(page);
+
+    await page.locator('[data-folha="proxima"] [data-escolher-maps]').click();
+    const cartao = page.locator('[data-folha="escolher"]');
+    await expect(cartao.locator('[data-quantas]')).toHaveText('0 de 9');
+    // enquadrada, a rota de teste vira um ou dois pinos: perto, eles se separam
+    const visiveis = () => page.evaluate(() => {
+      const m = document.querySelector('#map')!.getBoundingClientRect(), painel = document.querySelector('#painel')!.getBoundingClientRect();
+      return [...document.querySelectorAll('.pino[data-ids]')].filter(p => {
+        const r = p.getBoundingClientRect();
+        return r.width > 0 && r.left >= m.left && r.right <= m.right && r.top >= m.top + 70 && r.bottom <= painel.top - 5;
+      }).map(p => p.getAttribute('data-ids')!);
+    });
+    let chaves = await visiveis();
+    for (const z of [15, 16, 17]) {
+      if (chaves.length >= 3) break;
+      await verNoMapa(page, proxima.lat, proxima.lng, z);
+      chaves = await visiveis();
+    }
+    expect(chaves.length, 'três pinos à vista').toBeGreaterThanOrEqual(3);
+    const [x, y, z] = chaves;
+    // fora da ordem do mapa, de propósito
+    for (const k of [z, x, y]) await pino(k).click();
+    await expect(cartao.locator('[data-quantas]')).toHaveText('3 de 9');
+    await expect(pino(z)).toHaveText('A');
+    await expect(pino(x)).toHaveText('B');
+    await expect(pino(y)).toHaveText('C');
+    await expect(page.locator(PINO), 'tocar escolhe, não abre o cartão do pino').toHaveCount(0);
+
+    const escolhidas = await cartao.locator('[data-escolhida]').evaluateAll(es => es.map(e => e.getAttribute('data-escolhida')!));
+    expect(escolhidas.map((id, i) => [z, x, y][i].split('+').includes(id))).toEqual([true, true, true]);
+    const ps = await estado();
+    const ponto = (id: string) => { const p = ps.find(q => q.id === id)!; return `${p.lat},${p.lng}`; };
+    const u = new URL((await cartao.locator('[data-acao=abrir-maps]').getAttribute('href'))!);
+    expect(u.searchParams.get('waypoints')).toBe(`${ponto(escolhidas[0])}|${ponto(escolhidas[1])}`);
+    expect(u.searchParams.get('destination')).toBe(ponto(escolhidas[2]));
+
+    await pino(x).click();
+    await expect(cartao.locator('[data-quantas]')).toHaveText('2 de 9');
+    await expect(pino(y), 'quem vinha depois sobe uma letra').toHaveText('B');
+
+    await page.goBack();
+    await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
+    await expect(pino(z)).not.toHaveText('A');
+    await pino(z).click();
+    await expect(page.locator(PINO), 'fora da escolha, o pino volta a abrir o cartão').toBeVisible();
+  });
+
   test('na porta verificada, Entreguei, Waze, Maps e Depois cabem numa fileira do celular', async ({page}) => {
     const {garantirMapa} = await import('./apoio');
     await abrir(page);

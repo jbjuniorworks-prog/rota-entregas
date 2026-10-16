@@ -1,6 +1,7 @@
 import * as A from '../acoes';
 import {haversine, RAIO_BLOCO} from '../logica/geo';
-import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, partesDoEndereco, porPerto, trechoDesde, trechos} from '../logica/otimizacao';
+import {LETRAS} from '../logica/escolha';
+import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, MAPS_MAX, partesDoEndereco, porPerto, trechoDesde, trechos} from '../logica/otimizacao';
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
@@ -151,6 +152,7 @@ function CartaoMontar() {
       {' · '}<button className="link" onClick={() => A.abrir({tela: 'saida'})}>trocar</button></div>
     {semLocal > 0 && <div className="aviso">{semLocal} parada(s) sem local ficarão fora da rota. Corrija em Conferir.</div>}
     <button className="btn pri grande-btn" onClick={A.montarRota}>Montar a rota</button>
+    <button className="link" data-escolher-maps onClick={A.escolherParaMaps}>Escolher pinos para o Maps</button>
   </div>;
 }
 
@@ -255,6 +257,7 @@ function CartaoProxima() {
     <div className="secundarios">
       {alvo.precisao !== 'confirmado' && <button className="link" onClick={() => A.estouAqui(alvo)}>Pino errado? Estou aqui</button>}
       <a className="link" href={linkMaps(alvo as Ponto)} target="_blank" rel="noopener">Google Maps</a>
+      <button className="link" data-escolher-maps onClick={A.escolherParaMaps}>Escolher pinos para o Maps</button>
     </div>
     {vizinhas.length > 0 && <div className="info perto">Aqui perto, fora desta parada: {vizinhas.slice(0, 3).map(v =>
       <button key={v.p.id} className="link" onClick={() => A.focar(v.p.id)}>{v.p.texto.split(',').slice(0, 2).join(',')} ({Math.round(v.distancia)} m)</button>)}{vizinhas.length > 3 ? ` e mais ${vizinhas.length - 3}.` : ''}</div>}
@@ -315,6 +318,7 @@ function Lista() {
     {/* é daqui que uma adiada volta para a rota: o "Refazer" tem de estar à mão */}
     <AvisosDaRota />
     {proximoTrecho && proximoTrecho.length > 1 && <a className="btn contorno-azul" href={linkMapsVarios(proximoTrecho.map(x => x.alvo))} target="_blank" rel="noopener">Abrir as próximas {proximoTrecho.filter(x => x.ids.length).length} no Google Maps</a>}
+    <button className="link" data-escolher-maps onClick={A.escolherParaMaps}>Ou escolher os pinos no mapa</button>
     {R.areas.map((ra, i) => {
       const a = loja.area(ra.id);
       const ps = ra.ordem.map(loja.parada).filter((p): p is Parada => !!p);
@@ -364,8 +368,33 @@ function Lista() {
   </div>;
 }
 
+// Escolher os pinos para o Maps (pedido do dono, 16/10): ele toca nos pinos na ordem em que quer
+// ir, e o Maps recebe os mesmos pontos com as mesmas letras. O botão vem antes da lista dos
+// escolhidos: com nove, ela passa da altura do cartão.
+function CartaoEscolha() {
+  const {ui} = useLoja();
+  const ps = ui.escolhidas.map(loja.parada).filter((p): p is Parada => !!p && p.lat != null && p.lng != null);
+  const pontos = ps as (Parada & Ponto)[];
+  return <div className="folha" data-folha="escolher">
+    <div className="folha-cab">
+      <div className="titulo">Escolher pinos para o Maps</div>
+      <button className="quadrado" aria-label="Sair" onClick={A.voltar}><Icone nome="x" /></button>
+    </div>
+    <div className="info">Toque nos pinos na ordem em que quer ir, até {MAPS_MAX}. Tocar de novo tira. <b data-quantas>{ps.length} de {MAPS_MAX}</b>.</div>
+    {ps.length
+      ? <a className="btn pri grande-btn" data-acao="abrir-maps" target="_blank" rel="noopener"
+          href={ps.length > 1 ? linkMapsVarios(pontos) : linkMaps(pontos[0])}>Abrir no Maps</a>
+      : <button className="btn pri grande-btn" disabled>Abrir no Maps</button>}
+    {ps.map((p, i) => <div className="sub-entrega" key={p.id} data-escolhida={p.id}>
+      <span className="badge" style={{background: '#111827'}}>{LETRAS[i]}</span>
+      <span className="o-que-muda">{p.texto.split(',').slice(0, 2).join(',')}</span>
+    </div>)}
+  </div>;
+}
+
 export function FolhaRota() {
   const {e, ui} = useLoja();
+  if (ui.folha === 'escolher') return <CartaoEscolha />;
   // o pino tocado pode ter sumido (parada removida, rota resetada): aí vale o cartão de sempre
   if (ui.pino && ui.pino.some(id => loja.parada(id))) return <CartaoPino ids={ui.pino} />;
   if (!e.rota) return <CartaoMontar />;

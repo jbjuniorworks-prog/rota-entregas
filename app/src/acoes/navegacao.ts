@@ -1,10 +1,11 @@
 import {loja, status, type Tela} from '../loja';
-import {e, ui} from './base';
+import {alternarEscolha} from '../logica/escolha';
+import {contar, e, ui} from './base';
 
 // O botão voltar do celular. Até 02/10 as abas não entravam no histórico, e voltar saía do app
 // de qualquer tela. Agora cada tela e cada painel aberto é um passo: voltar fecha o que abriu.
 // Na tela de base, o primeiro voltar avisa e o segundo sai (pedido de 02/10).
-interface Passo {tela: Tela; folha: 'proxima' | 'lista'; pino: string[] | null; menu: boolean}
+interface Passo {tela: Tela; folha: 'proxima' | 'lista' | 'escolher'; pino: string[] | null; menu: boolean}
 // No history.state vai também a altura do passo (quantos acima da tela de base) e de qual
 // abertura do app ele é: recarregando a página, os passos de antes continuam no histórico.
 interface Marca {passo: Passo; altura: number; sessao: number}
@@ -30,6 +31,8 @@ function aplicar(p: Passo) {
   // como se arruma um pino
   if (p.tela !== 'rota' || p.folha === 'lista') ui.posicionando = null;
   if (p.tela !== 'admin') ui.marcandoLugar = null;
+  // saiu da escolha dos pinos (voltar, Sair): a próxima vez começa do zero
+  if (p.tela !== 'rota' || p.folha !== 'escolher') ui.escolhidas = [];
   ui.tela = p.tela;
   ui.folha = p.folha;
   ui.pino = p.pino;
@@ -80,6 +83,20 @@ export function trocar(muda: Partial<Passo>) {
 }
 
 export const alturaAgora = () => altura;
+
+// Escolher os pinos para o Maps (16/10): um passo, que o voltar desfaz como fecha um cartão.
+// Enquanto dura, tocar num pino escolhe em vez de abrir o cartão dele.
+export function escolherParaMaps() {
+  contar('escolher-maps');
+  abrir({tela: 'rota', folha: 'escolher', pino: null});
+}
+
+export function tocarParaEscolher(ids: string[]) {
+  const r = alternarEscolha(ui.escolhidas, ids, loja.parada);
+  ui.escolhidas = r.escolhidas;
+  if (r.aviso) status(r.aviso, 4000);
+  loja.mudou(false);
+}
 
 export function voltar() {
   history.back();
