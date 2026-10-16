@@ -99,6 +99,32 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Rota do Luan de 16/10: o pino do 1630 que sumia, consertado
+
+- **Onde procurar:** planilha `16-10-2026 Luan Mateus Santos Silva.xlsx` (120 pacotes, 24 paradas).
+  Os três do 1630 da Avenida Franklin de Campos Sobral, Condomínio Mercure, CEP 49027-000, são as
+  sequências 57, 59 e 62, dentro da parada 12, que junta o 1580, o 1623 e o 1630. O CEP termina em
+  000, então a chave é pela rua, e a 62 tem chave própria, porque a rua veio com "Condominio
+  MERCURI" no nome.
+- **O que a nuvem tem dele ali:**
+  - entregues às 11:37:47 e 11:37:53, com marcação na porta em −10,939817, −37,062853;
+  - mais cinco marcações no mesmo ponto às 11:39:40 a 11:39:49, ele tocando de novo sem ver o pino;
+  - até 11:45, nenhuma passagem do 1630: só marcação, que sozinha é sugestão. Conferir se elas
+    chegam, ou se o desfazer as tirou da fila.
+- **O defeito, reproduzido com a planilha dele em 412×915.** A pilha de pinos nascia da primeira
+  entrega na ordem da planilha, mas o pino era desenhado na primeira pela ordem da rota.
+  - A ADS do "1623, Cond Aquarius 101 B" vem primeiro na planilha, e a Shopee a pôs na porta do
+    Mercure.
+  - Entregues "aqui", os dois do 1630 entraram na pilha dos entregues do 1623 por essa ADS. O pino
+    foi desenhado 40 m acima, no primeiro do 1623 pela rota.
+  - Desfazendo, voltava; entregando de novo, sumia.
+  - Agora a pilha nasce da primeira pela rota, e a medida e o desenho usam o mesmo ponto. O teste
+    novo de `pinos.test.ts` quebra com o código antigo.
+- **Não reproduzido:** o segundo print, das 11:39, com todos os pinos sumidos e só o balão "P9 ×3".
+  É o sinal do Leaflet no meio de uma animação de zoom: com `markerZoomAnimation: false`, os pinos
+  ficam escondidos e os balões, não. Se voltar a acontecer, anotar se mexer no zoom ou recarregar
+  traz os pinos de volta.
+
 ## Motorista novo em conferência (15/10): publicado, aguardando a rua
 
 - **O pedido:** no dia em que entraram dois motoristas novos, um marcou duas portas no lugar

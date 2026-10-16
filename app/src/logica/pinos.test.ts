@@ -56,4 +56,22 @@ describe('empilhar pinos', () => {
     ];
     expect(ids(empilhar(ps, tela(0.5)))).toEqual([['feita'], ['falta']]);
   });
+
+  // Rota do Luan, 16/10: a ADS do 1623 vinha primeiro na planilha, na porta do Mercure (1630), e o
+  // resto do 1623 a 40 m. Entregue "aqui", o 1630 entrava na pilha pela ADS e era desenhado no
+  // primeiro do 1623 pela rota: o pino sumia de onde ele estava.
+  it('a entrega marcada na porta aparece na porta, não no pino de outro endereço que a planilha pôs ali perto', () => {
+    const feita = {entregue: true};
+    const ps = [
+      parada('ads1623', 'Avenida das Flores, 1623, Cond Aquarius 101 B', 0, feita),
+      parada('aquarius', 'Avenida das Flores, 1623, Bloco C ap 103', 40, feita),
+      parada('mercure', 'Avenida das Flores, 1630, Condomínio Mercure', -3, feita),
+    ];
+    const naRota: Record<string, number> = {aquarius: 0, mercure: 1, ads1623: 2};
+    const pilhas = empilhar(ps, tela(0.3), p => naRota[p.id]);
+    const doMercure = pilhas.find(g => g.ps.some(p => p.id === 'mercure'))!;
+    // o pino é desenhado na primeira da pilha
+    expect(Math.abs(doMercure.ps[0].lat! - ps[2].lat!) * GRAU).toBeLessThan(10);
+    expect(ids(pilhas)).toEqual([['aquarius', 'ads1623'], ['mercure']]);
+  });
 });

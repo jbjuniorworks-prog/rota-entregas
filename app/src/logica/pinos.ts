@@ -13,9 +13,14 @@ export interface Pilha {
 
 const estadoDe = (p: Parada) => p.entregue ? 'e' : p.adiada ? 'a' : 'p';
 
+// O pino de uma pilha é desenhado na primeira dela pela ordem da rota, e é com essa que as outras
+// se medem: o grupo nasce dela. Nascendo da primeira da planilha, a pilha decidia por um ponto e
+// aparecia em outro. Em 16/10 o Luan entregou "aqui" os dois do 1630, ao lado de uma ADS do 1623
+// que a planilha punha na porta do Mercure: entregues, eles entraram na pilha dos entregues do
+// 1623, e o pino foi desenhado 40 m acima. Desfazendo, voltava; entregando de novo, sumia.
 export function empilhar(ps: Parada[], projetar: (p: Ponto) => {x: number; y: number}, ordem: (p: Parada) => number = () => 0): Pilha[] {
   const out: Pilha[] = [];
-  for (const p of ps) {
+  for (const p of [...ps].sort((a, b) => ordem(a) - ordem(b))) {
     if (p.lat == null || p.lng == null) continue;
     const pt = projetar(p as Ponto);
     const estado = estadoDe(p);
@@ -27,6 +32,5 @@ export function empilhar(ps: Parada[], projetar: (p: Ponto) => {x: number; y: nu
     if (g) g.ps.push(p);
     else out.push({ps: [p], x: pt.x, y: pt.y, estado});
   }
-  for (const g of out) g.ps.sort((a, b) => ordem(a) - ordem(b));
   return out;
 }
