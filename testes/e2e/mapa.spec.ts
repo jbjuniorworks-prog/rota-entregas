@@ -380,62 +380,146 @@ test.describe('agir pelo pino', () => {
       .toEqual(['waze', 'maps', 'depois']);
   });
 
+  // Os pinos à vista (acima do cartão, abaixo do topo), cada um com os lugares que junta: entregas
+  // por entregar a mais de 10 m uma da outra, como a escolha conta.
+  const pinosAVista = (page) => page.evaluate(() => {
+    const ps = JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas as {id: string; lat: number; lng: number; entregue?: boolean}[];
+    const m = document.querySelector('#map')!.getBoundingClientRect(), painel = document.querySelector('#painel')!.getBoundingClientRect();
+    const longe = (a: any, b: any) => 111320 * Math.hypot(a.lat - b.lat, (a.lng - b.lng) * Math.cos(a.lat * Math.PI / 180)) > 10;
+    return [...document.querySelectorAll('.pino[data-ids]')].flatMap(el => {
+      const r = el.getBoundingClientRect();
+      if (!(r.width > 0 && r.left >= m.left && r.right <= m.right && r.top >= m.top + 70 && r.bottom <= painel.top - 5)) return [];
+      const lugares: any[] = [];
+      for (const id of el.getAttribute('data-ids')!.split('+')) {
+        const p = ps.find(q => q.id === id)!;
+        if (!p.entregue && lugares.every(q => longe(q, p))) lugares.push(p);
+      }
+      return lugares.length ? [{chave: el.getAttribute('data-ids')!, lugares: lugares.map(p => p.id)}] : [];
+    });
+  });
+  const doPino = (page, id: string, o: 'chave' | 'texto') => page.evaluate(([i, oq]) => {
+    const el = [...document.querySelectorAll('.pino[data-ids]')].find(p => p.getAttribute('data-ids')!.split('+').includes(i));
+    return el ? (oq === 'chave' ? el.getAttribute('data-ids') : el.textContent) : null;
+  }, [id, o]);
+  const meioDe = (page, ids: string[]) => page.evaluate(is => {
+    const ps = JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas;
+    const [p, q] = is.map((i: string) => ps.find((x: any) => x.id === i));
+    return {lat: (p.lat + q.lat) / 2, lng: (p.lng + q.lng) / 2};
+  }, ids);
+
   // "Ou escolher quais pinos colocar, até 9" (dono, 16/10): tocando nos pinos do mapa.
   test('escolher pinos para o Maps: a ordem dos toques é a do Maps, tocar de novo tira, e o voltar sai', async ({page}) => {
-    const {garantirMapa} = await import('./apoio');
+    const {garantirMapa, verNoMapa} = await import('./apoio');
     await abrir(page);
     await carregar(page, 'testes/planilhas/rota-d.xlsx');
     await montar(page);
     await garantirMapa(page);
-    const {verNoMapa} = await import('./apoio');
-    const estado = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas as {id: string; lat: number; lng: number; entregue?: boolean}[]);
+    const estado = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas as {id: string; lat: number; lng: number}[]);
     const pino = (k: string) => page.locator(`.pino[data-ids="${k}"]`);
     const proxima = await posicaoDaProxima(page);
 
     await page.locator('[data-folha="proxima"] [data-escolher-maps]').click();
     const cartao = page.locator('[data-folha="escolher"]');
     await expect(cartao.locator('[data-quantas]')).toHaveText('0 de 9');
-    // enquadrada, a rota de teste vira um ou dois pinos: perto, eles se separam
-    const visiveis = () => page.evaluate(() => {
-      const m = document.querySelector('#map')!.getBoundingClientRect(), painel = document.querySelector('#painel')!.getBoundingClientRect();
-      return [...document.querySelectorAll('.pino[data-ids]')].filter(p => {
-        const r = p.getBoundingClientRect();
-        return r.width > 0 && r.left >= m.left && r.right <= m.right && r.top >= m.top + 70 && r.bottom <= painel.top - 5;
-      }).map(p => p.getAttribute('data-ids')!);
-    });
-    let chaves = await visiveis();
-    for (const z of [15, 16, 17]) {
-      if (chaves.length >= 3) break;
-      await verNoMapa(page, proxima.lat, proxima.lng, z);
-      chaves = await visiveis();
+    // três pinos à vista que, somados, cabem nos nove: as letras de cada um seguem quantos lugares
+    // ele junta ("A+1" para dois)
+    const tres = async () => (await pinosAVista(page)).sort((v, w) => v.lugares.length - w.lugares.length).slice(0, 3);
+    let vista = await tres();
+    for (const zz of [16, 17, 18]) {
+      if (vista.length === 3 && vista.reduce((n, v) => n + v.lugares.length, 0) <= 9) break;
+      await verNoMapa(page, proxima.lat, proxima.lng, zz);
+      vista = await tres();
     }
-    expect(chaves.length, 'três pinos à vista').toBeGreaterThanOrEqual(3);
-    const [x, y, z] = chaves;
+    expect(vista.length, 'três pinos à vista').toBe(3);
+    const [x, y, z] = vista;
+    const rotulo = (de: number, n: number) => 'ABCDEFGHI'[de] + (n > 1 ? `+${n - 1}` : '');
     // fora da ordem do mapa, de propósito
-    for (const k of [z, x, y]) await pino(k).click();
-    await expect(cartao.locator('[data-quantas]')).toHaveText('3 de 9');
-    await expect(pino(z)).toHaveText('A');
-    await expect(pino(x)).toHaveText('B');
-    await expect(pino(y)).toHaveText('C');
+    for (const v of [z, x, y]) await pino(v.chave).click();
+    const [nz, nx, ny] = [z, x, y].map(v => v.lugares.length);
+    await expect(cartao.locator('[data-quantas]')).toHaveText(`${nz + nx + ny} de 9`);
+    await expect(pino(z.chave)).toHaveText(rotulo(0, nz));
+    await expect(pino(x.chave)).toHaveText(rotulo(nz, nx));
+    await expect(pino(y.chave)).toHaveText(rotulo(nz + nx, ny));
     await expect(page.locator(PINO), 'tocar escolhe, não abre o cartão do pino').toHaveCount(0);
 
     const escolhidas = await cartao.locator('[data-escolhida]').evaluateAll(es => es.map(e => e.getAttribute('data-escolhida')!));
-    expect(escolhidas.map((id, i) => [z, x, y][i].split('+').includes(id))).toEqual([true, true, true]);
+    expect(escolhidas, 'na ordem dos toques, e cada pino com os seus lugares').toEqual([...z.lugares, ...x.lugares, ...y.lugares]);
     const ps = await estado();
     const ponto = (id: string) => { const p = ps.find(q => q.id === id)!; return `${p.lat},${p.lng}`; };
     const u = new URL((await cartao.locator('[data-acao=abrir-maps]').getAttribute('href'))!);
-    expect(u.searchParams.get('waypoints')).toBe(`${ponto(escolhidas[0])}|${ponto(escolhidas[1])}`);
-    expect(u.searchParams.get('destination')).toBe(ponto(escolhidas[2]));
+    expect(u.searchParams.get('waypoints')).toBe(escolhidas.slice(0, -1).map(ponto).join('|'));
+    expect(u.searchParams.get('destination')).toBe(ponto(escolhidas.at(-1)!));
 
-    await pino(x).click();
-    await expect(cartao.locator('[data-quantas]')).toHaveText('2 de 9');
-    await expect(pino(y), 'quem vinha depois sobe uma letra').toHaveText('B');
+    await pino(x.chave).click();
+    await expect(cartao.locator('[data-quantas]')).toHaveText(`${nz + ny} de 9`);
+    await expect(pino(y.chave), 'quem vinha depois sobe').toHaveText(rotulo(nz, ny));
 
     await page.goBack();
     await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
-    await expect(pino(z)).not.toHaveText('A');
-    await pino(z).click();
+    await expect(pino(z.chave)).not.toHaveText(rotulo(0, nz));
+    await pino(z.chave).click();
     await expect(page.locator(PINO), 'fora da escolha, o pino volta a abrir o cartão').toBeVisible();
+  });
+
+  // Revisão de 16/10: o mapa afastado junta num pino entregas de lugares diferentes. Escolher esse
+  // pino não pode parecer que levou todos e mandar um só, nem o contador discordar das letras.
+  test('escolher com pinos juntados pelo zoom: cada lugar é um destino, e afastar mostra quantos há no pino', async ({page}) => {
+    const {garantirMapa, verNoMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-d.xlsx');
+    await montar(page);
+    await garantirMapa(page);
+    const cartao = page.locator('[data-folha="escolher"]');
+    const quantas = cartao.locator('[data-quantas]');
+    const entrar = async () => {
+      await page.locator('[data-folha="proxima"] [data-escolher-maps]').click();
+      await expect(quantas).toHaveText('0 de 9');
+    };
+    await entrar();
+    const afastado = await page.evaluate(() => ({z: (window as any).rotaTeste.zoomAtual(), c: (window as any).rotaTeste.centro()}));
+    const afastar = () => verNoMapa(page, afastado.c.lat, afastado.c.lng, afastado.z);
+
+    // um pino juntado que, de perto, se separa: o primeiro e o segundo lugar em pinos diferentes
+    const juntados = (await pinosAVista(page)).filter(v => v.lugares.length > 1 && v.lugares.length <= 9);
+    let g: {chave: string; lugares: string[]} | null = null, perto: any = null;
+    for (const c of juntados) {
+      const meio = await meioDe(page, c.lugares.slice(0, 2));
+      await verNoMapa(page, meio.lat, meio.lng, 18);
+      const [ka, kb] = [await doPino(page, c.lugares[0], 'chave'), await doPino(page, c.lugares[1], 'chave')];
+      const vista = await pinosAVista(page);
+      const va = vista.find(v => v.chave === ka), vb = vista.find(v => v.chave === kb);
+      if (ka !== kb && va && vb) { g = c; perto = {meio, ka, kb, n: va.lugares.length + vb.lugares.length}; break; }
+      await afastar();
+    }
+    expect(g, 'um pino juntado que se separa de perto').toBeTruthy();
+    const [a, b] = g!.lugares;
+
+    // afastado, o pino juntado vira um destino por lugar, e diz quantos
+    await afastar();
+    await page.locator(`.pino[data-ids="${g!.chave}"]`).click();
+    await expect(quantas).toHaveText(`${g!.lugares.length} de 9`);
+    await expect(cartao.locator('[data-escolhida]')).toHaveCount(g!.lugares.length);
+    await expect.poll(() => doPino(page, a, 'texto')).toBe(`A+${g!.lugares.length - 1}`);
+    const u = new URL((await cartao.locator('[data-acao=abrir-maps]').getAttribute('href'))!);
+    expect((u.searchParams.get('waypoints') || '').split('|').filter(Boolean).length + 1, 'um destino por lugar').toBe(g!.lugares.length);
+
+    // de perto, cada lugar com a sua letra
+    await verNoMapa(page, perto.meio.lat, perto.meio.lng, 18);
+    await expect.poll(() => doPino(page, a, 'texto')).toMatch(/^A/);
+    await expect.poll(() => doPino(page, b, 'texto')).toMatch(/^B/);
+
+    // de novo, do zero: de perto, dois pinos separados; afastando, eles caem no mesmo pino, que diz
+    // quantos tem, e tocar nele tira os dois
+    await page.goBack();
+    await entrar();
+    await verNoMapa(page, perto.meio.lat, perto.meio.lng, 18);
+    await page.locator(`.pino[data-ids="${perto.ka}"]`).click();
+    await page.locator(`.pino[data-ids="${perto.kb}"]`).click();
+    await expect(quantas).toHaveText(`${perto.n} de 9`);
+    await afastar();
+    await expect.poll(() => doPino(page, a, 'texto')).toBe(`A+${perto.n - 1}`);
+    await page.locator(`.pino[data-ids="${g!.chave}"]`).click();
+    await expect(quantas).toHaveText('0 de 9');
   });
 
   test('na porta verificada, Entreguei, Waze, Maps e Depois cabem numa fileira do celular', async ({page}) => {

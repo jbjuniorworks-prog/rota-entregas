@@ -170,7 +170,10 @@ export interface PontoDoTrecho {
   alvo: Ponto;
 }
 
-// O Maps vai até a letra I (o dono, 16/10): mais pontos que isso ele corta. O ajuste aceitava 25.
+// Teto de nove pontos adotado pelo app depois do teste do dono no Maps do celular (16/10): até a
+// letra I. Não é limite garantido do Maps: a documentação fala em até nove pontos intermediários,
+// e em só três quando o link abre no navegador do celular, não no aplicativo. O destino e os
+// intermediários saem em linkMapsVarios. O ajuste aceitava 25.
 export const MAPS_MAX = 9;
 const tamanhoDoTrecho = (tamanho: number) => Math.min(MAPS_MAX, Math.max(1, +tamanho || MAPS_MAX));
 

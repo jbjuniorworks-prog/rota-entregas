@@ -176,10 +176,36 @@ Fora da lista:
     ordem dos toques;
   - o cartão mostra "N de 9", "Abrir no Maps" e os escolhidos. O voltar ou o X saem, e a escolha
     some;
-  - pino entregue não entra, e o décimo avisa que o Maps vai até 9;
+  - pino entregue não entra, e o décimo avisa que o app manda até 9;
   - conta no "Uso dos botões" do Admin.
 
   Olhar na rua: se acham a entrada e se usam.
+- **Revisão de 16/10, antes de publicar as duas acima:**
+  - **Pino juntado pelo zoom.** O mapa afastado junta num pino entregas de lugares diferentes, e a
+    escolha mandava só a primeira. Agora cada lugar do pino (a mais de 10 m um do outro) é um
+    destino, na ordem da rota. O pino mostra quantos tem ("A+2"), e tocar num pino com escolhidos
+    tira todos. Se não cabe inteiro nos nove, nada entra, e o aviso pede para aproximar. Contador,
+    letras, lista e link saem da mesma lista: a que tira entregue e parada que sumiu.
+  - **O teto de nove é do app.** Ele foi adotado pelo teste do dono no celular, não é limite
+    garantido do Maps. A documentação fala em nove pontos intermediários, e em só três quando o
+    link abre no navegador do celular. O aviso diz "o limite que o app manda ao Maps".
+  - **Testado em simulação:**
+    - com 9 pontos, o link leva 8 intermediários e o destino, na ordem;
+    - o ponto final só entra no trecho que chega ao fim da rota;
+    - a escolha com pino juntado, de perto e de longe, na `rota-d.xlsx`, em 412×915.
+  - **Não testado no aparelho:** se o Maps do Android abre os nove, na ordem, até o último. Abrir
+    com nove pontos distintos no celular de um deles; se abrir no navegador em vez do aplicativo,
+    podem passar só três intermediários.
+  - **Conferência, segurança:** o teste da nuvem chama a `posicoes_com` direto com a sessão de um
+    motorista, e o banco recusa; o motorista também não vê as `marcas_em_conferencia`. Cada teste
+    da nuvem passou a fixar o papel da conta de que precisa.
+- **Endereços sem chave, classificados (16/10), frente separada, sem regra.** Dos 13 textos
+  distintos nas planilhas:
+  - 4 têm o número e o app não extrai: "n:07" no complemento, "Cinco" por extenso, "O4" com a
+    letra O no lugar do zero, e "Número 100" no complemento;
+  - 2 são ambíguos: "R.O33" e "Lt 17" (lote);
+  - 5 não têm número: "Não", ".", "Sem", "Falco", "D:n";
+  - 2 têm o apartamento no lugar do número do prédio: "304ap", "Ap204".
 
 ## Próximos passos, nesta ordem (12/10)
 

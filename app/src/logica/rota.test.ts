@@ -216,13 +216,30 @@ describe('blocos e trechos do Maps', () => {
     expect(trechoDesde(ordem, achar, 9, fim, ps[3].id)!.at(-1)!.alvo).toBe(fim);
     expect(trechoDesde(ordem, achar, 1, fim, ps[0].id)!.map(x => x.ids)).toEqual([[ps[0].id, ps[1].id]]);
   });
-  it('nenhum trecho passa de 9 pontos, o que o Maps aceita (até a letra I), nem com o ajuste maior', () => {
+  it('nenhum trecho passa de 9 pontos, o teto do app, nem com o ajuste maior', () => {
     const muitas = Array.from({length: 12}, (_, i) => parada(-10.95 - i * 0.001, -37.05));
     const achar3 = (id: string) => muitas.find(p => p.id === id);
     const ord = muitas.map(p => p.id), fim = {id: 'fim', lat: -10.99, lng: -37.04, exibido: ''};
     expect(trechos(ord, achar3, 25, fim).map(t => t.length)).toEqual([9, 4]);
     expect(trechoDesde(ord, achar3, 25, fim, ord[0])).toHaveLength(9);
     expect(trechoDesde(ord, achar3, 25, fim, ord[5])!.map(x => x.ids)).toEqual([...ord.slice(5).map(id => [id]), []]);
+  });
+  it('o ponto final só entra no trecho que chega ao fim da rota, e quando cabe', () => {
+    const muitas = Array.from({length: 12}, (_, i) => parada(-10.95 - i * 0.001, -37.05));
+    const achar3 = (id: string) => muitas.find(p => p.id === id);
+    const ord = muitas.map(p => p.id), fim = {id: 'fim', lat: -10.99, lng: -37.04, exibido: ''};
+    // do primeiro: nove pontos e ainda faltam três, então o fim fica para depois
+    expect(trechoDesde(ord, achar3, 9, fim, ord[0])!.some(x => x.alvo === fim)).toBe(false);
+    // do quarto: os nove chegam ao último, e o fim não cabe
+    expect(trechoDesde(ord, achar3, 9, fim, ord[3])!.some(x => x.alvo === fim)).toBe(false);
+    expect(trechos(ord, achar3, 9, fim).map(t => t.some(x => x.alvo === fim))).toEqual([false, true]);
+  });
+  it('com nove pontos, o link leva oito intermediários e o último como destino, na ordem', () => {
+    const nove = Array.from({length: 9}, (_, i) => ({lat: -10.9 - i / 100, lng: -37.0 - i / 100}));
+    const u = new URL(linkMapsVarios(nove));
+    expect(u.searchParams.get('waypoints')!.split('|')).toEqual(nove.slice(0, 8).map(p => `${p.lat},${p.lng}`));
+    expect(u.searchParams.get('destination')).toBe(`${nove[8].lat},${nove[8].lng}`);
+    expect(u.searchParams.get('origin'), 'a saída é onde o celular está').toBeNull();
   });
   it('parada fora da rota não tem trecho', () => {
     expect(trechoDesde(ordem, achar, 9, null, 'outra')).toBeNull();

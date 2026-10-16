@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {abrir, pararDeSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
-import {letraDoPino} from '../logica/escolha';
+import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {haversine} from '../logica/geo';
 import {empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
@@ -117,6 +117,7 @@ export default function Mapa() {
     if (e.fim) limites.push([e.fim.lat, e.fim.lng]);
     const marcasAdmin = ui.tela === 'admin' && ui.marcas ? ui.marcas : null;
     const escolhendo = ui.tela === 'rota' && ui.folha === 'escolher';
+    const escolhidas = escolhendo ? escolhidasValidas(ui.escolhidas, loja.parada) : [];
     const alvo = comLocal
       .filter(p => !p.entregue && !p.adiada)
       .map(p => ({p, i: ondeNaRota(p.id)}))
@@ -133,7 +134,7 @@ export default function Mapa() {
       e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0)).join('|'),
       e.areas.map(a => a.id + a.cor).join(','),
       marcasAdmin ? 'admin' + marcasAdmin.vez : '',
-      escolhendo ? 'escolhidas' + ui.escolhidas.join(',') : '',
+      escolhendo ? 'escolhidas' + escolhidas.join(',') : '',
     ].join('#');
 
     if (desenho !== desenhado.current) {
@@ -151,7 +152,7 @@ export default function Mapa() {
         const p = g.ps[0];
         const chave = g.ps.map(x => x.id).join('+');
         // escolhido para o Maps: a letra que ele vai ter lá, num pino escuro
-        const letra = escolhendo ? letraDoPino(ui.escolhidas, g.ps.map(x => x.id)) : '';
+        const letra = escolhendo ? letraDoPino(escolhidas, g.ps.map(x => x.id)) : '';
         const cor = letra ? '#111827' : loja.area(p.area).cor;
         const apagado = p.entregue || !!p.adiada;
         const so = g.ps.length === 1;

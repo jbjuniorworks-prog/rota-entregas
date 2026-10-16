@@ -51,8 +51,12 @@ test.describe('nuvem @nuvem', () => {
     await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({conferir: false})});
   });
   test.afterAll(apagarMotoristaDeTeste);
+  // Cada teste diz de que conta precisa: o da rua deixa a conta como admin, e a ordem não pode
+  // decidir o resultado de outro.
+  const comoMotoristaAntigo = () => api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({papel: 'motorista', conferir: false})});
 
   test('rota, entregas e correção chegam ao banco, e o motorista não passa das regras', async ({page}) => {
+    await comoMotoristaAntigo();
     await page.goto('./');
     await page.getByLabel('E-mail').fill(EMAIL);
     await page.getByLabel('Senha', {exact: true}).fill(SENHA);
@@ -88,6 +92,7 @@ test.describe('nuvem @nuvem', () => {
   });
 
   test('o CEP aprende com as entregas marcadas na porta', async ({page}) => {
+    await comoMotoristaAntigo();
     await page.goto('./');
     await page.getByLabel('E-mail').fill(EMAIL);
     await page.getByLabel('Senha', {exact: true}).fill(SENHA);
@@ -164,6 +169,7 @@ test.describe('nuvem @nuvem', () => {
   });
 
   test('a origem de cada posição chega ao banco', async ({page}) => {
+    await comoMotoristaAntigo();
     await page.goto('./');
     await page.getByLabel('E-mail').fill(EMAIL);
     await page.getByLabel('Senha', {exact: true}).fill(SENHA);
@@ -224,6 +230,12 @@ test.describe('nuvem @nuvem', () => {
       expect((await api('/rest/v1/observacoes', {method: 'POST', body: JSON.stringify({chave_lugar: CHAVE, ...ponto, precisao_m: 5})}, token)).status).toBe(201);
       expect(await posicoes(), 'o par dele não verifica a porta para ninguém').toEqual([]);
       expect((await decidir(true)).status, 'ele não aprova a si mesmo').toBe(400);
+      // A `posicoes` passa nulo para a de dentro; chamada direta, com o pendente dele (ou o de outro)
+      // na conta, ela contornaria a conferência. Só o banco a chama.
+      const direta = await api('/rest/v1/rpc/posicoes_com', {method: 'POST', body: JSON.stringify({chaves: [CHAVE], incluir: uid})}, token);
+      expect(direta.status, 'motorista não chama a de dentro: ' + JSON.stringify(direta.corpo)).not.toBe(200);
+      expect(Array.isArray(direta.corpo) ? direta.corpo : []).toEqual([]);
+      expect((await api('/rest/v1/rpc/marcas_em_conferencia', {method: 'POST', body: '{}'}, token)).status, 'nem vê o que espera o admin').toBe(400);
 
       await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({papel: 'admin'})});
       const espera = (await api('/rest/v1/rpc/marcas_em_conferencia', {method: 'POST', body: '{}'}, token)).corpo;

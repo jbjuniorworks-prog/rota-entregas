@@ -1,6 +1,6 @@
 import * as A from '../acoes';
 import {haversine, RAIO_BLOCO} from '../logica/geo';
-import {LETRAS} from '../logica/escolha';
+import {escolhidasValidas, LETRAS} from '../logica/escolha';
 import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, MAPS_MAX, partesDoEndereco, porPerto, trechoDesde, trechos} from '../logica/otimizacao';
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
@@ -373,7 +373,7 @@ function Lista() {
 // escolhidos: com nove, ela passa da altura do cartão.
 function CartaoEscolha() {
   const {ui} = useLoja();
-  const ps = ui.escolhidas.map(loja.parada).filter((p): p is Parada => !!p && p.lat != null && p.lng != null);
+  const ps = escolhidasValidas(ui.escolhidas, loja.parada).map(id => loja.parada(id)!);
   const pontos = ps as (Parada & Ponto)[];
   return <div className="folha" data-folha="escolher">
     <div className="folha-cab">
