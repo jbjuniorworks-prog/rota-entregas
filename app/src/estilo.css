@@ -157,7 +157,9 @@ textarea{min-height:140px;resize:vertical}
 .chip.on{border-color:var(--c,var(--pri));background:color-mix(in srgb,var(--c,var(--pri)) 12%,#fff)}
 /* a ordem da rota, escolha dele (16/10): dois botões do mesmo tamanho, o escolhido marcado */
 .ordem{display:flex;gap:8px;margin:4px 0}
-.ordem .chip{flex:1 1 0;justify-content:center;text-align:center}
+.ordem .chip,.ordem .btn{flex:1 1 0;justify-content:center;text-align:center}
+.ordem .btn{min-height:56px}
+.rotulo-montar{font-weight:700;margin-top:4px}
 .ordem-da-rota{display:flex;flex-direction:column;gap:4px;margin:6px 0}
 .linha-links{display:flex;flex-wrap:wrap;gap:4px 16px}
 .dot{width:14px;height:14px;border-radius:50%;background:var(--c);display:inline-block;flex:none}
@@ -208,8 +210,10 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
 /* os pinos */
 .pino{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:grid;place-items:center}
 .pino span{transform:rotate(45deg);color:#fff;font-weight:700;font-size:11px}
-/* Circulando grupos (16/10): um dedo desenha. Sem isto, o navegador toma o arrasto como rolagem e corta o traço. */
-.leaflet-container.circulando{touch-action:none;cursor:crosshair}
+/* Circulando grupos (16/10): um dedo desenha. Sem isto, o navegador toma o arrasto como rolagem e corta o traço.
+   Com o id: a regra do Leaflet tem o mesmo peso de duas classes e chega depois, no pedaço do mapa, e
+   ganhava. No celular do Luan o dedo não desenhava nada; com o mouse, funcionava. */
+#map.circulando{touch-action:none;cursor:crosshair}
 .num-grupo{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);color:#fff;font-weight:800;font-size:14px;display:grid;place-items:center}
 .pino.duvida{border:3px solid #dc2626}
 .pino.quase{border:3px solid #ea580c}

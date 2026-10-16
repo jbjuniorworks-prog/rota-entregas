@@ -156,14 +156,19 @@ function EscolhaDaOrdem() {
 }
 
 function CartaoMontar() {
-  const {e} = useLoja();
+  const {e, ui} = useLoja();
   const semLocal = e.paradas.filter(p => p.lat == null && !p.entregue).length;
   return <div className="folha" data-folha="montar">
     <div className="titulo">{e.paradas.length} entrega(s) no mapa</div>
     <div className="info">A rota sai de onde você está.</div>
     {semLocal > 0 && <div className="aviso">{semLocal} parada(s) sem local ficarão fora da rota. Corrija em Conferir.</div>}
-    <EscolhaDaOrdem />
-    <button className="btn pri grande-btn" onClick={A.montarRota}>Montar a rota</button>
+    {/* um toque e a rota aparece no mapa (dono, 16/10): escolher a ordem e depois montar eram dois
+        toques para uma decisão só */}
+    <div className="rotulo-montar">Montar a rota pelo:</div>
+    <div className="ordem">
+      <button className="btn pri" data-montar="melhor" disabled={ui.ocupado} onClick={() => A.montarCom(false)}>Melhor caminho</button>
+      <button className="btn contorno-azul" data-montar="sequencia" disabled={ui.ocupado} onClick={() => A.montarCom(true)}>Sequência das entregas</button>
+    </div>
     <button className="btn grande-btn" data-circular onClick={A.circularNoMapa}>Circular grupos no mapa</button>
     <button className="link" data-escolher-maps onClick={A.escolherParaMaps}>Escolher pinos para o Maps</button>
   </div>;

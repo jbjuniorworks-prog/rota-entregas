@@ -108,6 +108,16 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     - **Testado:** em unidade e na tela com a `rota-d.xlsx` em 412×915, desenhando com o mouse.
       Cinco sabotagens quebraram os testes. **Não testado no aparelho:** o desenho com o dedo e a
       pinça de dois dedos num Android de verdade.
+    - **No celular do Luan o dedo não desenhava nada (16/10), consertado, commit local.** A regra de
+      toque do Leaflet (`.leaflet-container.leaflet-touch-zoom`) tem o peso da minha e chega depois,
+      no pedaço do mapa: o navegador tomava o arrasto como rolagem e cancelava o traço no primeiro
+      movimento. Com o mouse, o do teste, isso não acontece. Agora a regra vai pelo id do mapa, o
+      segundo dedo se reconhece pelo `isPrimary`, e há teste com toque de verdade (CDP): pinça
+      girando aproxima e não desenha; um dedo desenha. Os dois quebram com o código antigo.
+    - **Entrar em "Circular" afastava o mapa** que ele tinha aproximado (dono, 16/10): o modo
+      enquadrava todas as entregas, com a saída da rota de antes junto, e elas viravam um pino só.
+      Agora o mapa fica como ele deixou. Sem teste que quebre: no navegador de teste a mudança de
+      altura do cartão interrompe a animação do enquadramento, e o zoom não mudava nem antes.
     - **Livre para voltar atrás:** "Tirar os grupos", na Lista, devolve as entregas dos círculos à
       área de antes e refaz a rota numa só. As áreas feitas à mão em "Áreas e horários" ficam.
 18. **A ordem e a saída, óbvias para o motorista** (16/10, pedido do dono: "tem que ser livre" e
@@ -115,11 +125,14 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     - **A ordem é escolha dele, à vista:** "Melhor caminho" ou "Sequência das entregas" (parada 1,
       2, 3) no cartão de montar a rota e no alto da Lista, onde trocar já refaz a rota. Vale também
       dentro dos grupos circulados. Era uma caixa em "Ponto de saída e de chegada".
+    - **Um toque monta (dono, 16/10):** no cartão de montar, "Melhor caminho" e "Sequência das
+      entregas" já montam a rota, que aparece no mapa. O "Montar a rota" separado saiu do cartão.
     - **A saída é sempre onde ele está.** O endereço de saída digitado ficava guardado no celular e
       valia escondido nos dias seguintes; agora toda montagem pega o GPS, e um endereço guardado de
       antes não vale mais. Saíram o "Sair de outro endereço" e o "trocar" do cartão. A tela virou
       "Ponto de chegada", com o ponto final, o voltar ao ponto de saída e as paradas por trecho.
-      Sem GPS, a rota sai sem ponto de saída, como já saía.
+      Sem GPS, a rota sai sem ponto de saída, como já saía. O "Resetar a rota" não leva mais a saída
+      de ontem para o dia novo: ela aparecia no mapa e entrava no enquadramento.
     - **No Circuit, hoje Spoke:** desde 21/08/2026, depois de otimizar, "Refine > Manually order
       route": ele desenha com o dedo um laço em volta das paradas que quer primeiro, depois das
       seguintes, e reotimiza. Os grupos podem ser aumentados, apagados, desfeitos e reordenados. As

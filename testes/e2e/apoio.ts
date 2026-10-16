@@ -134,7 +134,8 @@ export async function colar(page: Page) {
 
 export async function montar(page: Page) {
   await paraABase(page);
-  const montar = page.getByRole('button', {name: 'Montar a rota', exact: true});
+  // no cartão de montar, a ordem escolhida já monta: o de sempre é o melhor caminho
+  const montar = page.locator('[data-montar="melhor"]');
   if (await montar.isVisible()) await montar.click();
   else await menu(page, /^(Refazer|Montar) a rota$/);
   await expect(page.locator('[data-folha="proxima"], [data-folha="fim"]')).toBeVisible({timeout: 20_000});

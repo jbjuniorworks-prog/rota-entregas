@@ -248,7 +248,7 @@ describe('previsões', () => {
 });
 
 describe('guardar estado e reset do dia', () => {
-  it('o reset guarda cópia por 10 minutos e mantém cidade, chave e saída, mas não o ponto final', () => {
+  it('o reset guarda cópia por 10 minutos e mantém cidade e chave, mas não a saída de ontem nem o ponto final', () => {
     const g = guardaNaMemoria(), e = estadoVazio();
     adicionarDaPlanilha(e, A, () => false);
     e.inicio = {id: 'inicio', lat: 1, lng: 1, exibido: '', texto: 'Galpão'};
@@ -258,7 +258,7 @@ describe('guardar estado e reset do dia', () => {
     const novo = resetarDia(g, e, t);
     expect(novo.paradas).toEqual([]);
     expect(novo.fim).toBeUndefined();
-    expect(novo.inicio?.texto).toBe('Galpão');
+    expect(novo.inicio).toBeNull();
     expect(carregarEstado(g).paradas).toEqual([]);
     expect(backupRecente(g, t + 5 * 60000)?.estado.paradas).toHaveLength(10);
     expect(backupRecente(g, t + 11 * 60000)).toBeNull();

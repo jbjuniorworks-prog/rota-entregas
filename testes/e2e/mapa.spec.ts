@@ -9,7 +9,7 @@ test('sem o pedaço do mapa, o app continua de pé', async ({page, context}) => 
   await abrir(page);
   await carregar(page, ROTA_A);
   await expect(page.getByText('Não consegui carregar o mapa')).toBeVisible();
-  await expect(page.getByRole('button', {name: 'Montar a rota', exact: true})).toBeVisible();
+  await expect(page.getByRole('button', {name: 'Melhor caminho'})).toBeVisible();
 });
 
 test('quando a rede volta, o botão traz o mapa', async ({page, context}) => {
@@ -681,6 +681,51 @@ test.describe('agir pelo pino', () => {
 // Na porta, com o pacote na mão: "Estou aqui" num cartão e "Entreguei" em outro eram dois toques,
 // cada um lendo o GPS de novo. O par que a nuvem aceita como porta confirmada é correção e
 // passagem no mesmo ponto — então as duas têm de sair da mesma leitura.
+// Luan, 16/10: no celular, o dedo não desenhava nada. O teste de cima desenha com o mouse, e só o
+// dedo o navegador toma como rolagem: a regra de toque do Leaflet chegava depois e ganhava.
+test.describe('circular com o dedo', () => {
+  test.use({viewport: {width: 412, height: 915}, hasTouch: true, isMobile: true});
+
+  test('dois dedos aproximam o mapa e não desenham; um dedo desenha o grupo', async ({page}) => {
+    const {aviso, garantirMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-d.xlsx');
+    await garantirMapa(page);
+    await page.locator('[data-folha="montar"] [data-circular]').tap();
+    const cartao = page.locator('[data-folha="circular"]');
+    await expect(cartao).toBeVisible();
+    await page.waitForFunction(() => !!(window as any).rotaTeste);
+    const caixa = (await page.locator('#map').boundingBox())!, painel = (await page.locator('#painel').boundingBox())!;
+    const cx = caixa.x + caixa.width / 2, cy = (caixa.y + painel.y) / 2;
+    const cdp = await page.context().newCDPSession(page);
+    const toque = (type: string, touchPoints: {x: number; y: number}[]) => cdp.send('Input.dispatchTouchEvent', {type, touchPoints});
+    const zoom = () => page.evaluate(() => (window as any).rotaTeste.zoomAtual() as number);
+
+    // pinça girando: o primeiro dedo faz um arco, que desenhado viraria círculo
+    const antes = await zoom();
+    const dedos = (k: number) => {
+      const r = 30 + k * 10, a = Math.PI + k * 0.15;
+      return [{x: cx + r * Math.cos(a), y: cy + r * Math.sin(a)}, {x: cx - r * Math.cos(a), y: cy - r * Math.sin(a)}];
+    };
+    await toque('touchStart', dedos(0));
+    for (let k = 1; k <= 12; k++) await toque('touchMove', dedos(k));
+    await toque('touchEnd', []);
+    await expect.poll(zoom, 'o mapa aproximou').toBeGreaterThan(antes);
+    await expect(cartao.locator('[data-grupo]')).toHaveCount(0);
+    await expect(aviso(page), 'nem tentou fechar um círculo').not.toContainText('círculo');
+
+    // um dedo, em volta do que está à vista
+    const [x0, x1, y0, y1] = [caixa.x + 15, caixa.x + caixa.width - 15, caixa.y + 90, painel.y - 15];
+    await toque('touchStart', [{x: x0, y: y1}]);
+    for (const [x, y] of [[x0, y0], [x1, y0], [x1, y1], [x0 + 5, y1]]) {
+      for (let k = 1; k <= 6; k++) await toque('touchMove', [{x: x0 + (x - x0) * k / 6, y: y1 + (y - y1) * k / 6}]);
+    }
+    await toque('touchEnd', []);
+    await expect(cartao.locator('[data-grupo]')).toHaveCount(1);
+    await expect(cartao.locator('[data-grupo="1"]')).toContainText('entrega(s)');
+  });
+});
+
 test.describe('entreguei aqui, pelo pino', () => {
   // o GPS só é ligado depois de montar: com ele, o marcador da saída cai em cima da entrega
   test.use({viewport: {width: 412, height: 915}});

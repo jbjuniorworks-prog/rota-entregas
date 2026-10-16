@@ -48,8 +48,11 @@ export const salvarEstado = (g: Guarda, e: Estado) => g.gravar(CHAVES.estado, e)
 
 export function resetarDia(g: Guarda, e: Estado, agora = Date.now()): Estado {
   g.gravar(CHAVES.backup, {quando: agora, estado: e});
-  const {cidade, inicio, tamTrecho, ordemDoApp} = e;
-  const novo = Object.assign(estadoVazio(), {cidade, inicio, tamTrecho, ordemDoApp});
+  // A saída não passa para o dia seguinte desde 16/10: ela é sempre o GPS de quando ele monta a
+  // rota. A de ontem só aparecia no mapa e entrava no enquadramento, que afastava até as entregas
+  // de hoje virarem um pino só.
+  const {cidade, tamTrecho, ordemDoApp} = e;
+  const novo = Object.assign(estadoVazio(), {cidade, tamTrecho, ordemDoApp});
   salvarEstado(g, novo);
   return novo;
 }

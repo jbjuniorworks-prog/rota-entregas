@@ -300,7 +300,7 @@ test.describe('corrigir pela localização do motorista', () => {
     await cartao.locator('.topo').click();
     await cartao.getByRole('button', {name: /Remover/}).click();
     await aba(page, '3. Rota');
-    await expect(page.getByRole('button', {name: 'Montar a rota', exact: true})).toBeVisible();
+    await expect(page.getByRole('button', {name: 'Melhor caminho'})).toBeVisible();
     await expect(page.locator('[data-folha="proxima"]')).toHaveCount(0);
   });
 });

@@ -158,7 +158,7 @@ test('se o pedido de GPS fica sem resposta, a rota sai assim mesmo, e a resposta
   });
   await abrir(page);
   await carregar(page, ROTA_B);
-  await page.getByRole('button', {name: 'Montar a rota', exact: true}).click();
+  await page.getByRole('button', {name: 'Melhor caminho'}).click();
   await expect(aviso(page)).toContainText('Pegando sua localização');
   await expect(page.locator('[data-folha="proxima"]')).toBeVisible({timeout: 60_000});
   expect(await ordem(page, NOMES)).toHaveLength(6);
@@ -227,12 +227,11 @@ test('se refazer sair sem as ruas, dá para voltar para a rota de antes', async 
 test('a ordem é escolha dele: a sequência das entregas ou o melhor caminho, ao montar e depois, na lista', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_A);
-  const doCartao = page.locator('[data-folha="montar"] [data-ordem]');
-  await expect(doCartao.getByRole('button', {name: 'Melhor caminho'}), 'o de sempre vem marcado').toHaveAttribute('aria-pressed', 'true');
-  await doCartao.getByRole('button', {name: 'Sequência das entregas'}).click();
-  await page.getByRole('button', {name: 'Montar a rota', exact: true}).click();
+  // no cartão de montar, um toque escolhe e monta
+  await page.locator('[data-folha="montar"]').getByRole('button', {name: 'Sequência das entregas'}).click();
   await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
   await lista(page);
+  await expect(page.locator('[data-folha="lista"] [data-ordem]').getByRole('button', {name: 'Sequência das entregas'})).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.rodape-lista')).toContainText(/Você escolheu a sequência das entregas/);
   const SEQUENCIA = ['Rua das Acácias, 120', 'Rua dos Ipês, 300', 'Avenida Central, 1500', 'Travessa Um, 45', 'Rua D, 49'];
   expect(await ordem(page, SEQUENCIA)).toEqual(SEQUENCIA);

@@ -310,13 +310,13 @@ export default function Mapa() {
     const el = m.getContainer();
     m.dragging.disable();
     el.classList.add('circulando');
-    const dedos = new Set<number>();
     let traco: L.LatLng[] | null = null, linha: L.Polyline | null = null, inicio: L.Point | null = null, longe = 0;
     const largar = () => { traco = null; linha?.remove(); linha = null; };
     const desce = (ev: PointerEvent) => {
-      dedos.add(ev.pointerId);
-      // o segundo dedo é pinça: o círculo que começava não vale
-      if (dedos.size > 1 || ev.button > 0 || (ev.target as Element).closest('.leaflet-control')) { largar(); return; }
+      // o segundo dedo é pinça: o círculo que começava não vale. Pelo isPrimary, que o navegador
+      // dá, e não contando dedos: a conta dependia de nenhum "levantou" se perder
+      if (!ev.isPrimary) { largar(); return; }
+      if (ev.button > 0 || (ev.target as Element).closest('.leaflet-control')) return;
       traco = [m.mouseEventToLatLng(ev)];
       inicio = m.mouseEventToContainerPoint(ev);
       longe = 0;
@@ -325,19 +325,19 @@ export default function Mapa() {
       linha = L.polyline(traco, {color: cor, weight: 3, dashArray: '6 6', interactive: false}).addTo(m);
     };
     const anda = (ev: PointerEvent) => {
-      if (!traco || !linha) return;
+      if (!traco || !linha || !ev.isPrimary) return;
       traco.push(m.mouseEventToLatLng(ev));
       longe = Math.max(longe, inicio!.distanceTo(m.mouseEventToContainerPoint(ev)));
       linha.setLatLngs(traco);
     };
     const sobe = (ev: PointerEvent) => {
-      dedos.delete(ev.pointerId);
+      if (!ev.isPrimary) return;
       const t = traco, grande = longe >= 30;
       largar();
       // toque ou risco curto não é círculo: um aviso a cada toque no mapa só atrapalharia
       if (t && grande && t.length >= 4) fecharLaco(t.map(q => ({lat: q.lat, lng: q.lng})));
     };
-    const cancela = (ev: PointerEvent) => { dedos.delete(ev.pointerId); largar(); };
+    const cancela = () => largar();
     el.addEventListener('pointerdown', desce);
     el.addEventListener('pointermove', anda);
     window.addEventListener('pointerup', sobe);

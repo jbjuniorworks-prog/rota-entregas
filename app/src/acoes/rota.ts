@@ -264,10 +264,11 @@ export async function moverArea(id: string, delta: number) {
 }
 
 // Circular grupos no mapa (ideia do Luan, 16/10): um passo, que o voltar desfaz como a escolha
-// dos pinos para o Maps. Abre com todas as entregas à vista, que é delas que ele vai escolher.
+// dos pinos para o Maps. O mapa fica como ele deixou: ele aproximou para ver as entregas que vai
+// circular. Enquadrando tudo, com a saída da rota de antes junto, o mapa afastava até elas virarem
+// um pino só (dono, 16/10).
 export function circularNoMapa() {
   contar('circular');
-  ui.enquadrar++;
   abrir({tela: 'rota', folha: 'circular', pino: null});
 }
 
@@ -306,6 +307,14 @@ export async function mudarOrdem(doApp: boolean) {
   e().ordemDoApp = doApp;
   loja.mudou();
   if (e().rota) await montarRota();
+}
+
+// Do cartão de montar: a ordem escolhida já monta, e a rota aparece no mapa (dono, 16/10).
+export async function montarCom(doApp: boolean) {
+  if (ui.ocupado) return;
+  e().ordemDoApp = doApp;
+  loja.mudou();
+  await montarRota();
 }
 
 export async function copiarRota() {
