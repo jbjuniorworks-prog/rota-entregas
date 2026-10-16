@@ -113,8 +113,18 @@ pino fica na porta.
 - **O que a nuvem tem dele ali:**
   - entregues às 11:37:47 e 11:37:53, com marcação na porta em −10,939817, −37,062853;
   - mais cinco marcações no mesmo ponto às 11:39:40 a 11:39:49, ele tocando de novo sem ver o pino;
-  - até 11:45, nenhuma passagem do 1630: só marcação, que sozinha é sugestão. Conferir se elas
-    chegam, ou se o desfazer as tirou da fila.
+  - as passagens do 1630 chegaram às 12:12, no pino, junto com as do 1623, quando o celular voltou
+    a mandar a fila. O desfazer não as tirou.
+- **"Ele finalizou e ainda há endereços sem verificar" (dono, 16/10), respondido, nada a mudar.**
+  - Dos 40 endereços da rota, 38 voltam verificados: 32 pelas entregas do próprio Luan, 6 pela
+    marcação do admin.
+  - Os dois de fora são o Sílvio Teixeira 10 (sequências 9 a 12) e o Franklin de Campos Sobral 1620,
+    Cond. Atlântico Sul (45 a 47). Foram marcados com "Entreguei" às 12:12, depois da rota, os dois
+    do mesmo ponto, a 4 km dos pinos. Passagem longe do pino, sozinha, não decide a porta, e é isso
+    que se quer.
+  - Esse ponto também gravou o lugar "Cond.AtlânticoSul", mas como sugestão. O celular só usa lugar
+    verificado. Na âncora do CEP 49025-100, a passagem mexe o raio de 817 para 818 m, com 61
+    marcas.
 - **O defeito, reproduzido com a planilha dele em 412×915.** A pilha de pinos nascia da primeira
   entrega na ordem da planilha, mas o pino era desenhado na primeira pela ordem da rota.
   - A ADS do "1623, Cond Aquarius 101 B" vem primeiro na planilha, e a Shopee a pôs na porta do
