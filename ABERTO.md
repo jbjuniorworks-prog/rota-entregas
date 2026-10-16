@@ -84,6 +84,9 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
       amostra mede só os critérios definidos, não todos os casos possíveis; a porta do Pedro não
       entrou nela. Voltar ao painel só com um dado novo que decida os ambíguos, como mais portas
       confirmadas ou o censo cobrindo mais números.
+16. **Motorista novo em conferência** (15/10, seção abaixo). Feito, commit local, não publicado.
+    Próximo: o dono rodar a `022_conferencia.sql`, depois `npm run test:nuvem` (escreve no banco
+    de produção), e só então publicar.
 
 Resolvida: **várias entregas na mesma porta** (item 4 de 12/10). Cartões iguais viram uma parada
 cada (`26a82c1`, publicada em `60e555d`), e os cinco da Augusto Franco 2000 de 07/10 voltaram a ser
@@ -94,6 +97,60 @@ Fora da lista:
 - "Falha viva" guarda os defeitos conhecidos sem conserto decidido;
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
+
+## Motorista novo em conferência (15/10): feito, falta rodar a 022
+
+- **O pedido:** no dia em que entraram dois motoristas novos, um marcou duas portas no lugar
+  errado, e uma já apareceu verificada para todos; o dono apagou. O que vale para todos sai de um
+  motorista só por três caminhos:
+  - o "Entreguei aqui", que grava a marcação e a passagem no mesmo ponto, perto do pino ou longe;
+  - a entrega a até 30 m do pino;
+  - duas entregas no mesmo ponto em dias diferentes.
+
+  O primeiro foi o caminho das 33 portas de 04/10. Pedido do dono: conferir tudo o que o novo
+  entrega no período, "se entregou, é lá que vale".
+- **Medido:** do que o novo apagado deixou não sobra rastro, e o que ficou dele (5 passagens
+  marcadas de casa, a 3,5 km) não verifica nada sozinho. Nas primeiras semanas de quem entrou
+  depois da 017, o que mudaria a porta para os outros:
+  - Leudy: 44 endereços, 6 só por entrega no pino;
+  - Jefferson: 34, 18 só no pino.
+
+  Uns 5 por dia para o admin olhar.
+- **O que a 022 faz:**
+  - conta nova nasce em conferência (`perfis.conferir`), e as de 15/10 entram com o que já
+    gravaram;
+  - marcação, passagem e lugar com nome nascem pendentes. O banco decide pelo perfil, não pelo que
+    o celular manda;
+  - o pendente não entra na `posicoes`, nos lugares com nome, na âncora do CEP nem nas ruas
+    desenhadas ou nomeadas pelas entregas. No celular dele a memória do aparelho continua
+    lembrando;
+  - no Admin, "Em conferência" lista só o que mudaria a porta para os outros, com a distância do
+    pino da rota dele. O que vai longe vem primeiro, e as entregues no pino são aprovadas num
+    toque;
+  - aprovar faz valer como a de qualquer motorista, não como a do admin. Apagar tira a marcação e
+    o lugar, e guarda a passagem como recusada;
+  - em Motoristas: "Encerrar conferência" ou "Pôr em conferência". Encerrar não solta o que ficou
+    esperando.
+- **Testado:** num Postgres local com o `banco-inteiro.sql` e o `000_rodar_tudo.sql` por cima, e
+  em unidade e e2e com a nuvem simulada. Sabotados a separação do pino, a ordem, o filtro do
+  pendente na lista comum e o número do selo: os testes quebraram. O teste `@nuvem` novo
+  só roda depois da 022. Ele também tira a conta de teste da conferência, senão o teste do CEP e o
+  da rua deixam de passar.
+- **Não coberto:** o item 10 (trava de marcação em lote) continua valendo para quem já saiu da
+  conferência.
+
+## Perguntas do Luan sobre a rota de 06/10 (15/10), respondidas, nada a mudar
+
+- **"Entreguei" simples no lugar certo e não verificado**, Oswaldo Garavini 60: ele entregou o 48 e
+  o 60 do mesmo ponto, com 4 s de diferença, a 15 m do pino do 48 e a 31 m do pino do 60. Passou
+  dos 30 m e não verificou. Verificar ali levaria a porta do 60 para a do 48.
+- **Paulo Rocha Novaes "R.O33"**: sem número que o app leia, o endereço não tem chave, e nada
+  dessa entrega sobe. Medido nas planilhas guardadas: 17 de 5.201 pacotes (0,3%) ficam sem chave,
+  4 deles este. Recusado: não vale uma regra.
+- **Na rota de 06/10 dele, 38 passagens chegaram, 27 no pino.**
+- **"Cadê o Maps com várias paradas"**: continua na Lista ("Abrir as próximas N no Google Maps" e
+  "No Google Maps, por trecho"), que só existe depois de "Montar a rota". No print a rota não
+  estava montada, e o cartão do pino só tem o Waze desde 06/10.
 
 ## Próximos passos, nesta ordem (12/10)
 

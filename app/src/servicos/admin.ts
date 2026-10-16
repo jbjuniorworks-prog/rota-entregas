@@ -1,5 +1,6 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {lugaresDaBusca, peneiraDaNuvem, peneiraDeChave, type LugarDaBusca} from '../logica/busca';
+import {agruparConferencia, type MarcaEmConferencia, type MotoristaEmConferencia} from '../logica/conferencia';
 import type {PortaDaNuvem} from '../logica/triagem';
 import {nuvem} from './nuvem';
 
@@ -8,6 +9,9 @@ export interface Motorista {
   nome: string;
   papel: 'motorista' | 'admin';
   ativo: boolean;
+  // em conferência (022): o que marca ou entrega só vale depois que o admin aprova. Sem a 022
+  // rodada, não vem.
+  conferir?: boolean;
 }
 
 export interface RotaResumo {
@@ -76,7 +80,7 @@ async function paginado<T>(consulta: (de: number, ate: number) => PromiseLike<{d
 const pedacos = <T>(xs: T[], n: number) => Array.from({length: Math.ceil(xs.length / n)}, (_, i) => xs.slice(i * n, i * n + n));
 
 export async function listarMotoristas(): Promise<Motorista[]> {
-  const {data, error} = await cliente().from('perfis').select('id, nome, papel, ativo').order('papel').order('nome');
+  const {data, error} = await cliente().from('perfis').select('*').order('papel').order('nome');
   falhou(error);
   return (data || []) as Motorista[];
 }
@@ -98,6 +102,11 @@ export async function criarMotorista(email: string, nome: string): Promise<Conta
 
 export async function mudarAtivo(id: string, ativo: boolean) {
   const {error} = await cliente().from('perfis').update({ativo}).eq('id', id);
+  falhou(error);
+}
+
+export async function mudarConferir(id: string, conferir: boolean) {
+  const {error} = await cliente().from('perfis').update({conferir}).eq('id', id);
   falhou(error);
 }
 
@@ -148,11 +157,14 @@ export async function pacotesDaRota(id: string): Promise<PacoteAdmin[]> {
 
 export async function listarCorrecoes(limite = 500): Promise<LugarCorrigido[]> {
   const s = cliente();
-  const {data, error} = await s.from('correcoes').select('chave_lugar, lat, lng, criado_em, motorista_id, perfis(nome, papel)')
+  // `*` e não a lista: o `pendente` só existe depois da 022, e pedir uma coluna que falta derruba
+  // a lista inteira
+  const {data, error} = await s.from('correcoes').select('*, perfis(nome, papel)')
     .order('criado_em', {ascending: false}).limit(limite);
   falhou(error);
   const lugares = new Map<string, LugarCorrigido>();
-  for (const c of (data || []) as any[]) {
+  // a do motorista em conferência espera em "Em conferência", com o que mudaria se aprovada
+  for (const c of ((data || []) as any[]).filter(c => !c.pendente)) {
     let l = lugares.get(c.chave_lugar);
     if (!l) lugares.set(c.chave_lugar, l = {chave: c.chave_lugar, endereco: '', bairro: '', marcacoes: [], situacao: null, escolhida: null});
     const ja = l.marcacoes.find(m => m.motorista_id === c.motorista_id);
@@ -260,6 +272,18 @@ export async function procurarLugares(busca: string): Promise<LugarAchado[]> {
   falhou(error);
   const porChave = new Map(((pos || []) as any[]).map(p => [p.chave_lugar as string, p]));
   return lugares.map(l => ({...l, porta: porChave.get(l.chave) || null}));
+}
+
+export async function listarEmConferencia(): Promise<MotoristaEmConferencia[]> {
+  const {data, error} = await cliente().rpc('marcas_em_conferencia');
+  if (error) throw new Error(/marcas_em_conferencia/.test(error.message || '') ? 'falta rodar o supabase/022_conferencia.sql' : error.message);
+  return agruparConferencia((data || []) as MarcaEmConferencia[]);
+}
+
+export async function decidirMarcas(motorista: string, chaves: string[], aprovar: boolean): Promise<number> {
+  const {data, error} = await cliente().rpc('decidir_marcas', {motorista, chaves, aprovar});
+  falhou(error);
+  return (data as number) || 0;
 }
 
 export async function confirmarPosicao(chave: string, lat: number, lng: number) {

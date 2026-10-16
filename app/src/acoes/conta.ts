@@ -19,8 +19,11 @@ export async function verPendenciasDoAdmin(forcar = false) {
   if (!forcar && Date.now() - consultado < DE_NOVO) return;
   consultado = Date.now();
   try {
-    const [{listarCorrecoes}, {triar}] = await Promise.all([import('../servicos/admin'), import('../logica/triagem')]);
-    ui.esperandoAdmin = triar(await listarCorrecoes(), Date.now(), null).decidir.length;
+    const [{listarCorrecoes, listarEmConferencia}, {triar}, {contarConferencia}] =
+      await Promise.all([import('../servicos/admin'), import('../logica/triagem'), import('../logica/conferencia')]);
+    // sem a 022 rodada a conferência falha, e o número fica só com o resto
+    const [lugares, conferencia] = await Promise.all([listarCorrecoes(), listarEmConferencia().catch(() => [])]);
+    ui.esperandoAdmin = triar(lugares, Date.now(), null).decidir.length + contarConferencia(conferencia);
     loja.mudou(false);
   } catch {
     // sem rede ou sem resposta: o número fica como estava, e a próxima volta ao app tenta de novo

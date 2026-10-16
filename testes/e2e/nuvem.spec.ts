@@ -34,7 +34,7 @@ async function apagarMotoristaDeTeste() {
 test.describe('nuvem @nuvem', () => {
   test.use({papel: null});
   test.skip(!URL || !SERVICO, 'precisa do .env com SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY');
-  let uid = '';
+  let uid = '', nasceuEmConferencia: boolean | undefined;
 
   test.beforeAll(async () => {
     await apagarMotoristaDeTeste();
@@ -45,6 +45,10 @@ test.describe('nuvem @nuvem', () => {
     // 021_conta_nasce_desativada.sql. O teste a ativa como o `npm run motoristas -- criar` faz.
     expect((await api(`/rest/v1/perfis?id=eq.${uid}&select=ativo`)).corpo[0].ativo).toBe(false);
     await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({ativo: true})});
+    // Conta nova nasce em conferência (022). A de teste faz o motorista antigo, cuja entrega vale na
+    // hora, e o teste da conferência a põe de volta. Separado do de cima: sem a 022 este falha.
+    nasceuEmConferencia = (await api(`/rest/v1/perfis?id=eq.${uid}&select=*`)).corpo[0].conferir;
+    await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({conferir: false})});
   });
   test.afterAll(apagarMotoristaDeTeste);
 
@@ -196,6 +200,39 @@ test.describe('nuvem @nuvem', () => {
         rota: outra.id, itens: [{tn: 'X', lat: 0, lng: 0, fonte: 'x', precisao: 'x'}],
       })}, token);
       expect(alheia.corpo, 'não pode escrever na rota de outro').toBe(0);
+    }
+  });
+
+  // 15/10: de dois motoristas novos, um marcou duas portas erradas e uma já apareceu verificada para
+  // todos. O "Entreguei aqui" grava a marcação e a passagem no mesmo ponto, e esse par confirmava a
+  // porta sozinho. Em conferência (022), nada dele vale até o admin aprovar.
+  test('em conferência, o "Entreguei aqui" do motorista novo só vale depois que o admin aprova', async () => {
+    expect(nasceuEmConferencia, 'conta nova nasce em conferência').toBe(true);
+    const entrar = await fetch(URL + '/auth/v1/token?grant_type=password', {method: 'POST',
+      headers: {apikey: SERVICO, 'Content-Type': 'application/json'}, body: JSON.stringify({email: EMAIL, password: SENHA})});
+    const token = (await entrar.json()).access_token;
+    await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({conferir: true})});
+    try {
+      // CEP inventado, para não mexer em porta de verdade
+      const CHAVE = '49099997|1', ponto = {lat: -10.9500, lng: -37.0900};
+      const posicoes = async () => (await api('/rest/v1/rpc/posicoes', {method: 'POST', body: JSON.stringify({chaves: [CHAVE]})}, token)).corpo;
+      const decidir = (aprovar: boolean) => api('/rest/v1/rpc/decidir_marcas', {method: 'POST', body: JSON.stringify({motorista: uid, chaves: [CHAVE], aprovar})}, token);
+
+      // o celular mandando pendente=false não muda nada: quem decide é o banco, pelo perfil
+      expect((await api('/rest/v1/correcoes', {method: 'POST', body: JSON.stringify({chave_lugar: CHAVE, ...ponto, pendente: false})}, token)).status).toBe(201);
+      expect((await api('/rest/v1/observacoes', {method: 'POST', body: JSON.stringify({chave_lugar: CHAVE, ...ponto, precisao_m: 5})}, token)).status).toBe(201);
+      expect(await posicoes(), 'o par dele não verifica a porta para ninguém').toEqual([]);
+      expect((await decidir(true)).status, 'ele não aprova a si mesmo').toBe(400);
+
+      await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({papel: 'admin'})});
+      const espera = (await api('/rest/v1/rpc/marcas_em_conferencia', {method: 'POST', body: '{}'}, token)).corpo;
+      expect(espera.filter((x: any) => x.chave_lugar === CHAVE)).toMatchObject([{motorista_id: uid, situacao: 'confirmado', situacao_antes: null, no_pino: false}]);
+      expect((await decidir(true)).corpo, 'a marcação e a passagem').toBe(2);
+      await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({papel: 'motorista'})});
+      // aprovada, vale como a de um motorista, não como a do admin
+      expect(await posicoes()).toMatchObject([{chave_lugar: CHAVE, situacao: 'confirmado', fonte: 'correcao'}]);
+    } finally {
+      await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({papel: 'motorista', conferir: false})});
     }
   });
 

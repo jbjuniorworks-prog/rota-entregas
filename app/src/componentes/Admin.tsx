@@ -1,5 +1,6 @@
 ﻿import {useEffect, useState} from 'react';
 import {haversine} from '../logica/geo';
+import {contarConferencia, type ItemEmConferencia, type MotoristaEmConferencia} from '../logica/conferencia';
 import {CHAVES} from '../logica/guarda';
 import {fmtKm} from '../logica/otimizacao';
 import * as A from '../acoes';
@@ -49,6 +50,7 @@ export function TelaAdmin() {
   const [motoristas, setMotoristas] = useState<Adm.Motorista[] | null>(null);
   const [rotas, setRotas] = useState<Adm.RotaResumo[] | null>(null);
   const [lugares, setLugares] = useState<Adm.LugarCorrigido[] | null>(null);
+  const [conferencia, setConferencia] = useState<MotoristaEmConferencia[] | {erro: string} | null>(null);
   const [erro, setErro] = useState('');
   // A visita anterior, lida uma vez ao abrir: o "novo" continua na tela enquanto ele está aqui,
   // e a hora desta visita só é gravada depois que as marcações chegaram de verdade.
@@ -68,14 +70,20 @@ export function TelaAdmin() {
       Adm.listarCorrecoes().then(l => {
         setLugares(l);
         guarda.gravar(CHAVES.adminVisto, Date.now());
-        // o número da aba acompanha o que ele acabou de confirmar ou apagar
-        loja.ui.esperandoAdmin = triar(l, Date.now(), null).decidir.length;
-        loja.mudou(false);
       }, falha),
+      // sem a 022 rodada ela falha, e o resto do Admin tem de abrir mesmo assim
+      Adm.listarEmConferencia().then(setConferencia, err => setConferencia({erro: (err as Error).message})),
     ]);
     setLendo(false);
   };
   useEffect(() => { carregar(); }, []);
+  const nConferir = Array.isArray(conferencia) ? contarConferencia(conferencia) : 0;
+  // o número da aba acompanha o que ele acabou de confirmar, aprovar ou apagar
+  useEffect(() => {
+    if (!lugares) return;
+    loja.ui.esperandoAdmin = triar(lugares, Date.now(), null).decidir.length + nConferir;
+    loja.mudou(false);
+  }, [lugares, nConferir]);
 
   if (nuvem.perfil?.papel !== 'admin') return <div className="info">Só quem administra vê esta tela.</div>;
   const corDe = (id: string) => CORES_MOTORISTA[Math.max(0, (motoristas || []).findIndex(m => m.id === id)) % CORES_MOTORISTA.length];
@@ -90,14 +98,15 @@ export function TelaAdmin() {
     <div className="linha" style={{marginTop: 0}}><button className="btn" onClick={carregar} disabled={lendo}>{lendo ? 'Buscando…' : '↻ Atualizar'}</button></div>
     {erro && <div className="aviso">Não consegui carregar: {erro}</div>}
     {(!motoristas || !rotas || !lugares) && !erro && <div className="info">Carregando…</div>}
-    {t && <div className={t.decidir.length ? 'aviso laranja' : 'info'} data-resumo>
-      {t.decidir.length ? <b>📌 {t.decidir.length} esperando você.</b> : '✓ Nada esperando você.'}
+    {t && <div className={t.decidir.length + nConferir ? 'aviso laranja' : 'info'} data-resumo>
+      {t.decidir.length + nConferir ? <b>{t.decidir.length + nConferir} esperando você.</b> : 'Nada esperando você.'}
       {visto != null && (t.novas
         ? ` 🆕 ${t.novas} marcação(ões) nova(s) desde ${dataHora(new Date(visto).toISOString())}.`
         : ` Nada novo desde ${dataHora(new Date(visto).toISOString())}.`)}
     </div>}
     {t && <Lugares titulo={`📌 Precisa de você (${t.decidir.length})`} lista={t.decidir} aberta decidir {...doLugar}
       vazio="Nenhuma marcação esperando decisão." />}
+    {conferencia && <EmConferencia estado={conferencia} corDe={corDe} recarregar={carregar} />}
     {t && <Lugares titulo={`🆕 Marcadas pelos motoristas nos últimos 7 dias (${t.recentes.length})`} lista={t.recentes} aberta {...doLugar}
       vazio="Nenhuma porta marcada nos últimos 7 dias." />}
     {/* depois do que espera decisão: a busca é de quando ele já sabe o que quer arrumar */}
@@ -108,6 +117,60 @@ export function TelaAdmin() {
     <BaseDeRuas />
     <UsoDosBotoes />
   </>;
+}
+
+// O motorista novo em conferência (022): o que ele marcou ou entregou e mudaria a porta para os
+// outros espera aqui. Um por um o que leva a porta para onde ele marcou; as entregas no pino da
+// rota, que só confirmam o pino que ele seguia, num toque só.
+function EmConferencia({estado, corDe, recarregar}: {estado: MotoristaEmConferencia[] | {erro: string}; corDe: (id: string) => string; recarregar: () => void}) {
+  const {ocupado, correr, fazendo} = useTrabalho();
+  if (!Array.isArray(estado)) return <details data-secao="Em conferência">
+    <summary>Em conferência</summary>
+    <div className="aviso">Não consegui ver as marcações em conferência: {estado.erro}</div>
+  </details>;
+  const decidir = async (g: MotoristaEmConferencia, itens: ItemEmConferencia[], aprovar: boolean) => {
+    const onde = itens.length === 1 ? itens[0].endereco : `${itens.length} endereços`;
+    if (!aprovar && !confirm(`Apagar o que ${g.nome} marcou em ${onde}?
+
+A entrega continua registrada, mas a posição dela não vale para ninguém.`)) return;
+    const n = await correr((aprovar ? 'ok' : 'x') + g.id + itens[0].chave_lugar, () => Adm.decidirMarcas(g.id, itens.map(i => i.chave_lugar), aprovar));
+    if (n === undefined) return;
+    status(aprovar ? 'Aprovada: vale para todos os motoristas.' : 'Apagada: não vale para ninguém.', 4000);
+    recarregar();
+  };
+  const verNoMapa = (g: MotoristaEmConferencia, i: ItemEmConferencia) => mostrarNoMapa([
+    {lat: i.lat, lng: i.lng, rotulo: g.nome.slice(0, 2), texto: `${g.nome} · ${i.endereco}`, cor: corDe(g.id)},
+    ...(i.pino_lat != null && i.pino_lng != null ? [{lat: i.pino_lat, lng: i.pino_lng, rotulo: 'R', texto: `Pino da rota de ${g.nome} · ${i.endereco}`, cor: '#6b7280'}] : []),
+    ...(i.lat_antes != null && i.lng_antes != null ? [{lat: i.lat_antes, lng: i.lng_antes, rotulo: 'P', texto: `A porta que vale hoje · ${i.endereco}`, cor: '#16a34a'}] : []),
+  ]);
+  const item = (g: MotoristaEmConferencia, i: ItemEmConferencia) => <div className="item" key={i.chave_lugar} data-conferir={i.chave_lugar}>
+    <div className="orig">{i.endereco}</div>
+    <div className="achado">{dataHora(i.criado_em)} · {i.texto}</div>
+    <div className="linha">
+      <button className="btn peq" onClick={() => verNoMapa(g, i)}>Ver no mapa</button>
+      {!i.no_pino && <button className="btn peq pri" onClick={() => decidir(g, [i], true)} disabled={!!ocupado}>{fazendo('ok' + g.id + i.chave_lugar) ? 'Aprovando…' : 'Aprovar'}</button>}
+      <button className="btn peq" onClick={() => decidir(g, [i], false)} disabled={!!ocupado}>{fazendo('x' + g.id + i.chave_lugar) ? 'Apagando…' : 'Apagar'}</button>
+    </div>
+  </div>;
+  const total = contarConferencia(estado);
+  // quem está em conferência aparece em Motoristas: vazia, a seção só empurrava o resto para baixo
+  if (!total) return null;
+  return <details open data-secao="Em conferência">
+    <summary>Em conferência ({total})</summary>
+    <div className="info">O que os motoristas em conferência marcaram ou entregaram e mudaria a porta para os outros. Só vale depois que você aprovar.</div>
+    {estado.map(g => <div key={g.id} data-conferencia={g.nome}>
+      <div className="area-cab"><span className="txt">{g.nome} · {g.mexem.length + g.noPino.length} endereço(s)</span></div>
+      {g.mexem.map(i => item(g, i))}
+      {g.noPino.length > 0 && <>
+        <div className="linha"><button className="btn pri" data-aprovar-no-pino onClick={() => decidir(g, g.noPino, true)} disabled={!!ocupado}>
+          {fazendo('ok' + g.id + g.noPino[0].chave_lugar) ? 'Aprovando…' : `Aprovar as ${g.noPino.length} entregues no pino da rota`}</button></div>
+        <details data-no-pino>
+          <summary>Ver as {g.noPino.length} entregues no pino</summary>
+          {g.noPino.map(i => item(g, i))}
+        </details>
+      </>}
+    </div>)}
+  </details>;
 }
 
 // A porta que o Pedro verificou no lugar errado (15/10) só se arrumava carregando a planilha dele.
@@ -233,11 +296,26 @@ function Motoristas({lista, recarregar}: {lista: Adm.Motorista[]; recarregar: ()
     await correr(m.id, () => Adm.mudarAtivo(m.id, !m.ativo), m.ativo ? `${m.nome} desativado(a).` : `${m.nome} ativado(a).`);
     recarregar();
   };
+  const conferir = async (m: Adm.Motorista) => {
+    if (!confirm(m.conferir
+      ? `Encerrar a conferência de ${m.nome}?
+
+O que a pessoa marcar ou entregar daqui em diante vale na hora para os outros. O que já está esperando continua esperando você.`
+      : `Pôr ${m.nome} em conferência?
+
+Daqui em diante, o que a pessoa marcar ou entregar só vale para os outros depois que você aprovar.`)) return;
+    await correr('c' + m.id, () => Adm.mudarConferir(m.id, !m.conferir), m.conferir ? `${m.nome}: conferência encerrada.` : `${m.nome} em conferência.`);
+    recarregar();
+  };
   return <details>
     <summary>Motoristas ({lista.filter(m => m.papel === 'motorista').length})</summary>
     {lista.map(m => <div className="item" key={m.id} data-motorista={m.nome} style={{display: 'flex', alignItems: 'center', gap: 8}}>
       <div className="txt"><b>{m.nome}</b>{m.papel === 'admin' ? ' · administrador' : ''}
-        <div className="achado">{m.ativo ? '🟢 ativo' : '⛔ desativado'}</div></div>
+        <div className="achado">{m.ativo ? '🟢 ativo' : '⛔ desativado'}</div>
+        {m.papel === 'motorista' && m.conferir && <span className="tag" style={{background: '#ea580c'}}>em conferência</span>}</div>
+      {/* sem a 022 rodada o perfil não traz o campo, e o botão não aparece */}
+      {m.papel === 'motorista' && m.conferir != null && <button className="btn peq" onClick={() => conferir(m)} disabled={!!ocupado}>
+        {fazendo('c' + m.id) ? 'Só um momento…' : m.conferir ? 'Encerrar conferência' : 'Pôr em conferência'}</button>}
       {m.id !== nuvem.perfil?.id && <button className="btn peq" onClick={() => mudar(m)} disabled={!!ocupado}>{fazendo(m.id) ? 'Só um momento…' : m.ativo ? 'Desativar' : 'Ativar'}</button>}
     </div>)}
     <NovaConta recarregar={recarregar} />

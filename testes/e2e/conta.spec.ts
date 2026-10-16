@@ -236,7 +236,7 @@ test.describe('administrador', () => {
       await page.getByRole('button', {name: 'Mais', exact: true}).click();
       await expect(page.locator('.menu').getByRole('button', {name: /^Admin/}).locator('[data-selo]')).toHaveText('1');
       await page.locator('.menu').getByRole('button', {name: /^Admin/}).click();
-      await expect(page.locator('[data-resumo]')).toContainText('📌 1 esperando você.');
+      await expect(page.locator('[data-resumo]')).toContainText('1 esperando você.');
       await expect(page.locator('[data-resumo]')).toContainText('🆕 1 marcação(ões) nova(s) desde');
 
       // na ordem da tela: primeiro o que espera decisão, depois o que chegou, e o resto por último
@@ -308,6 +308,68 @@ test.describe('administrador', () => {
       await expect(lugar, 'procurou de novo depois de gravar').toContainText('Marcada por quem administra.');
       expect(gravados()).toHaveLength(1);
       expect(gravados()[0].corpo).toMatchObject({chave_lugar: FLORES, lat: -10.97, lng: -37.05});
+    });
+
+    // 15/10: um dos dois motoristas novos marcou duas portas erradas, e uma já apareceu verificada
+    // para todos. Em conferência, o que ele marca ou entrega espera aqui (022).
+    test('o motorista em conferência espera o admin: aprova um por um, as do pino de uma vez, apaga, e encerra a conferência', async ({page, nuvem}) => {
+      page.on('dialog', d => d.accept());
+      const [LONGE, PERTO, PINO1, PINO2, PENDENTE] = ['49000100|1', '49000100|2', '49000100|3', '49000100|4', '49000100|5'];
+      const pino = {lat: -10.95, lng: -37.05}, casa = {lat: -10.9185, lng: -37.05};
+      const doNovo = (chave: string, extra: Record<string, unknown>) => ({
+        motorista_id: 'm3', nome: 'César', chave_lugar: chave, endereco: `Rua E, ${chave.split('|')[1]}, Centro`, criado_em: new Date().toISOString(),
+        situacao: 'confirmado', lat_antes: null, lng_antes: null, situacao_antes: null, pino_lat: pino.lat, pino_lng: pino.lng, no_pino: false, ...extra,
+      });
+      nuvem.tabelas = {
+        perfis: [{id: 'm1', nome: 'Luan', papel: 'motorista', ativo: true, conferir: false}, {id: 'm3', nome: 'César', papel: 'motorista', ativo: true, conferir: true}],
+        rotas: [],
+        pacotes: [{chave_lugar: PENDENTE, endereco: 'Rua E, 5', bairro: 'Centro'}],
+        // a marcação dele está no banco, mas pendente: não é uma "só Luan marcou" para decidir
+        correcoes: [{chave_lugar: PENDENTE, lat: casa.lat, lng: casa.lng, criado_em: new Date().toISOString(), pendente: true, motorista_id: 'm3', perfis: {nome: 'César', papel: 'motorista'}}],
+      };
+      nuvem.rpc = {marcas_em_conferencia: [
+        doNovo(PERTO, {lat: -10.9502, lng: -37.05}),
+        doNovo(LONGE, casa),
+        doNovo(PINO1, {...pino, no_pino: true}),
+        doNovo(PINO2, {...pino, no_pino: true}),
+      ]};
+
+      await abrir(page);
+      await expect(page.getByRole('button', {name: 'Mais', exact: true}).locator('[data-selo]')).toHaveText('4');
+      await menu(page, /^Admin/);
+      await expect(page.locator('[data-resumo]')).toContainText('4 esperando você.');
+      await expect(page.locator(`[data-lugar="${PENDENTE}"]`), 'a pendente não aparece como marcação comum').toHaveCount(0);
+
+      const secao = page.locator('[data-secao="Em conferência"]');
+      await expect(secao.locator('summary').first()).toHaveText('Em conferência (4)');
+      // a mais longe do pino primeiro
+      await expect(secao.locator('[data-conferencia="César"] > [data-conferir]')).toHaveCount(2);
+      const longe = secao.locator('[data-conferencia="César"] > [data-conferir]').first();
+      await expect(longe).toHaveAttribute('data-conferir', LONGE);
+      await expect(longe).toContainText('A 3,5 km do pino da rota. Aprovada, fica verificada.');
+
+      const decididas = () => nuvem.pedidos.filter(p => p.caminho === 'rpc/decidir_marcas').map(p => p.corpo);
+      await longe.getByRole('button', {name: 'Aprovar'}).click();
+      await expect(aviso(page)).toContainText('Aprovada: vale para todos os motoristas.');
+      await secao.getByRole('button', {name: 'Aprovar as 2 entregues no pino da rota'}).click();
+      await expect.poll(() => decididas().length).toBe(2);
+      await longe.getByRole('button', {name: 'Apagar'}).click();
+      await expect(aviso(page)).toContainText('Apagada: não vale para ninguém.');
+      expect(decididas()).toEqual([
+        {motorista: 'm3', chaves: [LONGE], aprovar: true},
+        {motorista: 'm3', chaves: [PINO1, PINO2], aprovar: true},
+        {motorista: 'm3', chaves: [LONGE], aprovar: false},
+      ]);
+
+      await page.getByText(/^Motoristas \(/).click();
+      await expect(page.locator('[data-motorista="César"] .tag')).toHaveText('em conferência');
+      await expect(page.locator('[data-motorista="Luan"] .tag')).toHaveCount(0);
+      await expect(page.locator('[data-motorista="Luan"]').getByRole('button', {name: 'Pôr em conferência'})).toBeVisible();
+      await page.locator('[data-motorista="César"]').getByRole('button', {name: 'Encerrar conferência'}).click();
+      await expect(aviso(page)).toContainText('César: conferência encerrada.');
+      const mudou = nuvem.pedidos.find(p => p.metodo === 'PATCH' && p.caminho === 'perfis')!;
+      expect(mudou.corpo).toEqual({conferir: false});
+      expect(mudou.busca).toContain('id=eq.m3');
     });
   });
 });
