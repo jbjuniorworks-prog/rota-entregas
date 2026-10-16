@@ -71,6 +71,9 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
 .entrega{border:1px solid var(--bd);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:10px;background:#f9fafb}
 .botoes-entrega{display:flex;gap:8px;flex-wrap:wrap}
 .botoes-entrega .btn{flex:1 1 30%}
+/* Uma fileira para entregar e outra para ir (16/10). Na porta verificada são quatro numa só, do
+   tamanho de sempre: medido em 360 e 412 px, cabem sem diminuir, e o texto quebra dentro do botão. */
+.botoes-entrega .fileira{flex:1 1 100%;display:flex;gap:8px}
 .feita{align-self:center;font-weight:700;color:var(--ok);padding:0 6px}
 /* as entregas de um mesmo endereço, uma por linha */
 .do-endereco summary{display:flex;align-items:center;min-height:40px;font-size:14px;font-weight:700;color:var(--pri);cursor:pointer}

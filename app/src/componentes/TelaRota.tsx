@@ -1,6 +1,6 @@
 import * as A from '../acoes';
 import {haversine, RAIO_BLOCO} from '../logica/geo';
-import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, partesDoEndereco, porPerto, trechos} from '../logica/otimizacao';
+import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, partesDoEndereco, porPerto, trechoDesde, trechos} from '../logica/otimizacao';
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
@@ -69,21 +69,7 @@ function EntregasDoPonto({ps}: {ps: Parada[]}) {
           <AvisoXarope p={g.ps.find(p => p.reclamacoes?.length) || g.ps[0]} />
         </div>
       </div>
-      {abertas.length > 0 ? <div className="botoes-entrega">
-        {/* porta confirmada não se marca de novo na rua: o botão ali é toque errado esperando (28/09) */}
-        {noChao && abertas[0].precisao !== 'confirmado' && <button className="btn ok" data-acao="aqui" data-ids={ids} onClick={() => { A.contar('balao-aqui'); A.entregueAqui(abertas); }}>Entreguei aqui{quantas}</button>}
-        <button className="btn contorno-ok" data-acao="entregue" data-ids={ids} onClick={() => { A.contar('balao-entreguei'); abertas.length > 1 ? A.entregarTodas(abertas) : A.marcarEntregue(abertas[0], true); }}>Entreguei{quantas}</button>
-        {abertas[0].precisao !== 'confirmado' && <button className="btn contorno" data-acao="arrumar" data-ids={abertas[0].id} onClick={() => A.posicionar(abertas[0].id)}>Arrumar o pino</button>}
-        {/* "Cadê o botão do Waze?" (Luan, 06/10): ele toca no pino para ir até ele. Um por endereço,
-            porque um pino de ruas diferentes tem mais de um destino. */}
-        <a className="btn contorno-azul" data-acao="waze" data-ids={ids} href={linkWaze(abertas[0] as Ponto)} target="_blank" rel="noopener">Waze</a>
-        {/* Na porta ele toca no pino, e é ali que procura o Depois (print de 05/10): só o cartão da
-            próxima tinha. Adiada, o mesmo lugar traz de volta, que serve de desfazer. */}
-        {loja.e.rota && (abertas.some(p => p.adiada)
-          ? <button className="btn contorno" data-acao="voltar-rota" data-ids={ids} onClick={() => abertas.forEach(A.voltarParaARota)}>Voltar para a rota</button>
-          : <button className="btn contorno" data-acao="depois" data-ids={ids} onClick={() => A.deixarParaDepois(...abertas)}>Depois</button>)}
-        {abertas[0].precisao === 'confirmado' && <span className="info">Endereço verificado. Se estiver errado, arrume em Conferir endereços.</span>}
-      </div> : <div className="botoes-entrega">
+      {abertas.length > 0 ? <BotoesDoEndereco abertas={abertas} ids={ids} quantas={quantas} noChao={noChao} /> : <div className="botoes-entrega">
         <span className="feita">Entregue</span>
         <button className="btn contorno" onClick={() => g.ps.forEach(p => A.marcarEntregue(p, false))}>Desfazer</button>
         <button className="btn contorno" onClick={() => A.abrirXarope(g.ps[0])}>Cliente reclamou</button>
@@ -92,6 +78,40 @@ function EntregasDoPonto({ps}: {ps: Parada[]}) {
       {varias && <EntregasDoEndereco ps={g.ps} />}
     </div>;
   })}</>;
+}
+
+// Uma fileira para entregar e outra para ir. Na porta verificada sobra só o Entreguei, e as quatro
+// cabem numa fileira, como antes do Maps.
+function BotoesDoEndereco({abertas, ids, quantas, noChao}: {abertas: Parada[]; ids: string; quantas: string; noChao: boolean}) {
+  const confirmada = abertas[0].precisao === 'confirmado';
+  // O Maps com várias paradas só existia na lista desde 02/10, e o dono deu falta dele (16/10).
+  // Daqui ele vai até este pino e segue a rota. Sem rota, ou fora dela, vai só até o pino, como o Waze.
+  const R = loja.e.rota;
+  const trecho = R && !abertas[0].adiada ? trechoDesde(R.areas.flatMap(a => a.ordem), loja.parada, loja.e.tamTrecho, loja.e.fim, abertas[0].id) : null;
+  const entregar = <>
+    {/* porta confirmada não se marca de novo na rua: o botão ali é toque errado esperando (28/09) */}
+    {noChao && !confirmada && <button className="btn ok" data-acao="aqui" data-ids={ids} onClick={() => { A.contar('balao-aqui'); A.entregueAqui(abertas); }}>Entreguei aqui{quantas}</button>}
+    <button className="btn contorno-ok" data-acao="entregue" data-ids={ids} onClick={() => { A.contar('balao-entreguei'); abertas.length > 1 ? A.entregarTodas(abertas) : A.marcarEntregue(abertas[0], true); }}>Entreguei{quantas}</button>
+    {!confirmada && <button className="btn contorno" data-acao="arrumar" data-ids={abertas[0].id} onClick={() => A.posicionar(abertas[0].id)}>Arrumar o pino</button>}
+  </>;
+  const ir = <>
+    {/* "Cadê o botão do Waze?" (Luan, 06/10): ele toca no pino para ir até ele. Um por endereço,
+        porque um pino de ruas diferentes tem mais de um destino. */}
+    <a className="btn contorno-azul" data-acao="waze" data-ids={ids} href={linkWaze(abertas[0] as Ponto)} target="_blank" rel="noopener">Waze</a>
+    <a className="btn contorno-azul" data-acao="maps" data-ids={ids} data-pontos={trecho && trecho.length > 1 ? trecho.length : 1} target="_blank" rel="noopener"
+      href={trecho && trecho.length > 1 ? linkMapsVarios(trecho.map(x => x.alvo)) : linkMaps(abertas[0] as Ponto)}>Maps</a>
+    {/* Na porta ele toca no pino, e é ali que procura o Depois (print de 05/10): só o cartão da
+        próxima tinha. Adiada, o mesmo lugar traz de volta, que serve de desfazer. */}
+    {R && (abertas.some(p => p.adiada)
+      ? <button className="btn contorno" data-acao="voltar-rota" data-ids={ids} onClick={() => abertas.forEach(A.voltarParaARota)}>Voltar para a rota</button>
+      : <button className="btn contorno" data-acao="depois" data-ids={ids} onClick={() => A.deixarParaDepois(...abertas)}>Depois</button>)}
+  </>;
+  return <div className="botoes-entrega">
+    {confirmada
+      ? <div className="fileira">{entregar}{ir}</div>
+      : <><div className="fileira">{entregar}</div><div className="fileira">{ir}</div></>}
+    {confirmada && <span className="info">Endereço verificado. Se estiver errado, arrume em Conferir endereços.</span>}
+  </div>;
 }
 
 // Cada entrega de um mesmo endereço numa linha: o número, o que é só dela (apartamento, bloco) e os

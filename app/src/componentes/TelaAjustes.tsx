@@ -1,4 +1,5 @@
 import * as A from '../acoes';
+import {MAPS_MAX} from '../logica/otimizacao';
 import {CORES} from '../logica/rotulos';
 import {loja, useLoja} from '../loja';
 import {Cabecalho} from './comuns';
@@ -34,7 +35,7 @@ export function TelaSaida() {
       </div>
       <label htmlFor="tamTrecho">Paradas por trecho no Google Maps</label>
       <input type="text" inputMode="numeric" id="tamTrecho" defaultValue={e.tamTrecho} style={{maxWidth: 90}}
-        onBlur={ev => A.mudar(() => { e.tamTrecho = Math.min(25, Math.max(1, parseInt(ev.target.value, 10) || 9)); })} />
+        onBlur={ev => A.mudar(() => { e.tamTrecho = Math.min(MAPS_MAX, Math.max(1, parseInt(ev.target.value, 10) || MAPS_MAX)); })} />
       <div className="info">Se o Maps cortar pontos, diminua este número.</div>
       {e.paradas.length > 0 && <div className="linha"><button className="btn pri" onClick={A.montarRota}>{e.rota ? 'Refazer a rota' : 'Montar a rota'}</button></div>}
     </div>

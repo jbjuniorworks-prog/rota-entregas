@@ -170,11 +170,31 @@ export interface PontoDoTrecho {
   alvo: Ponto;
 }
 
-export function trechos(ordem: string[], parada: (id: string) => Parada | undefined, tamanho: number, fim: Local | null | undefined): PontoDoTrecho[][] {
-  const tam = Math.max(1, +tamanho || 9);
-  const pontos = blocos(ordem, parada)
+// O Maps vai até a letra I (o dono, 16/10): mais pontos que isso ele corta. O ajuste aceitava 25.
+export const MAPS_MAX = 9;
+const tamanhoDoTrecho = (tamanho: number) => Math.min(MAPS_MAX, Math.max(1, +tamanho || MAPS_MAX));
+
+function pontosAbertos(ordem: string[], parada: (id: string) => Parada | undefined): PontoDoTrecho[] {
+  return blocos(ordem, parada)
     .map(b => ({ids: b, alvo: b.map(parada).find(p => p && !p.entregue) as (Ponto | undefined)}))
     .filter((x): x is PontoDoTrecho => !!x.alvo);
+}
+
+// O trecho que começa numa parada, para o Maps do cartão do pino (16/10): ela e as seguintes na
+// ordem da rota, do mesmo tamanho dos trechos da lista. Nulo se ela não está na rota.
+export function trechoDesde(ordem: string[], parada: (id: string) => Parada | undefined, tamanho: number, fim: Local | null | undefined, id: string): PontoDoTrecho[] | null {
+  const tam = tamanhoDoTrecho(tamanho);
+  const pontos = pontosAbertos(ordem, parada);
+  const i = pontos.findIndex(x => x.ids.includes(id));
+  if (i < 0) return null;
+  const t = pontos.slice(i, i + tam);
+  if (fim && t.length < tam) t.push({ids: [], alvo: fim});
+  return t;
+}
+
+export function trechos(ordem: string[], parada: (id: string) => Parada | undefined, tamanho: number, fim: Local | null | undefined): PontoDoTrecho[][] {
+  const tam = tamanhoDoTrecho(tamanho);
+  const pontos = pontosAbertos(ordem, parada);
   const out: PontoDoTrecho[][] = [];
   for (let i = 0; i < pontos.length; i += tam) out.push(pontos.slice(i, i + tam));
   const ultimo = out[out.length - 1];

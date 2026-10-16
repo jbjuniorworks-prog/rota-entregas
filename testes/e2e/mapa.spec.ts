@@ -359,6 +359,51 @@ test.describe('agir pelo pino', () => {
       .toHaveAttribute('href', `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`);
   });
 
+  // "Tiramos a parte que joga as paradas pro Maps?" (dono, 16/10): desde 02/10 só a lista tinha.
+  // Do pino, o Maps vai até ele e segue a rota, até a letra I.
+  test('o cartão do pino abre no Maps este pino e os seguintes, com o Maps entre o Waze e o Depois', async ({page}) => {
+    const {garantirMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await garantirMapa(page);
+    const {id, lat, lng} = await posicaoDaProxima(page);
+
+    await page.locator('.pino.alvo').click();
+    const maps = page.locator(`${PINO} [data-acao=maps][data-ids="${id}"]`);
+    const u = new URL((await maps.getAttribute('href'))!);
+    const pontos = [...u.searchParams.get('waypoints')!.split('|'), u.searchParams.get('destination')];
+    expect(pontos[0], 'começa neste pino').toBe(`${lat},${lng}`);
+    expect(pontos.length).toBeGreaterThan(1);
+    expect(pontos.length).toBeLessThanOrEqual(9);
+    expect(await maps.locator('xpath=..').locator('.btn').evaluateAll(bs => bs.map(b => b.getAttribute('data-acao'))))
+      .toEqual(['waze', 'maps', 'depois']);
+  });
+
+  test('na porta verificada, Entreguei, Waze, Maps e Depois cabem numa fileira do celular', async ({page}) => {
+    const {garantirMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const {id} = await posicaoDaProxima(page);
+    await page.evaluate(i => {
+      const e = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
+      e.paradas.find((x: any) => x.id === i).precisao = 'confirmado';
+      localStorage.setItem('rota-entregas-v2', JSON.stringify(e));
+    }, id);
+    await page.reload();
+    await garantirMapa(page);
+
+    await page.locator('.pino.alvo').click();
+    const fileiras = page.locator(`${PINO} .fileira`);
+    await expect(fileiras).toHaveCount(1);
+    expect(await fileiras.locator('.btn').evaluateAll(bs => bs.map(b => b.getAttribute('data-acao'))))
+      .toEqual(['entregue', 'waze', 'maps', 'depois']);
+    // nenhum texto passa da borda do botão, nem a fileira da largura do cartão
+    expect(await fileiras.locator('.btn').evaluateAll(bs => bs.filter(b => b.scrollWidth > b.clientWidth).map(b => b.textContent))).toEqual([]);
+    expect(await fileiras.evaluate(f => f.scrollWidth <= f.clientWidth)).toBe(true);
+  });
+
   test('entregar depois de tocar em Arrumar desarma: o toque seguinte no mapa não leva o pino', async ({page}) => {
     const {garantirMapa, clicarMapa} = await import('./apoio');
     page.on('dialog', d => d.accept());

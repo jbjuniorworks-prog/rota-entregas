@@ -158,9 +158,16 @@ Fora da lista:
   dessa entrega sobe. Medido nas planilhas guardadas: 17 de 5.201 pacotes (0,3%) ficam sem chave,
   4 deles este. Recusado: não vale uma regra.
 - **Na rota de 06/10 dele, 38 passagens chegaram, 27 no pino.**
-- **"Cadê o Maps com várias paradas"**: continua na Lista ("Abrir as próximas N no Google Maps" e
-  "No Google Maps, por trecho"), que só existe depois de "Montar a rota". No print a rota não
-  estava montada, e o cartão do pino só tem o Waze desde 06/10.
+- **"Cadê o Maps com várias paradas"**: continuava na Lista ("Abrir as próximas N no Google Maps"
+  e "No Google Maps, por trecho"), que só existe depois de "Montar a rota". Até 02/10 ficava no
+  cartão da próxima, e a tela nova o levou para a lista para o cartão ficar baixo.
+- **O Maps no cartão do pino (16/10), pedido do dono.** Fica entre o Waze e o Depois. Com rota, vai
+  até aquele pino e segue a ordem da rota; sem rota, ou fora dela, só até o pino. O trecho não
+  passa de 9 pontos, porque o Maps vai até a letra I. O ajuste "Paradas por trecho" aceitava 25 e
+  agora para em 9, nos trechos da lista também. Na porta verificada, Entreguei, Waze, Maps e Depois
+  ficam numa fileira só. O dono pediu para diminuir os botões, mas medido em 360 e 412 px eles
+  cabem do tamanho de sempre, então ficaram assim. Não está no cartão da próxima, que tem o
+  "Google Maps" de um destino só. Olhar na rua: se o Maps abre todos os pontos no celular deles.
 
 ## Próximos passos, nesta ordem (12/10)
 

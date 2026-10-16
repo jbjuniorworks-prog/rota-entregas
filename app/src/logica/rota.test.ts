@@ -1,6 +1,6 @@
 import {haversine, juntarVizinhasDeMesmoNumero, marcarIsoladas, marcarNumerosIncoerentes, moverPeloBairro, noPino, proximaAPe, voltarDoBairro} from './geo';
 import {montarRota as montarRotaDoEstado} from './montagem';
-import {agruparPorEndereco, agruparVisitas, gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, partesDoEndereco, trechos} from './otimizacao';
+import {agruparPorEndereco, agruparVisitas, gruposNoMapa, blocos, custo, linkMapsVarios, matrizAproximada, otimizar, partesDoEndereco, trechoDesde, trechos} from './otimizacao';
 import type {Parada, Ponto} from './tipos';
 
 let seq = 0;
@@ -200,6 +200,32 @@ describe('blocos e trechos do Maps', () => {
     const outras = ps.map(p => ({...p}));
     outras[3].entregue = true;
     expect(trechos(ordem, id => outras.find(p => p.id === id), 9, null)[0]).toHaveLength(2);
+  });
+  it('o trecho do cartão do pino começa nele e segue a rota, sem as entregues', () => {
+    const outras = ps.map(p => ({...p}));
+    outras[2].entregue = true;
+    const achar2 = (id: string) => outras.find(p => p.id === id);
+    const t = trechoDesde(ordem, achar2, 9, null, ps[1].id)!;
+    // o bloco das duas primeiras, e a quarta: a terceira já foi
+    expect(t.map(x => x.ids)).toEqual([[ps[0].id, ps[1].id], [ps[3].id]]);
+    expect(trechoDesde(ordem, achar2, 9, null, ps[3].id)!.map(x => x.ids)).toEqual([[ps[3].id]]);
+    expect(trechoDesde(ordem, achar2, 1, null, ps[0].id)).toHaveLength(1);
+  });
+  it('o fim da rota entra quando o trecho do pino acaba antes do tamanho', () => {
+    const fim = {id: 'fim', lat: -10.97, lng: -37.04, exibido: ''};
+    expect(trechoDesde(ordem, achar, 9, fim, ps[3].id)!.at(-1)!.alvo).toBe(fim);
+    expect(trechoDesde(ordem, achar, 1, fim, ps[0].id)!.map(x => x.ids)).toEqual([[ps[0].id, ps[1].id]]);
+  });
+  it('nenhum trecho passa de 9 pontos, o que o Maps aceita (até a letra I), nem com o ajuste maior', () => {
+    const muitas = Array.from({length: 12}, (_, i) => parada(-10.95 - i * 0.001, -37.05));
+    const achar3 = (id: string) => muitas.find(p => p.id === id);
+    const ord = muitas.map(p => p.id), fim = {id: 'fim', lat: -10.99, lng: -37.04, exibido: ''};
+    expect(trechos(ord, achar3, 25, fim).map(t => t.length)).toEqual([9, 4]);
+    expect(trechoDesde(ord, achar3, 25, fim, ord[0])).toHaveLength(9);
+    expect(trechoDesde(ord, achar3, 25, fim, ord[5])!.map(x => x.ids)).toEqual([...ord.slice(5).map(id => [id]), []]);
+  });
+  it('parada fora da rota não tem trecho', () => {
+    expect(trechoDesde(ordem, achar, 9, null, 'outra')).toBeNull();
   });
   it('o link do Maps leva os pontos do meio como waypoints', () => {
     const u = new URL(linkMapsVarios([{lat: 1, lng: 2}, {lat: 3, lng: 4}, {lat: 5, lng: 6}]));
