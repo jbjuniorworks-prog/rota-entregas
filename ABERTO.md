@@ -108,7 +108,7 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     - **Testado:** em unidade e na tela com a `rota-d.xlsx` em 412×915, desenhando com o mouse.
       Cinco sabotagens quebraram os testes. **Não testado no aparelho:** o desenho com o dedo e a
       pinça de dois dedos num Android de verdade.
-    - **No celular do Luan o dedo não desenhava nada (16/10), consertado, commit local.** A regra de
+    - **No celular do Luan o dedo não desenhava nada (16/10), publicado em `d682100`.** A regra de
       toque do Leaflet (`.leaflet-container.leaflet-touch-zoom`) tem o peso da minha e chega depois,
       no pedaço do mapa: o navegador tomava o arrasto como rolagem e cancelava o traço no primeiro
       movimento. Com o mouse, o do teste, isso não acontece. Agora a regra vai pelo id do mapa, o
