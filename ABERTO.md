@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 15/10/2026.
+Atualizado em 16/10/2026.
 
 ## O que vem agora
 
@@ -87,7 +87,21 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
 16. **Motorista novo em conferência** (15/10, seção abaixo). Publicado em 15/10 (`fd23581`), com
     a 022 rodada e o `test:nuvem` em 8 de 8. Aguardando a rua. Próximo: o dono decidir no Admin o
     que César e Tomaz mandarem, e ver se uns 5 por dia pesam; encerrar a conferência de cada um
-    quando confiar.
+    quando confiar. **Apagar várias de uma vez** (16/10, pedido do dono, com as 33 do César):
+    cada endereço tem uma caixa de marcar (o endereço inteiro marca), "Escolher as N" pega as que
+    mudam a porta, e "Apagar as N escolhidas" fica presa embaixo, com a mesma pergunta antes.
+    Aprovar continua um por um. Commit local, aguardando autorização para subir.
+17. **Grupos circulados no mapa** (16/10, ideia do Luan, inspirada no Circuit). Não feita, nada
+    medido. Próximo: o dono decidir, e o Luan dizer em que trecho a ordem do app não serve.
+    - **No Circuit, hoje Spoke:** desde 21/08/2026, depois de otimizar, "Refine > Manually order
+      route": ele desenha com o dedo um laço em volta das paradas que quer primeiro, depois das
+      seguintes, e reotimiza. Os grupos podem ser aumentados, apagados, desfeitos e reordenados. As
+      paradas fora de laço entram onde for melhor ou todas no fim. A página não diz se reordena
+      dentro de cada grupo.
+    - **No app, quase tudo já existe:** "Áreas e horários" monta a rota área por área, otimiza
+      dentro de cada uma, e a Lista sobe e desce áreas. Falta pôr os pinos numa área desenhando no
+      mapa: hoje a área vem da importação inteira ou de um em um, em Conferir.
+    - **Sem medida de uso:** nenhum contador mostra se alguém usa as áreas hoje.
 
 Resolvida: **várias entregas na mesma porta** (item 4 de 12/10). Cartões iguais viram uma parada
 cada (`26a82c1`, publicada em `60e555d`), e os cinco da Augusto Franco 2000 de 07/10 voltaram a ser

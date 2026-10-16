@@ -371,5 +371,49 @@ test.describe('administrador', () => {
       expect(mudou.corpo).toEqual({conferir: false});
       expect(mudou.busca).toContain('id=eq.m3');
     });
+
+    // 16/10: o César chegou com 33 endereços longe do pino, e apagar um por um era um saco.
+    test('em conferência, escolhe várias e apaga juntas, numa pergunta só', async ({page, nuvem}) => {
+      const chaves = ['49000200|1', '49000200|2', '49000200|3', '49000200|4'];
+      const pino = {lat: -10.95, lng: -37.05};
+      nuvem.tabelas = {perfis: [{id: 'm3', nome: 'César', papel: 'motorista', ativo: true, conferir: true}], rotas: [], pacotes: [], correcoes: []};
+      // a do pino fica de fora: "Escolher as N" pega só as que mudam a porta
+      nuvem.rpc = {marcas_em_conferencia: chaves.map((chave, k) => ({
+        motorista_id: 'm3', nome: 'César', chave_lugar: chave, endereco: `Rua F, ${k + 1}, Centro`, criado_em: new Date().toISOString(),
+        situacao: 'sugestao', lat_antes: null, lng_antes: null, situacao_antes: null, pino_lat: pino.lat, pino_lng: pino.lng,
+        ...(k < 3 ? {lat: -10.96 - k / 100, lng: -37.05, no_pino: false} : {...pino, no_pino: true}),
+      }))};
+      await abrir(page);
+      await menu(page, /^Admin/);
+      const secao = page.locator('[data-secao="Em conferência"]');
+      const doCesar = secao.locator('[data-conferencia="César"]');
+      const linha = (chave: string) => doCesar.locator(`[data-conferir="${chave}"]`);
+      const lote = doCesar.locator('[data-lote]');
+      const decididas = () => nuvem.pedidos.filter(p => p.caminho === 'rpc/decidir_marcas').map(p => p.corpo);
+      await expect(lote).toHaveCount(0);
+
+      // tocar no endereço marca; a ordem do pedido é a da lista (a mais longe primeiro), não a dos toques
+      await linha(chaves[0]).getByText('Rua F, 1, Centro').click();
+      await linha(chaves[2]).getByRole('checkbox').check();
+      await expect(lote.getByRole('button', {name: 'Apagar as 2 escolhidas'})).toBeVisible();
+
+      page.once('dialog', d => d.dismiss());
+      await lote.getByRole('button', {name: 'Apagar as 2 escolhidas'}).click();
+      await expect(lote, 'cancelar não desmarca').toContainText('Apagar as 2 escolhidas');
+      expect(decididas(), 'cancelar não apaga').toEqual([]);
+
+      page.once('dialog', d => { expect(d.message()).toContain('Apagar o que César marcou em 2 endereços?'); d.accept(); });
+      await lote.getByRole('button', {name: 'Apagar as 2 escolhidas'}).click();
+      await expect(aviso(page)).toContainText('Apagadas as 2: não valem para ninguém.');
+      expect(decididas()).toEqual([{motorista: 'm3', chaves: [chaves[2], chaves[0]], aprovar: false}]);
+      await expect(lote, 'as apagadas saem da escolha').toHaveCount(0);
+
+      await doCesar.locator('[data-escolher-todas]').click();
+      await expect(lote.getByRole('button', {name: 'Apagar as 3 escolhidas'})).toBeVisible();
+      await expect(linha(chaves[3]).getByRole('checkbox', {includeHidden: true})).not.toBeChecked();
+      await lote.getByRole('button', {name: 'Desmarcar'}).click();
+      await expect(lote).toHaveCount(0);
+      await expect(doCesar.getByRole('checkbox', {checked: true})).toHaveCount(0);
+    });
   });
 });
