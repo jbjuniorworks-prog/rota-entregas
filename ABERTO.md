@@ -121,7 +121,11 @@ pino fica na porta.
   - Os dois de fora são o Sílvio Teixeira 10 (sequências 9 a 12) e o Franklin de Campos Sobral 1620,
     Cond. Atlântico Sul (45 a 47). Foram marcados com "Entreguei" às 12:12, depois da rota, os dois
     do mesmo ponto, a 4 km dos pinos. Passagem longe do pino, sozinha, não decide a porta, e é isso
-    que se quer.
+    que se quer. Durante a rota, nenhuma marcação dele chegou a menos de 68 m desses dois pinos:
+    não há sinal de que o pino estava certo.
+  - O dono lembrou a regra: "Entreguei" simples no lugar certo já verifica. Ela vale e funcionou
+    hoje: o 1283 da Sílvio Teixeira e o 1580 e o 1623 da Franklin de Campos Sobral (22 pacotes)
+    ficaram verificados só com "Entreguei" a até 30 m do pino.
   - Esse ponto também gravou o lugar "Cond.AtlânticoSul", mas como sugestão. O celular só usa lugar
     verificado. Na âncora do CEP 49025-100, a passagem mexe o raio de 817 para 818 m, com 61
     marcas.
