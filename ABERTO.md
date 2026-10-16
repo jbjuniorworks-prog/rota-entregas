@@ -126,6 +126,10 @@ pino fica na porta.
   - O dono lembrou a regra: "Entreguei" simples no lugar certo já verifica. Ela vale e funcionou
     hoje: o 1283 da Sílvio Teixeira e o 1580 e o 1623 da Franklin de Campos Sobral (22 pacotes)
     ficaram verificados só com "Entreguei" a até 30 m do pino.
+  - Conferido com a própria `posicoes_com` da nuvem: 38 verificados, e os dois sem nada.
+  - "Entregue é verificado" não entra sem decisão do dono. Verificaria o pino que a rota tinha,
+    estando certo ou não. Na mesma rota, 6 portas ficavam a 39 a 124 m do pino, e foi o
+    "Entreguei aqui" dele que as acertou.
   - Esse ponto também gravou o lugar "Cond.AtlânticoSul", mas como sugestão. O celular só usa lugar
     verificado. Na âncora do CEP 49025-100, a passagem mexe o raio de 817 para 818 m, com 61
     marcas.
