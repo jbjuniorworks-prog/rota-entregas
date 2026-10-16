@@ -198,7 +198,9 @@ Fora da lista:
     podem passar só três intermediários.
   - **Conferência, segurança:** o teste da nuvem chama a `posicoes_com` direto com a sessão de um
     motorista, e o banco recusa; o motorista também não vê as `marcas_em_conferencia`. Cada teste
-    da nuvem passou a fixar o papel da conta de que precisa.
+    da nuvem passou a fixar o papel da conta de que precisa. Conferido também pelo dono no SQL
+    Editor (16/10), com `has_function_privilege`: `anon` e `authenticated` sem execução na
+    `posicoes_com`, e `authenticated` com execução na `posicoes`.
 - **Endereços sem chave, classificados (16/10), frente separada, sem regra.** Dos 13 textos
   distintos nas planilhas:
   - 4 têm o número e o app não extrai: "n:07" no complemento, "Cinco" por extenso, "O4" com a
