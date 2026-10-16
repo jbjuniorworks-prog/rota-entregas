@@ -99,7 +99,11 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Rota do Luan de 16/10: o pino do 1630 que sumia, consertado
+## Rota do Luan de 16/10: o pino do 1630 que sumia, publicado em 16/10 (`7c10796`)
+
+Próximo: ver com o Luan se, entregando "aqui" numa porta com uma ADS de outro endereço perto, o
+pino fica na porta.
+
 
 - **Onde procurar:** planilha `16-10-2026 Luan Mateus Santos Silva.xlsx` (120 pacotes, 24 paradas).
   Os três do 1630 da Avenida Franklin de Campos Sobral, Condomínio Mercure, CEP 49027-000, são as
