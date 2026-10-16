@@ -161,6 +161,9 @@ Fora da lista:
 - **"Cadê o Maps com várias paradas"**: continuava na Lista ("Abrir as próximas N no Google Maps"
   e "No Google Maps, por trecho"), que só existe depois de "Montar a rota". Até 02/10 ficava no
   cartão da próxima, e a tela nova o levou para a lista para o cartão ficar baixo.
+- **Publicados em 16/10 (`07e27e1`), aguardando a rua:** o Maps no cartão do pino e a escolha dos
+  pinos, abaixo, com as correções da revisão. Próximo: abrir no Android, com nove pontos
+  distintos, e ver se chegam todos, na ordem, até o último.
 - **O Maps no cartão do pino (16/10), pedido do dono.** Fica entre o Waze e o Depois. Com rota, vai
   até aquele pino e segue a ordem da rota; sem rota, ou fora dela, só até o pino. O trecho não
   passa de 9 pontos, porque o Maps vai até a letra I. O ajuste "Paradas por trecho" aceitava 25 e
