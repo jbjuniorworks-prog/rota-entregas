@@ -19,8 +19,11 @@ async function api(caminho: string, init: RequestInit = {}) {
 async function limpar() {
   const {corpo} = await api('/auth/v1/admin/users?per_page=1000');
   for (const u of corpo.users.filter((x: any) => MOTORISTAS.some(m => m.email === x.email))) {
-    await api(`/rest/v1/correcoes?motorista_id=eq.${u.id}`, {method: 'DELETE'});
-    await api(`/rest/v1/rotas?motorista_id=eq.${u.id}`, {method: 'DELETE'});
+    // Tudo o que aponta para o perfil, senão a conta não sai e a próxima rodada nem cria as contas:
+    // a "Teste A" de 26/09 ficou presa assim pela contagem dos botões (016).
+    for (const t of ['correcoes', 'observacoes', 'lugares', 'uso_dos_botoes', 'reclamacoes', 'rotas']) {
+      await api(`/rest/v1/${t}?motorista_id=eq.${u.id}`, {method: 'DELETE'});
+    }
     await api(`/auth/v1/admin/users/${u.id}`, {method: 'DELETE'});
   }
 }
@@ -59,6 +62,9 @@ test.describe('correções compartilhadas @nuvem', () => {
       const r = await api('/auth/v1/admin/users', {method: 'POST', body: JSON.stringify({email: m.email, password: m.senha, email_confirm: true, user_metadata: {nome: m.nome}})});
       expect(r.status).toBe(200);
       m.id = r.corpo.id;
+      // Motoristas antigos: conta criada por fora do Admin nasce desativada (021) e em conferência
+      // (022), e aí nada do que marcam chega aos outros.
+      expect((await api(`/rest/v1/perfis?id=eq.${m.id}`, {method: 'PATCH', body: JSON.stringify({ativo: true, conferir: false})})).status).toBe(200);
     }
     expect((await api(`/rest/v1/perfis?id=eq.${MOTORISTAS[3].id}`, {method: 'PATCH', body: JSON.stringify({papel: 'admin'})})).status).toBe(200);
   });

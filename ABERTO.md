@@ -84,9 +84,8 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
       amostra mede só os critérios definidos, não todos os casos possíveis; a porta do Pedro não
       entrou nela. Voltar ao painel só com um dado novo que decida os ambíguos, como mais portas
       confirmadas ou o censo cobrindo mais números.
-16. **Motorista novo em conferência** (15/10, seção abaixo). Feito, commit local, não publicado.
-    Próximo: o dono rodar a `022_conferencia.sql`, depois `npm run test:nuvem` (escreve no banco
-    de produção), e só então publicar.
+16. **Motorista novo em conferência** (15/10, seção abaixo). A 022 rodada em 15/10 e o
+    `test:nuvem` passando, 8 de 8. Próximo: publicar, a pedido do dono.
 
 Resolvida: **várias entregas na mesma porta** (item 4 de 12/10). Cartões iguais viram uma parada
 cada (`26a82c1`, publicada em `60e555d`), e os cinco da Augusto Franco 2000 de 07/10 voltaram a ser
@@ -98,7 +97,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Motorista novo em conferência (15/10): feito, falta rodar a 022
+## Motorista novo em conferência (15/10): 022 rodada, falta publicar
 
 - **O pedido:** no dia em que entraram dois motoristas novos, um marcou duas portas no lugar
   errado, e uma já apareceu verificada para todos; o dono apagou. O que vale para todos sai de um
@@ -134,8 +133,17 @@ Fora da lista:
 - **Testado:** num Postgres local com o `banco-inteiro.sql` e o `000_rodar_tudo.sql` por cima, e
   em unidade e e2e com a nuvem simulada. Sabotados a separação do pino, a ordem, o filtro do
   pendente na lista comum e o número do selo: os testes quebraram. O teste `@nuvem` novo
-  só roda depois da 022. Ele também tira a conta de teste da conferência, senão o teste do CEP e o
-  da rua deixam de passar.
+  passou depois da 022. A primeira rodada falhou nele porque o teste da rua deixa a conta de teste
+  como admin, e marcação de admin não fica pendente: a afirmação pegou o par que valia. As contas
+  de teste fazem o motorista antigo e saem da conferência, senão o teste do CEP e o da rua deixam
+  de passar.
+- **Achado no caminho:** o `compartilhadas.spec` não rodava. A conta "Teste A", de 26/09, não saía
+  do banco porque a limpeza não apagava a contagem dos botões (016), e a criação das contas
+  falhava. Depois da 021 as contas dele também nasciam desativadas. Consertado: limpa todas as
+  tabelas do perfil e ativa as contas. Ele voltou a passar, e é ele que confere a sugestão e a
+  verificação entre dois motoristas com a `posicoes` da 022.
+- **A Etelvino Alves de Lima 830 do César** foi confirmada pelo dono de propósito: ele marcou no
+  lugar certo.
 - **Não coberto:** o item 10 (trava de marcação em lote) continua valendo para quem já saiu da
   conferência.
 

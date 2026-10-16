@@ -211,7 +211,8 @@ test.describe('nuvem @nuvem', () => {
     const entrar = await fetch(URL + '/auth/v1/token?grant_type=password', {method: 'POST',
       headers: {apikey: SERVICO, 'Content-Type': 'application/json'}, body: JSON.stringify({email: EMAIL, password: SENHA})});
     const token = (await entrar.json()).access_token;
-    await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({conferir: true})});
+    // o teste da rua deixa a conta como admin, e marcação de admin não espera ninguém
+    await api(`/rest/v1/perfis?id=eq.${uid}`, {method: 'PATCH', body: JSON.stringify({papel: 'motorista', conferir: true})});
     try {
       // CEP inventado, para não mexer em porta de verdade
       const CHAVE = '49099997|1', ponto = {lat: -10.9500, lng: -37.0900};
