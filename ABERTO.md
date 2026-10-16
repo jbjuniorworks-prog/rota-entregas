@@ -84,8 +84,10 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
       amostra mede só os critérios definidos, não todos os casos possíveis; a porta do Pedro não
       entrou nela. Voltar ao painel só com um dado novo que decida os ambíguos, como mais portas
       confirmadas ou o censo cobrindo mais números.
-16. **Motorista novo em conferência** (15/10, seção abaixo). A 022 rodada em 15/10 e o
-    `test:nuvem` passando, 8 de 8. Próximo: publicar, a pedido do dono.
+16. **Motorista novo em conferência** (15/10, seção abaixo). Publicado em 15/10 (`fd23581`), com
+    a 022 rodada e o `test:nuvem` em 8 de 8. Aguardando a rua. Próximo: o dono decidir no Admin o
+    que César e Tomaz mandarem, e ver se uns 5 por dia pesam; encerrar a conferência de cada um
+    quando confiar.
 
 Resolvida: **várias entregas na mesma porta** (item 4 de 12/10). Cartões iguais viram uma parada
 cada (`26a82c1`, publicada em `60e555d`), e os cinco da Augusto Franco 2000 de 07/10 voltaram a ser
@@ -97,7 +99,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Motorista novo em conferência (15/10): 022 rodada, falta publicar
+## Motorista novo em conferência (15/10): publicado, aguardando a rua
 
 - **O pedido:** no dia em que entraram dois motoristas novos, um marcou duas portas no lugar
   errado, e uma já apareceu verificada para todos; o dono apagou. O que vale para todos sai de um
