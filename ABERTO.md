@@ -91,8 +91,23 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     cada endereço tem uma caixa de marcar (o endereço inteiro marca), "Escolher as N" pega as que
     mudam a porta, e "Apagar as N escolhidas" fica presa embaixo, com a mesma pergunta antes.
     Aprovar continua um por um. Commit local, aguardando autorização para subir.
-17. **Grupos circulados no mapa** (16/10, ideia do Luan, inspirada no Circuit). Não feita, nada
-    medido. Próximo: o dono decidir, e o Luan dizer em que trecho a ordem do app não serve.
+17. **Grupos circulados no mapa** (16/10, ideia do Luan, inspirada no Circuit). Pedido do dono:
+    "numa tela só, por onde e quantas quer marcar". Feito, commit local, aguardando autorização
+    para subir. Próximo: o Luan usar numa rota e dizer se a ordem saiu como ele queria; o contador
+    "Circular grupos no mapa" do Admin mostra se alguém usa.
+    - **Como ficou:** "Circular grupos no mapa" no cartão de montar a rota, e "Mudar a ordem:
+      circular grupos no mapa" na Lista. Um dedo desenha em volta das entregas, dois mexem no mapa.
+      Cada círculo é um grupo, com número e cor, e os pinos dentro dele ganham a cor. O cartão diz
+      quantas entregas e pacotes cada um tem e quantas ficaram fora; "Desfazer" tira o último.
+      "Montar nesta ordem" faz de cada grupo uma área, na ordem do dedo, e as de fora vão por
+      último. Dentro de cada grupo, a melhor ordem de sempre. Voltar ou o X desistem sem mudar nada.
+    - **Decisões:** quem já está num grupo fica nele (o círculo seguinte, com pressa, pega a borda do
+      anterior); entregue, deixada para depois e sem posição não entram; toque ou risco curto não é
+      círculo; o primeiro grupo não pega a cor das que ficaram fora; o cartão não cresce com os
+      grupos, senão o mapa encolhia e os pinos fugiam do dedo (achado no teste).
+    - **Testado:** em unidade e na tela com a `rota-d.xlsx` em 412×915, desenhando com o mouse.
+      Cinco sabotagens quebraram os testes. **Não testado no aparelho:** o desenho com o dedo e a
+      pinça de dois dedos num Android de verdade.
     - **No Circuit, hoje Spoke:** desde 21/08/2026, depois de otimizar, "Refine > Manually order
       route": ele desenha com o dedo um laço em volta das paradas que quer primeiro, depois das
       seguintes, e reotimiza. Os grupos podem ser aumentados, apagados, desfeitos e reordenados. As
@@ -101,7 +116,7 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     - **No app, quase tudo já existe:** "Áreas e horários" monta a rota área por área, otimiza
       dentro de cada uma, e a Lista sobe e desce áreas. Falta pôr os pinos numa área desenhando no
       mapa: hoje a área vem da importação inteira ou de um em um, em Conferir.
-    - **Sem medida de uso:** nenhum contador mostra se alguém usa as áreas hoje.
+    - **Sem medida de uso das áreas** antes disso: nenhum contador mostrava se alguém as usava.
 
 Resolvida: **várias entregas na mesma porta** (item 4 de 12/10). Cartões iguais viram uma parada
 cada (`26a82c1`, publicada em `60e555d`), e os cinco da Augusto Franco 2000 de 07/10 voltaram a ser

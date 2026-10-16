@@ -1,8 +1,9 @@
 import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {abrir, pararDeSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
+import {abrir, fecharLaco, pararDeSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
+import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
 import {haversine} from '../logica/geo';
 import {empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
@@ -26,6 +27,12 @@ const ZOOM_DE_MIM = 17;
 const REENQUADRAR_M = 30;
 // GPS de computador erra quilômetros: com margem maior, o mapa não vai atrás
 const SEGUIR_ATE_M = 300;
+
+// O número do grupo, no meio do círculo que ele desenhou: é a ordem em que a rota vai passar.
+const numeroDoGrupo = (n: number, cor: string) => L.divIcon({
+  className: '', iconSize: [28, 28], iconAnchor: [14, 14],
+  html: `<div class="num-grupo" style="background:${cor}">${n}</div>`,
+});
 
 // A bolinha de "você está aqui", com a seta do rumo quando ele está andando.
 const iconeDeMim = (rumo: number | null) => L.divIcon({
@@ -56,6 +63,8 @@ export default function Mapa() {
   const camadaFundo = useRef<L.LayerGroup | null>(null);
   const camadaPinos = useRef<L.LayerGroup | null>(null);
   const camadaEu = useRef<L.LayerGroup | null>(null);
+  const camadaLacos = useRef<L.LayerGroup | null>(null);
+  const lacosFeitos = useRef<Grupo[] | null>(null);
   const pinos = useRef<Record<string, NoMapa>>({});
   const desenhado = useRef('');
   const fundoFeito = useRef('');
@@ -66,12 +75,14 @@ export default function Mapa() {
   const seguia = useRef(false);
   const irMim = useRef(0);
   const [, setZoom] = useState(0);
+  const circulando = ui.tela === 'rota' && ui.folha === 'circular';
 
   useEffect(() => {
     const m = L.map(div.current!, {markerZoomAnimation: false}).setView([-15.8, -47.9], 4);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap', updateWhenIdle: true, keepBuffer: 1}).addTo(m);
     camadaFundo.current = L.layerGroup().addTo(m);
     camadaPinos.current = L.layerGroup().addTo(m);
+    camadaLacos.current = L.layerGroup().addTo(m);
     // Tocar fora dos pinos: com o "toque no mapa" armado, é o lugar da entrega; com o cartão de
     // um pino aberto, fecha ele, que nem o voltar.
     m.on('click', ev => {
@@ -97,6 +108,8 @@ export default function Mapa() {
       centro: () => { const c = m.getCenter(); return {lat: +c.lat.toFixed(5), lng: +c.lng.toFixed(5)}; },
       // o tamanho que o Leaflet acha que tem: diferente do da caixa, sobra faixa cinza
       tamanho: () => { const s = m.getSize(); return {largura: s.x, altura: s.y}; },
+      // onde um ponto cai no mapa, para o teste desenhar em volta dele com o mouse
+      pixel: (lat: number, lng: number) => { const p = m.latLngToContainerPoint([lat, lng]); return {x: p.x, y: p.y}; },
     };
     (window as any).rotaTeste = daqui;
     // O cartão de baixo muda de altura (o de um pino é mais baixo que o da próxima, minimizar,
@@ -118,6 +131,9 @@ export default function Mapa() {
     const marcasAdmin = ui.tela === 'admin' && ui.marcas ? ui.marcas : null;
     const escolhendo = ui.tela === 'rota' && ui.folha === 'escolher';
     const escolhidas = escolhendo ? escolhidasValidas(ui.escolhidas, loja.parada) : [];
+    const grupos = circulando ? gruposValidos(ui.grupos, loja.parada) : [];
+    const cores = coresDosGrupos(e.areas);
+    const grupoDe = new Map(grupos.flatMap((g, k) => g.ids.map(id => [id, k] as const)));
     const alvo = comLocal
       .filter(p => !p.entregue && !p.adiada)
       .map(p => ({p, i: ondeNaRota(p.id)}))
@@ -135,6 +151,7 @@ export default function Mapa() {
       e.areas.map(a => a.id + a.cor).join(','),
       marcasAdmin ? 'admin' + marcasAdmin.vez : '',
       escolhendo ? 'escolhidas' + escolhidas.join(',') : '',
+      circulando ? 'grupos' + grupos.map(g => g.ids.join(',')).join('|') : '',
     ].join('#');
 
     if (desenho !== desenhado.current) {
@@ -153,7 +170,9 @@ export default function Mapa() {
         const chave = g.ps.map(x => x.id).join('+');
         // escolhido para o Maps: a letra que ele vai ter lá, num pino escuro
         const letra = escolhendo ? letraDoPino(escolhidas, g.ps.map(x => x.id)) : '';
-        const cor = letra ? '#111827' : loja.area(p.area).cor;
+        // circulado: a cor que a área do grupo vai ter quando ele montar a rota
+        const k = g.ps.map(x => grupoDe.get(x.id)).find(x => x != null);
+        const cor = letra ? '#111827' : k != null ? cores[k % cores.length] : loja.area(p.area).cor;
         const apagado = p.entregue || !!p.adiada;
         const so = g.ps.length === 1;
         const rotulo = letra || (p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p)) + (so ? '' : `+${g.ps.length - 1}`);
@@ -179,6 +198,8 @@ export default function Mapa() {
           mk.on('click', () => {
             if (loja.ui.tela !== 'rota') return;
             if (loja.ui.folha === 'escolher') { tocarParaEscolher(chave.split('+')); return; }
+            // circulando, o dedo no pino é o começo de um círculo, não um pedido do cartão
+            if (loja.ui.folha === 'circular') return;
             (loja.ui.pino ? trocar : abrir)({pino: chave.split('+'), folha: 'proxima'});
           });
           if (balao) mk.bindTooltip(balao, BALAO);
@@ -198,6 +219,18 @@ export default function Mapa() {
           antes.balao = balao;
         }
         antes.sig = sig;
+      }
+
+      if (lacosFeitos.current !== (circulando ? ui.grupos : null)) {
+        lacosFeitos.current = circulando ? ui.grupos : null;
+        const camadaL = camadaLacos.current!;
+        camadaL.clearLayers();
+        grupos.forEach((g, k) => {
+          const cor = cores[k % cores.length];
+          L.polygon(g.laco.map(q => [q.lat, q.lng] as [number, number]), {color: cor, weight: 3, fillOpacity: .12, interactive: false}).addTo(camadaL);
+          const meio = {lat: g.laco.reduce((s, q) => s + q.lat, 0) / g.laco.length, lng: g.laco.reduce((s, q) => s + q.lng, 0) / g.laco.length};
+          L.marker([meio.lat, meio.lng], {icon: numeroDoGrupo(k + 1, cor), interactive: false, zIndexOffset: 1500}).addTo(camadaL);
+        });
       }
 
       const sigFundo = [
@@ -268,6 +301,57 @@ export default function Mapa() {
       else m.setView([eu!.lat, eu!.lng], Math.max(m.getZoom(), ZOOM_DE_MIM), {animate: false});
     } else if (pediuEu && eu) m.setView([eu.lat, eu.lng], Math.max(m.getZoom(), ZOOM_DE_MIM));
   });
+
+  // Circulando (16/10): um dedo desenha o círculo, e o mapa só mexe com dois. Arrastar com um dedo
+  // seria o mesmo gesto de desenhar.
+  useEffect(() => {
+    const m = mapa.current;
+    if (!m || !circulando) return;
+    const el = m.getContainer();
+    m.dragging.disable();
+    el.classList.add('circulando');
+    const dedos = new Set<number>();
+    let traco: L.LatLng[] | null = null, linha: L.Polyline | null = null, inicio: L.Point | null = null, longe = 0;
+    const largar = () => { traco = null; linha?.remove(); linha = null; };
+    const desce = (ev: PointerEvent) => {
+      dedos.add(ev.pointerId);
+      // o segundo dedo é pinça: o círculo que começava não vale
+      if (dedos.size > 1 || ev.button > 0 || (ev.target as Element).closest('.leaflet-control')) { largar(); return; }
+      traco = [m.mouseEventToLatLng(ev)];
+      inicio = m.mouseEventToContainerPoint(ev);
+      longe = 0;
+      const cores = coresDosGrupos(loja.e.areas);
+      const cor = cores[gruposValidos(loja.ui.grupos, loja.parada).length % cores.length];
+      linha = L.polyline(traco, {color: cor, weight: 3, dashArray: '6 6', interactive: false}).addTo(m);
+    };
+    const anda = (ev: PointerEvent) => {
+      if (!traco || !linha) return;
+      traco.push(m.mouseEventToLatLng(ev));
+      longe = Math.max(longe, inicio!.distanceTo(m.mouseEventToContainerPoint(ev)));
+      linha.setLatLngs(traco);
+    };
+    const sobe = (ev: PointerEvent) => {
+      dedos.delete(ev.pointerId);
+      const t = traco, grande = longe >= 30;
+      largar();
+      // toque ou risco curto não é círculo: um aviso a cada toque no mapa só atrapalharia
+      if (t && grande && t.length >= 4) fecharLaco(t.map(q => ({lat: q.lat, lng: q.lng})));
+    };
+    const cancela = (ev: PointerEvent) => { dedos.delete(ev.pointerId); largar(); };
+    el.addEventListener('pointerdown', desce);
+    el.addEventListener('pointermove', anda);
+    window.addEventListener('pointerup', sobe);
+    el.addEventListener('pointercancel', cancela);
+    return () => {
+      el.removeEventListener('pointerdown', desce);
+      el.removeEventListener('pointermove', anda);
+      window.removeEventListener('pointerup', sobe);
+      el.removeEventListener('pointercancel', cancela);
+      largar();
+      m.dragging.enable();
+      el.classList.remove('circulando');
+    };
+  }, [circulando]);
 
   // Só segue a posição na Rota, que é a tela que ele olha dirigindo: no Admin o GPS não fica
   // ligado à toa.

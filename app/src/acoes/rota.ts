@@ -1,14 +1,16 @@
 import {proximaAPe} from '../logica/geo';
 import {backupRecente, CHAVES, estadoVazio, resetarDia} from '../logica/guarda';
+import {aplicarGrupos, circular, gruposValidos} from '../logica/grupos';
+import {novoId} from '../logica/importar';
 import {montarRota as calcularRota} from '../logica/montagem';
 import {linkWaze} from '../logica/otimizacao';
 import {CORES} from '../logica/rotulos';
-import type {Parada} from '../logica/tipos';
+import type {Parada, Ponto} from '../logica/tipos';
 import {guarda, loja, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
 import {linhaDaRota, matriz} from '../servicos/ruas';
-import {desatualizarRota, e, enviarFila, fila, ui} from './base';
-import {irPara} from './navegacao';
+import {contar, desatualizarRota, e, enviarFila, fila, ui} from './base';
+import {abrir, irPara} from './navegacao';
 import {comMinhaPosicao, desfazerPorta, GPS_PASSAGEM, guardarPassagem, guardarPassagens, portaDaEntrega} from './posicoes';
 import {registrarComoFicou} from './registro';
 
@@ -258,6 +260,36 @@ export async function moverArea(id: string, delta: number) {
   [ordem[i], ordem[j]] = [ordem[j], ordem[i]];
   e().areas = ordem.map(loja.area).concat(e().areas.filter(a => !ordem.includes(a.id)));
   e().areasManual = true;
+  await montarRota();
+}
+
+// Circular grupos no mapa (ideia do Luan, 16/10): um passo, que o voltar desfaz como a escolha
+// dos pinos para o Maps. Abre com todas as entregas à vista, que é delas que ele vai escolher.
+export function circularNoMapa() {
+  contar('circular');
+  ui.enquadrar++;
+  abrir({tela: 'rota', folha: 'circular', pino: null});
+}
+
+export function fecharLaco(laco: Ponto[]) {
+  const r = circular(gruposValidos(ui.grupos, loja.parada), laco, e().paradas);
+  ui.grupos = r.grupos;
+  if (r.aviso) status(r.aviso, 4000);
+  loja.mudou(false);
+}
+
+export function desfazerLaco() {
+  ui.grupos = ui.grupos.slice(0, -1);
+  loja.mudou(false);
+}
+
+export async function montarPelosGrupos() {
+  const grupos = gruposValidos(ui.grupos, loja.parada);
+  if (!grupos.length || ui.ocupado) return;
+  aplicarGrupos(e(), grupos, novoId);
+  // fora do modo antes de montar: o cartão que aparece é o da próxima, já no primeiro grupo
+  irPara('rota');
+  loja.mudou();
   await montarRota();
 }
 

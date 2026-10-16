@@ -461,6 +461,86 @@ test.describe('agir pelo pino', () => {
     await expect(page.locator(PINO), 'fora da escolha, o pino volta a abrir o cartão').toBeVisible();
   });
 
+  // Ideia do Luan (16/10), como no Circuit: circular no mapa o que fazer primeiro, depois o
+  // seguinte. A rota vai grupo por grupo, na ordem do dedo, e as de fora por último.
+  test('circular grupos no mapa: a rota segue os círculos na ordem desenhada, e as de fora vão por último', async ({page}) => {
+    const {aviso, garantirMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-d.xlsx');
+    await garantirMapa(page);
+    await page.locator('[data-folha="montar"] [data-circular]').click();
+    const cartao = page.locator('[data-folha="circular"]');
+    await expect(cartao.locator('[data-acao="montar-grupos"]')).toBeDisabled();
+    await page.waitForFunction(() => !!(window as any).rotaTeste);
+
+    // as por fazer, com onde caem na tela
+    const naTela = () => page.evaluate(() => {
+      const ps = JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas as {id: string; lat: number | null; lng: number; entregue?: boolean; adiada?: boolean}[];
+      const m = document.querySelector('#map')!.getBoundingClientRect();
+      return ps.filter(p => !p.entregue && !p.adiada && p.lat != null).map(p => {
+        const q = (window as any).rotaTeste.pixel(p.lat, p.lng);
+        return {id: p.id, x: m.left + q.x, y: m.top + q.y};
+      });
+    });
+    // o mapa se ajeita ao cartão novo: as posições valem depois que param de mudar
+    let todas = await naTela();
+    await expect.poll(async () => { const antes = JSON.stringify(todas); todas = await naTela(); return JSON.stringify(todas) === antes; }).toBe(true);
+    const caixa = (await page.locator('#map').boundingBox())!, painel = (await page.locator('#painel').boundingBox())!;
+    // o corte entre os dois lados passa no maior vão entre pinos, no terço do meio: nenhum fica
+    // em cima da linha
+    const xs = todas.map(p => p.x).filter(x => x > caixa.x + caixa.width / 3 && x < caixa.x + 2 * caixa.width / 3).sort((a, b) => a - b);
+    let corte = caixa.x + caixa.width / 2, vao = 0;
+    for (let k = 1; k < xs.length; k++) if (xs[k] - xs[k - 1] > vao) { vao = xs[k] - xs[k - 1]; corte = (xs[k] + xs[k - 1]) / 2; }
+    const [cima, baixo] = [caixa.y + 40, painel.y - 3];
+    const direita = {x0: corte, x1: caixa.x + caixa.width - 5}, esquerda = {x0: caixa.x + 5, x1: corte};
+    const dentro = (r: {x0: number; x1: number}) => todas.filter(p => p.x > r.x0 && p.x < r.x1 && p.y > cima && p.y < baixo).map(p => p.id).sort();
+    const daDireita = dentro(direita), daEsquerda = dentro(esquerda);
+    expect(daDireita.length, 'pinos dos dois lados').toBeGreaterThan(2);
+    expect(daEsquerda.length).toBeGreaterThan(2);
+    expect(daDireita.length + daEsquerda.length, 'todas à vista').toBe(todas.length);
+    // com o mouse, como o dedo: começa embaixo, à esquerda do retângulo, longe do + e −
+    const desenhar = async (r: {x0: number; x1: number}) => {
+      await page.mouse.move(r.x0, baixo);
+      await page.mouse.down();
+      for (const [x, y] of [[r.x0, cima], [r.x1, cima], [r.x1, baixo], [r.x0 + 3, baixo]]) await page.mouse.move(x, y, {steps: 8});
+      await page.mouse.up();
+    };
+    const doGrupo = (k: number) => cartao.locator(`[data-grupo="${k}"]`);
+    const rgb = (hex: string) => `rgb(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+
+    await desenhar(direita);
+    await expect(doGrupo(1)).toContainText(`${daDireita.length} entrega(s)`);
+    await expect(cartao.locator('[data-fora]')).toHaveText(`As outras ${daEsquerda.length} vão por último, na melhor ordem.`);
+    // o pino circulado ganha a cor do grupo
+    const corDoGrupo = await cartao.locator('[data-grupo="1"] .badge').evaluate(b => getComputedStyle(b).backgroundColor);
+    const pinoDaDireita = page.locator(`.pino[data-ids*="${daDireita[0]}"]`);
+    expect(await pinoDaDireita.evaluate(b => getComputedStyle(b).backgroundColor)).toBe(corDoGrupo);
+    // tocar num pino não abre o cartão dele, e um toque não é círculo
+    await pinoDaDireita.click();
+    await expect(page.locator(PINO)).toHaveCount(0);
+    await expect(cartao.locator('[data-grupo]')).toHaveCount(1);
+
+    expect(await page.locator('#painel').boundingBox(), 'o cartão não cresceu com o grupo').toEqual(painel);
+    await desenhar(esquerda);
+    await expect(doGrupo(2)).toContainText(`${daEsquerda.length} entrega(s)`);
+    await expect(cartao.locator('[data-fora]')).toHaveText('Todas as entregas estão num grupo.');
+    await cartao.locator('[data-desfazer-circulo]').click();
+    await expect(cartao.locator('[data-grupo]')).toHaveCount(1);
+    // o mesmo lado de novo: quem já tem grupo fica nele
+    await desenhar(direita);
+    await expect(aviso(page)).toContainText('As entregas deste círculo já estão num grupo.');
+    await expect(cartao.locator('[data-grupo]')).toHaveCount(1);
+
+    await cartao.locator('[data-acao="montar-grupos"]').click();
+    await expect(page.locator('[data-folha="proxima"]')).toBeVisible({timeout: 20_000});
+    const e = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!));
+    expect(e.rota.areas.map((ra: {ordem: string[]}) => [...ra.ordem].sort()), 'primeiro o círculo, depois as de fora').toEqual([daDireita, daEsquerda]);
+    expect(rgb(e.areas[0].cor), 'a área do grupo tem a cor que o pino tinha').toBe(corDoGrupo);
+    const proxima = await page.locator('[data-folha="proxima"] .endereco').innerText();
+    const textos = e.paradas.filter((p: {id: string}) => daDireita.includes(p.id)).map((p: {texto: string}) => p.texto);
+    expect(textos, 'a próxima é do primeiro círculo').toContain(proxima);
+  });
+
   // Revisão de 16/10: o mapa afastado junta num pino entregas de lugares diferentes. Escolher esse
   // pino não pode parecer que levou todos e mandar um só, nem o contador discordar das letras.
   test('escolher com pinos juntados pelo zoom: cada lugar é um destino, e afastar mostra quantos há no pino', async ({page}) => {

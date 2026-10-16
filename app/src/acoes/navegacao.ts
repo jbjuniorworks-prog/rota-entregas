@@ -5,7 +5,7 @@ import {contar, e, ui} from './base';
 // O botão voltar do celular. Até 02/10 as abas não entravam no histórico, e voltar saía do app
 // de qualquer tela. Agora cada tela e cada painel aberto é um passo: voltar fecha o que abriu.
 // Na tela de base, o primeiro voltar avisa e o segundo sai (pedido de 02/10).
-interface Passo {tela: Tela; folha: 'proxima' | 'lista' | 'escolher'; pino: string[] | null; menu: boolean}
+interface Passo {tela: Tela; folha: 'proxima' | 'lista' | 'escolher' | 'circular'; pino: string[] | null; menu: boolean}
 // No history.state vai também a altura do passo (quantos acima da tela de base) e de qual
 // abertura do app ele é: recarregando a página, os passos de antes continuam no histórico.
 interface Marca {passo: Passo; altura: number; sessao: number}
@@ -33,6 +33,8 @@ function aplicar(p: Passo) {
   if (p.tela !== 'admin') ui.marcandoLugar = null;
   // saiu da escolha dos pinos (voltar, Sair): a próxima vez começa do zero
   if (p.tela !== 'rota' || p.folha !== 'escolher') ui.escolhidas = [];
+  // e dos grupos circulados: sair sem montar a rota é desistir deles
+  if (p.tela !== 'rota' || p.folha !== 'circular') ui.grupos = [];
   ui.tela = p.tela;
   ui.folha = p.folha;
   ui.pino = p.pino;

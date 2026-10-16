@@ -16,6 +16,9 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
 #app.tela-rota.folha-proxima #painel{max-height:max(32vh,240px)}
 /* escolhendo os pinos para o Maps, o mapa é onde ele toca: o cartão fica baixo como o da próxima */
 #app.tela-rota.folha-escolher #painel{max-height:max(32vh,240px)}
+/* Circulando, o cartão não cresce a cada grupo: o mapa encolhia, e os pinos mudavam de lugar entre
+   um círculo e outro, debaixo do dedo. */
+#app.tela-rota.folha-circular #painel{height:max(32vh,240px)}
 /* puxada para cima, a lista fica com a tela e o mapa vira uma faixa */
 #app.tela-rota.folha-lista .mapwrap{flex:none;height:14vh}
 #app.tela-rota.folha-lista #painel{flex:1;max-height:none}
@@ -200,6 +203,9 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
 /* os pinos */
 .pino{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:grid;place-items:center}
 .pino span{transform:rotate(45deg);color:#fff;font-weight:700;font-size:11px}
+/* Circulando grupos (16/10): um dedo desenha. Sem isto, o navegador toma o arrasto como rolagem e corta o traço. */
+.leaflet-container.circulando{touch-action:none;cursor:crosshair}
+.num-grupo{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);color:#fff;font-weight:800;font-size:14px;display:grid;place-items:center}
 .pino.duvida{border:3px solid #dc2626}
 .pino.quase{border:3px solid #ea580c}
 /* o pino da próxima parada: halo, para achar de relance no meio de quarenta pinos iguais */
@@ -219,6 +225,6 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
   #app.tela-rota>.cima,#app.tela-admin>.cima{grid-column:1;grid-row:1}
   #app.tela-rota .cima>#status{position:static}
   #app.tela-rota>.mapwrap,#app.tela-admin>.mapwrap,#app.tela-rota.folha-lista>.mapwrap{grid-column:2;grid-row:1/-1;height:auto}
-  #app.tela-rota>#painel,#app.tela-rota.folha-proxima>#painel,#app.tela-rota.folha-escolher>#painel,#app.tela-admin>#painel{grid-column:1;grid-row:2;max-height:none;border-radius:0;margin:0;box-shadow:none;border-right:1px solid var(--bd)}
+  #app.tela-rota>#painel,#app.tela-rota.folha-proxima>#painel,#app.tela-rota.folha-escolher>#painel,#app.tela-rota.folha-circular>#painel,#app.tela-admin>#painel{grid-column:1;grid-row:2;max-height:none;height:auto;border-radius:0;margin:0;box-shadow:none;border-right:1px solid var(--bd)}
   #app:not(.tela-rota):not(.tela-admin){max-width:640px;margin:0 auto;border-left:1px solid var(--bd);border-right:1px solid var(--bd)}
 }

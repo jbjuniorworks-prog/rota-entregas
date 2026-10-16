@@ -250,7 +250,7 @@ function ProcurarLugar() {
 // cartão de baixo, e o "Ver" da Conferir virou "Ver no mapa".
 const NOME_DO_BOTAO: Record<string, string> = {ver: 'Ver no mapa', mapa: 'Marcar no mapa', aqui: 'Estou aqui', editar: 'Editar', remover: 'Remover',
   'balao-aqui': 'Entreguei aqui', 'balao-entreguei': 'Entreguei (cartão do pino)', busca: 'Busca em Todos os endereços', 'busca-antiga': 'Procurar nos dias anteriores',
-  minimizar: 'Minimizar o cartão (mapa na tela toda)', 'escolher-maps': 'Escolher pinos para o Maps'};
+  minimizar: 'Minimizar o cartão (mapa na tela toda)', 'escolher-maps': 'Escolher pinos para o Maps', circular: 'Circular grupos no mapa'};
 
 // Para parar de decidir no chute quais botões ficam na frente do cartão. Mostra quanto cada um
 // é usado e qual costuma vir depois de qual — dois botões que andam sempre juntos são, na

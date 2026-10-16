@@ -1,6 +1,7 @@
 import * as A from '../acoes';
 import {haversine, RAIO_BLOCO} from '../logica/geo';
 import {escolhidasValidas, LETRAS} from '../logica/escolha';
+import {coresDosGrupos, gruposValidos} from '../logica/grupos';
 import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, MAPS_MAX, partesDoEndereco, porPerto, trechoDesde, trechos} from '../logica/otimizacao';
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
@@ -152,6 +153,7 @@ function CartaoMontar() {
       {' · '}<button className="link" onClick={() => A.abrir({tela: 'saida'})}>trocar</button></div>
     {semLocal > 0 && <div className="aviso">{semLocal} parada(s) sem local ficarão fora da rota. Corrija em Conferir.</div>}
     <button className="btn pri grande-btn" onClick={A.montarRota}>Montar a rota</button>
+    <button className="btn grande-btn" data-circular onClick={A.circularNoMapa}>Circular grupos no mapa</button>
     <button className="link" data-escolher-maps onClick={A.escolherParaMaps}>Escolher pinos para o Maps</button>
   </div>;
 }
@@ -319,6 +321,7 @@ function Lista() {
     <AvisosDaRota />
     {proximoTrecho && proximoTrecho.length > 1 && <a className="btn contorno-azul" href={linkMapsVarios(proximoTrecho.map(x => x.alvo))} target="_blank" rel="noopener">Abrir as próximas {proximoTrecho.filter(x => x.ids.length).length} no Google Maps</a>}
     <button className="link" data-escolher-maps onClick={A.escolherParaMaps}>Ou escolher os pinos no mapa</button>
+    <button className="link" data-circular onClick={A.circularNoMapa}>Mudar a ordem: circular grupos no mapa</button>
     {R.areas.map((ra, i) => {
       const a = loja.area(ra.id);
       const ps = ra.ordem.map(loja.parada).filter((p): p is Parada => !!p);
@@ -392,9 +395,38 @@ function CartaoEscolha() {
   </div>;
 }
 
+// Circular grupos no mapa (ideia do Luan, 16/10): numa tela só, ele diz por onde começa e quantas
+// leva em cada leva. O botão vem antes dos grupos, como no "Abrir no Maps": com muitos, a lista
+// passa da altura do cartão.
+function CartaoCircular() {
+  const {e, ui} = useLoja();
+  const grupos = gruposValidos(ui.grupos, loja.parada);
+  const cores = coresDosGrupos(e.areas);
+  const pacotes = (ids: string[]) => ids.reduce((n, id) => n + (loja.parada(id)!.unidades || 1), 0);
+  const fora = e.paradas.filter(p => !p.entregue && !p.adiada && p.lat != null).length - grupos.reduce((n, g) => n + g.ids.length, 0);
+  return <div className="folha" data-folha="circular">
+    <div className="folha-cab">
+      <div className="titulo">Circular grupos no mapa</div>
+      <button className="quadrado" aria-label="Sair" onClick={A.voltar}><Icone nome="x" /></button>
+    </div>
+    <div className="info">Circule com o dedo as entregas que quer fazer primeiro, depois as seguintes. Dentro de cada grupo, o app acha a melhor ordem. Dois dedos mexem no mapa.</div>
+    {/* o Desfazer junto do Montar: embaixo dos grupos, ficava fora do cartão */}
+    <div className="linha">
+      <button className="btn" data-desfazer-circulo disabled={!grupos.length} onClick={A.desfazerLaco}>Desfazer</button>
+      <button className="btn pri" data-acao="montar-grupos" disabled={!grupos.length || ui.ocupado} onClick={A.montarPelosGrupos}>Montar nesta ordem</button>
+    </div>
+    {grupos.map((g, k) => <div className="sub-entrega" key={k} data-grupo={k + 1}>
+      <span className="badge" style={{background: cores[k % cores.length]}}>{k + 1}</span>
+      <span className="o-que-muda">{g.ids.length} entrega(s) · {pacotes(g.ids)} pacote(s)</span>
+    </div>)}
+    {grupos.length > 0 && <div className="info" data-fora>{fora > 0 ? `As outras ${fora} vão por último, na melhor ordem.` : 'Todas as entregas estão num grupo.'}</div>}
+  </div>;
+}
+
 export function FolhaRota() {
   const {e, ui} = useLoja();
   if (ui.folha === 'escolher') return <CartaoEscolha />;
+  if (ui.folha === 'circular') return <CartaoCircular />;
   // o pino tocado pode ter sumido (parada removida, rota resetada): aí vale o cartão de sempre
   if (ui.pino && ui.pino.some(id => loja.parada(id))) return <CartaoPino ids={ui.pino} />;
   if (!e.rota) return <CartaoMontar />;
