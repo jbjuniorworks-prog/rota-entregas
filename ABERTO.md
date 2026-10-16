@@ -90,13 +90,13 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     quando confiar. **Apagar várias de uma vez** (16/10, pedido do dono, com as 33 do César):
     cada endereço tem uma caixa de marcar (o endereço inteiro marca), "Escolher as N" pega as que
     mudam a porta, e "Apagar as N escolhidas" fica presa embaixo, com a mesma pergunta antes.
-    Aprovar continua um por um. Commit local, aguardando autorização para subir.
+    Aprovar continua um por um. Publicado em 16/10 (`1c51821`).
 17. **Grupos circulados no mapa** (16/10, ideia do Luan, inspirada no Circuit). Pedido do dono:
-    "numa tela só, por onde e quantas quer marcar". Feito, commit local, aguardando autorização
-    para subir. Próximo: o Luan usar numa rota e dizer se a ordem saiu como ele queria; o contador
+    "numa tela só, por onde e quantas quer marcar". Publicado em 16/10 (`9cba57a`), aguardando a
+    rua. Próximo: o Luan usar numa rota e dizer se a ordem saiu como ele queria; o contador
     "Circular grupos no mapa" do Admin mostra se alguém usa.
-    - **Como ficou:** "Circular grupos no mapa" no cartão de montar a rota, e "Mudar a ordem:
-      circular grupos no mapa" na Lista. Um dedo desenha em volta das entregas, dois mexem no mapa.
+    - **Como ficou:** "Circular grupos no mapa" no cartão de montar a rota e no alto da
+      Lista. Um dedo desenha em volta das entregas, dois mexem no mapa.
       Cada círculo é um grupo, com número e cor, e os pinos dentro dele ganham a cor. O cartão diz
       quantas entregas e pacotes cada um tem e quantas ficaram fora; "Desfazer" tira o último.
       "Montar nesta ordem" faz de cada grupo uma área, na ordem do dedo, e as de fora vão por
@@ -111,7 +111,7 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     - **Livre para voltar atrás:** "Tirar os grupos", na Lista, devolve as entregas dos círculos à
       área de antes e refaz a rota numa só. As áreas feitas à mão em "Áreas e horários" ficam.
 18. **A ordem e a saída, óbvias para o motorista** (16/10, pedido do dono: "tem que ser livre" e
-    "tudo óbvio"). Commit local, aguardando autorização para subir.
+    "tudo óbvio"). Publicado em 16/10 (`43fe26a`), aguardando a rua.
     - **A ordem é escolha dele, à vista:** "Melhor caminho" ou "Sequência das entregas" (parada 1,
       2, 3) no cartão de montar a rota e no alto da Lista, onde trocar já refaz a rota. Vale também
       dentro dos grupos circulados. Era uma caixa em "Ponto de saída e de chegada".
