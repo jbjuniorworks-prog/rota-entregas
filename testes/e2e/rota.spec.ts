@@ -136,7 +136,7 @@ test.describe('com GPS', () => {
     await context.setGeolocation(GPS.p3);
     await abrir(page);
     await carregar(page, ROTA_B);
-    await menu(page, 'Ponto de saída e de chegada');
+    await menu(page, 'Ponto de chegada');
     await page.getByRole('button', {name: 'Marcar no mapa'}).click();
     await clicarMapa(page, -10.9300, -37.0550);
     // marcado, volta sozinho para a tela de onde saiu
@@ -223,23 +223,35 @@ test('se refazer sair sem as ruas, dá para voltar para a rota de antes', async 
   await expect.poll(async () => pe.innerText()).toBe(pelasRuas);
 });
 
-test('dá para pedir a rota na ordem do app de entrega, e o app diz o que isso custa', async ({page}) => {
+// Livre para ele escolher (dono, 16/10): no cartão de montar e, depois, na lista.
+test('a ordem é escolha dele: a sequência das entregas ou o melhor caminho, ao montar e depois, na lista', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_A);
-  await menu(page, 'Ponto de saída e de chegada');
-  await page.getByLabel('Seguir a ordem do app de entrega (parada 1, 2, 3…)').check();
+  const doCartao = page.locator('[data-folha="montar"] [data-ordem]');
+  await expect(doCartao.getByRole('button', {name: 'Melhor caminho'}), 'o de sempre vem marcado').toHaveAttribute('aria-pressed', 'true');
+  await doCartao.getByRole('button', {name: 'Sequência das entregas'}).click();
   await page.getByRole('button', {name: 'Montar a rota', exact: true}).click();
   await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
   await lista(page);
-  await expect(page.locator('.rodape-lista')).toContainText(/Você pediu a ordem do app/);
-  const naOrdem = await ordem(page, ['Rua das Acácias, 120', 'Rua dos Ipês, 300', 'Avenida Central, 1500', 'Travessa Um, 45', 'Rua D, 49']);
-  expect(naOrdem).toEqual(['Rua das Acácias, 120', 'Rua dos Ipês, 300', 'Avenida Central, 1500', 'Travessa Um, 45', 'Rua D, 49']);
+  await expect(page.locator('.rodape-lista')).toContainText(/Você escolheu a sequência das entregas/);
+  const SEQUENCIA = ['Rua das Acácias, 120', 'Rua dos Ipês, 300', 'Avenida Central, 1500', 'Travessa Um, 45', 'Rua D, 49'];
+  expect(await ordem(page, SEQUENCIA)).toEqual(SEQUENCIA);
+
+  // na lista, trocar já refaz
+  const daLista = page.locator('[data-folha="lista"] [data-ordem]');
+  await daLista.getByRole('button', {name: 'Melhor caminho'}).click();
+  await expect(daLista.getByRole('button', {name: 'Melhor caminho'})).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.rodape-lista')).toContainText(/a menos que a sequência das entregas|A sequência das entregas já estava boa/);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).rota.ordemDoApp)).toBeFalsy();
+  await daLista.getByRole('button', {name: 'Sequência das entregas'}).click();
+  await expect(page.locator('.rodape-lista')).toContainText(/Você escolheu a sequência das entregas/);
+  expect(await ordem(page, SEQUENCIA)).toEqual(SEQUENCIA);
 });
 
 test('sem GPS a rota ainda é montada, e "voltar ao ponto de saída" já pode ser marcado', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_B);
-  await menu(page, 'Ponto de saída e de chegada');
+  await menu(page, 'Ponto de chegada');
   await expect(page.getByLabel('Voltar ao ponto de saída no final')).toBeEnabled();
   await montar(page);
   expect(await ordem(page, NOMES)).toHaveLength(6);
@@ -249,13 +261,13 @@ test('o ponto final é apagado no reset do dia', async ({page}) => {
   page.on('dialog', d => d.accept());
   await abrir(page);
   await carregar(page, ROTA_B);
-  await menu(page, 'Ponto de saída e de chegada');
+  await menu(page, 'Ponto de chegada');
   await page.getByRole('button', {name: 'Marcar no mapa'}).click();
   await clicarMapa(page, -10.9300, -37.0550);
   await expect(page.getByText(/Local marcado no mapa/)).toBeVisible();
   await menu(page, 'Resetar a rota');
   await carregar(page, ROTA_B);
-  await menu(page, 'Ponto de saída e de chegada');
+  await menu(page, 'Ponto de chegada');
   await expect(page.getByText(/Sem ponto final/)).toBeVisible();
 });
 
@@ -272,6 +284,29 @@ test.describe('localização ruim como ponto de saída', () => {
     await montar(page);
     await expect(aviso(page)).toContainText('Rota pronta');
     await expect(aviso(page)).toContainText('38 km');
-    await expect(aviso(page)).toContainText('Sair de outro endereço');
+    await expect(aviso(page)).toContainText('ligue a localização precisa');
+  });
+});
+
+// Dono, 16/10: a saída é sempre onde ele está. O endereço de saída digitado antes ficava guardado
+// no celular e valia escondido nos dias seguintes.
+test.describe('a saída é onde ele está', () => {
+  test.use({permissions: ['geolocation'], geolocation: {latitude: -10.9301, longitude: -37.0502, accuracy: 12}});
+
+  test('mesmo com um endereço de saída guardado de antes, a rota sai do GPS', async ({page}) => {
+    await abrir(page);
+    await carregar(page, ROTA_B);
+    await page.evaluate(() => {
+      const e = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
+      e.inicio = {id: 'inicio', lat: -10.99, lng: -37.2, exibido: 'Ponto de coleta antigo', texto: 'Ponto de coleta antigo'};
+      localStorage.setItem('rota-entregas-v2', JSON.stringify(e));
+    });
+    await page.reload();
+    await expect(page.locator('[data-folha="montar"]')).toContainText('A rota sai de onde você está.');
+    await expect(page.locator('[data-folha="montar"]').getByRole('button', {name: 'trocar'})).toHaveCount(0);
+    await montar(page);
+    const inicio = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).inicio);
+    expect(inicio.texto).toBeUndefined();
+    expect([inicio.lat, inicio.lng]).toEqual([-10.9301, -37.0502]);
   });
 });

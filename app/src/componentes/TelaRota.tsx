@@ -144,14 +144,25 @@ function CartaoPino({ids}: {ids: string[]}) {
   </div>;
 }
 
+// Livre para ele escolher (dono, 16/10): o melhor caminho ou a sequência das entregas, e os grupos
+// que ele circular por cima de qualquer uma. A sequência ficava escondida numa tela de ajustes que
+// ninguém abria.
+function EscolhaDaOrdem() {
+  const {e, ui} = useLoja();
+  return <div className="ordem" role="group" aria-label="Ordem da rota" data-ordem>
+    <button className={`chip ${e.ordemDoApp ? '' : 'on'}`} aria-pressed={!e.ordemDoApp} disabled={ui.ocupado} onClick={() => A.mudarOrdem(false)}>Melhor caminho</button>
+    <button className={`chip ${e.ordemDoApp ? 'on' : ''}`} aria-pressed={!!e.ordemDoApp} disabled={ui.ocupado} onClick={() => A.mudarOrdem(true)}>Sequência das entregas</button>
+  </div>;
+}
+
 function CartaoMontar() {
   const {e} = useLoja();
   const semLocal = e.paradas.filter(p => p.lat == null && !p.entregue).length;
   return <div className="folha" data-folha="montar">
     <div className="titulo">{e.paradas.length} entrega(s) no mapa</div>
-    <div className="info">Saindo de {e.inicio && e.inicio.texto ? e.inicio.exibido : 'onde você estiver'}
-      {' · '}<button className="link" onClick={() => A.abrir({tela: 'saida'})}>trocar</button></div>
+    <div className="info">A rota sai de onde você está.</div>
     {semLocal > 0 && <div className="aviso">{semLocal} parada(s) sem local ficarão fora da rota. Corrija em Conferir.</div>}
+    <EscolhaDaOrdem />
     <button className="btn pri grande-btn" onClick={A.montarRota}>Montar a rota</button>
     <button className="btn grande-btn" data-circular onClick={A.circularNoMapa}>Circular grupos no mapa</button>
     <button className="link" data-escolher-maps onClick={A.escolherParaMaps}>Escolher pinos para o Maps</button>
@@ -321,7 +332,13 @@ function Lista() {
     <AvisosDaRota />
     {proximoTrecho && proximoTrecho.length > 1 && <a className="btn contorno-azul" href={linkMapsVarios(proximoTrecho.map(x => x.alvo))} target="_blank" rel="noopener">Abrir as próximas {proximoTrecho.filter(x => x.ids.length).length} no Google Maps</a>}
     <button className="link" data-escolher-maps onClick={A.escolherParaMaps}>Ou escolher os pinos no mapa</button>
-    <button className="link" data-circular onClick={A.circularNoMapa}>Mudar a ordem: circular grupos no mapa</button>
+    <div className="ordem-da-rota">
+      <EscolhaDaOrdem />
+      <div className="linha-links">
+        <button className="link" data-circular onClick={A.circularNoMapa}>Circular grupos no mapa</button>
+        {e.areas.some(a => a.circulo) && <button className="link" data-tirar-grupos onClick={A.tirarGrupos}>Tirar os grupos</button>}
+      </div>
+    </div>
     {R.areas.map((ra, i) => {
       const a = loja.area(ra.id);
       const ps = ra.ordem.map(loja.parada).filter((p): p is Parada => !!p);
@@ -365,9 +382,9 @@ function Lista() {
     <div className="info rodape-lista">{fmtKm(R.dist)} · {fmtMin(R.dur)} dirigindo{R.porRuas ? '' : ' · aproximado'}.{' '}
       {R.ordemDoApp
         ? R.melhorDist != null && R.dist - R.melhorDist > 200
-          ? `Você pediu a ordem do app. A melhor sequência faria ${fmtKm(R.melhorDist)}, ${fmtMin(R.melhorDur!)}: ${fmtKm(R.dist - R.melhorDist)} a menos. Desmarque a opção em "Ponto de saída e de chegada" para usá-la.`
-          : 'Você pediu a ordem do app. A melhor sequência não faria diferença hoje.'
-        : R.mlDist > 0 ? R.mlDist - R.dist > 200 ? `${fmtKm(R.mlDist - R.dist)} a menos que a ordem do app.` : 'A ordem do app já estava boa.' : ''}</div>
+          ? `Você escolheu a sequência das entregas. O melhor caminho faria ${fmtKm(R.melhorDist)}, ${fmtMin(R.melhorDur!)}: ${fmtKm(R.dist - R.melhorDist)} a menos. Toque em "Melhor caminho", no alto da lista, para usá-lo.`
+          : 'Você escolheu a sequência das entregas. O melhor caminho não faria diferença hoje.'
+        : R.mlDist > 0 ? R.mlDist - R.dist > 200 ? `${fmtKm(R.mlDist - R.dist)} a menos que a sequência das entregas.` : 'A sequência das entregas já estava boa.' : ''}</div>
   </div>;
 }
 
@@ -409,7 +426,7 @@ function CartaoCircular() {
       <div className="titulo">Circular grupos no mapa</div>
       <button className="quadrado" aria-label="Sair" onClick={A.voltar}><Icone nome="x" /></button>
     </div>
-    <div className="info">Circule com o dedo as entregas que quer fazer primeiro, depois as seguintes. Dentro de cada grupo, o app acha a melhor ordem. Dois dedos mexem no mapa.</div>
+    <div className="info">Circule com o dedo as entregas que quer fazer primeiro, depois as seguintes. Dentro de cada grupo, {e.ordemDoApp ? 'segue a sequência das entregas' : 'o app acha a melhor ordem'}. Dois dedos mexem no mapa.</div>
     {/* o Desfazer junto do Montar: embaixo dos grupos, ficava fora do cartão */}
     <div className="linha">
       <button className="btn" data-desfazer-circulo disabled={!grupos.length} onClick={A.desfazerLaco}>Desfazer</button>
@@ -419,7 +436,7 @@ function CartaoCircular() {
       <span className="badge" style={{background: cores[k % cores.length]}}>{k + 1}</span>
       <span className="o-que-muda">{g.ids.length} entrega(s) · {pacotes(g.ids)} pacote(s)</span>
     </div>)}
-    {grupos.length > 0 && <div className="info" data-fora>{fora > 0 ? `As outras ${fora} vão por último, na melhor ordem.` : 'Todas as entregas estão num grupo.'}</div>}
+    {grupos.length > 0 && <div className="info" data-fora>{fora > 0 ? `As outras ${fora} vão por último, ${e.ordemDoApp ? 'na sequência das entregas' : 'na melhor ordem'}.` : 'Todas as entregas estão num grupo.'}</div>}
   </div>;
 }
 

@@ -4,27 +4,18 @@ import {CORES} from '../logica/rotulos';
 import {loja, useLoja} from '../loja';
 import {Cabecalho} from './comuns';
 
-// O que se ajusta uma vez e se esquece: ficava no meio da aba Rota, entre o cartão e a lista.
+// O que se ajusta uma vez e se esquece: ficava no meio da aba Rota, entre o cartão e a lista. A
+// saída saiu daqui em 16/10: é sempre onde ele está, e a sequência das entregas foi para o cartão
+// de montar a rota e para a lista, onde ele escolhe.
 export function TelaSaida() {
   const {e} = useLoja();
   return <>
-    <Cabecalho titulo="Ponto de saída e de chegada" />
+    <Cabecalho titulo="Ponto de chegada" />
     <div className="corpo">
-      <h2>Saindo de</h2>
-      <div className="info">{e.inicio && e.inicio.texto
-        ? `${e.inicio.exibido}. Saindo deste endereço, não do GPS.`
-        : 'Onde você estiver na hora de montar a rota. Não precisa fazer nada.'}</div>
-      <div className="linha">
-        <button className="btn" onClick={A.saidaPorEndereco}>Sair de outro endereço</button>
-        {e.inicio && e.inicio.texto && <button className="btn" onClick={() => A.mudar(() => { e.inicio = null; }, true)}>Usar o GPS</button>}
-      </div>
+      <div className="info">A rota sai de onde você está na hora de montar.</div>
       <label className="marcar">
         <input type="checkbox" id="voltar" checked={!!(e.voltar && !e.fim)} disabled={!!e.fim} onChange={ev => A.mudar(() => { e.voltar = ev.target.checked; }, true)} />
         Voltar ao ponto de saída no final
-      </label>
-      <label className="marcar">
-        <input type="checkbox" id="ordemDoApp" checked={!!e.ordemDoApp} onChange={ev => A.mudar(() => { e.ordemDoApp = ev.target.checked; }, true)} />
-        Seguir a ordem do app de entrega (parada 1, 2, 3…)
       </label>
       <h2>Terminar perto de</h2>
       <div className="info">{e.fim ? `${e.fim.exibido}. A última entrega fica o mais perto possível daqui.` : 'Sem ponto final: a rota termina onde for mais curto.'}</div>

@@ -1,5 +1,5 @@
 import {haversine} from './geo';
-import {aplicarGrupos, circular, coresDosGrupos, dentroDoLaco, gruposValidos} from './grupos';
+import {aplicarGrupos, circular, coresDosGrupos, dentroDoLaco, gruposValidos, tirarGrupos} from './grupos';
 import {montarRota} from './montagem';
 import type {Estado, Parada, Ponto} from './tipos';
 
@@ -89,5 +89,22 @@ describe('circular grupos no mapa', () => {
     expect(e.paradas.map(p => p.area)).toEqual(['g2', 'g1']);
     // a Roxo, vazia, saiu; os grupos não pegaram a cor de nenhuma área que existia
     expect(e.areas.map(a => a.nome)).toEqual(['Amarelo', 'Azul', 'Verde']);
+  });
+
+  it('tirar os grupos volta tudo para a área de antes, a rota volta a ser uma só, e a área feita à mão fica', async () => {
+    const e = estado([parada('perto', -10.9605, -37.0450), parada('meio', -10.9650, -37.0420), parada('longe', -10.9700, -37.0400), parada('cedo', -10.9610, -37.0455)]);
+    e.areas.push({id: 'manha', nome: 'Roxo', cor: '#9333ea', prazo: '10:00'});
+    e.paradas[3].area = 'manha';
+    let id = 0;
+    aplicarGrupos(e, [{ids: ['longe'], laco: []}, {ids: ['meio'], laco: []}], () => 'g' + ++id);
+    expect(e.areas.filter(a => a.circulo).map(a => a.id)).toEqual(['g1', 'g2']);
+    expect(tirarGrupos(e)).toBe(2);
+    expect(e.areas.map(a => a.id)).toEqual(['a', 'manha']);
+    expect(e.paradas.map(p => p.area)).toEqual(['a', 'a', 'a', 'manha']);
+    expect(e.areasManual).toBe(false);
+    expect(tirarGrupos(e), 'sem grupos, não mexe').toBe(0);
+    const r = await montarRota(e, servicos);
+    // a da manhã, com horário, vai primeiro de novo; depois o resto, do mais perto ao mais longe
+    expect(r.areas.map(ra => ra.ordem)).toEqual([['cedo'], ['perto', 'meio', 'longe']]);
   });
 });

@@ -395,16 +395,6 @@ async function localPorTexto(pergunta: string, atual: string | undefined, naoAch
   }
 }
 
-export async function saidaPorEndereco() {
-  const l = await localPorTexto('Endereço de saída (ex.: ponto de coleta):', e().inicio?.texto, 'Endereço de saída não encontrado.');
-  if (!l) return;
-  e().inicio = {id: 'inicio', ...l};
-  desatualizarRota();
-  ui.enquadrar++;
-  loja.mudou();
-  status('Saída definida.', 2000);
-}
-
 export async function fimPorEndereco() {
   const l = await localPorTexto('Onde você quer terminar? (ex.: Ponto Novo, ou um endereço)', e().fim?.texto, 'Lugar não encontrado. Tente "Marcar no mapa".');
   if (!l) return;

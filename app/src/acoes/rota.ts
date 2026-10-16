@@ -1,6 +1,6 @@
 import {proximaAPe} from '../logica/geo';
 import {backupRecente, CHAVES, estadoVazio, resetarDia} from '../logica/guarda';
-import {aplicarGrupos, circular, gruposValidos} from '../logica/grupos';
+import {aplicarGrupos, circular, gruposValidos, tirarGrupos as tirarOsGrupos} from '../logica/grupos';
 import {novoId} from '../logica/importar';
 import {montarRota as calcularRota} from '../logica/montagem';
 import {linkWaze} from '../logica/otimizacao';
@@ -23,7 +23,7 @@ const RECENTE = 30000;
 const SAIDA_RUIM = 1000;
 
 const saidaRuim = (m: number) =>
-  `A sua localização veio com ±${m >= 2000 ? Math.round(m / 100) / 10 + ' km' : m + ' m'} de margem — esse aparelho se localizou pela internet, não por satélite. Num computador é assim mesmo. Se o ponto de saída ficou longe, use "Sair de outro endereço", em Ponto de saída e de chegada.`;
+  `A sua localização veio com ±${m >= 2000 ? Math.round(m / 100) / 10 + ' km' : m + ' m'} de margem — esse aparelho se localizou pela internet, não por satélite. Num computador é assim mesmo. No celular, ligue a localização precisa e toque em "Refazer a rota".`;
 
 function saidaDefinida(precisao: number) {
   const m = Math.round(precisao);
@@ -87,12 +87,12 @@ export async function montarRota() {
   const antes = e().rota ? {rota: e().rota!, pernas: e().pernas} : null;
   // A saída é onde ele está, pega aqui na hora: não há botão para isso antes (02/10, "todas as
   // respostas são onde você está"). Margem grande avisa no fim, senão o "Rota pronta" apagava.
+  // Sempre, desde 16/10 (dono): o endereço de saída digitado ficava guardado no celular e valia
+  // escondido nos dias seguintes, e a tela onde se trocava ninguém usava.
   let margem: number | null = null;
   try {
-    if (!e().inicio || !e().inicio!.texto) {
-      let noPrazo = true;
-      try { margem = await comPrazo(gps(() => noPrazo), PRAZO_DO_GPS); } catch { noPrazo = false; e().inicio = null; }
-    }
+    let noPrazo = true;
+    try { margem = await comPrazo(gps(() => noPrazo), PRAZO_DO_GPS); } catch { noPrazo = false; e().inicio = null; }
     const ruim = margem != null && margem > SAIDA_RUIM ? ' ' + saidaRuim(Math.round(margem)) : '';
     const rota = await calcularRota(e(), {matriz, linha: linhaDaRota}, m => status(m));
     // fica registrado se a rota saiu com as ruas de verdade ou em linha reta, e por quê:
@@ -291,6 +291,21 @@ export async function montarPelosGrupos() {
   irPara('rota');
   loja.mudou();
   await montarRota();
+}
+
+export async function tirarGrupos() {
+  if (ui.ocupado || !tirarOsGrupos(e())) return;
+  loja.mudou();
+  await montarRota();
+}
+
+// Melhor caminho ou a sequência das entregas (parada 1, 2, 3): escolha dele, no cartão de montar e
+// na lista. Com a rota pronta, trocar já refaz: é para ver a outra ordem agora.
+export async function mudarOrdem(doApp: boolean) {
+  if (ui.ocupado || !!e().ordemDoApp === doApp) return;
+  e().ordemDoApp = doApp;
+  loja.mudou();
+  if (e().rota) await montarRota();
 }
 
 export async function copiarRota() {

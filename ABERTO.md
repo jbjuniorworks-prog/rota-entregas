@@ -108,6 +108,18 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     - **Testado:** em unidade e na tela com a `rota-d.xlsx` em 412×915, desenhando com o mouse.
       Cinco sabotagens quebraram os testes. **Não testado no aparelho:** o desenho com o dedo e a
       pinça de dois dedos num Android de verdade.
+    - **Livre para voltar atrás:** "Tirar os grupos", na Lista, devolve as entregas dos círculos à
+      área de antes e refaz a rota numa só. As áreas feitas à mão em "Áreas e horários" ficam.
+18. **A ordem e a saída, óbvias para o motorista** (16/10, pedido do dono: "tem que ser livre" e
+    "tudo óbvio"). Commit local, aguardando autorização para subir.
+    - **A ordem é escolha dele, à vista:** "Melhor caminho" ou "Sequência das entregas" (parada 1,
+      2, 3) no cartão de montar a rota e no alto da Lista, onde trocar já refaz a rota. Vale também
+      dentro dos grupos circulados. Era uma caixa em "Ponto de saída e de chegada".
+    - **A saída é sempre onde ele está.** O endereço de saída digitado ficava guardado no celular e
+      valia escondido nos dias seguintes; agora toda montagem pega o GPS, e um endereço guardado de
+      antes não vale mais. Saíram o "Sair de outro endereço" e o "trocar" do cartão. A tela virou
+      "Ponto de chegada", com o ponto final, o voltar ao ponto de saída e as paradas por trecho.
+      Sem GPS, a rota sai sem ponto de saída, como já saía.
     - **No Circuit, hoje Spoke:** desde 21/08/2026, depois de otimizar, "Refine > Manually order
       route": ele desenha com o dedo um laço em volta das paradas que quer primeiro, depois das
       seguintes, e reotimiza. Os grupos podem ser aumentados, apagados, desfeitos e reordenados. As

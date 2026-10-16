@@ -57,7 +57,7 @@ export function aplicarGrupos(e: Estado, grupos: Grupo[], novoId: () => string):
     let nome = base;
     for (let n = 2; nomes.has(nome); n++) nome = `${base} ${n}`;
     nomes.add(nome);
-    return {id: novoId(), nome, cor, prazo: ''};
+    return {id: novoId(), nome, cor, prazo: '', circulo: true};
   });
   const daArea = new Map(grupos.flatMap((g, k) => g.ids.map(id => [id, novas[k].id] as const)));
   for (const p of e.paradas) p.area = daArea.get(p.id) ?? p.area;
@@ -67,4 +67,21 @@ export function aplicarGrupos(e: Estado, grupos: Grupo[], novoId: () => string):
   // a ordem é a que ele desenhou, não a dos horários nem a da mais perto
   e.areasManual = true;
   return novas;
+}
+
+// Livre para voltar atrás (dono, 16/10): as entregas dos círculos voltam para a área dos próximos
+// endereços, e a rota volta a ser uma só. As áreas que ele criou à mão, em "Áreas e horários",
+// ficam como estavam.
+export function tirarGrupos(e: Estado): number {
+  const circulos = new Set(e.areas.filter(a => a.circulo).map(a => a.id));
+  if (!circulos.size) return 0;
+  // sem nenhuma área de fora dos círculos, o primeiro vira área comum
+  let destino = e.areas.find(a => a.id === e.areaAtual && !a.circulo) || e.areas.find(a => !a.circulo);
+  if (!destino) { destino = e.areas[0]; delete destino.circulo; circulos.delete(destino.id); }
+  let n = 0;
+  for (const p of e.paradas) if (circulos.has(p.area)) { p.area = destino.id; n++; }
+  e.areas = e.areas.filter(a => !circulos.has(a.id));
+  if (!e.areas.some(a => a.id === e.areaAtual)) e.areaAtual = destino.id;
+  e.areasManual = false;
+  return n;
 }

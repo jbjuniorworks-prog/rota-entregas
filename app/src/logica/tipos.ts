@@ -83,6 +83,8 @@ export interface Area {
   nome: string;
   cor: string;
   prazo: string;
+  // feita circulando no mapa: some quando ele tira os grupos
+  circulo?: boolean;
 }
 
 export interface Local extends Ponto {

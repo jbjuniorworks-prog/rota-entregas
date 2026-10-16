@@ -539,6 +539,17 @@ test.describe('agir pelo pino', () => {
     const proxima = await page.locator('[data-folha="proxima"] .endereco').innerText();
     const textos = e.paradas.filter((p: {id: string}) => daDireita.includes(p.id)).map((p: {texto: string}) => p.texto);
     expect(textos, 'a próxima é do primeiro círculo').toContain(proxima);
+
+    // livre para voltar atrás: tirar os grupos refaz a rota inteira, numa área só
+    await lista(page);
+    await page.locator('[data-folha="lista"] [data-tirar-grupos]').click();
+    const salvo = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!));
+    await expect.poll(async () => (await salvo()).rota.areas.length).toBe(1);
+    const depois = await salvo();
+    expect(depois.areas.some((a: {circulo?: boolean}) => a.circulo)).toBe(false);
+    expect(depois.areasManual).toBe(false);
+    expect(depois.rota.areas[0].ordem).toHaveLength(todas.length);
+    await expect(page.locator('[data-folha="lista"] [data-tirar-grupos]')).toHaveCount(0);
   });
 
   // Revisão de 16/10: o mapa afastado junta num pino entregas de lugares diferentes. Escolher esse

@@ -25,7 +25,7 @@ export function MenuMais() {
       {/* sem rota, a mesma tela serve para achar uma entrega de outro dia (B.O.) */}
       {item(comParadas ? 'Conferir endereços' : 'Procurar uma entrega', () => { ui.soDuvidas = false; A.abrir({tela: 'conferir'}); })}
       {comParadas && item(e.rota ? 'Refazer a rota' : 'Montar a rota', A.montarRota)}
-      {item('Ponto de saída e de chegada', () => A.abrir({tela: 'saida'}))}
+      {item('Ponto de chegada', () => A.abrir({tela: 'saida'}))}
       {item('Áreas e horários', () => A.abrir({tela: 'areas'}))}
       {e.rota && item('Copiar a rota para o WhatsApp', A.copiarRota)}
       {comParadas && item('Ler mais uma planilha ou endereços', () => A.abrir({tela: 'inicio'}))}

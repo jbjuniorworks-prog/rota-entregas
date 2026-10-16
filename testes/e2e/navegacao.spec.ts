@@ -76,8 +76,8 @@ test('chegar à Rota por outra tela não deixa um voltar à toa', async ({page})
   await expect(aviso(page)).toContainText(AVISO_DE_SAIR);
 
   // logo depois do aviso, o menu ainda tem de funcionar
-  await menu(page, 'Ponto de saída e de chegada');
-  await expect(page.locator('.cabecalho')).toContainText('Ponto de saída e de chegada');
+  await menu(page, 'Ponto de chegada');
+  await expect(page.locator('.cabecalho')).toContainText('Ponto de chegada');
   await page.getByRole('button', {name: 'Montar a rota', exact: true}).click();
   await expect(page.locator('[data-folha="proxima"]')).toBeVisible({timeout: 20_000});
   await page.goBack();
