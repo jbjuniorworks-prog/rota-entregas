@@ -219,7 +219,9 @@ Fora da lista:
   40 fora; 15 pedidos de até 300; só atualiza, não insere nem apaga.
 - **Liberação em três passos, cada um com confirmação própria do dono** (aprovado o caminho, não
   a execução):
-  1. a 023: só acrescenta a coluna `no_mapa` (vazia), a regra dos três valores e um índice;
+  1. a 023: só acrescenta a coluna `no_mapa` (vazia), a regra dos três valores e um índice.
+     **Rodada pelo dono em 17/10**; conferido só lendo: a coluna existe e está vazia nos 23.982
+     trechos. Simulação depois dela: as mesmas contagens;
   2. depois dela, simular de novo, conferir as contagens e gravar;
   3. depois da gravação, rodar a busca real que o celular faz, com as ruas do Luan de 17/10, e só
      então publicar. Se ela falhar ou trouxer algo diferente, para ali.
