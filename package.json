@@ -18,6 +18,7 @@
     "bairros": "node ferramentas/bairros.mjs",
     "prefeitura": "node ferramentas/prefeitura.mjs",
     "rechavear": "node ferramentas/rechavear.mjs",
+    "nomes-no-mapa": "node ferramentas/nomes-no-mapa.mjs",
     "test:leitor": "playwright test --grep @leitor --workers 1",
     "test:ui": "playwright test --grep @ui --workers 1",
     "portas": "node ferramentas/portas.mjs"

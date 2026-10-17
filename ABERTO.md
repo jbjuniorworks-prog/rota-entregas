@@ -153,7 +153,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## O nome da rua no mapa (17/10), medido, não construir ainda
+## O nome da rua no mapa (17/10), feito, não publicado
 
 - **O pedido:** o dono comparou o nosso mapa com o Google no Robalo ("consegue ver a diferença?
   conseguimos completar o mapa com as ruas que temos?").
@@ -172,9 +172,26 @@ Fora da lista:
   - 674 (24%): ninguém tem aquele nome perto, e mostrar a base não ajudaria.
 - **Ressalva:** as ruas das entregas nasceram dessas mesmas passagens, então contam a favor por
   construção. O que elas medem é o que já sabemos, não o que o motorista acharia da primeira vez.
-- **Próximo:** o dono decidir. A proposta é escrever no mapa, com o mapa aproximado, o nome da rua
-  das entregas do dia onde o mapa mostra outro ou nenhum. Usar o mapa ou os dados do Google não
-  dá: os termos deles proíbem.
+- **Feito em 17/10, commit local, não publicado.** O dono mandou seguir, com a revisão: separar
+  o nome do traço, pôr cada nome no trecho certo, só de perto e sem amontoar, e testar no Robalo.
+  - A 023 põe a coluna `ruas.no_mapa`, e `npm run nomes-no-mapa -- gravar` compara cada trecho
+    da prefeitura com o mapa inteiro: com_nome 75, sem_nome 3.617, fora 40. No computador, porque
+    pelo ponto guardado as rodovias, que vão a 7 km dele, ficavam de fora. As ruas desenhadas das
+    entregas não entram: o traçado delas sai dos pontos das portas.
+  - No celular, só as ruas das entregas do dia, e só o trecho a até 300 m de uma entrega daquela
+    rua. De zoom 16 para cima, o nome como vem na planilha, ao longo da rua, sem encostar em outro;
+    o trecho que o mapa não tem é desenhado como rua.
+  - Testado em unidade (12) e na tela (1), com quatro sabotagens.
+- **No Robalo, com dados reais, resolve pouco.** A prefeitura só tem 150 m da Albertina Bezerra
+  Ribeiro, a ponta oeste junto da rodovia: é só ali que o nome aparece. O resto da rua, uns 530 m
+  até o 137, é outra "Rua B" do mapa, e é nele que ficam as entregas. Das 10 portas que o Luan
+  entregou ali em 17/10, metade fica a até 24 m dessa Rua B; a outra, a 40–116 m, em ramais ("rua
+  sem saída", "Rua B 2", "Rua B 5"). Também: no zoom 17 o nome é mais comprido que o trecho, e
+  avança por cima da rodovia.
+- **Próximo:** o dono decidir entre publicar assim (vale onde a prefeitura tem a rua; rodar a 023
+  e a ferramenta antes) e medir uma segunda fonte, o nome pelas portas entregues com GPS. Esta
+  pode pôr o nome na rua errada, então precisa de regra medida. Usar o mapa ou os dados do Google
+  não dá: os termos deles proíbem.
 
 ## Rota do Luan de 16/10: o pino do 1630 que sumia, publicado em 16/10 (`7c10796`)
 

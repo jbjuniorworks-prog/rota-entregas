@@ -681,6 +681,55 @@ test.describe('agir pelo pino', () => {
 // Na porta, com o pacote na mão: "Estou aqui" num cartão e "Entreguei" em outro eram dois toques,
 // cada um lendo o GPS de novo. O par que a nuvem aceita como porta confirmada é correção e
 // passagem no mesmo ponto — então as duas têm de sair da mesma leitura.
+// Dono, 17/10: no Robalo o mapa chama de "Rua B" a Professora Albertina Bezerra Ribeiro da
+// planilha. Os trechos da prefeitura vêm marcados pela `npm run nomes-no-mapa` (023).
+test.describe('o nome da rua no mapa', () => {
+  test.use({viewport: {width: 412, height: 915}});
+
+  test('de perto, o nome da planilha vai em cima da rua que o mapa chama de outro jeito, e o trecho que falta é desenhado', async ({page, nuvem}) => {
+    const {garantirMapa, verNoMapa} = await import('./apoio');
+    const deitada = (lat: number): [number, number][] => [[lat, -37.0512], [lat, -37.0488]];
+    nuvem.tabelas.ruas = [
+      {nome_chave: 'acacias', fonte: 'prefeitura', linha: deitada(-10.95002), no_mapa: 'sem_nome'},
+      {nome_chave: 'central', fonte: 'prefeitura', linha: deitada(-10.95122), no_mapa: 'fora'},
+      // o mesmo nome noutro loteamento, longe das entregas dela
+      {nome_chave: 'acacias', fonte: 'prefeitura', linha: [[-10.99, -37.0905], [-10.99, -37.0895]], no_mapa: 'sem_nome'},
+      // o mapa já mostra este nome: nem vem na busca
+      {nome_chave: 'palmeiras', fonte: 'prefeitura', linha: deitada(-10.95362), no_mapa: 'com_nome'},
+    ];
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-d.xlsx');
+    await garantirMapa(page);
+    const nomes = page.locator('.nome-rua');
+    const tracos = page.locator('path.traco-rua');
+
+    await verNoMapa(page, -10.9506, -37.05, 17);
+    await expect(nomes.filter({hasText: 'Rua das Acácias'})).toHaveCount(1);
+    await expect(nomes.filter({hasText: 'Avenida Central'})).toHaveCount(1);
+    await expect(nomes.filter({hasText: 'Rua das Palmeiras'})).toHaveCount(0);
+    await expect(tracos, 'só o trecho que o mapa não tem').toHaveCount(1);
+    // em cima da linha dela, deitado como ela
+    const ondeEsta = await nomes.filter({hasText: 'Rua das Acácias'}).evaluate(el => { const r = el.getBoundingClientRect(); return {x: r.left + r.width / 2, y: r.top + r.height / 2, largura: r.width, altura: r.height}; });
+    const ondeDevia = await page.evaluate(() => {
+      const m = document.querySelector('#map')!.getBoundingClientRect(), q = (window as any).rotaTeste.pixel(-10.95002, -37.05);
+      return {x: m.left + q.x, y: m.top + q.y};
+    });
+    expect(Math.abs(ondeEsta.x - ondeDevia.x)).toBeLessThan(3);
+    expect(Math.abs(ondeEsta.y - ondeDevia.y)).toBeLessThan(3);
+    expect(ondeEsta.largura).toBeGreaterThan(ondeEsta.altura * 3);
+    const pedido = nuvem.pedidos.find(p => p.caminho === 'ruas' && p.busca.includes('no_mapa'))!;
+    expect(decodeURIComponent(pedido.busca), 'pede só as ruas da planilha').toContain('acacias');
+    expect(decodeURIComponent(pedido.busca)).not.toContain('albertina');
+
+    await verNoMapa(page, -10.99, -37.09, 17);
+    await expect(nomes, 'o mesmo nome longe das entregas não aparece').toHaveCount(0);
+
+    await verNoMapa(page, -10.9506, -37.05, 14);
+    await expect(nomes, 'de longe, sem nomes').toHaveCount(0);
+    await expect(tracos).toHaveCount(1);
+  });
+});
+
 // Luan, 16/10: no celular, o dedo não desenhava nada. O teste de cima desenha com o mouse, e só o
 // dedo o navegador toma como rolagem: a regra de toque do Leaflet chegava depois e ganhava.
 test.describe('circular com o dedo', () => {

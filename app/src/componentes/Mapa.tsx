@@ -1,10 +1,11 @@
 import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {abrir, fecharLaco, pararDeSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
+import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
 import {haversine} from '../logica/geo';
+import {rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
 import {empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
@@ -33,6 +34,33 @@ const numeroDoGrupo = (n: number, cor: string) => L.divIcon({
   className: '', iconSize: [28, 28], iconAnchor: [14, 14],
   html: `<div class="num-grupo" style="background:${cor}">${n}</div>`,
 });
+
+// O nome da rua no mapa (17/10): de perto, onde o nome da planilha cabe sem amontoar.
+const ZOOM_DOS_NOMES = 16;
+let medidor: CanvasRenderingContext2D | null = null;
+const larguras = new Map<string, number>();
+function larguraDoNome(texto: string): number {
+  if (!larguras.has(texto)) {
+    medidor ??= document.createElement('canvas').getContext('2d');
+    if (medidor) medidor.font = '700 12px system-ui, sans-serif';
+    larguras.set(texto, medidor ? medidor.measureText(texto).width : texto.length * 7);
+  }
+  return larguras.get(texto)!;
+}
+
+function desenharNomes(m: L.Map, camada: L.LayerGroup) {
+  camada.clearLayers();
+  const nomes = loja.ui.tela === 'rota' ? loja.ui.nomesNoMapa : [];
+  if (!nomes.length || m.getZoom() < ZOOM_DOS_NOMES) return;
+  const s = m.getSize();
+  const itens = nomes.map(n => ({texto: n.texto, pixels: n.linha.map(q => m.latLngToContainerPoint(q))}));
+  for (const r of rotulosNaTela(itens, {largura: s.x, altura: s.y}, larguraDoNome)) {
+    L.marker(m.containerPointToLatLng([r.x, r.y]), {
+      icon: L.divIcon({className: '', iconSize: [0, 0], html: `<div class="nome-rua" style="transform:translate(-50%,-50%) rotate(${r.angulo.toFixed(1)}deg)">${esc(r.texto)}</div>`}),
+      interactive: false, keyboard: false, zIndexOffset: -1000,
+    }).addTo(camada);
+  }
+}
 
 // A bolinha de "você está aqui", com a seta do rumo quando ele está andando.
 const iconeDeMim = (rumo: number | null) => L.divIcon({
@@ -64,6 +92,9 @@ export default function Mapa() {
   const camadaPinos = useRef<L.LayerGroup | null>(null);
   const camadaEu = useRef<L.LayerGroup | null>(null);
   const camadaLacos = useRef<L.LayerGroup | null>(null);
+  const camadaNomes = useRef<L.LayerGroup | null>(null);
+  const camadaTracos = useRef<L.LayerGroup | null>(null);
+  const nomesFeitos = useRef<NomeNoMapa[] | null>(null);
   const lacosFeitos = useRef<Grupo[] | null>(null);
   const pinos = useRef<Record<string, NoMapa>>({});
   const desenhado = useRef('');
@@ -80,9 +111,14 @@ export default function Mapa() {
   useEffect(() => {
     const m = L.map(div.current!, {markerZoomAnimation: false}).setView([-15.8, -47.9], 4);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap', updateWhenIdle: true, keepBuffer: 1}).addTo(m);
+    // o trecho que o mapa não tem vai por baixo da linha da rota, como as ruas do mapa
+    m.createPane('tracos').style.zIndex = '350';
+    camadaTracos.current = L.layerGroup().addTo(m);
     camadaFundo.current = L.layerGroup().addTo(m);
     camadaPinos.current = L.layerGroup().addTo(m);
     camadaLacos.current = L.layerGroup().addTo(m);
+    camadaNomes.current = L.layerGroup().addTo(m);
+    m.on('zoomend moveend', () => desenharNomes(m, camadaNomes.current!));
     // Tocar fora dos pinos: com o "toque no mapa" armado, é o lugar da entrega; com o cartão de
     // um pino aberto, fecha ele, que nem o voltar.
     m.on('click', ev => {
@@ -252,6 +288,19 @@ export default function Mapa() {
       }
     }
 
+    const nomes = ui.tela === 'rota' ? ui.nomesNoMapa : null;
+    if (nomesFeitos.current !== nomes) {
+      nomesFeitos.current = nomes;
+      const camadaT = camadaTracos.current!;
+      camadaT.clearLayers();
+      // desenhado como as ruas do mapa: borda cinza e miolo branco
+      for (const n of nomes || []) if (n.traco) {
+        L.polyline(n.linha, {pane: 'tracos', color: '#9ca3af', weight: 8, interactive: false, className: 'traco-rua'}).addTo(camadaT);
+        L.polyline(n.linha, {pane: 'tracos', color: '#ffffff', weight: 5, interactive: false}).addTo(camadaT);
+      }
+      desenharNomes(m, camadaNomes.current!);
+    }
+
     // Escondido (outra tela aberta), o mapa não tem tamanho, e enquadrar agora mostrava o mundo
     // inteiro: o pedido espera ele aparecer. Aparecendo, o tamanho de antes já não vale.
     if (!div.current!.offsetWidth) return;
@@ -352,6 +401,9 @@ export default function Mapa() {
       el.classList.remove('circulando');
     };
   }, [circulando]);
+
+  // uma busca por planilha nova: a ação não repete o que já pediu
+  useEffect(() => { if (ui.tela === 'rota') buscarNomesDasRuas(); }, [e.paradas.length, ui.tela]);
 
   // Só segue a posição na Rota, que é a tela que ele olha dirigindo: no Admin o GPS não fica
   // ligado à toa.
