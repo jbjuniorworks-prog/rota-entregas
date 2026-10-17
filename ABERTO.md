@@ -153,7 +153,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## O nome da rua no mapa (17/10), feito, não publicado
+## O nome da rua no mapa (17/10): só a camada da prefeitura, liberação preparada, não publicada
 
 - **O pedido:** o dono comparou o nosso mapa com o Google no Robalo ("consegue ver a diferença?
   conseguimos completar o mapa com as ruas que temos?").
@@ -183,15 +183,17 @@ Fora da lista:
     o trecho que o mapa não tem é desenhado como rua.
   - Testado em unidade (12) e na tela (1), com quatro sabotagens.
 - **No Robalo, com dados reais, resolve pouco.** A prefeitura só tem 150 m da Albertina Bezerra
-  Ribeiro, a ponta oeste junto da rodovia: é só ali que o nome aparece. O resto da rua, uns 530 m
-  até o 137, é outra "Rua B" do mapa, e é nele que ficam as entregas. Das 10 portas que o Luan
+  Ribeiro, a ponta oeste junto da rodovia: é só ali que o nome aparece. O resto da rua, uns
+  530 m, é outra "Rua B" do mapa, e é nele que ficam as entregas. Das 10 portas que o Luan
   entregou ali em 17/10, metade fica a até 24 m dessa Rua B; a outra, a 40–116 m, em ramais ("rua
   sem saída", "Rua B 2", "Rua B 5"). Também: no zoom 17 o nome é mais comprido que o trecho, e
   avança por cima da rodovia.
 - **O nome no trecho curto, consertado (17/10, commit local).** Os pedaços seguidos da mesma rua
   se emendam, só ponta com ponta e nunca por uma ramificação. O nome só entra se couber no traçado,
   inteiro ou com as abreviações de sempre (R., Av., Profa., Dep.), e se a rua for reta debaixo dele.
-- **O nome pelas portas entregues, medido (17/10), só leitura, não construir.** Relatório local,
+- **O nome pelas portas entregues: investigação encerrada (17/10), não é pendência.** Medido só
+  lendo a nuvem; a medição mostrou que não compensa agora, e a regra não será afrouxada para
+  caber. Relatório local,
   com dados reais, fora do git. Porta conta como evidência com GPS até ±20 m, a até 15 m da via e
   com folga de 8 m para a seguinte: 1.993 de 2.762; 579 ambíguas. A regra nunca lê o nome do mapa.
   - Contra o nome do mapa, por via: a regra A (2 portas, 80%) erra 23 de 237 (10%); a B (3 portas,
@@ -203,10 +205,30 @@ Fora da lista:
   - Ganho medido em outro dia: 7 das 980 portas cuja rua o mapa não mostra (1%). Em 28 dias,
     quase toda rua de loteamento foi entregue num dia só.
   - Albertina: as 10 portas caem em 5 vias do mapa; a A daria o nome só a uma (2 portas).
-- **Próximo:** não publicar o nome pelas portas. Decidir se publica a camada da prefeitura sozinha
-  (rodar a 023 e `npm run nomes-no-mapa -- gravar` antes), e se o Luan confirma à mão os pedaços
-  da Albertina. Medir de novo o nome pelas portas quando houver mais dias nos mesmos loteamentos.
-  Usar o mapa ou os dados do Google não dá: os termos deles proíbem.
+- **Conferência visual da camada da prefeitura (17/10)**, com a planilha do Luan de 17/10 e o mapa
+  de verdade: 4 ruas dela têm trecho da prefeitura. No zoom 16 nenhum nome cabe; no 17, um; no 18,
+  os quatro, com as pontas do nome a até 5 px do traçado. A Albertina não passa
+  por cima da rodovia nem entra no ramo. Limitação: o pino e o balão da entrega podem tapar parte
+  do nome, que fica por baixo deles de propósito.
+- **Limitação a dizer junto:** é um complemento pelo cadastro da prefeitura, não a solução do
+  Robalo. A Albertina continua sem nome nos trechos que a prefeitura não cobre.
+- **Liberação, quando o dono autorizar as escritas** (o dono aprovou o caminho, não a execução):
+  1. o dono roda a 023: só acrescenta a coluna `no_mapa` (vazia), a regra dos três valores
+     e um índice; nenhum dado muda;
+  2. `npm run nomes-no-mapa` sem gravar, para conferir: 3.732 trechos (75, 3.617, 40);
+  3. `-- gravar`: só atualiza esses 3.732 (15 pedidos de até 300); não insere nem apaga;
+  4. publicar o app; conferir num celular, no zoom 18.
+
+  Para desligar sem publicar de novo: `update public.ruas set no_mapa = null where no_mapa is
+  not null;` (ou só de uma rua, pelo `nome_chave`). Os celulares param na próxima busca;
+  o que já está aberto mantém até recarregar. Para desfazer a 023: tirar o índice, a regra e a
+  coluna; o app aguenta a coluna faltar e não mostra nada. `npm run prefeitura -- gravar` apaga
+  e repõe os trechos da prefeitura, que voltam sem `no_mapa`: rodar a ferramenta de novo.
+- **Albertina, à mão:** um mapa com os 5 trechos numerados e a entrega da "Rua B1" marcada, para o
+  Luan dizer quais são a Albertina e se a B1 é outra rua (imagem local, fora do git). Só os que ele
+  confirmar entram numa correção manual, com a origem anotada; não vira regra para outro
+  loteamento.
+- Usar o mapa ou os dados do Google não dá: os termos deles proíbem.
 
 ## Rota do Luan de 16/10: o pino do 1630 que sumia, publicado em 16/10 (`7c10796`)
 
