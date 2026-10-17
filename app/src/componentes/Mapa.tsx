@@ -5,7 +5,7 @@ import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, seguirMinhaPosicao
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
 import {haversine} from '../logica/geo';
-import {rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
+import {emendar, rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
 import {empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
@@ -48,12 +48,16 @@ function larguraDoNome(texto: string): number {
   return larguras.get(texto)!;
 }
 
+// os pedaços emendados, refeitos só quando chegam nomes novos
+let emendados: {de: NomeNoMapa[] | null; ruas: ReturnType<typeof emendar>} = {de: null, ruas: []};
+
 function desenharNomes(m: L.Map, camada: L.LayerGroup) {
   camada.clearLayers();
   const nomes = loja.ui.tela === 'rota' ? loja.ui.nomesNoMapa : [];
   if (!nomes.length || m.getZoom() < ZOOM_DOS_NOMES) return;
+  if (emendados.de !== nomes) emendados = {de: nomes, ruas: emendar(nomes)};
   const s = m.getSize();
-  const itens = nomes.map(n => ({texto: n.texto, pixels: n.linha.map(q => m.latLngToContainerPoint(q))}));
+  const itens = emendados.ruas.map(n => ({texto: n.texto, pixels: n.linha.map(q => m.latLngToContainerPoint(q))}));
   for (const r of rotulosNaTela(itens, {largura: s.x, altura: s.y}, larguraDoNome)) {
     L.marker(m.containerPointToLatLng([r.x, r.y]), {
       icon: L.divIcon({className: '', iconSize: [0, 0], html: `<div class="nome-rua" style="transform:translate(-50%,-50%) rotate(${r.angulo.toFixed(1)}deg)">${esc(r.texto)}</div>`}),

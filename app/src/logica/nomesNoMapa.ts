@@ -79,38 +79,118 @@ export interface RotuloNaTela {
   angulo: number;
 }
 
-// o mesmo nome não se repete mais perto que isto: a prefeitura corta a rua em trechos de ~100 m
+// Os pedaços seguidos da mesma rua viram um traçado só (17/10, teste no Robalo): a prefeitura corta a
+// rua em trechos de ~100 m, que no zoom 17 têm 85 px, e um nome tem 150 a 250. Só emenda ponta com
+// ponta; onde três pedaços do mesmo nome se encontram é ramificação, e cada ramo fica com o seu.
+const MESMA_PONTA_M = 2;
+const metros = (a: [number, number], b: [number, number]) =>
+  111320 * Math.hypot(a[0] - b[0], (a[1] - b[1]) * Math.cos(a[0] * Math.PI / 180));
+
+export function emendar(nomes: NomeNoMapa[]): {texto: string; linha: [number, number][]}[] {
+  const porNome = new Map<string, [number, number][][]>();
+  for (const n of nomes) {
+    if (!porNome.has(n.texto)) porNome.set(n.texto, []);
+    porNome.get(n.texto)!.push(n.linha);
+  }
+  const out: {texto: string; linha: [number, number][]}[] = [];
+  for (const [texto, linhas] of porNome) {
+    const nos: [number, number][] = [];
+    const no = (q: [number, number]) => {
+      let i = nos.findIndex(x => metros(x, q) <= MESMA_PONTA_M);
+      if (i < 0) { nos.push(q); i = nos.length - 1; }
+      return i;
+    };
+    const pontas = linhas.map(l => [no(l[0]), no(l[l.length - 1])]);
+    const grau = new Map<number, number>();
+    for (const [a, b] of pontas) for (const x of [a, b]) grau.set(x, (grau.get(x) || 0) + 1);
+    const passa = (x: number) => grau.get(x) === 2;
+    const usado = new Set<number>();
+    // começa por uma ponta solta ou de ramificação; o que sobrar é volta fechada
+    const ordem = linhas.map((_, i) => i).sort((i, j) => +passa(pontas[i][0]) * +passa(pontas[i][1]) - +passa(pontas[j][0]) * +passa(pontas[j][1]));
+    for (const i of ordem) {
+      if (usado.has(i)) continue;
+      usado.add(i);
+      const pelaOutraPonta = passa(pontas[i][0]) && !passa(pontas[i][1]);
+      let linha = pelaOutraPonta ? [...linhas[i]].reverse() : [...linhas[i]];
+      let fim = pelaOutraPonta ? pontas[i][0] : pontas[i][1];
+      for (;;) {
+        if (!passa(fim)) break;
+        const j = linhas.findIndex((_, k) => !usado.has(k) && (pontas[k][0] === fim || pontas[k][1] === fim));
+        if (j < 0) break;
+        usado.add(j);
+        const direto = pontas[j][0] === fim;
+        linha = [...linha, ...(direto ? linhas[j] : [...linhas[j]].reverse()).slice(1)];
+        fim = direto ? pontas[j][1] : pontas[j][0];
+      }
+      out.push({texto, linha});
+    }
+  }
+  return out;
+}
+
+// Só as de sempre, as que estão nas placas e nas etiquetas: abreviação inventada é outro nome.
+const ABREVIACOES: [RegExp, string][] = [
+  [/^Rua\b/i, 'R.'], [/^Avenida\b/i, 'Av.'], [/^Travessa\b/i, 'Tv.'], [/^Alameda\b/i, 'Al.'], [/^Rodovia\b/i, 'Rod.'],
+  [/\bProfessora\b/gi, 'Profa.'], [/\bProfessor\b/gi, 'Prof.'], [/\bDoutora\b/gi, 'Dra.'], [/\bDoutor\b/gi, 'Dr.'],
+  [/\bDeputad[oa]\b/gi, 'Dep.'], [/\bSenador\b/gi, 'Sen.'], [/\bGovernador\b/gi, 'Gov.'], [/\bPresidente\b/gi, 'Pres.'],
+  [/\bCoronel\b/gi, 'Cel.'], [/\bPadre\b/gi, 'Pe.'], [/\bDesembargador\b/gi, 'Des.'], [/\bEngenheiro\b/gi, 'Eng.'],
+  [/\bNossa Senhora\b/gi, 'N. Sra.'],
+];
+export const abreviar = (texto: string) => ABREVIACOES.reduce((t, [de, para]) => t.replace(de, para), texto);
+
+// o mesmo nome não se repete mais perto que isto
 const MESMO_NOME_PX = 280;
 const ALTURA_PX = 18;
+const FOLGA_PX = 12;
+// quanto a rua pode se afastar da reta do nome, debaixo dele: mais que isso, o nome sai da rua
+const CURVA_PX = 6;
 
-// Onde cada nome cabe na tela: no meio do trecho, na direção da rua e de pé, sem encostar em outro.
-// Os trechos mais longos escolhem primeiro.
+function noPercurso(ps: {x: number; y: number}[], partes: number[], s: number): {x: number; y: number} {
+  let k = 0, resta = Math.max(0, s);
+  while (k < partes.length - 1 && resta > partes[k]) { resta -= partes[k]; k++; }
+  const a = ps[k], b = ps[k + 1], f = partes[k] ? Math.min(1, resta / partes[k]) : 0;
+  return {x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f};
+}
+
+// O nome no meio do traçado, na direção dele e de pé, só se couber nele, inteiro ou abreviado, e se
+// a rua for reta o bastante debaixo dele: esticar o nome além da rua o punha em cima da rodovia
+// (Robalo, 17/10). Sem encostar em outro; os traçados mais longos escolhem primeiro.
 export function rotulosNaTela(itens: {texto: string; pixels: {x: number; y: number}[]}[], tela: {largura: number; altura: number},
   larguraDe: (texto: string) => number): RotuloNaTela[] {
   const candidatos = itens.flatMap(it => {
     const ps = it.pixels;
+    if (ps.length < 2) return [];
     const partes = ps.slice(1).map((b, i) => Math.hypot(b.x - ps[i].x, b.y - ps[i].y));
     const total = partes.reduce((s, d) => s + d, 0);
-    if (total < 1) return [];
-    let resta = total / 2, k = 0;
-    while (k < partes.length - 1 && resta > partes[k]) { resta -= partes[k]; k++; }
-    const a = ps[k], b = ps[k + 1], f = partes[k] ? resta / partes[k] : 0;
-    const x = a.x + (b.x - a.x) * f, y = a.y + (b.y - a.y) * f;
-    if (x < 0 || y < 0 || x > tela.largura || y > tela.altura) return [];
-    let angulo = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
-    if (angulo > 90) angulo -= 180;
-    if (angulo <= -90) angulo += 180;
-    return [{texto: it.texto, x, y, angulo, total}];
+    const meio = noPercurso(ps, partes, total / 2);
+    if (meio.x < 0 || meio.y < 0 || meio.x > tela.largura || meio.y > tela.altura) return [];
+    for (const texto of [...new Set([it.texto, abreviar(it.texto)])]) {
+      const w = larguraDe(texto) + FOLGA_PX;
+      if (w > total) continue;
+      const a = noPercurso(ps, partes, total / 2 - w / 2), b = noPercurso(ps, partes, total / 2 + w / 2);
+      const corda = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      let longe = 0;
+      for (let s = total / 2 - w / 2; s <= total / 2 + w / 2; s += 4) {
+        const q = noPercurso(ps, partes, s);
+        longe = Math.max(longe, Math.abs((b.x - a.x) * (a.y - q.y) - (a.x - q.x) * (b.y - a.y)) / corda);
+      }
+      if (longe > CURVA_PX) continue;
+      let angulo = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+      if (angulo > 90) angulo -= 180;
+      if (angulo <= -90) angulo += 180;
+      return [{texto, nome: it.texto, x: meio.x, y: meio.y, angulo, total, w}];
+    }
+    return [];
   }).sort((a, b) => b.total - a.total);
-  const postos: (RotuloNaTela & {x0: number; x1: number; y0: number; y1: number})[] = [];
+  const postos: (RotuloNaTela & {nome: string; x0: number; x1: number; y0: number; y1: number})[] = [];
   for (const c of candidatos) {
-    const w = larguraDe(c.texto) + 12, r = c.angulo * Math.PI / 180;
-    const bw = Math.abs(w * Math.cos(r)) + Math.abs(ALTURA_PX * Math.sin(r));
-    const bh = Math.abs(w * Math.sin(r)) + Math.abs(ALTURA_PX * Math.cos(r));
+    const r = c.angulo * Math.PI / 180;
+    const bw = Math.abs(c.w * Math.cos(r)) + Math.abs(ALTURA_PX * Math.sin(r));
+    const bh = Math.abs(c.w * Math.sin(r)) + Math.abs(ALTURA_PX * Math.cos(r));
     const caixa = {x0: c.x - bw / 2, x1: c.x + bw / 2, y0: c.y - bh / 2, y1: c.y + bh / 2};
     if (postos.some(p => p.x0 < caixa.x1 && caixa.x0 < p.x1 && p.y0 < caixa.y1 && caixa.y0 < p.y1)) continue;
-    if (postos.some(p => p.texto === c.texto && Math.hypot(p.x - c.x, p.y - c.y) < MESMO_NOME_PX)) continue;
-    postos.push({texto: c.texto, x: c.x, y: c.y, angulo: c.angulo, ...caixa});
+    if (postos.some(p => p.nome === c.nome && Math.hypot(p.x - c.x, p.y - c.y) < MESMO_NOME_PX)) continue;
+    postos.push({texto: c.texto, nome: c.nome, x: c.x, y: c.y, angulo: c.angulo, ...caixa});
   }
   return postos.map(({texto, x, y, angulo}) => ({texto, x, y, angulo}));
 }

@@ -188,10 +188,25 @@ Fora da lista:
   entregou ali em 17/10, metade fica a até 24 m dessa Rua B; a outra, a 40–116 m, em ramais ("rua
   sem saída", "Rua B 2", "Rua B 5"). Também: no zoom 17 o nome é mais comprido que o trecho, e
   avança por cima da rodovia.
-- **Próximo:** o dono decidir entre publicar assim (vale onde a prefeitura tem a rua; rodar a 023
-  e a ferramenta antes) e medir uma segunda fonte, o nome pelas portas entregues com GPS. Esta
-  pode pôr o nome na rua errada, então precisa de regra medida. Usar o mapa ou os dados do Google
-  não dá: os termos deles proíbem.
+- **O nome no trecho curto, consertado (17/10, commit local).** Os pedaços seguidos da mesma rua
+  se emendam, só ponta com ponta e nunca por uma ramificação. O nome só entra se couber no traçado,
+  inteiro ou com as abreviações de sempre (R., Av., Profa., Dep.), e se a rua for reta debaixo dele.
+- **O nome pelas portas entregues, medido (17/10), só leitura, não construir.** Relatório local,
+  com dados reais, fora do git. Porta conta como evidência com GPS até ±20 m, a até 15 m da via e
+  com folga de 8 m para a seguinte: 1.993 de 2.762; 579 ambíguas. A regra nunca lê o nome do mapa.
+  - Contra o nome do mapa, por via: a regra A (2 portas, 80%) erra 23 de 237 (10%); a B (3 portas,
+    100%, 2 dias ou motoristas), 2 de 57. O erro que importa é a planilha com a rua principal e a
+    porta em outra (condomínio de esquina, casa de travessa com endereço na rodovia).
+  - Nas vias sem nome ou com nome provisório, a A aceitaria 32: 14 com o mesmo nome do mapa, pelo
+    menos 3 provavelmente erradas ("Rua E" virando "Rodovia dos Náufragos"), 15 plausíveis sem
+    conferir. A B, 3.
+  - Ganho medido em outro dia: 7 das 980 portas cuja rua o mapa não mostra (1%). Em 28 dias,
+    quase toda rua de loteamento foi entregue num dia só.
+  - Albertina: as 10 portas caem em 5 vias do mapa; a A daria o nome só a uma (2 portas).
+- **Próximo:** não publicar o nome pelas portas. Decidir se publica a camada da prefeitura sozinha
+  (rodar a 023 e `npm run nomes-no-mapa -- gravar` antes), e se o Luan confirma à mão os pedaços
+  da Albertina. Medir de novo o nome pelas portas quando houver mais dias nos mesmos loteamentos.
+  Usar o mapa ou os dados do Google não dá: os termos deles proíbem.
 
 ## Rota do Luan de 16/10: o pino do 1630 que sumia, publicado em 16/10 (`7c10796`)
 

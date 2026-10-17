@@ -1,5 +1,5 @@
 import {classificar, indexar} from '../../../ferramentas/nomes-no-mapa.mjs';
-import {nomesNoMapa, rotulosNaTela, ruasDoDia, type TrechoDaBase} from './nomesNoMapa';
+import {abreviar, emendar, nomesNoMapa, rotulosNaTela, ruasDoDia, type NomeNoMapa, type TrechoDaBase} from './nomesNoMapa';
 import type {Parada} from './tipos';
 
 // ~110 m por 0,001 grau perto do equador; os testes são em Aracaju
@@ -86,7 +86,7 @@ describe('onde o nome entra na tela', () => {
   const largura = (t: string) => t.length * 7;
   const tela = {largura: 400, altura: 600};
 
-  it('no meio do trecho, na direção da rua, e nunca de cabeça para baixo', () => {
+  it('no meio do traçado, na direção da rua, e nunca de cabeça para baixo', () => {
     const [deitado] = rotulosNaTela([{texto: 'Rua B', pixels: [{x: 300, y: 100}, {x: 100, y: 100}]}], tela, largura);
     expect([deitado.x, deitado.y, deitado.angulo]).toEqual([200, 100, 0]);
     const [subindo] = rotulosNaTela([{texto: 'Rua C', pixels: [{x: 100, y: 300}, {x: 200, y: 200}]}], tela, largura);
@@ -95,18 +95,67 @@ describe('onde o nome entra na tela', () => {
     expect(descendo.angulo).toBeCloseTo(45);
   });
 
-  it('um nome não encosta no outro: o trecho mais longo fica com o lugar', () => {
+  it('um nome não encosta no outro: o traçado mais longo fica com o lugar', () => {
     const r = rotulosNaTela([
-      {texto: 'Rua Curta', pixels: [{x: 150, y: 205}, {x: 250, y: 205}]},
+      {texto: 'Rua Curta', pixels: [{x: 150, y: 205}, {x: 260, y: 205}]},
       {texto: 'Rua Comprida', pixels: [{x: 50, y: 200}, {x: 350, y: 200}]},
       {texto: 'Rua Longe', pixels: [{x: 50, y: 400}, {x: 350, y: 400}]},
     ], tela, largura);
     expect(r.map(x => x.texto)).toEqual(['Rua Comprida', 'Rua Longe']);
   });
 
-  it('a rua cortada em trechos mostra o nome uma vez por pedaço da tela, e fora da tela não mostra', () => {
-    const trechos = [0, 1, 2, 3].map(k => ({texto: 'Rua Albertina', pixels: [{x: 20 + k * 90, y: 300}, {x: 100 + k * 90, y: 300}]}));
-    expect(rotulosNaTela(trechos, tela, largura)).toHaveLength(1);
+  // Robalo, 17/10: os 150 m da prefeitura não cabiam o nome, e ele passava por cima da rodovia
+  it('o nome só entra se couber no traçado: inteiro, com as abreviações de sempre, ou nada', () => {
+    const nome = 'Rua Professora Albertina Bezerra Ribeiro';
+    const cabe = (comprimento: number) => rotulosNaTela([{texto: nome, pixels: [{x: 20, y: 300}, {x: 20 + comprimento, y: 300}]}], tela, largura).map(r => r.texto);
+    expect(cabe(320)).toEqual([nome]);
+    expect(cabe(260)).toEqual(['R. Profa. Albertina Bezerra Ribeiro']);
+    expect(cabe(200)).toEqual([]);
+  });
+
+  it('na curva fechada debaixo do nome, ele não entra: sairia da rua', () => {
+    const esquina = [{x: 50, y: 300}, {x: 150, y: 300}, {x: 150, y: 200}];
+    expect(rotulosNaTela([{texto: 'Rua Dobrada', pixels: esquina}], tela, largura)).toEqual([]);
+    const suave = [{x: 20, y: 300}, {x: 200, y: 303}, {x: 380, y: 300}];
+    expect(rotulosNaTela([{texto: 'Rua Suave', pixels: suave}], tela, largura)).toHaveLength(1);
+  });
+
+  it('o mesmo nome não se repete perto, e fora da tela não aparece', () => {
+    const dois = [0, 1].map(k => ({texto: 'Rua Longa', pixels: [{x: 0, y: 300 + k * 60}, {x: 400, y: 300 + k * 60}]}));
+    expect(rotulosNaTela(dois, tela, largura)).toHaveLength(1);
     expect(rotulosNaTela([{texto: 'Rua Fora', pixels: [{x: 500, y: 300}, {x: 700, y: 300}]}], tela, largura)).toHaveLength(0);
+  });
+
+  it('a abreviação é só das de sempre, e só a palavra inteira', () => {
+    expect(abreviar('Avenida Deputado Sílvio Teixeira')).toBe('Av. Dep. Sílvio Teixeira');
+    expect(abreviar('Rua do Compadre Padre Cícero')).toBe('R. do Compadre Pe. Cícero');
+    expect(abreviar('Travessa Nossa Senhora das Dores')).toBe('Tv. N. Sra. das Dores');
+  });
+});
+
+describe('os pedaços da mesma rua viram um traçado', () => {
+  const nome = (linha: [number, number][], texto = 'Rua X'): NomeNoMapa => ({texto, linha, traco: false});
+  // pedaços de ~110 m em fila, cada um começando onde o outro acaba
+  const A: [number, number] = [L, G], B: [number, number] = [L, G + 0.001], C: [number, number] = [L, G + 0.002], D: [number, number] = [L, G + 0.003];
+
+  it('ponta com ponta emenda, mesmo fora de ordem e com um pedaço ao contrário', () => {
+    const r = emendar([nome([C, D]), nome([A, B]), nome([C, B])]);
+    expect(r).toHaveLength(1);
+    expect(r[0].linha.map(q => q[1])).toEqual(expect.arrayContaining([A[1], B[1], C[1], D[1]]));
+    expect(r[0].linha).toHaveLength(4);
+  });
+
+  it('não preenche lacuna: pontas a mais de 2 m ficam separadas', () => {
+    const r = emendar([nome([A, B]), nome([[L, G + 0.00105], C])]);
+    expect(r).toHaveLength(2);
+  });
+
+  it('não atravessa ramificação: onde três pedaços do mesmo nome se encontram, cada ramo fica com o seu', () => {
+    const ramo: [number, number] = [L + 0.001, G + 0.001];
+    expect(emendar([nome([A, B]), nome([B, C]), nome([B, ramo])])).toHaveLength(3);
+  });
+
+  it('nomes diferentes não se emendam', () => {
+    expect(emendar([nome([A, B], 'Rua X'), nome([B, C], 'Rua Y')])).toHaveLength(2);
   });
 });
