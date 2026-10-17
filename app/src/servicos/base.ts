@@ -168,7 +168,8 @@ export interface AncoraDeCep {
 const ancorasDeCep = new Map<string, AncoraDeCep | null>();
 
 // Os trechos da prefeitura com o nome das ruas do dia que o mapa mostra com outro nome, ou não
-// desenha (023). Paginado: o PostgREST devolve 1000 linhas e cala.
+// desenha (023). Só da prefeitura: o nome dado pelas entregas não entra. Paginado: o PostgREST
+// devolve 1000 linhas e cala.
 export async function trechosNoMapa(chaves: string[]): Promise<TrechoDaBase[]> {
   const supa = nuvem.cliente;
   if (!supa || !chaves.length) return [];
@@ -176,7 +177,7 @@ export async function trechosNoMapa(chaves: string[]): Promise<TrechoDaBase[]> {
   for (let i = 0; i < chaves.length; i += 50) {
     for (let de = 0; ; de += 1000) {
       const {data, error} = await supa.from('ruas').select('nome_chave, fonte, linha, no_mapa')
-        .in('nome_chave', chaves.slice(i, i + 50)).in('no_mapa', ['sem_nome', 'fora']).order('id').range(de, de + 999);
+        .eq('fonte', 'prefeitura').in('nome_chave', chaves.slice(i, i + 50)).in('no_mapa', ['sem_nome', 'fora']).order('id').range(de, de + 999);
       if (error) throw new Error(error.message);
       out.push(...(data || []) as TrechoDaBase[]);
       if (!data || data.length < 1000) break;

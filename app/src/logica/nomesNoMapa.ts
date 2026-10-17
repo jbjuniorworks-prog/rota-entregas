@@ -67,8 +67,9 @@ export function nomesNoMapa(doDia: Map<string, RuaDoDia>, trechos: TrechoDaBase[
     if (!r || !Array.isArray(t.linha) || t.linha.length < 2) return [];
     if (!r.pontos.some(p => ateALinha(p, t.linha) <= PERTO_DA_ENTREGA_M)) return [];
     if (t.no_mapa !== 'sem_nome' && t.no_mapa !== 'fora') return [];
-    // trecho nomeado pelos motoristas é uma rua do mapa: só o nome
-    return [{texto: r.texto, linha: t.linha, traco: t.no_mapa === 'fora' && t.fonte === 'prefeitura'}];
+    // só a prefeitura, mesmo que a busca traga outra coisa: nome deduzido das entregas não entra
+    if (t.fonte !== 'prefeitura') return [];
+    return [{texto: r.texto, linha: t.linha, traco: t.no_mapa === 'fora'}];
   });
 }
 

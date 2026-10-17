@@ -1,5 +1,5 @@
-// Diz, para cada trecho de rua da nossa base que não veio do OpenStreetMap, como ele aparece no
-// mapa do app (que é o OSM): 'com_nome' (o mapa já mostra este nome ali), 'sem_nome' (o mapa
+// Diz, para cada trecho de rua do cadastro da prefeitura, como ele aparece no mapa do app (que é o
+// OSM): 'com_nome' (o mapa já mostra este nome ali), 'sem_nome' (o mapa
 // desenha a rua, com outro nome ou nenhum) ou 'fora' (o mapa não tem o trecho). O celular usa isso
 // para escrever no mapa o nome da rua das entregas do dia, e desenhar o trecho que falta.
 //
@@ -75,11 +75,14 @@ export function classificar(trecho, grade) {
     if (trecho.nome_chave && perto.some(s => s.nome_chave === trecho.nome_chave)) noNome++;
   }
   if (noNome >= COM_NOME * pontos.length) return 'com_nome';
-  // o trecho que os motoristas nomearam é uma rua do mapa sem nome: está lá, mesmo que o OSM de
-  // agora não o tenha mais com esse traçado
-  if (trecho.fonte === 'motorista' || naRua >= NO_MAPA * pontos.length) return 'sem_nome';
+  if (naRua >= NO_MAPA * pontos.length) return 'sem_nome';
   return 'fora';
 }
+
+// Só a prefeitura, que tem traçado e nome oficiais (revisão de 17/10). Ficam de fora os trechos que
+// a `nomear_ruas` (006) batizou sozinha pelas entregas, os 'motorista', e as ruas desenhadas das
+// entregas: nos dois o nome ou o traçado é dedução das portas, que a medição de 17/10 recusou.
+export const daCarga = ruas => ruas.filter(r => r.fonte === 'prefeitura' && Array.isArray(r.linha) && r.linha.length >= 2);
 
 const ehCli = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (ehCli) {
@@ -103,11 +106,12 @@ if (ehCli) {
     if (parte.length < 1000) break;
   }
   const grade = indexar(ruas.filter(r => r.fonte === 'osm'));
-  // as das entregas ficam de fora: o traçado delas sai dos pontos das portas, não da rua
-  const alvo = ruas.filter(r => (r.fonte === 'prefeitura' || r.fonte === 'motorista') && Array.isArray(r.linha) && r.linha.length >= 2);
+  const alvo = daCarga(ruas);
   const porClasse = {com_nome: [], sem_nome: [], fora: []};
   for (const r of alvo) porClasse[classificar(r, grade)].push(r);
-  console.log(`${ruas.length} trechos na base, ${alvo.length} da prefeitura e dos motoristas:`);
+  const porFonte = {};
+  for (const r of ruas) porFonte[r.fonte] = (porFonte[r.fonte] || 0) + 1;
+  console.log(`${ruas.length} trechos na base (${Object.entries(porFonte).map(([f, n]) => `${f} ${n}`).join(', ')}); entram na carga só os ${alvo.length} da prefeitura:`);
   for (const [c, rs] of Object.entries(porClasse)) console.log(`  ${c.padEnd(9)} ${rs.length}`);
   if (!gravar) {
     console.log('\nPara gravar de verdade: npm run nomes-no-mapa -- gravar');

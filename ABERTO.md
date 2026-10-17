@@ -212,18 +212,24 @@ Fora da lista:
   do nome, que fica por baixo deles de propósito.
 - **Limitação a dizer junto:** é um complemento pelo cadastro da prefeitura, não a solução do
   Robalo. A Albertina continua sem nome nos trechos que a prefeitura não cobre.
-- **Liberação, quando o dono autorizar as escritas** (o dono aprovou o caminho, não a execução):
-  1. o dono roda a 023: só acrescenta a coluna `no_mapa` (vazia), a regra dos três valores
-     e um índice; nenhum dado muda;
-  2. `npm run nomes-no-mapa` sem gravar, para conferir: 3.732 trechos (75, 3.617, 40);
-  3. `-- gravar`: só atualiza esses 3.732 (15 pedidos de até 300); não insere nem apaga;
-  4. publicar o app; conferir num celular, no zoom 18.
+- **Carga só da prefeitura (revisão de 17/10).** Os 8 trechos 'motorista' (6 nomes, todos de uma
+  rodada da `nomear_ruas` em 21/09) não foram confirmados por ninguém: a função dá a um trecho sem
+  nome do mapa o nome mais frequente das entregas a até 40 m. É dedução pelas portas, e ficou de
+  fora, na ferramenta e na busca do celular. Simulado: 3.724 trechos, 74 com_nome, 3.610 sem_nome,
+  40 fora; 15 pedidos de até 300; só atualiza, não insere nem apaga.
+- **Liberação em três passos, cada um com confirmação própria do dono** (aprovado o caminho, não
+  a execução):
+  1. a 023: só acrescenta a coluna `no_mapa` (vazia), a regra dos três valores e um índice;
+  2. depois dela, simular de novo, conferir as contagens e gravar;
+  3. depois da gravação, rodar a busca real que o celular faz, com as ruas do Luan de 17/10, e só
+     então publicar. Se ela falhar ou trouxer algo diferente, para ali.
 
-  Para desligar sem publicar de novo: `update public.ruas set no_mapa = null where no_mapa is
-  not null;` (ou só de uma rua, pelo `nome_chave`). Os celulares param na próxima busca;
-  o que já está aberto mantém até recarregar. Para desfazer a 023: tirar o índice, a regra e a
-  coluna; o app aguenta a coluna faltar e não mostra nada. `npm run prefeitura -- gravar` apaga
-  e repõe os trechos da prefeitura, que voltam sem `no_mapa`: rodar a ferramenta de novo.
+  Desligar a camada é diferente de desfazer a estrutura. Desligar, sem publicar de novo: `update
+  public.ruas set no_mapa = null where no_mapa is not null;` (ou de uma rua, pelo `nome_chave`); os
+  celulares param na próxima busca, o que já está aberto mantém até recarregar. Desfazer a 023:
+  tirar o índice, a regra e a coluna; há teste de tela de que o app segue igual sem a coluna, só
+  sem os nomes e sem aviso. **`npm run prefeitura -- gravar` apaga e repõe os trechos da
+  prefeitura, que voltam sem `no_mapa`: rodar `npm run nomes-no-mapa -- gravar` depois.**
 - **Albertina, à mão:** um mapa com os 5 trechos numerados e a entrega da "Rua B1" marcada, para o
   Luan dizer quais são a Albertina e se a B1 é outra rua (imagem local, fora do git). Só os que ele
   confirmar entram numa correção manual, com a origem anotada; não vira regra para outro

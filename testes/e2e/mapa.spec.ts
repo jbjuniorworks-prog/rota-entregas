@@ -728,6 +728,30 @@ test.describe('o nome da rua no mapa', () => {
     await expect(nomes, 'de longe, sem nomes').toHaveCount(0);
     await expect(tracos).toHaveCount(1);
   });
+
+  // Revisão de 17/10: desfazer a 023 tira a coluna. O app tem de seguir igual, só sem os nomes, e o
+  // erro de JavaScript que escapasse a fixture pega.
+  test('sem a coluna da 023 na nuvem, o mapa e a rota seguem como sempre, sem nomes e sem aviso', async ({page, context, nuvem}) => {
+    const {aviso, garantirMapa, montar, verNoMapa} = await import('./apoio');
+    nuvem.tabelas.ruas = [{nome_chave: 'acacias', fonte: 'prefeitura', linha: [[-10.95002, -37.0512], [-10.95002, -37.0488]], no_mapa: 'sem_nome'}];
+    let pedidos = 0;
+    // como o PostgREST responde a uma coluna que não existe
+    await context.route(/\/rest\/v1\/ruas\?.*no_mapa/, r => {
+      pedidos++;
+      return r.fulfill({status: 400, contentType: 'application/json', headers: {'access-control-allow-origin': '*'},
+        body: JSON.stringify({code: '42703', details: null, hint: null, message: 'column ruas.no_mapa does not exist'})});
+    });
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-d.xlsx');
+    await garantirMapa(page);
+    await expect.poll(() => pedidos, 'o app pediu os nomes').toBeGreaterThan(0);
+    await verNoMapa(page, -10.9506, -37.05, 17);
+    await expect(page.locator('.nome-rua')).toHaveCount(0);
+    await expect(page.locator('path.traco-rua')).toHaveCount(0);
+    await expect(aviso(page)).not.toContainText(/no_mapa|não deu|erro/i);
+    await montar(page);
+    await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
+  });
 });
 
 // Luan, 16/10: no celular, o dedo não desenhava nada. O teste de cima desenha com o mouse, e só o

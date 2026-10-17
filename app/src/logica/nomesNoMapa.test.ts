@@ -1,4 +1,4 @@
-import {classificar, indexar} from '../../../ferramentas/nomes-no-mapa.mjs';
+import {classificar, daCarga, indexar} from '../../../ferramentas/nomes-no-mapa.mjs';
 import {abreviar, emendar, nomesNoMapa, rotulosNaTela, ruasDoDia, type NomeNoMapa, type TrechoDaBase} from './nomesNoMapa';
 import type {Parada} from './tipos';
 
@@ -37,8 +37,12 @@ describe('npm run nomes-no-mapa: como cada trecho da prefeitura aparece no mapa'
     expect(classificar({nome_chave: 'inacio barbosa', fonte: 'prefeitura', linha: reta([L, G + 0.04], [L, G + 0.042])}, rodovia)).toBe('sem_nome');
   });
 
-  it('o trecho que os motoristas nomearam é rua do mapa, mesmo que o mapa de agora não a tenha', () => {
-    expect(classificar({nome_chave: 'estanislau', fonte: 'motorista', linha: reta([L - 0.003, G], [L - 0.003, G + 0.002])}, grade)).toBe('sem_nome');
+  // revisão de 17/10: a carga é só da prefeitura; o nome que a nomear_ruas deu pelas entregas e as
+  // ruas desenhadas das entregas são dedução das portas
+  it('só os trechos da prefeitura entram na carga', () => {
+    const linha = reta([L, G], [L, G + 0.001]);
+    const carga = daCarga([{fonte: 'prefeitura', linha}, {fonte: 'motorista', linha}, {fonte: 'entregas', linha}, {fonte: 'osm', linha}, {fonte: 'prefeitura', linha: [[L, G]]}]);
+    expect(carga.map(r => r.fonte)).toEqual(['prefeitura']);
   });
 });
 
@@ -74,11 +78,12 @@ describe('o nome da rua no mapa, no celular', () => {
     expect(nomes.map(n => [n.texto, n.traco])).toEqual([['Rua Professora Albertina Bezerra Ribeiro', false], ['Rua A', true]]);
   });
 
-  it('trecho dos motoristas e trecho já com o nome no mapa não viram traço', () => {
+  it('trecho que não é da prefeitura, e trecho já com o nome no mapa, não aparecem', () => {
     const doDia = ruasDoDia(ps);
     const kAlb = [...doDia].find(([, r]) => r.texto.includes('Albertina'))![0];
-    const nomes = nomesNoMapa(doDia, [trecho(kAlb, reta([L, G], [L, G + 0.001]), 'fora', 'motorista'), trecho(kAlb, reta([L, G], [L, G + 0.001]), 'com_nome')]);
-    expect(nomes.map(n => n.traco)).toEqual([false]);
+    const linha = reta([L, G], [L, G + 0.001]);
+    const nomes = nomesNoMapa(doDia, [trecho(kAlb, linha, 'sem_nome', 'motorista'), trecho(kAlb, linha, 'fora', 'entregas'), trecho(kAlb, linha, 'com_nome')]);
+    expect(nomes).toEqual([]);
   });
 });
 

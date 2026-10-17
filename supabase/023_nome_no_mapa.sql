@@ -2,10 +2,11 @@
 -- quase todas as ruas, mas com nome de projeto do loteamento: a Professora Albertina Bezerra
 -- Ribeiro da planilha e da prefeitura lá é "Rua B". Na cidade, 10% das portas entregues ficam numa
 -- rua que o mapa mostra com outro nome ou sem nenhum.
--- Esta coluna diz, para cada trecho da prefeitura (e para os que os motoristas nomearam), como ele
--- está no mapa: 'com_nome' (o mapa já mostra este nome ali), 'sem_nome' (o mapa desenha a rua, com
--- outro nome ou nenhum) ou 'fora' (o mapa não tem o trecho). O celular busca só os das ruas das
--- entregas do dia, e escreve o nome ou desenha o trecho.
+-- Esta coluna diz, para cada trecho do cadastro da prefeitura, como ele está no mapa: 'com_nome'
+-- (o mapa já mostra este nome ali), 'sem_nome' (o mapa desenha a rua, com outro nome ou nenhum) ou
+-- 'fora' (o mapa não tem o trecho). Os outros trechos ficam sem valor: o nome que a nomear_ruas deu
+-- pelas entregas não entra. O celular busca só os das ruas das entregas do dia, e escreve o nome ou
+-- desenha o trecho.
 -- Quem preenche é `npm run nomes-no-mapa -- gravar`, no computador, com o mapa inteiro: buscando o
 -- mapa em volta das entregas, as rodovias, que vão a 7 km do ponto guardado, ficavam de fora.
 -- Rodar uma vez em SQL Editor > New query > Run. Depois, no computador: npm run nomes-no-mapa -- gravar
