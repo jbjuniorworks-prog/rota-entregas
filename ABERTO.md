@@ -153,6 +153,29 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## O nome da rua no mapa (17/10), medido, não construir ainda
+
+- **O pedido:** o dono comparou o nosso mapa com o Google no Robalo ("consegue ver a diferença?
+  conseguimos completar o mapa com as ruas que temos?").
+- **O traçado o OpenStreetMap já tem; o que falta é o nome.** Numa caixa de 1,8 km em volta da
+  Albertina Bezerra Ribeiro, das 76 ruas da prefeitura só 3 se afastam de uma rua do OSM (a
+  Estrada Aguachuma, um pedaço da Rua A do Canto do Mar e um da Inácio Barbosa). Mas a Albertina
+  Bezerra Ribeiro, no OSM, é "Rua B": é isso que o nosso mapa mostra. Ali, 32 ruas têm no OSM
+  outro nome que o da prefeitura, 11 não têm nome e 31 têm o mesmo.
+- **Na cidade, nas 2.830 portas entregues com nome de rua** (a 60 m da porta, pela chave da
+  rua):
+  - 1.858 (66%): o mapa já mostra o nome da planilha;
+  - 298 (10%), em 102 ruas: o mapa mostra outro nome ou nenhum, e a nossa base tem o da planilha
+    (160 pela prefeitura, 135 pelas ruas desenhadas das entregas, 3 por nome dado pelos
+    motoristas). Mais ou menos metade é grafia ("Wanderley" e "Wandeley"); a outra é nome sem
+    nada a ver ("Ariano Suassuna" é "Rua W", "Travessa Isaura" é "Rua F");
+  - 674 (24%): ninguém tem aquele nome perto, e mostrar a base não ajudaria.
+- **Ressalva:** as ruas das entregas nasceram dessas mesmas passagens, então contam a favor por
+  construção. O que elas medem é o que já sabemos, não o que o motorista acharia da primeira vez.
+- **Próximo:** o dono decidir. A proposta é escrever no mapa, com o mapa aproximado, o nome da rua
+  das entregas do dia onde o mapa mostra outro ou nenhum. Usar o mapa ou os dados do Google não
+  dá: os termos deles proíbem.
+
 ## Rota do Luan de 16/10: o pino do 1630 que sumia, publicado em 16/10 (`7c10796`)
 
 Próximo: ver com o Luan se, entregando "aqui" numa porta com uma ADS de outro endereço perto, o
