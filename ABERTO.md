@@ -153,7 +153,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## O nome da rua no mapa (17/10): só a camada da prefeitura, liberação preparada, não publicada
+## O nome da rua no mapa (17/10): só a camada da prefeitura, publicada em 18/10, falta o celular
 
 - **O pedido:** o dono comparou o nosso mapa com o Google no Robalo ("consegue ver a diferença?
   conseguimos completar o mapa com as ruas que temos?").
@@ -230,7 +230,13 @@ Fora da lista:
      chave de serviço e a mesma sequência de filtros do celular: 21 ruas, 1 pedido, 4 trechos
      da prefeitura, as mesmas 4 ruas da conferência visual (Noela Weres de Vasconcelos,
      Albertina, Synval de Souza Franco, Travessa Sacramento). Não foi feita com a sessão de um
-     motorista. Publicação: aguardando confirmação do dono.
+     motorista. **Publicado em 18/10 (`73d8afc`, versão "18/10, 10:25")**, com a confirmação do
+     dono; testar e publicar sem falha.
+  4. Falta a conferência no celular, com login de motorista ativo e uma planilha do Robalo: a
+     versão no menu Mais; os quatro nomes no zoom 18, sem erro de permissão; a Albertina sem
+     passar da rodovia nem ganhar nome fora do trecho da prefeitura; mapa e rota funcionando.
+     Nome em trecho errado, outra origem aparecendo ou falha no mapa: parar e avisar antes de
+     qualquer escrita (desligar pelo `update ... set no_mapa = null`, se preciso).
 
   Desligar a camada é diferente de desfazer a estrutura. Desligar, sem publicar de novo: `update
   public.ruas set no_mapa = null where no_mapa is not null;` (ou de uma rua, pelo `nome_chave`); os
