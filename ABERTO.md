@@ -222,9 +222,15 @@ Fora da lista:
   1. a 023: só acrescenta a coluna `no_mapa` (vazia), a regra dos três valores e um índice.
      **Rodada pelo dono em 17/10**; conferido só lendo: a coluna existe e está vazia nos 23.982
      trechos. Simulação depois dela: as mesmas contagens;
-  2. depois dela, simular de novo, conferir as contagens e gravar;
+  2. depois dela, simular de novo, conferir as contagens e gravar. **Gravado em 17/10**, com a
+     autorização do dono, os 15 lotes sem falha. Conferido só lendo: prefeitura 74, 3.610 e 40,
+     nenhuma sem valor; OSM, motorista e entregas todos vazios;
   3. depois da gravação, rodar a busca real que o celular faz, com as ruas do Luan de 17/10, e só
-     então publicar. Se ela falhar ou trouxer algo diferente, para ali.
+     então publicar. Se ela falhar ou trouxer algo diferente, para ali. **Busca feita**, com a
+     chave de serviço e a mesma sequência de filtros do celular: 21 ruas, 1 pedido, 4 trechos
+     da prefeitura, as mesmas 4 ruas da conferência visual (Noela Weres de Vasconcelos,
+     Albertina, Synval de Souza Franco, Travessa Sacramento). Não foi feita com a sessão de um
+     motorista. Publicação: aguardando confirmação do dono.
 
   Desligar a camada é diferente de desfazer a estrutura. Desligar, sem publicar de novo: `update
   public.ruas set no_mapa = null where no_mapa is not null;` (ou de uma rua, pelo `nome_chave`); os
