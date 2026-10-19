@@ -551,7 +551,7 @@ pino fica na porta.
     pelo Pedro no pino.
   - Dos 121 pacotes, 14 foram marcados entregues, e nada chegou depois das 12:58.
 
-## "Sem N" fica sem chave, e o aviso culpa o CEP (19/10), esperando o dono decidir
+## "Sem N" fica sem chave, e o aviso culpa o CEP (19/10): consertado local, falta subir
 
 - **Pedro, 19/10:** na Travessa João Ribeiro de Almeida, "Sem N", com CEP 49005-413 e bairro, o
   "Entreguei aqui" disse "Sem CEP nem bairro, a porta vale só para hoje". O CEP e o bairro estão
@@ -560,8 +560,19 @@ pino fica na porta.
 - **Medido na nuvem:** 51 de 12.244 pacotes estão sem chave. "Sem N" são 6, todos esse endereço: 3
   na rota do Pedro e 3 na cópia da planilha dele aberta na conta do Luan. Há ainda "Sem" e "Não"
   sozinhos no lugar do número.
-- **A decidir:** tratar "Sem N" como o S/N, que ganhou chave em 26/09 (`16d71a8`), e fazer o aviso
-  dizer o motivo de verdade.
+- **As chaves S/N que já existem:** 8 endereços, 15 pacotes, 5 verificados. Nenhuma juntou casas
+  diferentes: cada chave tem um texto só. É o risco a olhar, porque a chave com CEP é "CEP|sn", e
+  duas casas sem número no mesmo CEP dividiriam o pino.
+- **Feito, pedido do dono** ("por que não salvar para todos"):
+  - "Sem N", "sem nº", "sem número" e "sem numeração" valem como S/N, e "Rua Sem Nome" continua sendo
+    nome de rua;
+  - o aviso diz "Sem número da porta" quando é o número que falta, no Marcar no mapa, no Escolher
+    da lista e no "Entreguei aqui";
+  - chave nova onde não havia nenhuma: nada gravado muda, e não precisa de `rechavear`.
+- **Testado:** unidade e e2e. Sabotados a regra, a sobra do "Sem" no nome da rua e os dois avisos:
+  cada um quebra um teste. A bateria inteira passou (172 e2e, 452 de unidade).
+- **Não volta:** a marcação do Pedro de 19/10 ficou só no celular dele. A próxima entrega dele ali,
+  depois de subir, é a que vale para todos.
 
 ## Perguntas do Luan sobre a rota de 06/10 (15/10), respondidas, nada a mudar
 

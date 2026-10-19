@@ -5,6 +5,7 @@ import {novoId} from '../logica/importar';
 import {montarRota as calcularRota} from '../logica/montagem';
 import {linkWaze} from '../logica/otimizacao';
 import {CORES} from '../logica/rotulos';
+import {faltaNaChave} from '../logica/texto';
 import type {Parada, Ponto} from '../logica/tipos';
 import {guarda, loja, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
@@ -200,7 +201,7 @@ ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
     const {guardou} = portaDaEntrega(vivas, lat, lng, precisao);
     status(`Entregue${quantas}, com a porta marcada aqui (±${margem} m).` + (guardou
       ? ' Vai para os outros motoristas como porta confirmada.'
-      : ' Sem CEP nem bairro, a porta vale só para hoje.'), 10000, () => {
+      : ` ${faltaNaChave(vivas[0].texto)}, a porta vale só para hoje.`), 10000, () => {
       // desfazer a entrega volta a porta junto (desfazerPorta, em marcarEntregue)
       desfazerEntrega();
       status('Desfeito: a entrega voltou para a lista e o pino para onde estava.', 4000);

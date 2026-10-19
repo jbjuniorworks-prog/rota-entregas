@@ -1,6 +1,6 @@
 import {haversine, LONGE_DA_ANCORA} from './geo';
 import {CHAVES, type Guarda} from './guarda';
-import {chaveLugar, chavePorta} from './texto';
+import {chaveLugar, chavePorta, faltaNaChave} from './texto';
 import type {Parada, Ponto} from './tipos';
 
 export interface Lembrada {
@@ -69,5 +69,5 @@ export function criarMemoria(g: Guarda, cidade: () => string, aoGuardar: (chave:
 
 export type Memoria = ReturnType<typeof criarMemoria>;
 
-export const avisoGuardou = (guardou: boolean) =>
-  guardou ? ' e guardado para as próximas rotas.' : '. Sem CEP nem bairro, não deu para guardar para as próximas rotas.';
+export const avisoGuardou = (guardou: boolean, texto: string) =>
+  guardou ? ' e guardado para as próximas rotas.' : `. ${faltaNaChave(texto)}, não deu para guardar para as próximas rotas.`;

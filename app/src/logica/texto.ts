@@ -11,7 +11,9 @@ const RESTO_DA_RUA = /^[a-zà-ÿ][a-zà-ÿ .'-]*[,\s]\s*\d{1,5}\b/i;
 // "Rua F Quadra B Lot Jardim" / "Esperança Lot.Planalto SN": o nome quebrou de linha e a segunda
 // parte não tem número nenhum. Endereço rural é assim — o número da porta é "SN", sem número.
 const CONTINUA_O_NOME = /^[a-zà-ÿ][a-zà-ÿ0-9 .'/-]{2,}$/i;
-export const SEM_NUMERO = /\bs[/\s.]?n[º°o]?\b/i;
+// "Sem N" e "sem número" são o S/N por extenso. Pedro, 19/10: a planilha escreveu "Sem N", a
+// parada ficou sem chave, e a porta que ele marcou valeu só para aquele dia.
+export const SEM_NUMERO = /\bs[/\s.]?n[º°o]?\b|\bsem\s+n(?:[º°o]|[uú]m(?:ero)?|[uú]mera[cç][aã]o)?\.?(?![\wà-ÿ])/i;
 export const TIPOS_RUA = /^(rua|r|avenida|av|travessa|tv|trav|praca|pc|alameda|al|rodovia|rod|estrada|est|via|largo|beco|viela|passagem)\b\.?\s*/;
 const PALAVRAS_VAZIAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'doutor', 'dr', 'professor', 'prof', 'presidente', 'pres', 'governador', 'gov', 'ministro', 'min', 'senador', 'sen', 'deputado', 'dep', 'coronel', 'cel', 'general', 'gen', 'padre', 'pe', 'sao', 'santa', 'santo']);
 const ABREVIACOES: Record<string, string> = {poe: 'poeta', eng: 'engenheiro', des: 'desembargador', alm: 'almirante', mal: 'marechal', cap: 'capitao', ten: 'tenente', sgt: 'sargento', mons: 'monsenhor', pref: 'prefeito', jorn: 'jornalista', ver: 'vereador'};
@@ -1011,10 +1013,15 @@ export function chaveLugar(texto: string, bairro: string | undefined, cidade: st
   if (d.cep && !/000$/.test(d.cep)) return d.cep + '|' + numero;
   // sem número, o "S/N" fica grudado no nome da rua: tira, senão "SN" e "S/N" viram chaves
   // diferentes para a mesma porta
-  const rua = ruaCompleta(numero === 'sn' ? d.rua.replace(SEM_NUMERO, ' ') : d.rua), b = normal(bairro || '');
+  // do "Sem N" o decompor já tirou o "N", como um "nº" sem número, e sobra o "Sem"
+  const rua = ruaCompleta(numero === 'sn' ? d.rua.replace(SEM_NUMERO, ' ').replace(/\s+sem$/i, '') : d.rua), b = normal(bairro || '');
   if (!rua || !b) return null;
   return ['r', rua, numero, b, normal(cidade)].join('|');
 }
+
+// O que faltou para a chave, para o aviso não culpar o CEP de quem tem CEP (Pedro, 19/10).
+export const faltaNaChave = (texto: string): string =>
+  decompor(analisarLinha(texto).texto).numero || SEM_NUMERO.test(texto) ? 'Sem CEP nem bairro' : 'Sem número da porta';
 
 // Os bairros e as ruas de Aracaju aparecem dos dois jeitos: a planilha escreve "17 de Março"
 // e o censo "DEZESSETE DE MARCO". Vira tudo número, que é a forma que não tem duas grafias.

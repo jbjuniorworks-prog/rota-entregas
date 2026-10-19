@@ -311,7 +311,7 @@ Levar todas para o ponto novo junto com esta?`)) juntas.push(...irmas);
   const depois = p.adiada ? ' Quando quiser, toque em "Voltar para a rota".'
     : e().rota ? ' A sequência continua de pé: só o tempo e a distância ficaram velhos.'
     : prefixo === 'Local corrigido' ? ' Monte a rota de novo.' : '';
-  status(prefixo + quantas + avisoGuardou(guardou) + depois, 10000, desfazer);
+  status(prefixo + quantas + avisoGuardou(guardou, p.texto) + depois, 10000, desfazer);
 }
 
 export const GPS_PRECISO = 50;
@@ -462,7 +462,7 @@ export function escolherCandidato(p: Parada, k: number) {
   const guardou = memoria.lembrar(p, Date.now(), false);
   status('Local escolhido' + (guardou
     ? ' e guardado neste celular. Para valer para os outros motoristas, use "Marcar no mapa" ou toque em "Estou aqui" na porta.'
-    : '. Sem CEP nem bairro, não deu para guardar para as próximas rotas.'), 10000, desfazer);
+    : avisoGuardou(false, p.texto)), 10000, desfazer);
   desatualizarRota(longe);
   loja.mudou();
   focar(p.id);

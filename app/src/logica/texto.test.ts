@@ -1,4 +1,4 @@
-import {coordenadaNoTexto, lerEdicao, semLink,chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, ehComanda, enderecoDaComanda, enderecosDaLista, juntarComandas, lerComanda, conjuntoDoEndereco, semTipoDeArea, chaveLugar, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, mesmaPortaPeloNome, normal, pistasDeLugar, ruaCompleta, ruaDoComplemento} from './texto';
+import {coordenadaNoTexto, lerEdicao, semLink,chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, ehComanda, enderecoDaComanda, enderecosDaLista, juntarComandas, lerComanda, conjuntoDoEndereco, semTipoDeArea, chaveLugar, faltaNaChave, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, mesmaPortaPeloNome, normal, pistasDeLugar, ruaCompleta, ruaDoComplemento} from './texto';
 
 describe('mesmo condomínio, endereços diferentes', () => {
   const p = (texto: string, bairro = 'Jardins') => ({texto, bairro});
@@ -1087,6 +1087,24 @@ describe('endereço sem número também precisa de chave', () => {
     expect(chaveLugar('Alameda Vereador Lucilo da Costa Pinto SN', '', 'Aracaju, SE')).toBeNull();
     // e o que nem S/N tem segue de fora
     expect(chaveLugar('Alameda Vereador Lucilo da Costa Pinto, CEP 49025-100', '', 'Aracaju')).toBeNull();
+  });
+
+  // Pedro, 19/10: a planilha escreveu "Sem N", e a porta marcada valeu só para o dia. Inventados.
+  it('"Sem N" e "sem número" são o S/N por extenso', () => {
+    expect(chaveLugar('Travessa Teste Inventada, Sem N, Invasão Rua B Próx Casa 26, CEP 49000-413', '', 'Aracaju'))
+      .toBe('49000413|sn');
+    const sn = chaveLugar('Travessa Teste Inventada S/N', 'Bairro Teste', 'Aracaju');
+    for (const jeito of ['Sem N', 'sem nº', 'Sem Número', 'sem numero', 'Sem Numeração'])
+      expect(chaveLugar(`Travessa Teste Inventada ${jeito}`, 'Bairro Teste', 'Aracaju'), jeito).toBe(sn);
+    // "Rua Sem Nome" é nome de rua, não falta de número
+    expect(chaveLugar('Rua Sem Nome, Bairro Teste', 'Bairro Teste', 'Aracaju')).toBeNull();
+    expect(chaveLugar('Rua Sem Nome, 12', 'Bairro Teste', 'Aracaju')).toBe('r|rua sem nome|12|bairro teste|aracaju');
+  });
+
+  it('o aviso diz o que faltou de verdade', () => {
+    expect(faltaNaChave('Travessa Teste Inventada, Casa Azul, CEP 49000-413')).toBe('Sem número da porta');
+    expect(faltaNaChave('Rua Teste Inventada, 100')).toBe('Sem CEP nem bairro');
+    expect(faltaNaChave('Rua Teste Inventada S/N')).toBe('Sem CEP nem bairro');
   });
 });
 

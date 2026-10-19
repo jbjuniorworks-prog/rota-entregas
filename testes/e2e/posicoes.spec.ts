@@ -368,6 +368,22 @@ test.describe('a porta espera o prazo de desfazer antes de ir para a nuvem', () 
   // o relógio controlado anda sozinho; depois de pular o prazo, o envio ainda tem de acontecer
   const depoisDoPrazo = async (page) => { await page.clock.fastForward(PRAZO); await page.waitForTimeout(1500); };
 
+  // Pedro, 19/10: o aviso dizia "Sem CEP nem bairro" numa parada com CEP e bairro. Inventado.
+  test('"Entreguei aqui" sem número da porta diz que falta o número, não o CEP', async ({page}) => {
+    await abrir(page);
+    await colar(page);
+    await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+    await page.getByLabel(/Endereços da área/).fill('Travessa Teste Outra, Casa Azul, CEP 49000-414');
+    await page.getByRole('button', {name: /^Adicionar em/}).click();
+    await expect(aviso(page)).toContainText(/Pronto|falharam/, {timeout: 30_000});
+    await aba(page, '2. Conferir');
+    await linhaDe(page, 'Travessa Teste Outra', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+    await clicarMapa(page, -10.9605, -37.0455);
+    await montar(page);
+    await page.locator('.proxima [data-acao="aqui"]').click();
+    await expect(aviso(page)).toContainText('com a porta marcada aqui (±12 m). Sem número da porta, a porta vale só para hoje.');
+  });
+
   test('"Entreguei aqui" desfeito não manda passagem nem lugar, nem depois do prazo', async ({page, nuvem}) => {
     await page.clock.install();
     await abrir(page);
@@ -523,6 +539,28 @@ test('endereço sem CEP nem bairro guarda a porta marcada, com o bairro que a bu
   });
   expect(onde.lat).toBeCloseTo(-10.94395, 5);
   expect(onde.lng).toBeCloseTo(-37.06460, 5);
+});
+
+// Pedro, 19/10: a planilha escreveu "Sem N", e a porta que ele marcou valeu só para o dia, com um
+// aviso que culpava o CEP que estava lá. Endereços inventados.
+test('"Sem N" guarda a porta para os outros como o S/N, e sem número o aviso diz que falta o número', async ({page, nuvem}) => {
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await colar(page);
+  await page.getByLabel(/Endereços da área/).fill(
+    'Travessa Teste Inventada, Sem N, Invasão Rua B Próx Casa 26, CEP 49000-413\nTravessa Teste Outra, Casa Azul, CEP 49000-414');
+  await page.getByRole('button', {name: /^Adicionar em/}).click();
+  await expect(aviso(page)).toContainText(/Pronto|falharam/, {timeout: 30_000});
+  await aba(page, '2. Conferir');
+  await linhaDe(page, 'Travessa Teste Inventada', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+  await clicarMapa(page, -10.9412, -37.0456);
+  await expect(aviso(page)).toContainText('guardado para as próximas rotas');
+  const correcoes = () => nuvem.pedidos.filter(p => p.caminho === 'correcoes' && p.metodo === 'POST').flatMap(p => p.corpo as Record<string, unknown>[]);
+  await expect.poll(() => correcoes().map(c => c.chave_lugar)).toContain('49000413|sn');
+
+  await linhaDe(page, 'Travessa Teste Outra', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+  await clicarMapa(page, -10.9420, -37.0460);
+  await expect(aviso(page)).toContainText('Sem número da porta, não deu para guardar para as próximas rotas');
 });
 
 // Print de 29/09: no Editar ele apagou o endereço e colou só o link, que é o jeito natural de colar
