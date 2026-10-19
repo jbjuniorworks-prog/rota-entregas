@@ -551,6 +551,18 @@ pino fica na porta.
     pelo Pedro no pino.
   - Dos 121 pacotes, 14 foram marcados entregues, e nada chegou depois das 12:58.
 
+## "Sem N" fica sem chave, e o aviso culpa o CEP (19/10), esperando o dono decidir
+
+- **Pedro, 19/10:** na Travessa João Ribeiro de Almeida, "Sem N", com CEP 49005-413 e bairro, o
+  "Entreguei aqui" disse "Sem CEP nem bairro, a porta vale só para hoje". O CEP e o bairro estão
+  lá. Falta o número: o `SEM_NUMERO` aceita "S/N", "SN" e "S.N", mas não "Sem N", e sem número não
+  há chave. Nada dessa porta subiu.
+- **Medido na nuvem:** 51 de 12.244 pacotes estão sem chave. "Sem N" são 6, todos esse endereço: 3
+  na rota do Pedro e 3 na cópia da planilha dele aberta na conta do Luan. Há ainda "Sem" e "Não"
+  sozinhos no lugar do número.
+- **A decidir:** tratar "Sem N" como o S/N, que ganhou chave em 26/09 (`16d71a8`), e fazer o aviso
+  dizer o motivo de verdade.
+
 ## Perguntas do Luan sobre a rota de 06/10 (15/10), respondidas, nada a mudar
 
 - **"Entreguei" simples no lugar certo e não verificado**, Oswaldo Garavini 60: ele entregou o 48 e
