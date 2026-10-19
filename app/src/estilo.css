@@ -194,7 +194,7 @@ details summary{font-weight:600;cursor:pointer;padding:8px 0}
 /* na Rota, o aviso fica por cima do mapa: no fluxo, cada aviso empurrava o mapa 40 px para baixo e
    de volta. Nas outras telas ele fica no fluxo, para não cobrir o voltar do cabeçalho. */
 #app.tela-rota .cima>#status{position:absolute;left:0;right:0;top:100%}
-#status{flex:none;background:#111827;color:#fff;padding:10px 14px;font-size:14px;display:none}
+#status{flex:none;background:#111827;color:#fff;padding:10px 14px;font-size:14px;display:none;white-space:pre-line}
 #status.on{display:block}
 #status .armado,#status .versao-nova,#status .pinos-novos,#status .instalar{display:flex;align-items:center;gap:8px;justify-content:space-between}
 #status .instalar .botoes{display:flex;gap:6px;flex-shrink:0}

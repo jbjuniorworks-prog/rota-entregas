@@ -347,6 +347,7 @@ function portaDaComanda(endereco: string): string | null {
 }
 
 const tipoDaUnidade = (t: string) => normal(t).replace(/^ap.*/, 'ap').replace(/^bl.*/, 'bloco').replace(/^quadra$/, 'qd');
+const NOME_DA_UNIDADE: Record<string, string> = {ap: 'o apartamento', bloco: 'o bloco', casa: 'o número da casa', sala: 'a sala', lote: 'o lote', qd: 'a quadra'};
 
 // Os números de apartamento, bloco ou casa que cada leitura deu diferente: "ap 203" e "ap 103".
 function unidadesQueDivergem(enderecos: string[]): Map<string, string[]> {
@@ -374,10 +375,11 @@ export function juntarComandas(leituras: (Comanda | null)[], corrigir: (linhas: 
     return [{...c, endereco: corrigido, porta: portaDaComanda(corrigido) || portaDaComanda(c.endereco)!}];
   });
   if (new Set(firmes.map(f => f.porta)).size !== 1) {
+    // o texto foi lido; o que falhou foi confirmar a porta, e ele precisa ver o que foi lido
     const lidas = [...new Set((firmes.length ? firmes : boas).map(c => resumoDaPorta(c.endereco)))].slice(0, 3);
     return {
       linhas: [],
-      avisos: [`Não deu para ter certeza do endereço da comanda: li ${lidas.map(l => `"${l}"`).join(' e ')}. Escreva o certo na lista ou fotografe de novo, mais perto.`],
+      avisos: ['Não deu para confirmar o endereço. Confira as leituras abaixo ou fotografe novamente.', ...lidas.map(l => `"${l}"`)],
       achou: true,
     };
   }
@@ -389,7 +391,9 @@ export function juntarComandas(leituras: (Comanda | null)[], corrigir: (linhas: 
   if (divergentes.size) {
     endereco = endereco.replace(UNIDADE_DA_COMANDA, (m, tipo) => (divergentes.has(tipoDaUnidade(tipo)) ? '' : m))
       .replace(/\(\s*\)/g, '').replace(/\(\s+/g, '(').replace(/\s+\)/g, ')').replace(/\s*,(\s*,)+/g, ',').replace(/\s{2,}/g, ' ').trim();
-    avisos.push(`Confira o complemento no papel: as leituras deram ${[...divergentes].map(([t, v]) => v.map(n => `${t} ${n}`).join(' e ')).join(', ')}.`);
+    // A entrega entra sem o número: o aviso tem de dizer isso, para a leitura não parecer completa.
+    avisos.push(`O endereço entrou sem ${[...divergentes.keys()].map(t => NOME_DA_UNIDADE[t] || t).join(' e ')}: as leituras deram `
+      + `${[...divergentes].map(([t, v]) => v.map(n => `${t} ${n}`).join(' e ')).join(', ')}. Confira no papel antes de entregar.`);
   }
   const melhor = (pegar: (c: Comanda) => string) => {
     const vezes = new Map<string, number>();

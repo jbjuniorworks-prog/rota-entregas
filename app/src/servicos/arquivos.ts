@@ -197,7 +197,7 @@ async function abrirLeitor() {
 
 type Corretor = (linhas: string[]) => string[];
 
-async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo: string, corrigir: Corretor, avisos: string[]): Promise<string[]> {
+async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo: string, corrigir: Corretor, daComanda: string[]): Promise<string[]> {
   aviso(`Lendo os endereços…${rotulo}`);
   // O leitor joga um erro solto na página quando recebe algo que não é imagem. Barrar aqui é
   // mais honesto: o arquivo é que não abre, e isso vira um aviso em vez de sujeira no console.
@@ -232,7 +232,7 @@ async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo
   if (!textos.some(t => enderecosDaLista(t).length) && (forte || (juntas.length <= 1 && textos.some(pareceComanda)))) {
     const r = lerComanda(textos, corrigir);
     if (forte || r.achou) {
-      avisos.push(...r.avisos);
+      daComanda.push(...r.avisos);
       return r.linhas;
     }
   }
@@ -240,8 +240,10 @@ async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo
 }
 
 // `corrigir` passa em cada leitura antes de juntar: o nome da rua lido torto, trocado pelo do censo.
-export async function lerArquivos(files: Arquivo[], aviso: Aviso, corrigir: Corretor = x => x): Promise<string[] & {avisos: string[]}> {
+export async function lerArquivos(files: Arquivo[], aviso: Aviso, corrigir: Corretor = x => x): Promise<string[] & {avisos: string[]; daComanda: string[]}> {
   const imagens: Imagem[] = [], grupos: string[][] = [], avisos: string[] = [];
+  // o que a comanda pede para ele conferir: é o resultado da leitura, não uma falha dela
+  const daComanda: string[] = [];
   const videos: Arquivo[] = [];
   // Texto de PDF e de .txt não é cartão: linha repetida ali é a mesma entrega escrita duas vezes, e
   // se junta antes, como no colar. Só a leitura de imagem conta cartões iguais (decisão de 15/10).
@@ -271,7 +273,7 @@ export async function lerArquivos(files: Arquivo[], aviso: Aviso, corrigir: Corr
     // Uma parte ruim não pode levar embora as que já foram lidas: numa gravação com trinta
     // quadros, um tropeço de sinal custava a rota inteira.
     const ler = async (img: Imagem, rotulo: string) => {
-      try { grupos.push(await lerUma(worker, img, aviso, rotulo, corrigir, avisos)); } catch { falhas++; }
+      try { grupos.push(await lerUma(worker, img, aviso, rotulo, corrigir, daComanda)); } catch { falhas++; }
       await descansar();
     };
     try {
@@ -294,5 +296,5 @@ export async function lerArquivos(files: Arquivo[], aviso: Aviso, corrigir: Corr
       ? `Nenhuma das ${falhas} parte(s) deu para ler. Se estava sem sinal, tente de novo com internet.`
       : `${falhas} parte(s) não deram para ler: confira se faltou alguma parada.`);
   }
-  return Object.assign(juntarQuadros(grupos), {avisos});
+  return Object.assign(juntarQuadros(grupos), {avisos, daComanda});
 }

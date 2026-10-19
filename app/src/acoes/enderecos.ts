@@ -270,11 +270,16 @@ async function lerPrintsAgora(files: File[], textoAtual: string): Promise<string
     // é que tem de aparecer, senão o motorista grava tudo de novo à toa
     const avisos = unicos.avisos.map(a => ' ' + a).join('');
     const corrigidas = nomes.corrigidas.size ? ` ${nomes.corrigidas.size} nome(s) de rua lido(s) torto(s), corrigido(s) pelo censo.` : '';
+    // O que a comanda pede para conferir vem antes e fica mais tempo: o endereço sem apartamento
+    // não pode parecer leitura completa, e a porta não confirmada não é falha de leitura (19/10).
+    const daComanda = unicos.daComanda.join('\n');
     status(unicos.length
-      ? `${unicos.length} endereço(s) lido(s).${corrigidas} Confira o texto e toque em "Adicionar".${avisos}`
-      : avisos
-        ? `Não consegui ler.${avisos}`
-        : 'Não achei endereços. Use o print ou a gravação da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
+      ? `${daComanda ? daComanda + '\n' : ''}${unicos.length} endereço(s) lido(s).${corrigidas} Confira o texto e toque em "Adicionar".${avisos}`
+      : daComanda
+        ? daComanda + avisos
+        : avisos
+          ? `Não consegui ler.${avisos}`
+          : 'Não achei endereços. Use o print ou a gravação da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', daComanda ? 20000 : 8000);
     doLeitor = textoAtual.trim() ? [...doLeitor, ...unicos] : [...unicos];
     return (textoAtual.trim() ? textoAtual.trim() + '\n' : '') + unicos.join('\n');
   } catch (err) {
@@ -306,15 +311,18 @@ async function lerCompartilhado() {
   try {
     const {planilhas, outros} = await separarPlanilhas(files);
     const daPlanilha = planilhas.length ? await importarPlanilhas(planilhas) : null;
-    const linhas: string[] = outros.length ? await lerArquivos(outros, m => status(m), (await corretorDeNomes(e().cidade)).corrigir) : [];
+    const lidos = outros.length ? await lerArquivos(outros, m => status(m), (await corretorDeNomes(e().cidade)).corrigir) : null;
+    const linhas: string[] = lidos ? [...lidos] : [];
     const lidas = [...linhas];
+    const daComanda = lidos ? lidos.daComanda.join('\n') : '';
     if (texto.trim()) {
       const doTexto = extrairEnderecos(texto);
       linhas.push(...(doTexto.length ? doTexto : texto.split('\n').map(l => l.trim()).filter(Boolean)));
     }
     if (!linhas.length && !(daPlanilha && daPlanilha.novas + daPlanilha.juntas)) {
       irPara('inicio');
-      status('Não achei endereços. Compartilhe a planilha da rota ou o print da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', 8000);
+      // a comanda com a porta não confirmada foi lida: pedir a planilha ou a lista não ajuda
+      status(daComanda || 'Não achei endereços. Compartilhe a planilha da rota ou o print da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', daComanda ? 20000 : 8000);
       return;
     }
     const {novas, repetidas} = adicionarLinhas(e(), linhas, lidas);
@@ -322,6 +330,8 @@ async function lerCompartilhado() {
     irPara('rota');
     await buscarPendentes();
     await montarRota();
+    // por último, para o "Rota pronta" não cobrir o complemento que ficou de fora
+    if (daComanda) status(daComanda, 20000);
   } catch (err) {
     status('Não consegui processar: ' + (err as Error).message, 6000);
   }

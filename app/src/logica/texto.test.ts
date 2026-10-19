@@ -651,6 +651,7 @@ describe('comanda de restaurante (iFood/Goomer) fotografada', () => {
 // linha fora de ordem, sujeira. Endereços inventados.
 describe('comanda fotografada, como o leitor devolve', () => {
   const NAO_ACHEI = 'Não achei o endereço na comanda. Fotografe de novo, mais perto e sem sombra.';
+  const CONFIRMAR = 'Não deu para confirmar o endereço. Confira as leituras abaixo ou fotografe novamente.';
   const rodape = ['Obs: Desconto do Restaurante: 5', 'Pago Online', 'Telefone: 0800 700 3040, localizador: 11112222',
     'Fidelidade: 1 compra', 'Código de Coleta: 7795', 'Entrega para às 21:25', 'Qt.Descrição Valor', '1 Prato Teste 59.00'];
 
@@ -703,12 +704,12 @@ describe('comanda fotografada, como o leitor devolve', () => {
     const r = lerComanda([ifoodCom('Rua Teste Bell, 181, (Ed Teste, 802)'), ifoodCom('Rua Teste Bell, 181, (Ed Teste 802)'),
       ifoodCom('Rua Teste Bell, 151, (Ed Teste, 802')]);
     expect(r.linhas).toEqual([]);
-    expect(r.avisos).toEqual(['Não deu para ter certeza do endereço da comanda: li "Rua Teste Bell, 181" e "Rua Teste Bell, 151". Escreva o certo na lista ou fotografe de novo, mais perto.']);
+    expect(r.avisos).toEqual([CONFIRMAR, '"Rua Teste Bell, 181"', '"Rua Teste Bell, 151"']);
   });
 
   it('leitura fora do molde da comanda não vira porta, nem sozinha', () => {
     expect(lerComanda([ifoodCom('Travessa Teste e Nove, 3 5, (Casa)'), ifoodCom('Travessa Teste e Nove 315 (Casa)')]).avisos)
-      .toEqual(['Não deu para ter certeza do endereço da comanda: li "Travessa Teste e Nove, 3 5" e "Travessa Teste e Nove 315". Escreva o certo na lista ou fotografe de novo, mais perto.']);
+      .toEqual([CONFIRMAR, '"Travessa Teste e Nove, 3 5"', '"Travessa Teste e Nove 315"']);
     expect(lerComanda([ifoodCom('avenida teste Vinícius de M 246 (MW ante d h,')]).linhas).toEqual([]);
   });
 
@@ -720,7 +721,7 @@ describe('comanda fotografada, como o leitor devolve', () => {
   it('o apartamento que cada passada leu diferente sai do texto, e ele confere no papel', () => {
     const r = lerComanda([ifoodCom('Rua Teste, 50, (Ed Teste ap 203)'), ifoodCom('Rua Teste, 50, (Ed Teste ap 103)')]);
     expect(r.linhas).toEqual(['Rua Teste, 50, (Ed Teste), Bairro Teste']);
-    expect(r.avisos).toEqual(['Confira o complemento no papel: as leituras deram ap 203 e ap 103.']);
+    expect(r.avisos).toEqual(['O endereço entrou sem o apartamento: as leituras deram ap 203 e ap 103. Confira no papel antes de entregar.']);
   });
 
   it('duas comandas na mesma foto não viram uma escolha calada', () => {
