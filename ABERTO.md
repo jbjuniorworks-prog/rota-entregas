@@ -152,6 +152,31 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Muitos usuários em vários lugares (19/10, pergunta do dono), analisado, nada feito
+
+- **Hoje:** 11 contas, uns 6 motoristas por dia, 43 rotas e 4 mil pacotes por semana. Supabase no
+  plano grátis (dono, 19/10): 500 MB, sem backup automático (o nosso `npm run backup` cobre).
+- **De onde veio a posição na última semana:** planilha 25%, porta verificada na nuvem 29%, censo
+  11%, Nominatim nenhuma; 35% sem registro.
+- **O que quebra primeiro:**
+  - o Admin corta em 1.000 linhas calado: "uso dos botões" (30 dias) passa disso em poucas semanas
+    no ritmo de hoje; a lista de rotas (14 dias), com uns 70 motoristas por dia;
+  - o mapa vem de `tile.openstreetmap.org`, que proíbe uso pesado por app e pode bloquear;
+  - a rota vem do servidor de demonstração do OSRM, sem garantia (o app já cai para linha reta);
+  - a conferência e a criação de contas dependem do dono.
+- **Proposto, esperando o dono:** consertar os dois cortes do Admin; passar para o Pro antes de
+  crescer; mapa e rota próprios antes de uns 20 motoristas por dia ou de outra cidade; organização,
+  admin por região e convite para várias empresas.
+
+## Rua Manoel Correia Farias 260 não encontrada (19/10, vídeo do Meli do dono)
+
+- O cartão fechado do Meli veio sem CEP e sem bairro. O nome não está no censo de 2022 (loteamento
+  novo em Madre Paulina, São Cristóvão), e no OpenStreetMap a rua existe sem nome (way 1000013976,
+  no Mais Viver Condomínio Clube Índico). Sem nada para aproximar, ficou sem pino, de propósito.
+- **Lacuna:** sem CEP nem bairro, a porta que alguém marcar não ganha chave e vale só para o dia.
+  Proposto, não feito: pegar o bairro do censo no ponto marcado. A coordenada do Google não entra:
+  os termos deles proíbem.
+
 ## Revisão geral (19/10, pedido do dono)
 
 - **Testes:** 452 de unidade, 175 e2e, e o `@ui` e o `@leitor` com 4 passando e 1 pulado (o das
