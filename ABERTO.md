@@ -551,7 +551,7 @@ pino fica na porta.
     pelo Pedro no pino.
   - Dos 121 pacotes, 14 foram marcados entregues, e nada chegou depois das 12:58.
 
-## "Sem N" fica sem chave, e o aviso culpa o CEP (19/10): consertado local, falta subir
+## "Sem N" fica sem chave, e o aviso culpa o CEP (19/10): publicado em 19/10 (`4de6bb4`)
 
 - **Pedro, 19/10:** na Travessa João Ribeiro de Almeida, "Sem N", com CEP 49005-413 e bairro, o
   "Entreguei aqui" disse "Sem CEP nem bairro, a porta vale só para hoje". O CEP e o bairro estão
@@ -582,7 +582,7 @@ pino fica na porta.
   - a `posicoes_com` devolve a chave `49005413|sn` como confirmada;
   - para apagar, se o ponto se mostrar errado, basta tirar essas duas linhas.
 
-## "50/51 verificados" no cartão de montar (19/10, ideia do Luan): feito local, falta subir
+## "50/51 verificados" no cartão de montar (19/10, ideia do Luan): publicado em 19/10 (`ad7f24a`)
 
 - **O que é:** o cartão de montar mostra quantas paradas já chegam com a porta verificada, na linha
   do "A rota sai de onde você está.", à direita. É verde quando há alguma e cinza no zero. Conta as
