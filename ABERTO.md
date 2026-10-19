@@ -541,6 +541,15 @@ pino fica na porta.
   lugar certo.
 - **Não coberto:** o item 10 (trava de marcação em lote) continua valendo para quem já saiu da
   conferência.
+- **Rota do César de 19/10, conferida só lendo a nuvem:**
+  - As 5 passagens das 12:43 e 12:44 saíram do mesmo ponto, a menos de 1 m umas das outras: Arthur
+    Carvalho 155, 66 e 152, e Antônio Dória da Silva 60 e 78. Ele marcou cinco endereços de duas
+    ruas parado num lugar só.
+  - O 152 e o 155 foram aprovados. O ponto fica a 26 m do 184, verificado pelo Pedro na mesma rua,
+    então é plausível.
+  - O 60 e o 78 ficam a 318 e 339 m dos pinos, em outra rua: não aprovar. O 60 já está verificado
+    pelo Pedro no pino.
+  - Dos 121 pacotes, 14 foram marcados entregues, e nada chegou depois das 12:58.
 
 ## Perguntas do Luan sobre a rota de 06/10 (15/10), respondidas, nada a mudar
 
