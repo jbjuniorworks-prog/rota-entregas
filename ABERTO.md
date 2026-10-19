@@ -241,10 +241,18 @@ A revisão aprovou só a etapa 1, local, sem publicar.
      endereço errado, complemento incompleto e aviso. Foto nova que motivar ajuste vira caso de
      desenvolvimento e deixa de valer como prova daquela versão.
 - **Versão (conferido em 19/10):** de `308ce79` para `ab6ee58`, o `texto.ts` mudou só o texto dos
-  avisos. Depois veio `32cd4e0`, que só mexe na tela de carregar (o seletor de "Ler a planilha").
-  As regras que escolhem o endereço são as mesmas desde `308ce79`. **O candidato a publicar agora é
-  `32cd4e0`**: a conferência final dos três botões usa o build dele, e as comandas novas também
-  podem usá-lo.
+  avisos. Depois vieram `32cd4e0` (o seletor de "Ler a planilha") e `cfe4c9c` (o nome do botão da
+  gravação), os dois só na tela de carregar. As regras que escolhem o endereço são as mesmas desde
+  `308ce79`. **O candidato a publicar agora é `cfe4c9c`**: a conferência final dos botões usa o
+  build dele, e as comandas novas também podem usá-lo.
+- **Botão da gravação renomeado (`cfe4c9c`, pedido do dono):** "Mandar prints ou vídeo da lista"
+  virou "Ler a gravação da tela", com "A lista do Meli rolando devagar. Também lê prints." embaixo.
+  Só texto. O dono já grava a tela do próprio celular, que é o melhor jeito; filmar com outro
+  celular não foi recomendado.
+- **Vídeo do Meli, a medir:** todas as medições do vídeo usaram cópias que vieram pelo WhatsApp (386
+  a 576 px de largura). Lida no próprio celular, a gravação é a original. Falta medir quanto isso
+  melhora: uma gravação original (mandada como Documento ou pelo Drive) e a cópia dela pelo
+  WhatsApp, parada por parada, e o tempo de leitura no celular.
 - **"Ler a planilha" com seletor próprio (`32cd4e0`, aprovado só local):** dividia o seletor com
   "Mandar prints ou vídeo", que aceita imagem e vídeo, e no Android do dono abria um menu com
   Câmera, Câmera Filmadora e Arquivos. Agora pede só os formatos que o leitor de planilha reconhece
