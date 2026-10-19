@@ -240,10 +240,26 @@ A revisão aprovou só a etapa 1, local, sem publicar.
   2. Comandas novas com as regras congeladas em `ab6ee58`, contando endereço certo,
      endereço errado, complemento incompleto e aviso. Foto nova que motivar ajuste vira caso de
      desenvolvimento e deixa de valer como prova daquela versão.
-- **Versão (conferido em 19/10):** depois de `ab6ee58` só veio `ba39951`, que muda só este arquivo.
-  De `308ce79` para `ab6ee58`, o `texto.ts` mudou só o texto dos avisos; as regras que escolhem o
-  endereço são as mesmas. O candidato a publicar é o código de `ab6ee58`, e é ele que o celular
-  testa (o build de qualquer commit até `ba39951` dá o mesmo app).
+- **Versão (conferido em 19/10):** de `308ce79` para `ab6ee58`, o `texto.ts` mudou só o texto dos
+  avisos. Depois veio `32cd4e0`, que só mexe na tela de carregar (o seletor de "Ler a planilha").
+  As regras que escolhem o endereço são as mesmas desde `308ce79`. **O candidato a publicar agora é
+  `32cd4e0`**: a conferência final dos três botões usa o build dele, e as comandas novas também
+  podem usá-lo.
+- **"Ler a planilha" com seletor próprio (`32cd4e0`, aprovado só local):** dividia o seletor com
+  "Mandar prints ou vídeo", que aceita imagem e vídeo, e no Android do dono abria um menu com
+  Câmera, Câmera Filmadora e Arquivos. Agora pede só os formatos que o leitor de planilha reconhece
+  (`.xlsx`, `.xls`, `.ods`, `.csv` e os tipos MIME deles). É um pedido ao navegador, não garantia
+  do menu que aparece. "Mandar prints ou vídeo" e "Fotografar" não mudaram. Aceita só se, no
+  celular: a planilha real recebida pelo WhatsApp aparecer e puder ser escolhida, e for importada
+  certa; cancelar o seletor deixar a lista; "Mandar prints ou vídeo" ainda pegar um print e uma
+  gravação de tela; e "Fotografar" seguir funcionando. Se o filtro esconder a planilha real, a
+  mudança não está pronta, e não se aumenta a lista de tipos às cegas.
+- **No celular até agora (19/10, Android com a câmera da Samsung, build de `ab6ee58`):**
+  "Fotografar" abriu direto a câmera de trás, sem menu. Voltar da câmera várias vezes voltou à
+  mesma tela, sem recarga visível, mas com a lista vazia: isso ainda não mostra a lista
+  preservada. Uma foto que não era comanda deu o aviso geral "Não achei endereços". Neste aparelho,
+  o seletor que aceita imagem e vídeo abre o menu com Câmera, Câmera Filmadora e Arquivos (é o
+  comportamento deste aparelho, não regra de todo Android).
 - **Teste no celular, a preencher** (com quem tem o aparelho; foto de tela serve para ver os
   avisos, mas fica separada do acerto em comanda de papel):
 
