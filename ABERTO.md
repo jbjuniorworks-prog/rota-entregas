@@ -234,12 +234,17 @@ A revisão aprovou só a etapa 1, local, sem publicar.
   duas vezes; a segunda leitura diz só "1 endereço(s) lido(s)", e o "Adicionar" diz "2
   adicionada(s)" e cria duas entregas, pela regra de 15/10 (repetido lido é outro cartão). Visível
   só pela linha dobrada; nenhum aviso aponta. A regra de 15/10 não muda agora.
-- **Falta, antes de pedir para publicar:**
-  1. No celular: a captura, o cancelar, a lista preservada, a clareza dos avisos, e a comanda
-     fotografada duas vezes (se a linha dobrada se entende).
-  2. Comandas novas com as regras congeladas em `ab6ee58`, contando endereço certo,
-     endereço errado, complemento incompleto e aviso. Foto nova que motivar ajuste vira caso de
-     desenvolvimento e deixa de valer como prova daquela versão.
+- **Falta, antes de pedir para publicar** (`cfe4c9c` congelado, sem mais mudança até lá):
+  1. No celular, com o build de `cfe4c9c`, anotando aparelho e navegador. Primeiro: em "Ler a
+     planilha", uma planilha real recebida pelo WhatsApp tem de aparecer, ser escolhida e entrar
+     certa. Depois, a tabela: cancelar preserva o que estava escrito; o "Fotografar" soma abaixo do
+     texto; voltar da câmera não perde a lista; os avisos se entendem; a pessoa percebe que
+     fotografar duas vezes cria duas entregas; print e gravação continuam escolhíveis pelo botão
+     deles.
+  2. Comandas novas (5 a 10), com a referência anotada antes de ler e as regras sem ajuste durante o
+     lote, contando por app (iFood, Goomer) e por resultado: endereço certo, endereço errado,
+     complemento incompleto e aviso. Foto nova que motivar ajuste vira caso de desenvolvimento e
+     deixa de valer como prova daquela versão.
 - **Versão (conferido em 19/10):** de `308ce79` para `ab6ee58`, o `texto.ts` mudou só o texto dos
   avisos. Depois vieram `32cd4e0` (o seletor de "Ler a planilha") e `cfe4c9c` (o nome do botão da
   gravação), os dois só na tela de carregar. As regras que escolhem o endereço são as mesmas desde
@@ -250,18 +255,21 @@ A revisão aprovou só a etapa 1, local, sem publicar.
   Só texto. O dono já grava a tela do próprio celular, que é o melhor jeito; filmar com outro
   celular não foi recomendado.
 - **Conferido local no candidato `cfe4c9c` (19/10, nuvem falsa, pelos botões da tela):**
-  - as 67 planilhas reais da pasta, pelo "Ler a planilha": as paradas saíram iguais às do código
-    antigo, campo por campo (texto, número, bairro, pacotes, unidades, cidade, comercial), 4.629 ao
-    todo. O antigo entrou pelo seletor compartilhado e o candidato pelo novo. No computador o
-    navegador deu a todas o tipo de `.xlsx`; o Android pode dar outro, e é isso que o celular mede;
-  - uma delas, `ROMANEIO 09_10 LSE03.xlsx`, não entra em nenhum dos dois ("não achei a coluna de
-    endereço"): é um romaneio, não a planilha do app de entregas;
+  - planilhas reais da pasta, pelo "Ler a planilha": **67 testadas, 66 aceitas e 1 recusada**, igual
+    nas duas versões. As 66 aceitas deram as mesmas paradas no código antigo e no candidato, campo
+    por campo (texto, número, bairro, pacotes, unidades, cidade, comercial): 4.629 ao todo. A
+    recusada, `ROMANEIO 09_10 LSE03.xlsx`, não entra em nenhuma das duas ("não achei a coluna de
+    endereço"): é um romaneio, não a planilha do app de entregas, e a limitação é anterior ao
+    candidato. O antigo entrou pelo seletor compartilhado e o candidato pelo novo. No computador o
+    navegador deu às 67 o tipo de `.xlsx`; o Android pode dar outro, e é isso que o celular mede;
   - os 3 vídeos do Meli (68, 62 e 74 linhas), o print e as 9 comandas, pelos botões "Ler a gravação
     da tela" e "Fotografar": iguais à rodada de `308ce79`. Leitura dos vídeos: 154 a 215 s.
-- **Vídeo do Meli, a medir:** todas as medições do vídeo usaram cópias que vieram pelo WhatsApp (386
-  a 576 px de largura; as três da pasta têm 480 × 1070). Lida no próprio celular, a gravação é a original. Falta medir quanto isso
-  melhora: uma gravação original (mandada como Documento ou pelo Drive) e a cópia dela pelo
-  WhatsApp, parada por parada, e o tempo de leitura no celular.
+- **Vídeo do Meli, investigação à parte (não segura a publicação):** todas as medições do vídeo
+  usaram cópias que vieram pelo WhatsApp (386 a 576 px de largura; as três da pasta têm 480 ×
+  1070). Lida no próprio celular, a gravação é a original. Falta medir quanto isso melhora: uma
+  gravação original (mandada como Documento ou pelo Drive) e a cópia dela pelo WhatsApp, parada por
+  parada, e o tempo de leitura no celular. Não há mudança aprovada no leitor de vídeo nem nas
+  janelas do Meli.
 - **"Ler a planilha" com seletor próprio (`32cd4e0`, aprovado só local):** dividia o seletor com
   "Mandar prints ou vídeo", que aceita imagem e vídeo, e no Android do dono abria um menu com
   Câmera, Câmera Filmadora e Arquivos. Agora pede só os formatos que o leitor de planilha reconhece
