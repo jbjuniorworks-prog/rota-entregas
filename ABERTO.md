@@ -153,6 +153,30 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Janelas, cores e comercial nas gravações do Meli (18 e 19/10), medido, não construir ainda
+
+- **O pedido (dono):** pinos nas cores do Meli, com os horários, e os comerciais avisados.
+- **Medido nos três vídeos da pasta** (200 entregas, referência à mão congelada antes da leitura;
+  relatório local, fora do git):
+  - o Meli agrupa em "ÁREA N | início a fim"; a cor e a forma do número seguem a área, iguais nos
+    três (1 quadrado verde, 2 círculo roxo, 3 escudo amarelo, 4 hexágono azul, 5 losango rosa);
+  - fora da primeira área, a entrega comum vem trancada ("Habilita às" = início da área); a
+    comercial vem aberta antes da área, e o horário da loja pode não caber na janela (uma fecha
+    às 12:00 numa área das 13:50). As janelas das áreas se sobrepõem nos três vídeos;
+  - o fluxo atual apaga a janela de propósito (`limparRuido`), põe o número da parada em 30, 39 e
+    32 das linhas, e só marca comercial no "horário comercial" (3 de 12, 6 de 10, 0 de 7);
+  - um extrator de teste local, com o mesmo leitor, achou 60 de 66, 55 de 61 e 63 de 69
+    entregas com número; nelas, a janela e o "Habilita às" saíram certos, e só 3 casos foram
+    ligados à entrega errada por número do selo mal lido. A cor sai do cabeçalho da área, sem
+    precisar do pixel.
+- **Áreas e horários hoje:** só "entregar até"; nenhum horário mínimo; a rota faz uma área
+  inteira antes da seguinte, e a próxima parada não olha horário.
+- **Próximo:** o dono e a revisão decidirem o escopo. Respeitar o "Habilita às" é mudança de
+  comportamento própria, e a sobreposição das janelas fica para decidir.
+- **Câmera dentro do app (19/10, pedido do dono):** proposto um botão "Fotografar" que abre a
+  câmera direto e manda para o leitor. Esperando o dono, e fotos de comanda do iFood para medir
+  antes.
+
 ## O nome da rua no mapa (17/10): só a camada da prefeitura, publicada em 18/10, falta o celular
 
 - **O pedido:** o dono comparou o nosso mapa com o Google no Robalo ("consegue ver a diferença?
