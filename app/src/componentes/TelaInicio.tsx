@@ -4,6 +4,9 @@ import {backupRecente} from '../logica/guarda';
 import {guarda, loja, useLoja} from '../loja';
 import {BotaoMais, Cabecalho} from './comuns';
 
+// os formatos que o leitor de planilha reconhece (pareceNomeDePlanilha), por extensão e por tipo
+const PLANILHAS = '.xlsx,.xls,.ods,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.oasis.opendocument.spreadsheet,text/csv';
+
 const hoje = () => new Date().toLocaleDateString('pt-BR', {weekday: 'long', day: '2-digit', month: '2-digit'});
 
 // O começo do dia: carregar a rota. Com a rota já na tela, a mesma tela soma mais endereços.
@@ -37,7 +40,12 @@ export function TelaInicio() {
       {!comRota && <h1>Carregar a rota de hoje</h1>}
       <input type="file" id="arquivo" multiple hidden accept="image/*,video/*,application/pdf,.pdf,.xlsx,.xls,.ods,.csv,.txt"
         onChange={ev => { abrirArquivos(ev.target.files); ev.target.value = ''; }} />
-      <label htmlFor="arquivo" className="btn pri grande-btn opcao">
+      {/* A planilha pede só planilha: pelo seletor dos prints, que aceita imagem e vídeo, o celular
+          oferecia câmera e filmadora para abrir um arquivo (19/10). O accept é um pedido ao navegador;
+          o que o menu mostra depende do aparelho. */}
+      <input type="file" id="planilha" multiple hidden accept={PLANILHAS}
+        onChange={ev => { abrirArquivos(ev.target.files); ev.target.value = ''; }} />
+      <label htmlFor="planilha" className="btn pri grande-btn opcao">
         <span className="opcao-titulo">Ler a planilha</span>
         <span className="opcao-sub">A que vem do app de entregas</span>
       </label>
@@ -64,7 +72,7 @@ export function TelaInicio() {
       </label>
       {/* A câmera direto: abrir a câmera por fora, fotografar e voltar para achar a foto na galeria
           era trabalho demais para uma comanda (pedido de 19/10). Entrada própria porque o capture na
-          de cima faria "Ler a planilha" abrir a câmera também. Cancelar não dispara nada. */}
+          dos prints faria "Mandar prints ou vídeo" abrir a câmera também. Cancelar não dispara nada. */}
       <input type="file" id="foto" hidden accept="image/*" capture="environment"
         onChange={ev => { abrirArquivos(ev.target.files); ev.target.value = ''; }} />
       <label htmlFor="foto" className="btn contorno grande-btn opcao">

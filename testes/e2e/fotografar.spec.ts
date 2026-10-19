@@ -47,13 +47,28 @@ test('Fotografar abre a câmera de trás e a foto entra na lista, sem mudar a es
   await expect(aviso(page)).toContainText(/2 endereço\(s\) lido\(s\)/, {timeout: 30_000});
   await expect(page.locator('#lista')).toHaveValue('Avenida Teste Inventada 2000\nRua Teste Outra 15');
 
-  // a de sempre continua escolhendo vários arquivos de qualquer tipo, sem abrir a câmera
+  // a de sempre continua escolhendo vários arquivos de qualquer tipo, print e gravação de tela, sem
+  // abrir a câmera
   const outra = page.waitForEvent('filechooser');
   await page.getByText('Mandar prints ou vídeo da lista').click();
   const deSempre = (await outra).element();
   expect(await deSempre.getAttribute('capture')).toBeNull();
-  expect(await deSempre.getAttribute('accept')).toContain('.xlsx');
+  expect((await deSempre.getAttribute('accept'))!.split(',')).toEqual(expect.arrayContaining(['image/*', 'video/*', '.xlsx']));
   expect((await outra).isMultiple()).toBe(true);
+});
+
+// 19/10: pelo seletor dos prints, "Ler a planilha" fazia o celular oferecer câmera e filmadora.
+test('"Ler a planilha" pede só planilha, e a planilha entra', async ({page}) => {
+  await abrir(page);
+  const escolha = page.waitForEvent('filechooser');
+  await page.getByText('Ler a planilha', {exact: true}).click();
+  const chooser = await escolha;
+  const accept = (await chooser.element().getAttribute('accept'))!.split(',');
+  expect(accept.filter(t => /image|video|pdf|txt|\*/.test(t)), 'nada além de planilha').toEqual([]);
+  expect(accept).toEqual(expect.arrayContaining(['.xlsx', '.xls', '.ods', '.csv']));
+  expect(await chooser.element().getAttribute('capture')).toBeNull();
+  await chooser.setFiles('testes/planilhas/rota-d.xlsx');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas?.length || 0), {timeout: 30_000}).toBeGreaterThan(0);
 });
 
 test('cancelar a câmera não apaga a lista, e fotografar de novo soma ao que já estava escrito', async ({page}, info) => {
