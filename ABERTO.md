@@ -153,7 +153,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Fotografar dentro do app (19/10): feito localmente, falta o celular; comandas medidas
+## Fotografar e o leitor de comanda (19/10): feitos localmente, falta o celular e comandas novas
 
 Pedido do dono: abrir a câmera por fora, fotografar e voltar para achar a foto dá trabalho demais.
 A revisão aprovou só a etapa 1, local, sem publicar.
@@ -164,8 +164,8 @@ A revisão aprovou só a etapa 1, local, sem publicar.
   não mexe na lista. "Mandar prints ou vídeo" e "Ler a planilha" continuam iguais, sem câmera.
   Testes em `fotografar.spec.ts`, cada um quebrado de propósito (sem o `capture`, sem a guarda do
   cancelar, lendo sem a lista de antes, limpando a lista ao abrir a câmera).
-- **Fora desta etapa:** câmera contínua, captura automática, leitor novo e qualquer mudança em como
-  a comanda é interpretada.
+- **Fora da etapa 1:** câmera contínua, captura automática, leitor novo e mudança em como a comanda
+  é interpretada. Esta última veio depois, aprovada à parte (abaixo).
 - **Falta, antes de dar por feito:** testar num celular de verdade. Olhar também se o Android fecha
   a aba enquanto a câmera está aberta: a lista digitada só existe na tela, e voltaria vazia. Medir
   antes de guardar rascunho.
@@ -186,10 +186,43 @@ A revisão aprovou só a etapa 1, local, sem publicar.
   deixando sair um endereço por comanda, estas mesmas fotos dariam até 6 de 9. A conta é por
   construção, porque as regras foram feitas olhando estas fotos; para avaliar, precisa de fotos
   novas.
-- **Próximo:** o dono e a revisão decidirem se o interpretador de comanda entra, e se o número do
-  pedido continua na frente do endereço (o dono pediu "somente o endereço"). Escanear com a câmera
-  ao vivo, também pedido em 19/10, fica depois: a perda está no interpretador, não na foto, e cada
-  leitura leva segundos.
+- **Conserto do interpretador (19/10, aprovado só local, não subido):** o dono e a revisão aprovaram
+  as quatro causas, o CEP partido e tirar o número do pedido da frente (só na comanda; lista do
+  Meli e os outros formatos ficam como estão).
+  - "Entrega para" nunca é endereço, nem com letra na frente ("R Entrega para às 20:05").
+  - O título ("ENTREGA", "Pedido #…", com o "#" lido como "H") ou o CNPJ separam o cabeçalho do
+    restaurante; sem eles, o rótulo do cliente com letra comida ("D do pedido", "lefone").
+  - Uma comanda dá no máximo um endereço. A porta (rua e número) só vale vinda de uma leitura no
+    molde "Rua Tal, 151,". Duas leituras no molde que discordam, ou nenhuma no molde, não entram:
+    o aviso mostra o que foi lido e pede para escrever ou fotografar de novo. Sem maioria.
+  - Apartamento lido diferente sai do texto, com aviso para conferir no papel.
+  - Duas comandas na mesma foto: aviso, nada entra.
+  - O CEP partido volta inteiro só com os três números na linha logo abaixo.
+  - Bairro e referência continuam com a regra antiga (a leitura mais repetida, depois a mais
+    comprida).
+
+  Nas mesmas 9 fotos, pelo app de verdade, antes e depois:
+
+  | | antes | depois |
+  |---|---|---|
+  | Porta certa, só ela | 2 | 5 |
+  | Porta certa com sobra | 2 | 0 |
+  | Porta errada | 3 | 0 |
+  | Só sobra | 2 | 0 |
+  | Para conferir, com o lido no aviso | 0 | 3 |
+  | Aviso de não achou | 0 | 1 |
+
+  Uma piora: a foto em que duas passadas leram o número errado e a certa ganhou por ser a mais
+  comprida agora vai para conferir. Isso é a regra, não defeito. **É desempenho nas fotos usadas
+  para fazer as regras, não avaliação.** Ficaram iguais, linha por linha e com o mesmo texto do
+  leitor nos dois lados: os 3 vídeos do Meli (68, 62 e 74 linhas), um print real, e uma lista
+  inventada em print e em PDF. Texto colado não passa pelo interpretador.
+- **Falta, antes de pedir para publicar:** o celular de verdade (o Fotografar, o cancelar, a lista
+  preservada) e comandas novas, que não foram usadas para fazer as regras. Ver também no celular:
+  fotografar de novo uma comanda que já deu certo põe a linha duas vezes, e linha repetida lida
+  conta como outro cartão (decisão de 15/10).
+- **Escanear com a câmera ao vivo** (pedido do dono em 19/10), a moldura e a captura automática:
+  fora, por decisão da revisão.
 
 ## Janelas, cores e comercial nas gravações do Meli (18 e 19/10), medido, não construir ainda
 
