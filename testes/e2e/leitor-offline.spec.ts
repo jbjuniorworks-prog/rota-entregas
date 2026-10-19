@@ -21,7 +21,7 @@ test('@leitor a gravação da lista ainda é lida quando o sinal cai', async ({p
   await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, {timeout: 30_000});
 
   // primeira leitura, com sinal: é aqui que o leitor e o modelo deveriam ficar guardados
-  await page.locator('input[type=file]').setInputFiles(print);
+  await page.locator('#arquivo').setInputFiles(print);
   await expect(aviso(page)).toContainText(/endereço\(s\) lido\(s\)/, {timeout: 5 * 60_000});
   const comSinal = (await page.locator('#lista').inputValue()).split('\n').filter(Boolean);
   expect(comSinal.length, 'com sinal o leitor tem de achar os endereços').toBeGreaterThan(0);
@@ -31,7 +31,7 @@ test('@leitor a gravação da lista ainda é lida quando o sinal cai', async ({p
   await abrir(page);
   await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, {timeout: 30_000});
   await context.setOffline(true);
-  await page.locator('input[type=file]').setInputFiles(print);
+  await page.locator('#arquivo').setInputFiles(print);
   await expect(aviso(page)).toContainText(/endereço\(s\) lido\(s\)|Não achei|Não consegui/, {timeout: 5 * 60_000});
   const semSinal = (await page.locator('#lista').inputValue()).split('\n').filter(Boolean);
   console.log(`\n  COM sinal: ${comSinal.length} endereços -> ${comSinal.join(' | ')}`);
@@ -53,7 +53,7 @@ test('@leitor quando o leitor muda de endereço, abrir o app com sinal basta par
 
   await abrir(page);
   await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, {timeout: 30_000});
-  await page.locator('input[type=file]').setInputFiles(print);
+  await page.locator('#arquivo').setInputFiles(print);
   await expect(aviso(page)).toContainText(/endereço\(s\) lido\(s\)/, {timeout: 5 * 60_000});
 
   // o celular depois da atualização: tudo guardado, menos o leitor no endereço novo
@@ -67,7 +67,7 @@ test('@leitor quando o leitor muda de endereço, abrir o app com sinal basta par
   await expect.poll(temOLeitor, {timeout: 30_000, message: 'abrir com sinal tinha de guardar o leitor'}).toBe(true);
 
   await context.setOffline(true);
-  await page.locator('input[type=file]').setInputFiles(print);
+  await page.locator('#arquivo').setInputFiles(print);
   await expect(aviso(page)).toContainText(/endereço\(s\) lido\(s\)/, {timeout: 5 * 60_000});
 });
 
@@ -80,7 +80,7 @@ test('@leitor sem sinal e sem nunca ter lido antes, o app diz o que houve', asyn
   await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, {timeout: 30_000});
   // nada do leitor foi baixado ainda nesta instalação
   await context.setOffline(true);
-  await page.locator('input[type=file]').setInputFiles(print);
+  await page.locator('#arquivo').setInputFiles(print);
   await expect(aviso(page)).toContainText(/endereço\(s\) lido\(s\)|Não achei|Não consegui/, {timeout: 3 * 60_000});
   // sem nada lido, a caixa da lista nem aparece
   const lista = page.locator('#lista');
@@ -102,7 +102,7 @@ test('@leitor uma parte ruim não leva embora as que já foram lidas', async ({p
   writeFileSync(ruim, Buffer.from('isto nao e uma imagem'));
 
   await abrir(page);
-  await page.locator('input[type=file]').setInputFiles([bons[0], ruim, bons[1]]);
+  await page.locator('#arquivo').setInputFiles([bons[0], ruim, bons[1]]);
   await expect(aviso(page)).toContainText(/endereço\(s\) lido\(s\)|Não consegui|Não achei/, {timeout: 5 * 60_000});
   const lidos = (await page.locator('#lista').inputValue()).split('\n').filter(Boolean);
   console.log(`\n  com um arquivo quebrado no meio: ${lidos.length} endereços -> ${lidos.join(' | ')}`);

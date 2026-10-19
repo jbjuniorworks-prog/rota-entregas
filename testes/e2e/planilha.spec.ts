@@ -128,7 +128,7 @@ test('ao abrir, o grupo que a versão de antes levou para o bairro do mapa volta
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
   await abrir(page);
-  await page.locator('input[type=file]').setInputFiles({name: 'grupo.xlsx',
+  await page.locator('#arquivo').setInputFiles({name: 'grupo.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
   await expect(aviso(page)).toContainText('10 parada(s) da planilha');
   const rodovia = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas
@@ -183,7 +183,7 @@ test('a parada longe das outras do mesmo bairro vai para o meio delas, lendo e a
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
   await abrir(page);
-  await page.locator('input[type=file]').setInputFiles({name: 'bairro.xlsx',
+  await page.locator('#arquivo').setInputFiles({name: 'bairro.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
   await expect(aviso(page)).toContainText('levada(s) para o bairro certo');
   const ads = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((p: any) => p.texto.startsWith('Rua Inventada 20,')));
@@ -227,7 +227,7 @@ test('o ponto que a planilha repete para vários bairros não vira o pino de nin
       areas: [{id: 'a1', nome: 'Verde', cor: '#16a34a', prazo: ''}], areaAtual: 'a1', areasManual: false, paradas: [], rota: null, pernas: {}}));
   });
   await abrir(page);
-  await page.locator('input[type=file]').setInputFiles({name: 'barra.xlsx',
+  await page.locator('#arquivo').setInputFiles({name: 'barra.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
   await expect(aviso(page)).toContainText('3 com um ponto que a planilha repete para bairros diferentes', {timeout: 30_000});
 
@@ -256,7 +256,7 @@ test('a vizinha de mesmo número em outra rua vai para a porta da outra, e diz i
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
   await abrir(page);
-  await page.locator('input[type=file]').setInputFiles({name: 'vizinha.xlsx',
+  await page.locator('#arquivo').setInputFiles({name: 'vizinha.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
   await expect(aviso(page)).toContainText('2 parada(s) da planilha', {timeout: 30_000});
   const q = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.startsWith('Rua Quirino')));

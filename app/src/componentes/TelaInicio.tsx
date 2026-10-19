@@ -62,6 +62,15 @@ export function TelaInicio() {
         <span className="opcao-titulo">Mandar prints ou vídeo da lista</span>
         <span className="opcao-sub">Ou use o Compartilhar do celular</span>
       </label>
+      {/* A câmera direto: abrir a câmera por fora, fotografar e voltar para achar a foto na galeria
+          era trabalho demais para uma comanda (pedido de 19/10). Entrada própria porque o capture na
+          de cima faria "Ler a planilha" abrir a câmera também. Cancelar não dispara nada. */}
+      <input type="file" id="foto" hidden accept="image/*" capture="environment"
+        onChange={ev => { abrirArquivos(ev.target.files); ev.target.value = ''; }} />
+      <label htmlFor="foto" className="btn contorno grande-btn opcao">
+        <span className="opcao-titulo">Fotografar</span>
+        <span className="opcao-sub">Abre a câmera e lê a foto</span>
+      </label>
       <div className="linha-area">
         <span className="dot" style={{'--c': a.cor} as any} />Área: {a.nome}{e.areas.length > 1 ? ` (de ${e.areas.length})` : ''}
         <button className="link" onClick={() => A.abrir({tela: 'areas'})}>trocar</button>

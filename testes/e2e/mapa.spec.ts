@@ -1092,7 +1092,7 @@ test.describe('um condomínio com muitas entregas no mesmo pino', () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cab, ...linhas]), 'Planilha');
     await abrir(page);
-    await page.locator('input[type=file]').setInputFiles({name: 'condominio.xlsx',
+    await page.locator('#arquivo').setInputFiles({name: 'condominio.xlsx',
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
     await expect(page.locator('#status')).toContainText('parada(s) da planilha', {timeout: 30_000});
 

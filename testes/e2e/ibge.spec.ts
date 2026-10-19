@@ -89,7 +89,7 @@ test('planilha a mais de 80 m da porta do censo vai para ela, fora da rua ou em 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
   await abrir(page);
-  await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
+  await page.locator('#arquivo').setInputFiles({name: 'censo.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
   await expect(page.locator('#status')).toContainText('2 levada(s) para a porta do censo do IBGE', {timeout: 30_000});
 
@@ -134,7 +134,7 @@ test('a Rua B que a planilha pôs noutra Rua B vai para a porta do CEP, e fica v
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
   await abrir(page);
-  await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
+  await page.locator('#arquivo').setInputFiles({name: 'censo.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
   await expect(page.locator('#status')).toContainText('1 estava(m) longe das portas do próprio CEP', {timeout: 30_000});
 
@@ -161,7 +161,7 @@ test('a rua que vem no complemento acha a porta no bairro escrito', async ({page
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
   await abrir(page);
-  await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
+  await page.locator('#arquivo').setInputFiles({name: 'censo.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
   await expect(page.locator('#status')).toContainText('1 levada(s) para a porta do censo do IBGE', {timeout: 30_000});
   const p = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas.find((x: any) => x.texto.startsWith('Recanto das Mangueiras')));
@@ -179,7 +179,7 @@ test('ao abrir, a rota que já estava na tela também passa pelo censo', async (
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
   await abrir(page);
-  await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
+  await page.locator('#arquivo').setInputFiles({name: 'censo.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
   await expect(page.locator('#status')).toContainText('levada(s) para a porta do censo', {timeout: 30_000});
   // como a versão de antes deixava: na posição da planilha
@@ -273,7 +273,7 @@ test('a porta do censo fica laranja até entregarem ali', async ({page, context}
   XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
   page.on('dialog', d => d.accept());
   await abrir(page);
-  await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
+  await page.locator('#arquivo').setInputFiles({name: 'censo.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
   await expect(page.locator('#status')).toContainText('confira na porta', {timeout: 30_000});
   await aba(page, '2. Conferir');
@@ -310,7 +310,7 @@ test('casa perto da porta do censo vai para ela, verde; prédio fica como veio',
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
   await abrir(page);
-  await page.locator('input[type=file]').setInputFiles({name: 'censo.xlsx',
+  await page.locator('#arquivo').setInputFiles({name: 'censo.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
   const como = (inicio: string) => page.evaluate(t => {
     const p = (JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas || []).find((x: any) => x.texto.startsWith(t));
