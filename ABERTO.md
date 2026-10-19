@@ -153,10 +153,24 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Fotografar e o leitor de comanda (19/10): feitos localmente, falta o celular e comandas novas
+## Fotografar e o leitor de comanda (19/10): publicados em 19/10 (`918fa00`), falta o celular e comandas novas
 
 Pedido do dono: abrir a câmera por fora, fotografar e voltar para achar a foto dá trabalho demais.
 A revisão aprovou só a etapa 1, local, sem publicar.
+
+**Publicado em 19/10 (`918fa00`), por decisão do dono, antes do teste no celular e das comandas
+novas** (a revisão pedia os dois antes). A revisão antes de subir achou nos testes de comanda
+valores copiados das fotos reais (localizador, ID do pedido, código de coleta, porta com
+complemento, data de um pedido); trocados por inventados em `918fa00`, e as 13 sabotagens do
+leitor continuam quebrando. O app subiu igual ao candidato `cfe4c9c`; só testes e comentários
+mudaram. Primeiro a conferir no celular, já no endereço publicado: em "Ler a planilha", a planilha
+recebida pelo WhatsApp aparece e entra. Se não aparecer, desfazer `32cd4e0` e subir; enquanto
+isso, "Ler a gravação da tela" e o Compartilhar ainda aceitam planilha.
+
+**Teste instável, de antes:** `mapa.spec.ts`, "de perto, o nome da planilha vai em cima da rua…",
+mede a posição do nome com folga de 3 px logo depois de o mapa mudar de lugar. No código publicado
+antes (`441c1e6`) falhou 2 de 6 vezes; no novo, 1 de 6. Não é deste trabalho. Próximo: esperar o
+mapa parar antes de medir, com teste que falhe sem isso.
 
 - **Feito (commit local, não subido):** botão "Fotografar" na entrada de arquivos. Abre a câmera
   de trás (`capture="environment"`, só imagem, uma por vez) e manda a foto para o mesmo
@@ -234,7 +248,7 @@ A revisão aprovou só a etapa 1, local, sem publicar.
   duas vezes; a segunda leitura diz só "1 endereço(s) lido(s)", e o "Adicionar" diz "2
   adicionada(s)" e cria duas entregas, pela regra de 15/10 (repetido lido é outro cartão). Visível
   só pela linha dobrada; nenhum aviso aponta. A regra de 15/10 não muda agora.
-- **Falta, antes de pedir para publicar** (`cfe4c9c` congelado, sem mais mudança até lá):
+- **Falta conferir, agora já publicado** (`cfe4c9c` é o que está no ar, com os testes de `918fa00`):
   1. No celular, com o build de `cfe4c9c`, anotando aparelho e navegador. Primeiro: em "Ler a
      planilha", uma planilha real recebida pelo WhatsApp tem de aparecer, ser escolhida e entrar
      certa. Depois, a tabela: cancelar preserva o que estava escrito; o "Fotografar" soma abaixo do
