@@ -582,6 +582,19 @@ pino fica na porta.
   - a `posicoes_com` devolve a chave `49005413|sn` como confirmada;
   - para apagar, se o ponto se mostrar errado, basta tirar essas duas linhas.
 
+## "50/51 verificados" no cartão de montar (19/10, ideia do Luan): feito local, falta subir
+
+- **O que é:** o cartão de montar mostra quantas paradas já chegam com a porta verificada, na linha
+  do "A rota sai de onde você está.", à direita. É verde quando há alguma e cinza no zero. Conta as
+  paradas com `precisao === 'confirmado'`, a mesma marca do grupo "com endereço verificado" da
+  Conferir, e sobre o mesmo total do título.
+- **Por que nessa linha:** numa linha própria, o "Escolher pinos para o Maps" saía da tela em
+  412×915 (a base do link ia de 912 para 941 px). Na linha do título, o crédito do mapa ("Leaflet |
+  © OpenStreetMap") cobria a contagem.
+- **Testado:** e2e da contagem e e2e do link dentro da tela com a planilha de 80. Sabotados a
+  contagem e o layout: os dois quebram. Bateria inteira: 174 e2e e 452 de unidade.
+- **Ver com o Luan:** se o número ajuda antes de sair, e se ele quer o mesmo na lista da rota.
+
 ## Perguntas do Luan sobre a rota de 06/10 (15/10), respondidas, nada a mudar
 
 - **"Entreguei" simples no lugar certo e não verificado**, Oswaldo Garavini 60: ele entregou o 48 e

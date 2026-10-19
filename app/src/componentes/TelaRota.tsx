@@ -158,9 +158,16 @@ function EscolhaDaOrdem() {
 function CartaoMontar() {
   const {e, ui} = useLoja();
   const semLocal = e.paradas.filter(p => p.lat == null && !p.entregue).length;
+  // Ideia do Luan, 19/10: antes de sair, saber quantas já têm a porta certa. Numa linha que já
+  // existe: uma a mais tirava o "Escolher pinos para o Maps" da tela em 412×915, e na do título o
+  // crédito do mapa cobria a contagem.
+  const verificadas = e.paradas.filter(p => p.precisao === 'confirmado').length;
   return <div className="folha" data-folha="montar">
     <div className="titulo">{e.paradas.length} entrega(s) no mapa</div>
-    <div className="info">A rota sai de onde você está.</div>
+    <div className="info-contagem">
+      <div className="info">A rota sai de onde você está.</div>
+      <div className={verificadas ? 'verificado' : 'info'} data-verificadas>{verificadas}/{e.paradas.length} verificados</div>
+    </div>
     {semLocal > 0 && <div className="aviso">{semLocal} parada(s) sem local ficarão fora da rota. Corrija em Conferir.</div>}
     {/* um toque e a rota aparece no mapa (dono, 16/10): escolher a ordem e depois montar eram dois
         toques para uma decisão só */}

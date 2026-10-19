@@ -1,4 +1,4 @@
-import {test, expect, abrir, carregar, aviso, aba, colar, linhaDe, lista, menu, clicarMapa, montar, pontosNoMaps, ROTA_A} from './apoio';
+import {test, expect, abrir, carregar, aviso, aba, colar, linhaDe, lista, menu, clicarMapa, montar, paraABase, pontosNoMaps, ROTA_A} from './apoio';
 
 const RUA_D = 'Rua D, 49, Perto do Vale';
 const PERTO_DO_GRUPO = [-10.9605, -37.0455] as const;
@@ -669,6 +669,32 @@ test('a porta verificada pelas entregas dele mesmo diz "verificado" ao carregar,
   expect(await aviso(page).innerText()).not.toContain('já tinha corrigido');
   const p = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.startsWith('Rua das Flores, 900')));
   expect(p.precisao).toBe('confirmado');
+});
+
+// Ideia do Luan, 19/10: antes de montar, quantas paradas já têm a porta verificada.
+test('o cartão de montar diz quantas paradas já têm endereço verificado', async ({page, nuvem}) => {
+  nuvem.rpc = {posicoes: [{chave_lugar: '49000106|900', lat: -10.963101, lng: -37.047101, situacao: 'confirmado', motoristas: 2, entregas: 2, fonte: 'entrega', minha: false}]};
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await expect(aviso(page)).toContainText('1 com endereço verificado.');
+  await paraABase(page);
+  const paradas = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.length);
+  const cartao = page.locator('[data-folha="montar"]');
+  await expect(cartao.locator('.titulo')).toHaveText(`${paradas} entrega(s) no mapa`);
+  await expect(cartao.locator('[data-verificadas]')).toHaveText(`1/${paradas} verificados`);
+});
+
+// Uma linha a mais no cartão tirava o último botão da tela.
+test.describe('no celular', () => {
+  test.use({viewport: {width: 412, height: 915}});
+  test('o cartão de montar com a contagem cabe na tela, até o "Escolher pinos para o Maps"', async ({page}) => {
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-d.xlsx');
+    await paraABase(page);
+    const cartao = page.locator('[data-folha="montar"]');
+    await expect(cartao.locator('[data-verificadas]')).toHaveText('0/80 verificados');
+    await expect(cartao.locator('[data-escolher-maps]')).toBeInViewport({ratio: 1});
+  });
 });
 
 // Luan, 13/10: o dono arrumou no computador, às 12:57, um condomínio que a planilha pôs a 4 km; o Luan
