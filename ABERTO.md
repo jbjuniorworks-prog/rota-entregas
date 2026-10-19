@@ -571,8 +571,16 @@ pino fica na porta.
   - chave nova onde não havia nenhuma: nada gravado muda, e não precisa de `rechavear`.
 - **Testado:** unidade e e2e. Sabotados a regra, a sobra do "Sem" no nome da rua e os dois avisos:
   cada um quebra um teste. A bateria inteira passou (172 e2e, 452 de unidade).
-- **Não volta:** a marcação do Pedro de 19/10 ficou só no celular dele. A próxima entrega dele ali,
-  depois de subir, é a que vale para todos.
+- **A porta do Pedro de 19/10, recuperada do print dele:** nada subiu, mas o print das 10:18 casa
+  com o OpenStreetMap (escala 1,76 px do print por px de peça, z18). A conferência foi por dois
+  pontos que a nuvem conhece: a marca dele no 33 às 10:17 cai na ponta do outro pino verde, e o
+  pino da planilha do 11 cai na ponta do pino 13. A porta fica a 360 m do pino da planilha e a 50 m
+  do 33. A coordenada fica só no script, fora do git: o repositório é público.
+- **Gravado em 19/10, com o dono vendo o ponto no mapa e autorizando:**
+  - marcação 3347 e passagem 4765 no nome do Pedro, como o celular dele teria mandado (±4 m, fora
+    do pino);
+  - a `posicoes_com` devolve a chave `49005413|sn` como confirmada;
+  - para apagar, se o ponto se mostrar errado, basta tirar essas duas linhas.
 
 ## Perguntas do Luan sobre a rota de 06/10 (15/10), respondidas, nada a mudar
 
