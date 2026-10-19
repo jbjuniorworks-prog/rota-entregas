@@ -249,8 +249,17 @@ A revisão aprovou só a etapa 1, local, sem publicar.
   virou "Ler a gravação da tela", com "A lista do Meli rolando devagar. Também lê prints." embaixo.
   Só texto. O dono já grava a tela do próprio celular, que é o melhor jeito; filmar com outro
   celular não foi recomendado.
+- **Conferido local no candidato `cfe4c9c` (19/10, nuvem falsa, pelos botões da tela):**
+  - as 67 planilhas reais da pasta, pelo "Ler a planilha": as paradas saíram iguais às do código
+    antigo, campo por campo (texto, número, bairro, pacotes, unidades, cidade, comercial), 4.629 ao
+    todo. O antigo entrou pelo seletor compartilhado e o candidato pelo novo. No computador o
+    navegador deu a todas o tipo de `.xlsx`; o Android pode dar outro, e é isso que o celular mede;
+  - uma delas, `ROMANEIO 09_10 LSE03.xlsx`, não entra em nenhum dos dois ("não achei a coluna de
+    endereço"): é um romaneio, não a planilha do app de entregas;
+  - os 3 vídeos do Meli (68, 62 e 74 linhas), o print e as 9 comandas, pelos botões "Ler a gravação
+    da tela" e "Fotografar": iguais à rodada de `308ce79`. Leitura dos vídeos: 154 a 215 s.
 - **Vídeo do Meli, a medir:** todas as medições do vídeo usaram cópias que vieram pelo WhatsApp (386
-  a 576 px de largura). Lida no próprio celular, a gravação é a original. Falta medir quanto isso
+  a 576 px de largura; as três da pasta têm 480 × 1070). Lida no próprio celular, a gravação é a original. Falta medir quanto isso
   melhora: uma gravação original (mandada como Documento ou pelo Drive) e a cópia dela pelo
   WhatsApp, parada por parada, e o tempo de leitura no celular.
 - **"Ler a planilha" com seletor próprio (`32cd4e0`, aprovado só local):** dividia o seletor com
