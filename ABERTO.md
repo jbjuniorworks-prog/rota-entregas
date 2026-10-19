@@ -153,7 +153,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Fotografar dentro do app (19/10): feito localmente, falta o celular de verdade e as comandas
+## Fotografar dentro do app (19/10): feito localmente, falta o celular; comandas medidas
 
 Pedido do dono: abrir a câmera por fora, fotografar e voltar para achar a foto dá trabalho demais.
 A revisão aprovou só a etapa 1, local, sem publicar.
@@ -169,8 +169,27 @@ A revisão aprovou só a etapa 1, local, sem publicar.
 - **Falta, antes de dar por feito:** testar num celular de verdade. Olhar também se o Android fecha
   a aba enquanto a câmera está aberta: a lista digitada só existe na tela, e voltaria vazia. Medir
   antes de guardar rascunho.
-- **Comandas do iFood:** medição pendente. Precisa de 3 ou 4 fotos reais, com variação de luz,
-  ângulo e papel, na pasta Planilhas, fora do git. Foto inventada não serve de evidência.
+- **Comandas, medido em 19/10 (só local, fotos e resultado fora do git):** 9 comandas reais do
+  dono, 4 Goomer e 5 iFood, uma por vez pelo Fotografar, leitor de sempre. Porta certa e só ela: 2
+  de 9. Porta certa com sobra: 2. Porta errada: 3. Sem endereço: 2. Mas o leitor leu a porta certa
+  em pelo menos uma das 3 passadas em 7 de 9: o que perde é o interpretador. As causas:
+  - "Entrega para às 21:25" passa como endereço (4 fotos, 5 linhas);
+  - o começo do bloco depende de ler "ID do pedido" inteiro, e com o "I" cortado pula o endereço;
+  - a rua do restaurante, no cabeçalho, vira parada;
+  - as passadas diferentes viram linhas diferentes, quando uma comanda é uma entrega;
+  - escolher entre passadas não tem regra segura: duas concordaram no número errado numa foto;
+  - o número do pedido entra na frente e sai lido errado (13 virou 3, 79 virou 19);
+  - o CEP quebrado em duas linhas fica cortado.
+
+  As 2 fotos que nenhuma passada leu (letra clara, foto inclinada com sombra) só outra foto
+  resolve. Leitura de 6 a 12 s por foto neste computador. Consertando as quatro primeiras e
+  deixando sair um endereço por comanda, estas mesmas fotos dariam até 6 de 9. A conta é por
+  construção, porque as regras foram feitas olhando estas fotos; para avaliar, precisa de fotos
+  novas.
+- **Próximo:** o dono e a revisão decidirem se o interpretador de comanda entra, e se o número do
+  pedido continua na frente do endereço (o dono pediu "somente o endereço"). Escanear com a câmera
+  ao vivo, também pedido em 19/10, fica depois: a perda está no interpretador, não na foto, e cada
+  leitura leva segundos.
 
 ## Janelas, cores e comercial nas gravações do Meli (18 e 19/10), medido, não construir ainda
 
