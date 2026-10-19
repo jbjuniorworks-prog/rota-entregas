@@ -14,9 +14,13 @@ import {loja, useLoja} from '../loja';
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]!));
 
 function icone(texto: string, cor: string, apagado = false, borda = '', ids = '') {
+  // Não verificado (dono, 19/10): vazado, com a cor da área na borda e no número, para a cor da
+  // área continuar dizendo de que área é. A borda de dúvida, quando há, fica no lugar da dela.
+  const vazio = /\bnao-verificado\b/.test(borda);
+  const fundo = vazio ? `background:#fff;color:${cor}${/\b(duvida|quase)\b/.test(borda) ? '' : `;border-color:${cor}`}` : `background:${cor}`;
   return L.divIcon({
     className: '', iconSize: [30, 30], iconAnchor: [15, 30],
-    html: `<div class="pino ${borda}"${ids ? ` data-ids="${esc(ids)}"` : ''} style="background:${cor};opacity:${apagado ? .4 : 1}"><span>${esc(texto)}</span></div>`,
+    html: `<div class="pino ${borda}"${ids ? ` data-ids="${esc(ids)}"` : ''} style="${fundo};opacity:${apagado ? .4 : 1}"><span>${esc(texto)}</span></div>`,
   });
 }
 
@@ -219,7 +223,10 @@ export default function Mapa() {
         const duvidosa = g.ps.some(x => DUVIDA.has(x.precisao)) ? 'duvida' : g.ps.some(x => QUASE.has(x.precisao)) ? 'quase' : '';
         // "Cliente xarope" (pedido de 28/09): o pino já chega com outra cor, antes de ele tocar
         const xarope = g.ps.some(x => !x.entregue && x.reclamacoes?.length);
-        const borda = [duvidosa, proxima && g.ps.some(x => x.id === proxima) ? 'alvo' : '', xarope ? 'xarope' : ''].filter(Boolean).join(' ');
+        // Escolhendo para o Maps ou circulando, a cor é a resposta da tela e fica cheia. Entregue não
+        // tem mais porta a achar.
+        const vazio = !escolhendo && !circulando && g.ps.some(x => !x.entregue && x.precisao !== 'confirmado');
+        const borda = [duvidosa, vazio ? 'nao-verificado' : '', proxima && g.ps.some(x => x.id === proxima) ? 'alvo' : '', xarope ? 'xarope' : ''].filter(Boolean).join(' ');
         const pendentes = g.ps.filter(x => !x.entregue);
         // O Leaflet põe o texto do balão como HTML. O número da parada só entra com dígitos
         // (numeroDaParada), mas essa trava mora longe daqui: escapar aqui não depende dela.

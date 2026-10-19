@@ -582,6 +582,22 @@ pino fica na porta.
   - a `posicoes_com` devolve a chave `49005413|sn` como confirmada;
   - para apagar, se o ponto se mostrar errado, basta tirar essas duas linhas.
 
+## Pino não verificado vazado (19/10, pedido do dono): feito local, falta subir
+
+- **O que é:** no mapa da rota, o pino de parada não verificada é branco por dentro, com a cor da
+  área na borda e no número. O verificado continua cheio. A borda vermelha ou laranja de dúvida
+  continua por cima, e o entregue volta a ser cheio e apagado, como antes.
+- **Pilha:** de longe, pinos vizinhos se juntam num só, e a pilha fica vazada se tiver alguma não
+  verificada por fazer.
+- **Onde não vale:** em "Circular grupos no mapa" e em "Escolher pinos para o Maps" o pino fica
+  cheio, porque ali a cor é a resposta da tela. Foi um teste antigo do circular que mostrou isso.
+- **Armadilha achada:** a classe `vazio` já existia (`.vazio`, das telas vazias) e esticava o pino
+  para 30×54. A classe ficou `nao-verificado`, e o teste compara o tamanho do vazado com o do
+  cheio.
+- **Testado:** e2e com verificado, não verificado e entregue, mais o número na cor da área. Sabotados
+  a regra, a verificação, a entrega, a cor do número e o choque de classe: cada um quebra. Bateria
+  inteira: 175 e2e e 452 de unidade.
+
 ## "50/51 verificados" no cartão de montar (19/10, ideia do Luan): publicado em 19/10 (`ad7f24a`)
 
 - **O que é:** o cartão de montar mostra quantas paradas já chegam com a porta verificada, na linha

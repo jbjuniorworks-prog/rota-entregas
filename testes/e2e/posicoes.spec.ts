@@ -1,4 +1,4 @@
-import {test, expect, abrir, carregar, aviso, aba, colar, linhaDe, lista, menu, clicarMapa, montar, paraABase, pontosNoMaps, ROTA_A} from './apoio';
+import {test, expect, abrir, carregar, aviso, aba, colar, linhaDe, lista, menu, clicarMapa, montar, paraABase, pontosNoMaps, verNoMapa, ROTA_A} from './apoio';
 
 const RUA_D = 'Rua D, 49, Perto do Vale';
 const PERTO_DO_GRUPO = [-10.9605, -37.0455] as const;
@@ -682,6 +682,39 @@ test('o cartão de montar diz quantas paradas já têm endereço verificado', as
   const cartao = page.locator('[data-folha="montar"]');
   await expect(cartao.locator('.titulo')).toHaveText(`${paradas} entrega(s) no mapa`);
   await expect(cartao.locator('[data-verificadas]')).toHaveText(`1/${paradas} verificados`);
+});
+
+// Dono, 19/10: no mapa, o não verificado vazado com a cor da área; o verificado e o entregue cheios.
+test('o pino não verificado é vazado, e o verificado e o entregue continuam cheios', async ({page, nuvem}) => {
+  nuvem.rpc = {posicoes: [{chave_lugar: '49000106|900', lat: -10.963101, lng: -37.047101, situacao: 'confirmado', motoristas: 2, entregas: 2, fonte: 'entrega', minha: false}]};
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await expect(aviso(page)).toContainText('1 com endereço verificado.');
+  await paraABase(page);
+  const paradas: {id: string; texto: string; lat: number; lng: number}[] = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas);
+  const de = (texto: string) => paradas.find(x => x.texto.startsWith(texto))!;
+  // de perto, cada uma no seu pino: de longe as vizinhas se empilham, e a pilha com alguma não
+  // verificada fica vazada
+  const pino = (texto: string) => page.locator(`.pino[data-ids="${de(texto).id}"]`);
+  const fundo = (texto: string) => pino(texto).evaluate(el => getComputedStyle(el).backgroundColor);
+  const BRANCO = 'rgb(255, 255, 255)';
+  await verNoMapa(page, de('Rua das Flores, 900').lat, de('Rua das Flores, 900').lng);
+  await expect(pino('Rua das Flores, 900')).not.toHaveClass(/\bnao-verificado\b/);
+  expect(await fundo('Rua das Flores, 900')).not.toBe(BRANCO);
+  await expect(pino('Alameda dos Coqueiros')).toHaveClass(/\bnao-verificado\b/);
+  expect(await fundo('Alameda dos Coqueiros')).toBe(BRANCO);
+  // o número na cor da área, não branco no branco
+  expect(await pino('Alameda dos Coqueiros').locator('span').evaluate(el => getComputedStyle(el).color)).toBe(await fundo('Rua das Flores, 900'));
+  // e o mesmo formato do cheio: uma classe de mesmo nome em outra tela já esticou o pino
+  const tamanho = async (texto: string) => pino(texto).evaluate(el => [el.offsetWidth, el.offsetHeight].join('x'));
+  expect(await tamanho('Alameda dos Coqueiros')).toBe(await tamanho('Rua das Flores, 900'));
+
+  // entregue, sai do vazado
+  await verNoMapa(page, de('Alameda dos Coqueiros').lat, de('Alameda dos Coqueiros').lng);
+  await pino('Alameda dos Coqueiros').click();
+  await page.locator(`[data-acao="entregue"][data-ids="${de('Alameda dos Coqueiros').id}"]`).click();
+  await expect(pino('Alameda dos Coqueiros')).toContainText('✓');
+  await expect(pino('Alameda dos Coqueiros')).not.toHaveClass(/\bnao-verificado\b/);
 });
 
 // Uma linha a mais no cartão tirava o último botão da tela.
