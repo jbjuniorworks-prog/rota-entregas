@@ -67,12 +67,12 @@ export function TelaInicio() {
         <button className="btn pri" onClick={async () => { if (await A.adicionarTexto(lista)) setLista(''); }}>Adicionar em {a.nome}</button>
       </div>}
       <label htmlFor="arquivo" className="btn contorno grande-btn opcao">
-        <span className="opcao-titulo">Mandar prints ou vídeo da lista</span>
-        <span className="opcao-sub">Ou use o Compartilhar do celular</span>
+        <span className="opcao-titulo">Ler a gravação da tela</span>
+        <span className="opcao-sub">A lista do Meli rolando devagar. Também lê prints.</span>
       </label>
       {/* A câmera direto: abrir a câmera por fora, fotografar e voltar para achar a foto na galeria
           era trabalho demais para uma comanda (pedido de 19/10). Entrada própria porque o capture na
-          dos prints faria "Mandar prints ou vídeo" abrir a câmera também. Cancelar não dispara nada. */}
+          da gravação faria "Ler a gravação da tela" abrir a câmera também. Cancelar não dispara nada. */}
       <input type="file" id="foto" hidden accept="image/*" capture="environment"
         onChange={ev => { abrirArquivos(ev.target.files); ev.target.value = ''; }} />
       <label htmlFor="foto" className="btn contorno grande-btn opcao">

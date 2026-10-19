@@ -50,7 +50,7 @@ test('Fotografar abre a câmera de trás e a foto entra na lista, sem mudar a es
   // a de sempre continua escolhendo vários arquivos de qualquer tipo, print e gravação de tela, sem
   // abrir a câmera
   const outra = page.waitForEvent('filechooser');
-  await page.getByText('Mandar prints ou vídeo da lista').click();
+  await page.getByText('Ler a gravação da tela').click();
   const deSempre = (await outra).element();
   expect(await deSempre.getAttribute('capture')).toBeNull();
   expect((await deSempre.getAttribute('accept'))!.split(',')).toEqual(expect.arrayContaining(['image/*', 'video/*', '.xlsx']));
