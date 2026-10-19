@@ -1,14 +1,18 @@
 import {test, expect, abrir, aviso, colar} from './apoio';
 
 // 19/10: "Fotografar" abre a câmera direto e manda a foto para o mesmo leitor dos prints. Leitor
-// falso, que devolve o mesmo texto em toda leitura; endereços inventados.
+// falso, que devolve o mesmo texto em toda leitura, ou um por passada quando o teste diz qual;
+// endereços inventados.
 test.beforeEach(async ({page}) => {
   await page.addInitScript(() => {
-    (window as any).Tesseract = {createWorker: async () => ({
-      setParameters: async () => {},
-      recognize: async () => ({data: {text: 'Avenida Teste Inventada 2000\nRua Teste Outra 15', blocks: null}}),
-      terminate: async () => {},
-    })};
+    (window as any).Tesseract = {createWorker: async () => {
+      let psm = '3';
+      return {
+        setParameters: async (p: any) => { psm = p.tessedit_pageseg_mode; },
+        recognize: async () => ({data: {text: (window as any).__porPassada?.[psm] ?? 'Avenida Teste Inventada 2000\nRua Teste Outra 15', blocks: null}}),
+        terminate: async () => {},
+      };
+    }};
     // o aviso troca rápido: guarda todos os que passaram
     const avisos: string[] = (window as any).__avisos = [];
     new MutationObserver(() => {
@@ -74,4 +78,45 @@ test('cancelar a câmera não apaga a lista, e fotografar de novo soma ao que j�
   const avisos: string[] = await page.evaluate(() => (window as any).__avisos);
   expect(avisos.filter(a => /Carregando leitor/.test(a))).toHaveLength(1);
   expect(avisos.filter(a => /Não achei|Não consegui/.test(a))).toEqual([]);
+});
+
+// Comanda do iFood como o leitor devolveu em 19/10: cada passada lê uma parte.
+const comanda = (cabecalho: string[], rua: string[]) => [...cabecalho, 'ENTREGA', 'Pedido: #14', 'Fulana Teste',
+  'Telefone: 0800 705 6070, localizador: 15346433', 'ID do pedido:836092284', ...rua, 'Aracaju - Bairro Teste',
+  'Obs: Desconto do Restaurante: 5', 'Código de Coleta: 8338', 'Entrega para às 20:05'].join('\n');
+
+test('comanda fotografada vira uma entrega só, sem a rua do restaurante e sem o número do pedido', async ({page}, info) => {
+  const caminho = await foto(page, info);
+  await page.addInitScript(c => { (window as any).__porPassada = c; }, {
+    '4': comanda(['Pizzaria Teste', 'CNPJ: 12.345.678/0001-90', 'Rua do Restaurante Teste, 101, Terreo', 'Aracaju - Atalaia'], ['R. Teste da Silva, 151, Chale 2']),
+    // nesta passada a rua do cliente não saiu, e a do restaurante saiu sem o CNPJ em cima
+    '6': comanda(['Pizzaria Teste', 'Rua do Restaurante Teste, 101, Terreo', 'Aracaju - Atalaia'], []),
+    '3': '',
+  });
+  await abrir(page);
+  await colar(page);
+  await page.getByLabel('Cidade padrão').fill('Cidade Teste');
+  const escolha = page.waitForEvent('filechooser');
+  await page.getByText('Fotografar', {exact: true}).click();
+  await (await escolha).setFiles(caminho);
+  await expect(aviso(page)).toContainText(/1 endereço\(s\) lido\(s\)/, {timeout: 30_000});
+  await expect(page.locator('#lista')).toHaveValue('R. Teste da Silva, 151, Chale 2, Bairro Teste');
+});
+
+test('comanda com a porta lida diferente não entra: o aviso mostra as leituras e a lista fica como estava', async ({page}, info) => {
+  const caminho = await foto(page, info);
+  await page.addInitScript(c => { (window as any).__porPassada = c; }, {
+    '4': comanda([], ['Rua Teste Bell, 181, (Ed Teste, 802)']),
+    '6': comanda([], ['Rua Teste Bell, 181, (Ed Teste, 802)']),
+    '3': comanda([], ['Rua Teste Bell, 151, (Ed Teste, 802)']),
+  });
+  await abrir(page);
+  await colar(page);
+  await page.getByLabel('Cidade padrão').fill('Cidade Teste');
+  await page.getByLabel(/Endereços da área/).fill('Rua Teste Escrita 5');
+  const escolha = page.waitForEvent('filechooser');
+  await page.getByText('Fotografar', {exact: true}).click();
+  await (await escolha).setFiles(caminho);
+  await expect(aviso(page)).toContainText('li "Rua Teste Bell, 181" e "Rua Teste Bell, 151"', {timeout: 30_000});
+  expect((await page.locator('#lista').inputValue()).split('\n').filter(Boolean)).toEqual(['Rua Teste Escrita 5']);
 });

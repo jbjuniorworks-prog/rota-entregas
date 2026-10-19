@@ -1,6 +1,6 @@
 import {textoSemSelo} from '../logica/ocr';
 import {ehArquivoZip, itensDaPlanilha, pareceNomeDePlanilha, type ItemPlanilha} from '../logica/planilha';
-import {enderecosDaLista, extrairEnderecos, juntarComandas, juntarLeituras, juntarQuadros, pareceComanda, partesDaComanda} from '../logica/texto';
+import {ehComanda, enderecosDaLista, extrairEnderecos, juntarLeituras, juntarQuadros, lerComanda, pareceComanda} from '../logica/texto';
 import {escolherQuadros} from '../logica/video';
 
 type Arquivo = Blob & {name?: string};
@@ -197,7 +197,7 @@ async function abrirLeitor() {
 
 type Corretor = (linhas: string[]) => string[];
 
-async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo: string, corrigir: Corretor): Promise<string[]> {
+async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo: string, corrigir: Corretor, avisos: string[]): Promise<string[]> {
   aviso(`Lendo os endereços…${rotulo}`);
   // O leitor joga um erro solto na página quando recebe algo que não é imagem. Barrar aqui é
   // mais honesto: o arquivo é que não abre, e isso vira um aviso em vez de sujeira no console.
@@ -225,9 +225,16 @@ async function lerUma(worker: any, {blob, doVideo}: Imagem, aviso: Aviso, rotulo
     else leituras.push(corrigir(extrairEnderecos(texto)));
   }
   const juntas = juntarLeituras(leituras, apoio);
-  if (juntas.length <= 1 && !textos.some(t => enderecosDaLista(t).length) && textos.some(pareceComanda)) {
-    const daComanda = juntarComandas(textos.map(t => partesDaComanda(t, true)));
-    if (daComanda.length) return corrigir(daComanda);
+  // A comanda é uma entrega: o que as passadas leram diferente não vira outra parada, e a porta que
+  // elas não confirmam vai para ele conferir em vez de entrar (19/10). Com uma marca só de comanda e
+  // nada no molde dela, é print de outra coisa, e segue o caminho de sempre.
+  const forte = ehComanda(textos);
+  if (!textos.some(t => enderecosDaLista(t).length) && (forte || (juntas.length <= 1 && textos.some(pareceComanda)))) {
+    const r = lerComanda(textos, corrigir);
+    if (forte || r.achou) {
+      avisos.push(...r.avisos);
+      return r.linhas;
+    }
   }
   return juntas;
 }
@@ -264,7 +271,7 @@ export async function lerArquivos(files: Arquivo[], aviso: Aviso, corrigir: Corr
     // Uma parte ruim não pode levar embora as que já foram lidas: numa gravação com trinta
     // quadros, um tropeço de sinal custava a rota inteira.
     const ler = async (img: Imagem, rotulo: string) => {
-      try { grupos.push(await lerUma(worker, img, aviso, rotulo, corrigir)); } catch { falhas++; }
+      try { grupos.push(await lerUma(worker, img, aviso, rotulo, corrigir, avisos)); } catch { falhas++; }
       await descansar();
     };
     try {

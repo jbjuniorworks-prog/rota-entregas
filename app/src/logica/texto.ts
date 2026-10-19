@@ -218,13 +218,30 @@ const CABECALHO_DA_AREA = /^\W*[áa]rea\s+\d{1,2}\b/i;
 const soFaixa = (l: string) => (!limparRuido(l) || CABECALHO_DA_AREA.test(l)) && new RegExp(FAIXA_DE_HORARIO.source, 'i').test(l);
 
 const DE_COMANDA = /(id do pedido|localizador|c[oó]digo de coleta|entrega para [aà]s|pedido\s*#?\s*\d|documento fiscal|taxa de entrega|goomer|itens\s*\(=\)|\(\+\))/i;
-const ANTES_DO_ENDERECO = /^(telefone|localizador|id do pedido|cliente)\b|\(\d{2}\)\s*\d{4,5}-?\d{4}|^\w{0,4}:\s*\(?\d{2}\)?\s*\d{4,5}-\d{4}/i;
+// "Pedido: #22", "Pedido #0007 - Entrega": o "#" sai lido como "H".
+const LINHA_DO_PEDIDO = /^pedido\s*[:.]?\s*[#hH*]?\s*\d/i;
+// Marcas que só a comanda tem. Uma sozinha aparece em print de outro app; duas juntas, não. "fiscal"
+// sem o resto porque o leitor cola as palavras ("DOCUMENT&UFISCAL").
+const MARCAS_DA_COMANDA = [/d[o0] pedido/i, /localizador/i, /c[oó]digo de coleta/i, /entrega para [aà]s/i, /^\W*pedido\s*[:.]?\s*[#hH*]?\s*\d/im, /fiscal/i, /goomer/i, /\bcnpj\b/i, /cliente\s*:/i, /taxa de ent/i, /forma de pagamento/i, /sub ?total/i];
+// O leitor come a primeira letra quando o dedo ou a borda passa por cima ("D do pedido", "1D do
+// pedido", "lefone: 0800…"). Com o rótulo procurado só no começo da linha, o endereço começava no
+// segundo telefone, que no iFood vem depois dele, e a comanda saía sem endereço (19/10).
+const ANTES_DO_ENDERECO = /^(telefone|localizador|id do pedido|cliente)\b|\bd[o0] pedido\b|\blocalizador\b|fone\s*:|\(\d{2}\)\s*\d{4,5}-?\d{4}|^\w{0,4}:\s*\(?\d{2}\)?\s*\d{4,5}-\d{4}/i;
+// O cabeçalho do iFood traz o endereço do restaurante no mesmo molde do cliente ("Rua Tal, 101" e
+// "Aracaju - Atalaia"), e a rua do restaurante entrava como parada (19/10). O do cliente vem depois
+// do "ENTREGA" ou da linha do pedido; o CNPJ, quando sai, marca o cabeçalho também.
+const TITULO_DA_COMANDA = new RegExp(`^entreg[a-z]?\\W*$|${LINHA_DO_PEDIDO.source}`, 'i');
+const CNPJ = /\bcnpj\b|\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/i;
+// Daqui para baixo vêm observações, itens e pagamento, e o endereço do cliente já passou.
+const FIM_DO_BLOCO = /^(obs\b|qtd?\b|qt\s*\.|n[aã]o [eé] documento|forma de pagamento|sub ?total|total\b|entrega para)/i;
 const LIXO_DA_COMANDA = /^(obs|bandeira|pago|fidelidade|c[oó]digo|telefone|entrega para|qt|quantidade|total|taxa|desconto|cliente|www|pedido|itens|valor|forma|pagamento|n[aã]o [eé] documento)\b/i;
 const CIDADE_BAIRRO = /^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' .]{2,30})\s*[-–]\s*([A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9' .]{2,40})$/;
 const REFERENCIA = /^ref\s*[.:]/i;
 
 function pareceEnderecoDeComanda(l: string): boolean {
-  if (/\b(telefone|localizador|pedido|cnpj|cliente|desconto|coleta|fidelidade)\b/i.test(l)) return false;
+  // "Entrega para às 21:25" tem palavra e número como um endereço, e era a linha que ficava quando
+  // o do cliente não saía (19/10)
+  if (/\b(telefone|localizador|pedido|cnpj|cliente|desconto|coleta|fidelidade)\b|\bentrega\s+para\b/i.test(l)) return false;
   const letras = (l.match(/[a-zà-ÿ]/gi) || []).length;
   if (!/\d/.test(l) || letras < 12) return false;
   return RUA.test(l + ' ') ? pareceEndereco(l) : /^[a-zà-ÿ][a-zà-ÿ' .-]{4,}[,\s]+\d{1,5}\b/i.test(l);
@@ -244,10 +261,10 @@ function juntarQuebra(atual: string, proxima: string): string | null {
   return null;
 }
 
-const cepIncompleto = (s: string) => s.replace(/[,\s]*cep\s*[:.]?\s*\d{0,7}[:.]?\s*$/i, '');
+// "CEP: 49037" e "CEP: 49026-": o resto ficou numa linha que não veio
+const cepIncompleto = (s: string) => s.replace(/[,\s]*cep\s*[:.]?\s*(?:\d{0,7}|\d{5}-\d{0,2})[:.]?\s*$/i, '');
 
 export interface Comanda {
-  pedido: string | null;
   endereco: string;
   bairro: string;
   referencia: string;
@@ -258,13 +275,17 @@ const semSujeiraNaFrente = (l: string) => l.replace(/^[^0-9A-Za-zÀ-ÿ(]+/, '');
 export function partesDaComanda(bruto: string, forcar = false): Comanda | null {
   const linhas = bruto.split('\n').map(l => semSujeiraNaFrente(limparRuido(l))).filter(Boolean);
   if (!forcar && !linhas.some(l => DE_COMANDA.test(l))) return null;
-  const pedido = linhas.map(l => l.match(/pedido:?\s*#?\s*(\d{1,4})\b/i)).find(Boolean);
 
-  const comeco = linhas.findIndex(l => ANTES_DO_ENDERECO.test(l));
+  const cabecalho = Math.max(linhas.findIndex(l => TITULO_DA_COMANDA.test(l)), ...linhas.flatMap((l, i) => (CNPJ.test(l) ? [i + 2] : [])));
+  const fim = linhas.findIndex((l, i) => i > cabecalho && FIM_DO_BLOCO.test(l));
+  // Com o título lido, o cliente vem depois dele, e o leitor às vezes põe a linha do endereço antes
+  // da do telefone (19/10). Sem o título, o começo é o primeiro rótulo do cliente.
+  const comeco = cabecalho >= 0 ? -1 : linhas.findIndex((l, i) => (fim < 0 || i < fim) && ANTES_DO_ENDERECO.test(l));
   let endereco = '', bairro = '', referencia = '', dentro = false;
   for (const [i, l] of linhas.entries()) {
-    if (!dentro && (i < comeco || (LIXO_DA_COMANDA.test(l) && !pareceEnderecoDeComanda(l)))) continue;
     if (!dentro) {
+      if (i <= cabecalho || i < comeco) continue;
+      if (FIM_DO_BLOCO.test(l)) break;
       if (!pareceEnderecoDeComanda(l)) continue;
       endereco = l;
       dentro = true;
@@ -275,23 +296,24 @@ export function partesDaComanda(bruto: string, forcar = false): Comanda | null {
     const cb = l.match(CIDADE_BAIRRO);
     if (cb) { bairro = cb[2].trim(); continue; }
     if (bairro || referencia) break;
+    // "CEP: 49026-" e "206" logo abaixo: a coluna estreita parte o CEP. Só a linha que começa pelos
+    // três que faltam, ainda dentro do endereço.
+    if (/\bcep\s*[:.]?\s*\d{5}-?$/i.test(endereco) && /^\d{3}\b/.test(l)) { endereco += l; continue; }
     const junto = TEM_CEP.test(endereco) ? null : juntarQuebra(endereco, l);
     if (junto) endereco = junto;
     else break;
   }
   endereco = cepIncompleto(endereco.replace(/[\s,]+$/, ''));
-  const numero = pedido ? String(+pedido[1]) : null;
-  if (!endereco || !pareceEndereco(endereco)) {
-    return forcar && numero ? {pedido: numero, endereco: '', bairro: '', referencia: ''} : null;
-  }
-  return {pedido: numero, endereco, bairro, referencia};
+  return endereco && pareceEndereco(endereco) ? {endereco, bairro, referencia} : null;
 }
 
+// Só o endereço. O número do pedido ia na frente, e lido errado virava o de outra parada (o 13 saiu
+// 3, o 79 saiu 19); o dono pediu a comanda sem ele (19/10).
 function textoDaComanda(c: Comanda): string {
   const partes = [c.endereco];
   if (c.bairro && !normal(c.endereco).includes(normal(c.bairro))) partes.push(c.bairro);
   if (c.referencia) partes.push('ref: ' + c.referencia);
-  return (c.pedido ? c.pedido + ' ' : '') + partes.join(', ');
+  return partes.join(', ');
 }
 
 export function enderecoDaComanda(bruto: string): string[] {
@@ -302,10 +324,74 @@ export function enderecoDaComanda(bruto: string): string[] {
 export const pareceComanda = (bruto: string): boolean =>
   bruto.split('\n').map(limparRuido).some(l => DE_COMANDA.test(l));
 
-export function juntarComandas(leituras: (Comanda | null)[]): string[] {
+export const ehComanda = (textos: string[]): boolean =>
+  textos.some(t => MARCAS_DA_COMANDA.filter(re => re.test(t)).length >= 2);
+
+export interface LeituraDaComanda {
+  linhas: string[];
+  avisos: string[];
+  // alguma passada achou o endereço do cliente, mesmo sem certeza
+  achou: boolean;
+}
+
+// "Rua Tal, 151, …": o tipo da rua na frente, o nome só com letras e números e a porta sozinha entre
+// vírgulas, como as duas comandas imprimem. Leitura fora desse molde não serve de prova da porta:
+// "Travessa Tal, 3 5" e "Ã. Sen. Fulano. TERRA NANDA 10" saíram de comandas fotografadas (19/10).
+const MOLDE_DA_PORTA = new RegExp(`^${RUA.source.slice(1, -2)}\\s+([a-zà-ÿ0-9º°ª][a-zà-ÿ0-9º°ª .'-]*?)\\s*,\\s*(\\d{1,5})[a-z]?\\s*(?:[,(]|$)`, 'i');
+const UNIDADE_DA_COMANDA = /\b(ap(?:to|artamento)?|bl(?:oco)?|casa|sala|lote|qd|quadra)\.?\s*(\d{1,5})\b/gi;
+
+function portaDaComanda(endereco: string): string | null {
+  const m = endereco.match(MOLDE_DA_PORTA);
+  const rua = m ? chaveRua(`${m[1]} ${m[2]}`) : '';
+  return m && rua ? `${rua}|${semZeroAEsquerda(m[3])}` : null;
+}
+
+const tipoDaUnidade = (t: string) => normal(t).replace(/^ap.*/, 'ap').replace(/^bl.*/, 'bloco').replace(/^quadra$/, 'qd');
+
+// Os números de apartamento, bloco ou casa que cada leitura deu diferente: "ap 203" e "ap 103".
+function unidadesQueDivergem(enderecos: string[]): Map<string, string[]> {
+  const lidas = new Map<string, Set<string>>();
+  for (const e of enderecos) {
+    for (const m of e.matchAll(UNIDADE_DA_COMANDA)) {
+      const tipo = tipoDaUnidade(m[1]);
+      lidas.set(tipo, (lidas.get(tipo) || new Set()).add(semZeroAEsquerda(m[2])));
+    }
+  }
+  return new Map([...lidas].filter(([, v]) => v.size > 1).map(([k, v]) => [k, [...v]]));
+}
+
+const resumoDaPorta = (endereco: string) => endereco.split(/\s*\(/)[0].split(',').slice(0, 2).join(',').trim().slice(0, 60);
+
+// As passadas do leitor sobre a mesma comanda são uma entrega só. Sem maioria: duas leituras no molde
+// que dão porta diferente ficam para ele conferir, porque numa comanda de 19/10 duas passadas
+// concordaram no 181 e a porta era a 151.
+export function juntarComandas(leituras: (Comanda | null)[], corrigir: (linhas: string[]) => string[] = x => x): LeituraDaComanda {
   const boas = leituras.filter((c): c is Comanda => !!c);
-  if (!boas.some(c => c.endereco)) return [];
-  const melhor = (pegar: (c: Comanda) => string | null) => {
+  if (!boas.length) return {linhas: [], avisos: [], achou: false};
+  const firmes = boas.flatMap(c => {
+    if (!portaDaComanda(c.endereco)) return [];
+    const corrigido = corrigir([c.endereco])[0];
+    return [{...c, endereco: corrigido, porta: portaDaComanda(corrigido) || portaDaComanda(c.endereco)!}];
+  });
+  if (new Set(firmes.map(f => f.porta)).size !== 1) {
+    const lidas = [...new Set((firmes.length ? firmes : boas).map(c => resumoDaPorta(c.endereco)))].slice(0, 3);
+    return {
+      linhas: [],
+      avisos: [`Não deu para ter certeza do endereço da comanda: li ${lidas.map(l => `"${l}"`).join(' e ')}. Escreva o certo na lista ou fotografe de novo, mais perto.`],
+      achou: true,
+    };
+  }
+  let endereco = firmes.map(f => f.endereco).reduce((a, b) => (b.length > a.length ? b : a));
+  const avisos: string[] = [];
+  // O apartamento que cada leitura deu diferente sai do texto: está no papel, e escolher um mandaria
+  // para a porta errada do prédio.
+  const divergentes = unidadesQueDivergem(firmes.map(f => f.endereco));
+  if (divergentes.size) {
+    endereco = endereco.replace(UNIDADE_DA_COMANDA, (m, tipo) => (divergentes.has(tipoDaUnidade(tipo)) ? '' : m))
+      .replace(/\(\s*\)/g, '').replace(/\(\s+/g, '(').replace(/\s+\)/g, ')').replace(/\s*,(\s*,)+/g, ',').replace(/\s{2,}/g, ' ').trim();
+    avisos.push(`Confira o complemento no papel: as leituras deram ${[...divergentes].map(([t, v]) => v.map(n => `${t} ${n}`).join(' e ')).join(', ')}.`);
+  }
+  const melhor = (pegar: (c: Comanda) => string) => {
     const vezes = new Map<string, number>();
     for (const c of boas) {
       const v = pegar(c);
@@ -313,12 +399,19 @@ export function juntarComandas(leituras: (Comanda | null)[]): string[] {
     }
     return [...vezes.entries()].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)[0]?.[0] || '';
   };
-  return [textoDaComanda({
-    pedido: melhor(c => c.pedido) || null,
-    endereco: boas.map(c => c.endereco).reduce((a, b) => (b.length > a.length ? b : a)),
-    bairro: melhor(c => c.bairro),
-    referencia: melhor(c => c.referencia),
-  })];
+  return {linhas: [textoDaComanda({endereco, bairro: melhor(c => c.bairro), referencia: melhor(c => c.referencia)})], avisos, achou: true};
+}
+
+// Duas comandas na mesma foto: pelas passadas não dá para saber qual endereço é de qual.
+const maisDeUmaComanda = (t: string) =>
+  t.split('\n').map(l => semSujeiraNaFrente(limparRuido(l))).filter(l => LINHA_DO_PEDIDO.test(l)).length > 1
+  || t.split('\n').filter(l => CNPJ.test(l)).length > 1;
+
+export function lerComanda(textos: string[], corrigir: (linhas: string[]) => string[] = x => x): LeituraDaComanda {
+  if (textos.some(maisDeUmaComanda)) return {linhas: [], avisos: ['A foto tem mais de uma comanda. Fotografe uma de cada vez.'], achou: true};
+  const r = juntarComandas(textos.map(t => partesDaComanda(t, true)), corrigir);
+  if (!r.achou) r.avisos.push('Não achei o endereço na comanda. Fotografe de novo, mais perto e sem sombra.');
+  return r;
 }
 
 const ROTULO_ENDERECO = /^ende?re[çcgq]o\s*[:;.]?\s+/i;
