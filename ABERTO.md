@@ -39,8 +39,7 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     valor: o `\s*` de `guarda-segredos.mjs` atravessa a quebra de linha. Até escrever o nome colado
     ao igual num texto dispara. Próximo: comparar só na mesma linha, com teste nas duas direções: a
     vazia passa e a chave com valor continua barrada.
-12. **Parágrafo repetido em "Falha viva"** (15/10), o da chave do lugar que não normaliza
-    abreviação. Pendente. Próximo: tirar só a repetição, sem mudar o conteúdo.
+12. **Parágrafo repetido em "Falha viva"** (15/10). Feito em 19/10: saiu só a repetição.
 13. **Porta verificada no lugar errado, sem conserto fácil** (15/10, pedido do Pedro, Avenida
     Canal de Santa Maria 28). Lido no código, não reproduzido. Hoje só a marcação do admin conserta,
     e para isso a parada tem de estar no celular dele (a planilha do Pedro) ou ir pelo
@@ -153,6 +152,18 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Revisão geral (19/10, pedido do dono)
+
+- **Testes:** 452 de unidade, 175 e2e, e o `@ui` e o `@leitor` com 4 passando e 1 pulado (o das
+  fotos, que só roda com `ROTA_REAL`). O `@nuvem` ficou de fora: escreve no banco de produção.
+- **Dependências:** as que vão para o celular (`npm audit --omit=dev`) estão sem vulnerabilidade.
+  Nas de teste há 4: `tinypool` e `@vitest/mocker`, que só saem trocando o vitest de versão maior, e
+  `source-map-js`, que sai com `npm audit fix`. Rodam aqui e no GitHub, nunca no aparelho. Não
+  mexido: trocar a ferramenta de teste é tarefa à parte, com a bateria inteira antes e depois.
+- **ABERTO.md:** seis itens publicados ainda diziam "commit local", e o parágrafo repetido de
+  "Falha viva" (item 12) saiu.
+- **Continua pendente e pequeno:** o falso positivo da trava de segredos (item 11).
+
 ## Fotografar e o leitor de comanda (19/10): publicados em 19/10 (`918fa00`), falta o celular e comandas novas
 
 Pedido do dono: abrir a câmera por fora, fotografar e voltar para achar a foto dá trabalho demais.
@@ -172,7 +183,7 @@ mede a posição do nome com folga de 3 px logo depois de o mapa mudar de lugar.
 antes (`441c1e6`) falhou 2 de 6 vezes; no novo, 1 de 6. Não é deste trabalho. Próximo: esperar o
 mapa parar antes de medir, com teste que falhe sem isso.
 
-- **Feito (commit local, não subido):** botão "Fotografar" na entrada de arquivos. Abre a câmera
+- **Feito, publicado em 19/10 (`918fa00`):** botão "Fotografar" na entrada de arquivos. Abre a câmera
   de trás (`capture="environment"`, só imagem, uma por vez) e manda a foto para o mesmo
   `lerPrints` dos prints, que soma ao que já está escrito na lista. Cancelar não dispara leitura e
   não mexe na lista. "Mandar prints ou vídeo" e "Ler a planilha" continuam iguais, sem câmera.
@@ -200,7 +211,7 @@ mapa parar antes de medir, com teste que falhe sem isso.
   deixando sair um endereço por comanda, estas mesmas fotos dariam até 6 de 9. A conta é por
   construção, porque as regras foram feitas olhando estas fotos; para avaliar, precisa de fotos
   novas.
-- **Conserto do interpretador (19/10, aprovado só local, não subido):** o dono e a revisão aprovaram
+- **Conserto do interpretador (19/10, publicado em `918fa00`):** o dono e a revisão aprovaram
   as quatro causas, o CEP partido e tirar o número do pedido da frente (só na comanda; lista do
   Meli e os outros formatos ficam como estão).
   - "Entrega para" nunca é endereço, nem com letra na frente ("R Entrega para às 20:05").
@@ -284,7 +295,7 @@ mapa parar antes de medir, com teste que falhe sem isso.
   gravação original (mandada como Documento ou pelo Drive) e a cópia dela pelo WhatsApp, parada por
   parada, e o tempo de leitura no celular. Não há mudança aprovada no leitor de vídeo nem nas
   janelas do Meli.
-- **"Ler a planilha" com seletor próprio (`32cd4e0`, aprovado só local):** dividia o seletor com
+- **"Ler a planilha" com seletor próprio (`32cd4e0`, publicado em `918fa00`):** dividia o seletor com
   "Mandar prints ou vídeo", que aceita imagem e vídeo, e no Android do dono abria um menu com
   Câmera, Câmera Filmadora e Arquivos. Agora pede só os formatos que o leitor de planilha reconhece
   (`.xlsx`, `.xls`, `.ods`, `.csv` e os tipos MIME deles). É um pedido ao navegador, não garantia
@@ -343,9 +354,8 @@ mapa parar antes de medir, com teste que falhe sem isso.
 - **Decisão (19/10, revisão): investigação concluída, não implementar agora.** A associação ainda
   erra, e as janelas sobrepostas com comerciais liberadas antes da área não deixam adotar "uma
   janela vira uma área, e a rota termina uma antes da próxima".
-- **Câmera dentro do app (19/10, pedido do dono):** botão "Fotografar" aprovado só localmente
-  (seção própria). A medição com comandas do iFood fica pendente até haver fotos de verdade na
-  pasta.
+- **Câmera dentro do app (19/10, pedido do dono):** botão "Fotografar" publicado em 19/10
+  (seção própria), medido com 9 comandas reais; faltam comandas novas.
 
 ## O nome da rua no mapa (17/10): só a camada da prefeitura, publicada em 18/10, falta o celular
 
@@ -366,7 +376,7 @@ mapa parar antes de medir, com teste que falhe sem isso.
   - 674 (24%): ninguém tem aquele nome perto, e mostrar a base não ajudaria.
 - **Ressalva:** as ruas das entregas nasceram dessas mesmas passagens, então contam a favor por
   construção. O que elas medem é o que já sabemos, não o que o motorista acharia da primeira vez.
-- **Feito em 17/10, commit local, não publicado.** O dono mandou seguir, com a revisão: separar
+- **Feito em 17/10, publicado em 18/10.** O dono mandou seguir, com a revisão: separar
   o nome do traço, pôr cada nome no trecho certo, só de perto e sem amontoar, e testar no Robalo.
   - A 023 põe a coluna `ruas.no_mapa`, e `npm run nomes-no-mapa -- gravar` compara cada trecho
     da prefeitura com o mapa inteiro: com_nome 75, sem_nome 3.617, fora 40. No computador, porque
@@ -382,7 +392,7 @@ mapa parar antes de medir, com teste que falhe sem isso.
   entregou ali em 17/10, metade fica a até 24 m dessa Rua B; a outra, a 40–116 m, em ramais ("rua
   sem saída", "Rua B 2", "Rua B 5"). Também: no zoom 17 o nome é mais comprido que o trecho, e
   avança por cima da rodovia.
-- **O nome no trecho curto, consertado (17/10, commit local).** Os pedaços seguidos da mesma rua
+- **O nome no trecho curto, consertado (17/10, publicado em 18/10).** Os pedaços seguidos da mesma rua
   se emendam, só ponta com ponta e nunca por uma ramificação. O nome só entra se couber no traçado,
   inteiro ou com as abreviações de sempre (R., Av., Profa., Dep.), e se a rua for reta debaixo dele.
 - **O nome pelas portas entregues: investigação encerrada (17/10), não é pendência.** Medido só
@@ -1375,12 +1385,7 @@ voltar avisa e o segundo sai. O que só a rua mostra:
   a outra. O `chaveRua` já resolve isso (as duas dão "silvio teixeira"). Consertar aqui muda o
   formato de chave que já está gravado em `correcoes`, `observacoes` e `pacotes` — é a mesma
   tarefa que o `rechavear`, com ferramenta e migração, não um remendo solto. Enquanto isso, o
-  `npm run portas` grava a porta nas duas grafias (`grafiasDaRua`), que é remendo declarado. `chaveLugar` usa `ruaCompleta`, que troca só o
-  tipo da via ("av" → "avenida") e deixa o resto como veio: "Av. Dep. Sílvio Teixeira 184" e
-  "Avenida Deputado Sílvio Teixeira 184" viram chaves diferentes, e a porta marcada numa não acha
-  a outra. O `chaveRua` já resolve isso (as duas dão "silvio teixeira"). Consertar aqui muda o
-  formato de chave que já está gravado em `correcoes`, `observacoes` e `pacotes` — é a mesma
-  tarefa que o `rechavear`, com ferramenta e migração, não um remendo solto.
+  `npm run portas` grava a porta nas duas grafias (`grafiasDaRua`), que é remendo declarado.
 - **Entrega sem CEP em rua que o censo não cobre cai num ponto só, junto com as outras da mesma
   rua.** Tela do Luan em 26/09: 184, 200, 260, 536 e 600 da Sílvio Teixeira no mesmo pino — quase
   meio quilômetro de avenida num ponto. A nossa base de ruas responde "a rua" e devolve sempre o
