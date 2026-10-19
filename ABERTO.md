@@ -240,6 +240,26 @@ A revisão aprovou só a etapa 1, local, sem publicar.
   2. Comandas novas com as regras congeladas em `ab6ee58`, contando endereço certo,
      endereço errado, complemento incompleto e aviso. Foto nova que motivar ajuste vira caso de
      desenvolvimento e deixa de valer como prova daquela versão.
+- **Versão (conferido em 19/10):** depois de `ab6ee58` só veio `ba39951`, que muda só este arquivo.
+  De `308ce79` para `ab6ee58`, o `texto.ts` mudou só o texto dos avisos; as regras que escolhem o
+  endereço são as mesmas. O candidato a publicar é o código de `ab6ee58`, e é ele que o celular
+  testa (o build de qualquer commit até `ba39951` dá o mesmo app).
+- **Teste no celular, a preencher** (com quem tem o aparelho; foto de tela serve para ver os
+  avisos, mas fica separada do acerto em comanda de papel):
+
+  | Item | O que anotar | Resultado |
+  |---|---|---|
+  | Captura | que tela abre de fato, e qual câmera | |
+  | Cancelar | se o texto que já estava ficou igual | |
+  | Somar | se o endereço fotografado entra abaixo do que estava | |
+  | Repetir a foto | se a pessoa percebe que vão entrar duas entregas | |
+  | Volta da câmera | se a página recarrega ou perde a lista | |
+  | Avisos | se "não deu para confirmar" e "entrou sem o apartamento" se entendem | |
+
+  A linha dobrada é visível, mas isso não quer dizer que se perceba: é isso que o item "Repetir a
+  foto" mede.
+- **Comandas novas, a anotar:** contagem crua por resultado e por app (iFood, Goomer). Lote pequeno:
+  não é garantia geral de acerto.
 - **Escanear com a câmera ao vivo** (pedido do dono em 19/10), a moldura e a captura automática:
   fora, por decisão da revisão.
 
