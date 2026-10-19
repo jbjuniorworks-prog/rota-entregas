@@ -212,15 +212,34 @@ A revisão aprovou só a etapa 1, local, sem publicar.
   | Para conferir, com o lido no aviso | 0 | 3 |
   | Aviso de não achou | 0 | 1 |
 
-  Uma piora: a foto em que duas passadas leram o número errado e a certa ganhou por ser a mais
-  comprida agora vai para conferir. Isso é a regra, não defeito. **É desempenho nas fotos usadas
-  para fazer as regras, não avaliação.** Ficaram iguais, linha por linha e com o mesmo texto do
-  leitor nos dois lados: os 3 vídeos do Meli (68, 62 e 74 linhas), um print real, e uma lista
-  inventada em print e em PDF. Texto colado não passa pelo interpretador.
-- **Falta, antes de pedir para publicar:** o celular de verdade (o Fotografar, o cancelar, a lista
-  preservada) e comandas novas, que não foram usadas para fazer as regras. Ver também no celular:
-  fotografar de novo uma comanda que já deu certo põe a linha duas vezes, e linha repetida lida
-  conta como outro cartão (decisão de 15/10).
+  **Como registrar (revisão, 19/10):** nas nove fotos usadas para desenvolver as regras, cinco
+  deram o endereço certo sem linha extra, quatro foram para conferência ou nova foto, e nenhuma deu
+  rua ou número de porta errados. É resultado de desenvolvimento, não taxa geral de segurança. A
+  piora é deliberada: na foto em que duas passadas leram o número errado, a certa ganhava por ser a
+  leitura mais comprida, critério inadequado; agora a divergência aparece.
+
+  Ficaram iguais antes e depois, linha por linha e com o mesmo texto do leitor nos dois lados: um
+  print real, uma lista inventada em print e em PDF, e os 3 vídeos do Meli. Nos vídeos são duas
+  contagens diferentes: o importador devolve 68, 62 e 74 linhas; a referência manual de 18/10 tem
+  67, 61 e 72 entregas únicas. A igualdade só mostra que o conserto não mudou essas saídas, não que
+  a importação dos vídeos esteja certa. Texto colado não passa pelo interpretador.
+- **Avisos (19/10, pedido da revisão):** a porta não confirmada diz "Não deu para confirmar o
+  endereço. Confira as leituras abaixo ou fotografe novamente.", com cada leitura numa linha, em vez
+  do "Não consegui ler" (o texto foi lido; o que falhou foi a confirmação). O apartamento que saiu
+  vem antes do "lido": "O endereço entrou sem o apartamento: as leituras deram ap 203 e ap 103.
+  Confira no papel antes de entregar." Os dois ficam 20 s. Pelo Compartilhar, que entra direto sem a
+  lista, a porta não confirmada mostrava "Compartilhe a planilha"; agora mostra o mesmo aviso, e o
+  do apartamento é o último, depois do "Rota pronta".
+- **Fotografar de novo uma comanda já lida, medido local em 19/10:** a lista mostra a mesma linha
+  duas vezes; a segunda leitura diz só "1 endereço(s) lido(s)", e o "Adicionar" diz "2
+  adicionada(s)" e cria duas entregas, pela regra de 15/10 (repetido lido é outro cartão). Visível
+  só pela linha dobrada; nenhum aviso aponta. A regra de 15/10 não muda agora.
+- **Falta, antes de pedir para publicar:**
+  1. No celular: a captura, o cancelar, a lista preservada, a clareza dos avisos, e a comanda
+     fotografada duas vezes (se a linha dobrada se entende).
+  2. Comandas novas com as regras congeladas em `ab6ee58`, contando endereço certo,
+     endereço errado, complemento incompleto e aviso. Foto nova que motivar ajuste vira caso de
+     desenvolvimento e deixa de valer como prova daquela versão.
 - **Escanear com a câmera ao vivo** (pedido do dono em 19/10), a moldura e a captura automática:
   fora, por decisão da revisão.
 
