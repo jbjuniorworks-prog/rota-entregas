@@ -218,7 +218,7 @@ const CABECALHO_DA_AREA = /^\W*[áa]rea\s+\d{1,2}\b/i;
 const soFaixa = (l: string) => (!limparRuido(l) || CABECALHO_DA_AREA.test(l)) && new RegExp(FAIXA_DE_HORARIO.source, 'i').test(l);
 
 const DE_COMANDA = /(id do pedido|localizador|c[oó]digo de coleta|entrega para [aà]s|pedido\s*#?\s*\d|documento fiscal|taxa de entrega|goomer|itens\s*\(=\)|\(\+\))/i;
-// "Pedido: #22", "Pedido #0007 - Entrega": o "#" sai lido como "H".
+// "Pedido: #12", "Pedido #0004 - Entrega": o "#" sai lido como "H".
 const LINHA_DO_PEDIDO = /^pedido\s*[:.]?\s*[#hH*]?\s*\d/i;
 // Marcas que só a comanda tem. Uma sozinha aparece em print de outro app; duas juntas, não. "fiscal"
 // sem o resto porque o leitor cola as palavras ("DOCUMENT&UFISCAL").
@@ -261,7 +261,7 @@ function juntarQuebra(atual: string, proxima: string): string | null {
   return null;
 }
 
-// "CEP: 49037" e "CEP: 49026-": o resto ficou numa linha que não veio
+// "CEP: 49000" e "CEP: 49000-": o resto ficou numa linha que não veio
 const cepIncompleto = (s: string) => s.replace(/[,\s]*cep\s*[:.]?\s*(?:\d{0,7}|\d{5}-\d{0,2})[:.]?\s*$/i, '');
 
 export interface Comanda {
@@ -296,7 +296,7 @@ export function partesDaComanda(bruto: string, forcar = false): Comanda | null {
     const cb = l.match(CIDADE_BAIRRO);
     if (cb) { bairro = cb[2].trim(); continue; }
     if (bairro || referencia) break;
-    // "CEP: 49026-" e "206" logo abaixo: a coluna estreita parte o CEP. Só a linha que começa pelos
+    // "CEP: 49000-" e "100" logo abaixo: a coluna estreita parte o CEP. Só a linha que começa pelos
     // três que faltam, ainda dentro do endereço.
     if (/\bcep\s*[:.]?\s*\d{5}-?$/i.test(endereco) && /^\d{3}\b/.test(l)) { endereco += l; continue; }
     const junto = TEM_CEP.test(endereco) ? null : juntarQuebra(endereco, l);
@@ -334,7 +334,7 @@ export interface LeituraDaComanda {
   achou: boolean;
 }
 
-// "Rua Tal, 151, …": o tipo da rua na frente, o nome só com letras e números e a porta sozinha entre
+// "Rua Tal, 120, …": o tipo da rua na frente, o nome só com letras e números e a porta sozinha entre
 // vírgulas, como as duas comandas imprimem. Leitura fora desse molde não serve de prova da porta:
 // "Travessa Tal, 3 5" e "Ã. Sen. Fulano. TERRA NANDA 10" saíram de comandas fotografadas (19/10).
 const MOLDE_DA_PORTA = new RegExp(`^${RUA.source.slice(1, -2)}\\s+([a-zà-ÿ0-9º°ª][a-zà-ÿ0-9º°ª .'-]*?)\\s*,\\s*(\\d{1,5})[a-z]?\\s*(?:[,(]|$)`, 'i');

@@ -96,16 +96,16 @@ test('cancelar a câmera não apaga a lista, e fotografar de novo soma ao que j�
 });
 
 // Comanda do iFood como o leitor devolveu em 19/10: cada passada lê uma parte.
-const comanda = (cabecalho: string[], rua: string[]) => [...cabecalho, 'ENTREGA', 'Pedido: #14', 'Fulana Teste',
-  'Telefone: 0800 705 6070, localizador: 15346433', 'ID do pedido:836092284', ...rua, 'Aracaju - Bairro Teste',
-  'Obs: Desconto do Restaurante: 5', 'Código de Coleta: 8338', 'Entrega para às 20:05'].join('\n');
+const comanda = (cabecalho: string[], rua: string[]) => [...cabecalho, 'ENTREGA', 'Pedido: #41', 'Fulana Teste',
+  'Telefone: 0800 000 0002, localizador: 10000002', 'ID do pedido:900000002', ...rua, 'Aracaju - Bairro Teste',
+  'Obs: Desconto do Restaurante: 5', 'Código de Coleta: 1235', 'Entrega para às 19:45'].join('\n');
 
 test('comanda fotografada vira uma entrega só, sem a rua do restaurante e sem o número do pedido', async ({page}, info) => {
   const caminho = await foto(page, info);
   await page.addInitScript(c => { (window as any).__porPassada = c; }, {
-    '4': comanda(['Pizzaria Teste', 'CNPJ: 12.345.678/0001-90', 'Rua do Restaurante Teste, 101, Terreo', 'Aracaju - Atalaia'], ['R. Teste da Silva, 151, Chale 2']),
+    '4': comanda(['Pizzaria Teste', 'CNPJ: 12.345.678/0001-90', 'Rua do Restaurante Teste, 10, Loja', 'Aracaju - Atalaia'], ['R. Teste da Silva, 160, Fundos']),
     // nesta passada a rua do cliente não saiu, e a do restaurante saiu sem o CNPJ em cima
-    '6': comanda(['Pizzaria Teste', 'Rua do Restaurante Teste, 101, Terreo', 'Aracaju - Atalaia'], []),
+    '6': comanda(['Pizzaria Teste', 'Rua do Restaurante Teste, 10, Loja', 'Aracaju - Atalaia'], []),
     '3': '',
   });
   await abrir(page);
@@ -115,15 +115,15 @@ test('comanda fotografada vira uma entrega só, sem a rua do restaurante e sem o
   await page.getByText('Fotografar', {exact: true}).click();
   await (await escolha).setFiles(caminho);
   await expect(aviso(page)).toContainText(/1 endereço\(s\) lido\(s\)/, {timeout: 30_000});
-  await expect(page.locator('#lista')).toHaveValue('R. Teste da Silva, 151, Chale 2, Bairro Teste');
+  await expect(page.locator('#lista')).toHaveValue('R. Teste da Silva, 160, Fundos, Bairro Teste');
 });
 
 test('comanda com a porta lida diferente não entra: o aviso mostra as leituras e a lista fica como estava', async ({page}, info) => {
   const caminho = await foto(page, info);
   await page.addInitScript(c => { (window as any).__porPassada = c; }, {
-    '4': comanda([], ['Rua Teste Bell, 181, (Ed Teste, 802)']),
-    '6': comanda([], ['Rua Teste Bell, 181, (Ed Teste, 802)']),
-    '3': comanda([], ['Rua Teste Bell, 151, (Ed Teste, 802)']),
+    '4': comanda([], ['Rua Teste Lins, 171, (Ed Teste, 702)']),
+    '6': comanda([], ['Rua Teste Lins, 171, (Ed Teste, 702)']),
+    '3': comanda([], ['Rua Teste Lins, 141, (Ed Teste, 702)']),
   });
   await abrir(page);
   await colar(page);
@@ -135,15 +135,15 @@ test('comanda com a porta lida diferente não entra: o aviso mostra as leituras 
   // o texto foi lido: o que falhou foi confirmar, e cada leitura fica numa linha para ele comparar
   await expect(aviso(page)).toContainText('Não deu para confirmar o endereço', {timeout: 30_000});
   expect((await aviso(page).innerText()).split('\n')).toEqual([
-    'Não deu para confirmar o endereço. Confira as leituras abaixo ou fotografe novamente.', '"Rua Teste Bell, 181"', '"Rua Teste Bell, 151"']);
+    'Não deu para confirmar o endereço. Confira as leituras abaixo ou fotografe novamente.', '"Rua Teste Lins, 171"', '"Rua Teste Lins, 141"']);
   expect((await page.locator('#lista').inputValue()).split('\n').filter(Boolean)).toEqual(['Rua Teste Escrita 5']);
 });
 
 test('o apartamento que as passadas leram diferente sai, e o aviso diz isso antes do "lido"', async ({page}, info) => {
   const caminho = await foto(page, info);
   await page.addInitScript(c => { (window as any).__porPassada = c; }, {
-    '4': comanda([], ['Rua Teste, 50, (Ed Teste ap 203)']),
-    '6': comanda([], ['Rua Teste, 50, (Ed Teste ap 103)']),
+    '4': comanda([], ['Rua Teste, 70, (Ed Teste ap 401)']),
+    '6': comanda([], ['Rua Teste, 70, (Ed Teste ap 407)']),
     '3': '',
   });
   await abrir(page);
@@ -154,8 +154,8 @@ test('o apartamento que as passadas leram diferente sai, e o aviso diz isso ante
   await (await escolha).setFiles(caminho);
   await expect(aviso(page)).toContainText('endereço(s) lido(s)', {timeout: 30_000});
   expect((await aviso(page).innerText()).split('\n')[0])
-    .toBe('O endereço entrou sem o apartamento: as leituras deram ap 203 e ap 103. Confira no papel antes de entregar.');
-  await expect(page.locator('#lista')).toHaveValue('Rua Teste, 50, (Ed Teste), Bairro Teste');
+    .toBe('O endereço entrou sem o apartamento: as leituras deram ap 401 e ap 407. Confira no papel antes de entregar.');
+  await expect(page.locator('#lista')).toHaveValue('Rua Teste, 70, (Ed Teste), Bairro Teste');
 });
 
 // Pelo Compartilhar do celular a comanda entra direto, sem a lista para conferir: o aviso é o que sobra.
@@ -174,15 +174,15 @@ test.describe('comanda compartilhada', () => {
   };
 
   test('a porta não confirmada mostra as leituras, e não manda compartilhar a planilha', async ({page}) => {
-    await compartilhar(page, {'4': comanda([], ['Rua Teste Bell, 181, (Ed Teste, 802)']), '6': '', '3': comanda([], ['Rua Teste Bell, 151, (Ed Teste, 802)'])});
+    await compartilhar(page, {'4': comanda([], ['Rua Teste Lins, 171, (Ed Teste, 702)']), '6': '', '3': comanda([], ['Rua Teste Lins, 141, (Ed Teste, 702)'])});
     await expect(aviso(page)).toContainText('Não deu para confirmar o endereço', {timeout: 30_000});
-    await expect(aviso(page)).toContainText('"Rua Teste Bell, 151"');
+    await expect(aviso(page)).toContainText('"Rua Teste Lins, 141"');
     await expect(aviso(page)).not.toContainText('Compartilhe a planilha');
   });
 
   test('o apartamento que ficou de fora ainda é o último aviso, depois da rota', async ({page}) => {
-    await compartilhar(page, {'4': comanda([], ['Rua Teste, 50, (Ed Teste ap 203)']), '6': comanda([], ['Rua Teste, 50, (Ed Teste ap 103)']), '3': ''});
+    await compartilhar(page, {'4': comanda([], ['Rua Teste, 70, (Ed Teste ap 401)']), '6': comanda([], ['Rua Teste, 70, (Ed Teste ap 407)']), '3': ''});
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2') || '{}').paradas?.length || 0), {timeout: 30_000}).toBe(1);
-    await expect(aviso(page)).toHaveText('O endereço entrou sem o apartamento: as leituras deram ap 203 e ap 103. Confira no papel antes de entregar.', {timeout: 30_000});
+    await expect(aviso(page)).toHaveText('O endereço entrou sem o apartamento: as leituras deram ap 401 e ap 407. Confira no papel antes de entregar.', {timeout: 30_000});
   });
 });

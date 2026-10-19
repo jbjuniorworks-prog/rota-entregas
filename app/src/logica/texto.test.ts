@@ -652,88 +652,88 @@ describe('comanda de restaurante (iFood/Goomer) fotografada', () => {
 describe('comanda fotografada, como o leitor devolve', () => {
   const NAO_ACHEI = 'Não achei o endereço na comanda. Fotografe de novo, mais perto e sem sombra.';
   const CONFIRMAR = 'Não deu para confirmar o endereço. Confira as leituras abaixo ou fotografe novamente.';
-  const rodape = ['Obs: Desconto do Restaurante: 5', 'Pago Online', 'Telefone: 0800 700 3040, localizador: 11112222',
-    'Fidelidade: 1 compra', 'Código de Coleta: 7795', 'Entrega para às 21:25', 'Qt.Descrição Valor', '1 Prato Teste 59.00'];
+  const rodape = ['Obs: Desconto do Restaurante: 5', 'Pago Online', 'Telefone: 0800 000 0001, localizador: 10000001',
+    'Fidelidade: 1 compra', 'Código de Coleta: 1234', 'Entrega para às 19:40', 'Qt.Descrição Valor', '1 Prato Teste 59.00'];
 
-  it('"Entrega para às 21:25" não vira endereço quando a rua do cliente não sai', () => {
+  it('"Entrega para às 19:40" não vira endereço quando a rua do cliente não sai', () => {
     // sem o "Obs" lido, e com a letra que o leitor pôs na frente do horário
-    const semRua = ['ENTREGA', '17/set - 20:15', 'Pedido: #22', 'Fulana Teste',
-      'Telefone: 0800 700 3040, localizador: 11112222', 'ID do pedido:333444555', 'Aracaju - Bairro Teste',
-      'Pago Online', 'Código de Coleta: 7795', 'R Entrega para às 21:25', 'Qt.Descrição Valor', '1 Prato Teste 59.00'].join('\n');
+    const semRua = ['ENTREGA', '01/jan - 12:00', 'Pedido: #42', 'Fulana Teste',
+      'Telefone: 0800 000 0001, localizador: 10000001', 'ID do pedido:333444555', 'Aracaju - Bairro Teste',
+      'Pago Online', 'Código de Coleta: 1234', 'R Entrega para às 19:40', 'Qt.Descrição Valor', '1 Prato Teste 59.00'].join('\n');
     expect(enderecoDaComanda(semRua)).toEqual([]);
     expect(lerComanda([semRua, semRua, semRua])).toEqual({linhas: [], avisos: [NAO_ACHEI], achou: false});
   });
 
   it('sem o título, o telefone com a primeira letra comida ainda separa o restaurante do cliente', () => {
-    const texto = ['Rua do Restaurante Teste, 101, Terreo', 'Aracaju - Atalaia', 'Fulana Teste',
-      'lefone: 0800 705 6070, localizador: 15346433', 'D do pedido:836092284', 'R. Teste da Silva, 151, Chale 2',
+    const texto = ['Rua do Restaurante Teste, 10, Loja', 'Aracaju - Atalaia', 'Fulana Teste',
+      'lefone: 0800 000 0002, localizador: 10000002', 'D do pedido:900000002', 'R. Teste da Silva, 160, Fundos',
       'Aracaju - Bairro Teste', ...rodape].join('\n');
-    expect(enderecoDaComanda(texto)).toEqual(['R. Teste da Silva, 151, Chale 2, Bairro Teste']);
+    expect(enderecoDaComanda(texto)).toEqual(['R. Teste da Silva, 160, Fundos, Bairro Teste']);
   });
 
   it('o CNPJ marca o cabeçalho: a rua do restaurante logo abaixo dele não entra', () => {
-    const texto = ['Pizzaria Teste', 'CNPJ: 12.345.678/0001-90', 'Rua do Restaurante Teste, 101, Terreo', 'Aracaju - Atalaia',
-      '17/set - 20:15', 'Fulana Teste', 'R. Doutor Teste Santana, 55', 'Aracaju - Bairro Teste', ...rodape].join('\n');
-    expect(enderecoDaComanda(texto)).toEqual(['R. Doutor Teste Santana, 55, Bairro Teste']);
+    const texto = ['Pizzaria Teste', 'CNPJ: 12.345.678/0001-90', 'Rua do Restaurante Teste, 10, Loja', 'Aracaju - Atalaia',
+      '01/jan - 12:00', 'Fulana Teste', 'R. Doutor Teste Moura, 57', 'Aracaju - Bairro Teste', ...rodape].join('\n');
+    expect(enderecoDaComanda(texto)).toEqual(['R. Doutor Teste Moura, 57, Bairro Teste']);
   });
 
   it('com o título lido, a linha do endereço que o leitor pôs antes do telefone continua valendo', () => {
-    const foraDeOrdem = ['Pizzaria Teste', '2/0001-90', ', 101, Terreo', 'ENTREGA', 'Av. Sen. Teste Leite, 1445, Bl 04 AP 101',
-      'Pedido: #3', 'Fulano Teste', 'Telefone: 0800 007 0110, localizador: 52941560', 'ID do pedido: 786314465', ...rodape].join('\n');
-    expect(enderecoDaComanda(foraDeOrdem)).toEqual(['Av. Sen. Teste Leite, 1445, Bl 04 AP 101']);
+    const foraDeOrdem = ['Pizzaria Teste', '2/0001-90', ', 10, Loja', 'ENTREGA', 'Av. Sen. Teste Lima, 1200, Bl 02 AP 301',
+      'Pedido: #43', 'Fulano Teste', 'Telefone: 0800 000 0003, localizador: 10000003', 'ID do pedido: 900000003', ...rodape].join('\n');
+    expect(enderecoDaComanda(foraDeOrdem)).toEqual(['Av. Sen. Teste Lima, 1200, Bl 02 AP 301']);
   });
 
   it('o CEP partido em duas linhas volta inteiro, sem puxar texto de outro bloco', () => {
-    const goomer = (depois: string[]) => ['Pedido #0011 - Entrega', 'Cliente: Fulana Teste', 'Telefone: (79) 99999-0000',
-      'Rua Teste Alves Carvalho, 50, (Ed Teste ap 203), Jardins, Aracaju/SE, CEP: 49026-', ...depois].join('\n');
-    expect(enderecoDaComanda(goomer(['206', 'NÃO É DOCUMENTO FISCAL'])))
-      .toEqual(['Rua Teste Alves Carvalho, 50, (Ed Teste ap 203), Jardins, Aracaju/SE, CEP: 49026-206']);
-    expect(enderecoDaComanda(goomer(['NÃO É DOCUMENTO FISCAL', '206 Pizza Teste'])))
-      .toEqual(['Rua Teste Alves Carvalho, 50, (Ed Teste ap 203), Jardins, Aracaju/SE']);
+    const goomer = (depois: string[]) => ['Pedido #0021 - Entrega', 'Cliente: Fulana Teste', 'Telefone: (79) 99999-0000',
+      'Rua Teste Prado, 60, (Ed Teste ap 204), Jardins, Aracaju/SE, CEP: 49000-', ...depois].join('\n');
+    expect(enderecoDaComanda(goomer(['100', 'NÃO É DOCUMENTO FISCAL'])))
+      .toEqual(['Rua Teste Prado, 60, (Ed Teste ap 204), Jardins, Aracaju/SE, CEP: 49000-100']);
+    expect(enderecoDaComanda(goomer(['NÃO É DOCUMENTO FISCAL', '100 Pizza Teste'])))
+      .toEqual(['Rua Teste Prado, 60, (Ed Teste ap 204), Jardins, Aracaju/SE']);
   });
 
-  const ifoodCom = (rua: string) => ['ENTREGA', 'Pedido: #14', 'Fulana Teste', 'Telefone: 0800 705 6070, localizador: 15346433',
-    'ID do pedido:836092284', rua, 'Aracaju - Bairro Teste', ...rodape].join('\n');
+  const ifoodCom = (rua: string) => ['ENTREGA', 'Pedido: #41', 'Fulana Teste', 'Telefone: 0800 000 0002, localizador: 10000002',
+    'ID do pedido:900000002', rua, 'Aracaju - Bairro Teste', ...rodape].join('\n');
 
   it('as passadas da mesma comanda viram uma entrega, e a que só leu sujeira não soma nada', () => {
-    const certa = ifoodCom('R. Teste da Silva, 151, Chale 2');
-    expect(lerComanda([certa, ifoodCom('Pas'), certa])).toEqual({linhas: ['R. Teste da Silva, 151, Chale 2, Bairro Teste'], avisos: [], achou: true});
+    const certa = ifoodCom('R. Teste da Silva, 160, Fundos');
+    expect(lerComanda([certa, ifoodCom('Pas'), certa])).toEqual({linhas: ['R. Teste da Silva, 160, Fundos, Bairro Teste'], avisos: [], achou: true});
   });
 
   it('duas passadas no número errado não ganham da certa: sem maioria, fica para conferir', () => {
-    const r = lerComanda([ifoodCom('Rua Teste Bell, 181, (Ed Teste, 802)'), ifoodCom('Rua Teste Bell, 181, (Ed Teste 802)'),
-      ifoodCom('Rua Teste Bell, 151, (Ed Teste, 802')]);
+    const r = lerComanda([ifoodCom('Rua Teste Lins, 171, (Ed Teste, 702)'), ifoodCom('Rua Teste Lins, 171, (Ed Teste 702)'),
+      ifoodCom('Rua Teste Lins, 141, (Ed Teste, 702')]);
     expect(r.linhas).toEqual([]);
-    expect(r.avisos).toEqual([CONFIRMAR, '"Rua Teste Bell, 181"', '"Rua Teste Bell, 151"']);
+    expect(r.avisos).toEqual([CONFIRMAR, '"Rua Teste Lins, 171"', '"Rua Teste Lins, 141"']);
   });
 
   it('leitura fora do molde da comanda não vira porta, nem sozinha', () => {
-    expect(lerComanda([ifoodCom('Travessa Teste e Nove, 3 5, (Casa)'), ifoodCom('Travessa Teste e Nove 315 (Casa)')]).avisos)
-      .toEqual([CONFIRMAR, '"Travessa Teste e Nove, 3 5"', '"Travessa Teste e Nove 315"']);
-    expect(lerComanda([ifoodCom('avenida teste Vinícius de M 246 (MW ante d h,')]).linhas).toEqual([]);
+    expect(lerComanda([ifoodCom('Travessa Teste e Oito, 2 7, (Casa)'), ifoodCom('Travessa Teste e Oito 217 (Casa)')]).avisos)
+      .toEqual([CONFIRMAR, '"Travessa Teste e Oito, 2 7"', '"Travessa Teste e Oito 217"']);
+    expect(lerComanda([ifoodCom('avenida teste Fulano de M 236 (MW ante d h,')]).linhas).toEqual([]);
   });
 
   it('a leitura no molde vale mais que a torta, sem contar votos: a rua de uma letra também', () => {
-    expect(lerComanda([ifoodCom('R. 43, Hotel 1 IDical'), ifoodCom('R. S, 4395, Hotel Teste'), ifoodCom('Pas')]).linhas)
-      .toEqual(['R. S, 4395, Hotel Teste, Bairro Teste']);
+    expect(lerComanda([ifoodCom('R. 41, Pousada 1 IDical'), ifoodCom('R. T, 4100, Pousada Teste'), ifoodCom('Pas')]).linhas)
+      .toEqual(['R. T, 4100, Pousada Teste, Bairro Teste']);
   });
 
   it('o apartamento que cada passada leu diferente sai do texto, e ele confere no papel', () => {
-    const r = lerComanda([ifoodCom('Rua Teste, 50, (Ed Teste ap 203)'), ifoodCom('Rua Teste, 50, (Ed Teste ap 103)')]);
-    expect(r.linhas).toEqual(['Rua Teste, 50, (Ed Teste), Bairro Teste']);
-    expect(r.avisos).toEqual(['O endereço entrou sem o apartamento: as leituras deram ap 203 e ap 103. Confira no papel antes de entregar.']);
+    const r = lerComanda([ifoodCom('Rua Teste, 70, (Ed Teste ap 401)'), ifoodCom('Rua Teste, 70, (Ed Teste ap 407)')]);
+    expect(r.linhas).toEqual(['Rua Teste, 70, (Ed Teste), Bairro Teste']);
+    expect(r.avisos).toEqual(['O endereço entrou sem o apartamento: as leituras deram ap 401 e ap 407. Confira no papel antes de entregar.']);
   });
 
   it('duas comandas na mesma foto não viram uma escolha calada', () => {
-    const duas = ifoodCom('R. Teste da Silva, 151') + '\n' + ifoodCom('R. Outra Teste, 99').replace('#14', '#15');
+    const duas = ifoodCom('R. Teste da Silva, 160') + '\n' + ifoodCom('R. Outra Teste, 99').replace('#41', '#44');
     expect(lerComanda([duas])).toEqual({linhas: [], avisos: ['A foto tem mais de uma comanda. Fotografe uma de cada vez.'], achou: true});
     const goomer = (n: string) => `Pedido H${n} - Entrega\nCliente: Fulana Teste\nRua Teste, ${n.slice(-2)}, Jardins\nNÃO É DOCUMENTO FISCAL`;
-    expect(lerComanda([goomer('0011') + '\n' + goomer('0012')]).avisos).toEqual(['A foto tem mais de uma comanda. Fotografe uma de cada vez.']);
+    expect(lerComanda([goomer('0031') + '\n' + goomer('0032')]).avisos).toEqual(['A foto tem mais de uma comanda. Fotografe uma de cada vez.']);
   });
 
   it('as marcas do Goomer mesmo com as palavras coladas pelo leitor e o "#" lido como "H"', () => {
     expect(ehComanda(['Cliente: Fulana Teste\nTelefone: (79) 99999-0000\nNÃO É DOCUMENT&UFISCAL'])).toBe(true);
-    expect(ehComanda(['Pedido H0007 - Entrega 24/06/2026\nCliente: Fulana Teste'])).toBe(true);
+    expect(ehComanda(['Pedido H0009 - Entrega 01/01/2026\nCliente: Fulana Teste'])).toBe(true);
   });
 });
 

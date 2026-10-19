@@ -193,7 +193,7 @@ A revisão aprovou só a etapa 1, local, sem publicar.
   - O título ("ENTREGA", "Pedido #…", com o "#" lido como "H") ou o CNPJ separam o cabeçalho do
     restaurante; sem eles, o rótulo do cliente com letra comida ("D do pedido", "lefone").
   - Uma comanda dá no máximo um endereço. A porta (rua e número) só vale vinda de uma leitura no
-    molde "Rua Tal, 151,". Duas leituras no molde que discordam, ou nenhuma no molde, não entram:
+    molde "Rua Tal, 120,". Duas leituras no molde que discordam, ou nenhuma no molde, não entram:
     o aviso mostra o que foi lido e pede para escrever ou fotografar de novo. Sem maioria.
   - Apartamento lido diferente sai do texto, com aviso para conferir no papel.
   - Duas comandas na mesma foto: aviso, nada entra.
