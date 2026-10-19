@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 16/10/2026.
+Atualizado em 19/10/2026.
 
 ## O que vem agora
 
@@ -153,6 +153,25 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Fotografar dentro do app (19/10): feito localmente, falta o celular de verdade e as comandas
+
+Pedido do dono: abrir a câmera por fora, fotografar e voltar para achar a foto dá trabalho demais.
+A revisão aprovou só a etapa 1, local, sem publicar.
+
+- **Feito (commit local, não subido):** botão "Fotografar" na entrada de arquivos. Abre a câmera
+  de trás (`capture="environment"`, só imagem, uma por vez) e manda a foto para o mesmo
+  `lerPrints` dos prints, que soma ao que já está escrito na lista. Cancelar não dispara leitura e
+  não mexe na lista. "Mandar prints ou vídeo" e "Ler a planilha" continuam iguais, sem câmera.
+  Testes em `fotografar.spec.ts`, cada um quebrado de propósito (sem o `capture`, sem a guarda do
+  cancelar, lendo sem a lista de antes, limpando a lista ao abrir a câmera).
+- **Fora desta etapa:** câmera contínua, captura automática, leitor novo e qualquer mudança em como
+  a comanda é interpretada.
+- **Falta, antes de dar por feito:** testar num celular de verdade. Olhar também se o Android fecha
+  a aba enquanto a câmera está aberta: a lista digitada só existe na tela, e voltaria vazia. Medir
+  antes de guardar rascunho.
+- **Comandas do iFood:** medição pendente. Precisa de 3 ou 4 fotos reais, com variação de luz,
+  ângulo e papel, na pasta Planilhas, fora do git. Foto inventada não serve de evidência.
+
 ## Janelas, cores e comercial nas gravações do Meli (18 e 19/10), medido, não construir ainda
 
 - **O pedido (dono):** pinos nas cores do Meli, com os horários, e os comerciais avisados.
@@ -167,15 +186,20 @@ Fora da lista:
     32 das linhas, e só marca comercial no "horário comercial" (3 de 12, 6 de 10, 0 de 7);
   - um extrator de teste local, com o mesmo leitor, achou 60 de 66, 55 de 61 e 63 de 69
     entregas com número; nelas, a janela e o "Habilita às" saíram certos, e só 3 casos foram
-    ligados à entrega errada por número do selo mal lido. A cor sai do cabeçalho da área, sem
-    precisar do pixel.
+    ligados à entrega errada por número do selo mal lido, todos no vídeo de 11/10 (os de 11/10 e
+    14/10 são a avaliação independente; o de 07/10 serviu para ajustar a leitura do selo). Por
+    observação, de 3% a 6% levaram a informação de outra entrega nos três vídeos; nos de 07/10 e
+    14/10 a maioria dos quadros corrigiu. A cor sai do cabeçalho da área, sem precisar do pixel,
+    como comportamento observado nesta amostra. Os 4 cartões fora da conta (200 − 196) são os
+    pacotes divididos.
 - **Áreas e horários hoje:** só "entregar até"; nenhum horário mínimo; a rota faz uma área
   inteira antes da seguinte, e a próxima parada não olha horário.
-- **Próximo:** o dono e a revisão decidirem o escopo. Respeitar o "Habilita às" é mudança de
-  comportamento própria, e a sobreposição das janelas fica para decidir.
-- **Câmera dentro do app (19/10, pedido do dono):** proposto um botão "Fotografar" que abre a
-  câmera direto e manda para o leitor. Esperando o dono, e fotos de comanda do iFood para medir
-  antes.
+- **Decisão (19/10, revisão): investigação concluída, não implementar agora.** A associação ainda
+  erra, e as janelas sobrepostas com comerciais liberadas antes da área não deixam adotar "uma
+  janela vira uma área, e a rota termina uma antes da próxima".
+- **Câmera dentro do app (19/10, pedido do dono):** botão "Fotografar" aprovado só localmente
+  (seção própria). A medição com comandas do iFood fica pendente até haver fotos de verdade na
+  pasta.
 
 ## O nome da rua no mapa (17/10): só a camada da prefeitura, publicada em 18/10, falta o celular
 
