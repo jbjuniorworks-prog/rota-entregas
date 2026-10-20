@@ -359,6 +359,18 @@ origem da posição de cada pacote, que o app manda ao fim da busca e ao fazer a
   aparelho 0; mudadas pelo motorista 39; sem origem nenhuma 221, em 5 rotas inteiras (rotas que
   nunca chegaram a registrar). As outras 1.163 têm origens que a consulta não separou: errei a
   lista e deixei de fora `planilha`, `outro motorista`, `minha correcao`, `vizinha` e `bairro`.
+  Separadas numa segunda consulta: planilha 693 (36%), censo 510 (26%), minha correção 252 (13%),
+  sem registro 221 (11%), outro motorista 203 (10%), marcada pelo motorista no dia 39 (2%),
+  centro do bairro 15, nossa base 1.
+- **Essa conta só vê rota de planilha, por construção.** Só a planilha cria rota e pacotes na
+  nuvem (`operacoesDaPlanilha`, chamada só no `importarPlanilhas`); a lista lida de print ou
+  gravação, ou colada, não vira pacote (anotado em 02/10, em "A busca de Todos os endereços"). E a
+  lista que leva um minuto é justamente essa, em que toda parada chega sem posição. Na rota de
+  planilha a busca quase não pesa: 16 das 1.934 portas saíram dela. O resto veio da própria
+  planilha, da porta do censo, das portas de entregas já feitas e do motorista.
+  - As 5 rotas sem registro nenhum: o registro sai no fim da busca dos pendentes, que nem começa
+    quando toda parada da planilha já tem posição, e ao fazer a rota no app. Rota de planilha
+    completa que não foi feita no app fica sem registro. Hipótese, não conferida.
 - **O registro não diz quanto a busca custou, e não vai dizer.** Ele guarda a origem final, e a
   final esconde o caminho:
   - a parada da planilha já vem com posição e nem passa pela busca;
@@ -374,9 +386,11 @@ origem da posição de cada pacote, que o app manda ao fim da busca e ao fazer a
   as portas conhecidas antes da busca pularia essas. Há um motivo para a ordem de hoje: a linha sem
   CEP e sem bairro só tem chave depois que a busca acha o bairro. Mas a que tem CEP ou bairro já tem
   chave antes.
-- **Próximo:** a telemetria do passo 3, por busca de lista, sem endereço nenhum: quantas pendentes,
-  o tempo total, chamadas e tempo de cada fonte (a espera do Nominatim à parte), em qual fonte cada
-  uma terminou, e quantas tinham porta já conhecida na nuvem.
+- **Próximo:** a telemetria do passo 3, por busca de lista, sem endereço nenhum: de onde veio a
+  lista (planilha, print, gravação, colada), quantas pendentes, o tempo total, chamadas e tempo de
+  cada fonte (a espera do Nominatim à parte), em qual fonte cada uma terminou, e quantas tinham
+  porta já conhecida na nuvem. Numa tabela própria, que não dependa de rota nem de pacote: senão
+  ela também só veria a planilha.
 
 ## Admin como painel (19/10, pedido do dono): partes 1 e 2 publicadas em 19/10, falta o menu lateral
 
