@@ -36,7 +36,24 @@ declare
   i int;
   f record;
   linha text;
+  padrao text;
 begin
+  -- O conjunto que acha sai da própria base (o "augusto" fixo não achou nada na produção, 20/10):
+  -- a palavra mais comprida do conjunto mais comum de Aracaju, sem o tipo, com os acentos que o
+  -- comAcento põe.
+  select replace(replace(replace(replace(replace(replace(x.w, 'a', '[aáàâã]'), 'e', '[eéèê]'), 'i', '[iíì]'),
+           'o', '[oóòôõ]'), 'u', '[uúù]'), 'c', '[cç]') into padrao
+  from (select conjunto from public.ruas where conjunto is not null and cidade ilike 'aracaju'
+        group by conjunto order by count(*) desc, conjunto limit 1) c,
+  lateral (select w from regexp_split_to_table(translate(lower(c.conjunto), 'áàâãéèêíìóòôõúùç', 'aaaaeeeiioooouuc'), '[^a-z0-9]+') w
+           where length(w) >= 5 and w not in ('conjunto', 'residencial', 'loteamento', 'condominio', 'jardim', 'parque', 'quadra')
+           order by length(w) desc, w limit 1) x;
+  if padrao is not null then
+    direto := direto || array[['conjunto parecido, que acha (termo tirado da base)',
+      format($q$select conjunto, lat, lng from public.ruas where conjunto ~* %L and cidade ilike 'aracaju' limit 200$q$, padrao)]];
+    funcoes := funcoes || array[['conjuntos_na_base', format('%L, %L', padrao, 'aracaju')]];
+  end if;
+
   return next 'versão: ' || version();
   return next (select format('banco: ordenação %s, letras %s', datcollate, datctype) from pg_database where datname = current_database());
   return next 'pg_trgm: ' || coalesce(

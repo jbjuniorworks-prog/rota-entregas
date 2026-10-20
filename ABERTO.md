@@ -243,7 +243,9 @@ rodado na produção.
     plano, com os mesmos 1.724 acessos, levou 381 ms numa rodada e 36 ms na seguinte; a outra
     leitura inteira da mesma rodada, 22 a 25 ms. O tempo na produção varia muito de uma rodada
     para outra, e a primeira busca pesada de cada rodada saiu sempre a mais lenta (814, 566, 381 ms).
-    A causa não sei; o palpite é a máquina compartilhada do plano grátis. O que não varia são os
+    A causa não sei; o palpite é a máquina compartilhada do plano grátis. Cache frio não é: em
+    nenhuma das medições houve leitura de disco (`shared read`), todas as páginas já estavam na
+    memória do banco. O que não varia são os
     acessos, e a queda da 024 está neles: contagem das rotas de 8.152 para 1.084, por dentro de
     8.005 para 937, marcações da semana de 1.341 para 46, busca de rua de 25.705 para 1.724.
     Comparar tempo, só dentro da mesma rodada.
@@ -287,7 +289,9 @@ O app não mudou: continua buscando direto na tabela.
   - O mesmo número de linhas nos dois caminhos em todas (72 e 72, e assim por diante). A
     equivalência linha a linha foi provada no ensaio local.
   - **O termo de conjunto "que acha" não achou nada na produção** (nenhum conjunto com "augusto" em
-    Aracaju na base), então o caso que acha do conjunto ficou sem medir lá.
+    Aracaju na base), então o caso que acha do conjunto ficou sem medir lá. A medição ganhou um
+    caso com o termo tirado da própria base (a palavra mais comprida do conjunto mais comum de
+    Aracaju, com os acentos do `comAcento`), ensaiado local; falta rodar na produção.
   - Os três pares ficaram: as três buscas liam a tabela inteira ou quase, e pela função passam a ler
     de 11 a 133. O ganho de tempo é pequeno em número: de 3 a 36 ms para menos de 1 ms por busca, com
     a ida e volta do celular, de 100 a 300 ms, por cima. Os índices somam 1,8 MB (de 4,2 para 6,0).
