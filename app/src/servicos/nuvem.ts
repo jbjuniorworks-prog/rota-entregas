@@ -1,6 +1,6 @@
 import type {Session, SupabaseClient} from '@supabase/supabase-js';
 import {ErroNuvem, type ClienteNuvem} from '../logica/fila';
-import {CHAVES} from '../logica/guarda';
+import {CHAVES, donoDoAparelho} from '../logica/guarda';
 
 // O projeto do Supabase que o app publicado usa. A chave é a pública (anon), e está no código de
 // propósito: quem protege os dados são as permissões do banco. Para usar outro projeto, troque os
@@ -58,7 +58,9 @@ export async function entrar(email: string, senha: string): Promise<string> {
 }
 
 export async function sair() {
-  if (supa) await supa.auth.signOut();
+  // só este aparelho (decisão de 20/10): trocar de celular ou emprestar não derruba o outro; em caso
+  // de roubo, quem administra desativa a conta, e as regras de acesso já não deixam ler nem gravar
+  if (supa) await supa.auth.signOut({scope: 'local'});
   sessao = null;
   perfil = null;
 }
@@ -71,6 +73,9 @@ function erro(e: {code?: string; message?: string}): ErroNuvem {
 export function clienteNuvem(): ClienteNuvem | null {
   if (!supa || !sessao || !navigator.onLine) return null;
   const s = supa, uid = sessao.user.id;
+  // A fila e o dia guardados são de quem é dono do aparelho. Entre a sessão nova ficar pronta e o
+  // dia trocar de dono, o envio de minuto em minuto mandaria o de quem saiu no nome de quem entrou.
+  if (donoDoAparelho(localStorage) !== uid) return null;
   return {
     async rotaExistente(atId) {
       const {data, error} = await s.from('rotas').select('id').eq('at_id', atId).eq('motorista_id', uid).maybeSingle();

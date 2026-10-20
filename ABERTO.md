@@ -17,8 +17,8 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
    a rua. Próximo: abrir uma parada pela Lista, fechar o cartão e ver o mapa voltar a acompanhar
    sem tocar na mira.
 3. **Auditoria de entregar e desfazer** (12/10). Primeira rodada feita em 20/10: os quatro riscos
-   reproduzidos com teste, nada consertado (seção "Auditoria da fila do motorista (20/10)").
-   Próximo: decidir os consertos, um por vez, começando pela troca de conta.
+   reproduzidos com teste (seção "Auditoria da fila do motorista (20/10)"). A troca de conta está
+   consertada e testada, falta publicar; depois o "ok, 0 linhas" e os outros três, um por vez.
 4. **Desfazer retira a passagem** (12/10, em "Desfazer a entrega"). Decidida, não feita. Próximo:
    na auditoria, conferir o caminho e escrever a migração para o dono rodar.
 5. **Parada sem pino** (14/10). Pendente. Próximo: reproduzir. Hoje ela não pode ser marcada como
@@ -494,7 +494,7 @@ sabotagens, uma por retrato, desfeitas e conferidas.
 
 | Risco | Como é hoje | Perde dado? | Teste |
 |---|---|---|---|
-| Troca de conta | A sai, B entra no mesmo aparelho: a fila de A sai na sessão de B. A rota da planilha de A é criada como de B, a correção de pino de A entra no nome de B, e a rota de A continua na tela de B. | Sim: o trabalho de A fica no nome de B; e a entrega de A pode sumir (abaixo) | ponta a ponta |
+| Troca de conta (consertado, não publicado: abaixo) | A sai, B entra no mesmo aparelho: a fila de A sai na sessão de B. A rota da planilha de A é criada como de B, a correção de pino de A entra no nome de B, e a rota de A continua na tela de B. | Sim: o trabalho de A fica no nome de B; e a entrega de A pode sumir (abaixo) | ponta a ponta |
 | Corte das 3.000 | O item 3.001 tira o mais antigo, calado. Se for a rota da planilha, as entregas dela saem da fila sem ir a lugar nenhum (sem a rota criada, não há para onde mandar). | Sim, mas raro: algo como 20 dias sem enviar | unidade |
 | Memória do aparelho cheia | O estado, a fila e as seguradas não gravam, e nada avisa. A tela mostra "Entregue."; ao reabrir o app, a entrega não está lá e não foi para a nuvem. | Sim | unidade e ponta a ponta |
 | GPS ruim no "Entregue" da Lista | Com margem acima de 40 m: a entrega vale e chega à nuvem, nada avisa do GPS, e a passagem é descartada. Com 6 m (controle), a passagem fica segurada para depois do prazo de desfazer. | A passagem, não a entrega: a porta não ganha confirmação por essa entrega | ponta a ponta |
@@ -514,8 +514,37 @@ sabotagens, uma por retrato, desfeitas e conferidas.
   sempre pela Lista (relato de 14/10). A troca de conta depende de alguém entrar com outra conta
   num aparelho que tinha fila; a memória cheia, de quanto o aparelho guarda (a memória de portas
   cresce com o tempo).
-- **Próximo:** decidir os consertos, um por vez, começando pela troca de conta. Cada conserto vira
-  o seu commit, com o retrato correspondente mudando para o comportamento decidido.
+- **Conserto da troca de conta, preparado em 20/10 e não publicado** (contrato aprovado pelo dono e
+  pela revisão: cada conta tem o seu dia no aparelho, e o "Sair" desconecta só este aparelho):
+  - As chaves de sempre guardam só o dia de quem está usando, e `rota-entregas-dono` diz de quem é.
+    Quando outra conta entra, o dia de quem estava vai para o lado, com o id da conta no nome da
+    chave (`chave@conta`), e o de quem entrou volta, se ele já usou o aparelho
+    (`logica/guarda.ts`, `trocarDeConta`). Vai junto tudo que não é a sessão: rota, entregas,
+    memória de portas, fila, portas seguradas, vínculo com as rotas da nuvem, contador de botões e
+    telemetria. Chave por chave, para ocupar o dobro só enquanto copia; se a memória encher no
+    meio, nada se perde, o dono não muda, a sessão nova sai com aviso, e a próxima vez termina.
+  - **Regra de transição, só desta versão:** o que já estava guardado sem dono fica com a conta
+    que estiver entrada quando a versão nova abrir; sem ninguém entrado, com a primeira que entrar.
+    Depois disso não existe dia sem dono.
+  - **A fila só anda quando o dono do dia é quem está na sessão** (`clienteNuvem`). Sem isso, entre
+    a sessão de B ficar pronta e o dia trocar de dono, o envio automático mandava a fila de A no
+    nome de B; um teste segura o perfil de B e dispara o envio nesse meio, e quebra sem a regra.
+  - O "Sair" sai só deste aparelho (`scope: 'local'`) e diz quantos envios ficam: "Ainda há N
+    envio(s) para a nuvem. Eles ficam guardados neste celular e saem quando você entrar de novo."
+    O aviso para conta desativada ("não saem enquanto ela estiver desativada") só fica verdadeiro
+    depois do conserto do "ok, 0 linhas": hoje, desativada, a entrega sai da fila e some.
+  - Os testes da troca: B começa limpo e não manda nada de A; A volta, acha o seu dia e a fila dele
+    sai na sessão dele; a telemetria de A espera A; a janela da entrada de B; as duas aberturas da
+    transição (com e sem conta entrada); seis de unidade da troca. Sete sabotagens, uma por peça
+    (sem pôr de lado, sem a regra do dono, Sair de todos, Sair sem a conta, telemetria fora do
+    dia, sem a transição, entrar sem assumir o dia), quebram o teste certo.
+- **Pendências de produto, sem fazer agora:** quanto tempo o dia de uma conta que não volta fica no
+  aparelho, e o que fazer se muitas contas usarem o mesmo (hoje fica para sempre, sem apagar nada);
+  e "sair de todos os aparelhos" pelo Admin, que precisa de uma função no servidor com a chave de
+  serviço (desativar a conta já bloqueia os dados pelas regras de acesso).
+- **Próximo:** publicar este conserto à parte, fora da janela de rota; depois o "ok, 0 linhas" (a
+  entrega que o banco aceita sem gravar fica na fila, com aviso), o corte das 3.000, a memória
+  cheia e o GPS ruim, um por vez.
 
 ## Admin como painel (19/10, pedido do dono): partes 1 e 2 publicadas em 19/10, falta o menu lateral
 

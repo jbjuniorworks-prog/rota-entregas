@@ -1,7 +1,8 @@
-﻿import {loja, status} from '../loja';
+﻿import {carregarEstado, trocarDeConta} from '../logica/guarda';
+import {guarda, loja, status} from '../loja';
 import {usarRegiao} from '../servicos/geocodificacao';
 import {entrar as entrarNaNuvem, iniciarNuvem, nuvem, sair as sairDaNuvem} from '../servicos/nuvem';
-import {e, enviarFila, ui} from './base';
+import {e, enviarFila, fila, ui} from './base';
 import {iniciarNavegacao, irPara, telaBase} from './navegacao';
 import {buscarDeNovoOsNomesTortos, conferirComOCensoAoAbrir, processarCompartilhado} from './enderecos';
 import {avisoCompartilhadas, consultarCompartilhadas, verPinosNovos} from './posicoes';
@@ -31,10 +32,33 @@ export async function verPendenciasDoAdmin(forcar = false) {
   }
 }
 
+// O dia guardado no aparelho passa a ser de quem está na sessão: o de outra conta vai para o lado e
+// o desta volta (logica/guarda.ts, trocarDeConta). Se a memória do aparelho encher no meio da troca,
+// ninguém entra pela metade: a sessão nova sai, e o dia de quem estava continua guardado.
+async function assumirODia(): Promise<boolean> {
+  const conta = nuvem.sessao?.user.id;
+  if (!conta) return true;
+  try {
+    if (trocarDeConta(localStorage, conta) === 'trocada') {
+      ui.posicionando = null;
+      ui.selecionada = null;
+      loja.trocarEstado(carregarEstado(guarda));
+      irPara(telaBase());
+    }
+    return true;
+  } catch {
+    await sairDaNuvem();
+    status('Não deu para entrar neste celular: a memória dele está cheia. O dia de quem usava antes continua guardado.', 12000);
+    loja.mudou(false);
+    return false;
+  }
+}
+
 export async function iniciar() {
   iniciarNavegacao();
   usarRegiao(e().regiao || null);
   await iniciarNuvem();
+  await assumirODia();
   loja.mudou(false);
   enviarFila();
   window.addEventListener('online', enviarFila);
@@ -54,6 +78,7 @@ export async function iniciar() {
 export async function entrar(email: string, senha: string) {
   status('Entrando…');
   const msg = await entrarNaNuvem(email, senha);
+  if (!(await assumirODia())) return;
   loja.mudou(false);
   status(msg + avisoCompartilhadas(await consultarCompartilhadas()), 8000);
   enviarFila();
@@ -61,7 +86,10 @@ export async function entrar(email: string, senha: string) {
 }
 
 export async function sair() {
-  if (!confirm('Sair da conta? Para usar o app de novo, vai precisar do e-mail e da senha. O que ainda não foi enviado fica guardado neste celular.')) return;
+  const faltam = fila.pendentes() + fila.aguardando();
+  if (!confirm('Sair da conta? Para usar o app de novo, vai precisar do e-mail e da senha.' + (faltam
+    ? `\n\nAinda há ${faltam} envio(s) para a nuvem. Eles ficam guardados neste celular e saem quando você entrar de novo.`
+    : ''))) return;
   await sairDaNuvem();
   if (ui.tela === 'admin') irPara(telaBase());
   loja.mudou(false);

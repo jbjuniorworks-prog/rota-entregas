@@ -165,6 +165,8 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
   return {
     // o contador de botões não é trabalho do motorista: não entra no "⏳ N para enviar"
     pendentes: () => ler().filter(op => op.tipo !== 'uso').length,
+    // as portas esperando o prazo de desfazer: também saem só com ele, quando vencem
+    aguardando: () => lerSeguradas().reduce((n, s) => n + s.ops.length, 0),
     desde: () => g.ler<number>(CHAVES.filaDesde, 0),
     erro: () => erro,
     enfileirar(...ops: Operacao[]) {
