@@ -8,12 +8,18 @@ export interface NuvemFalsa {
   tabelas: Record<string, Record<string, unknown>[]>;
   // a resposta fixa, ou calculada do que o app mandou
   rpc: Record<string, unknown[] | ((corpo: any) => unknown[])>;
-  pedidos: {metodo: string; caminho: string; busca: string; corpo: unknown; prefer?: string}[];
+  // `quem` é o sub da sessão que mandou: a auditoria da fila confere em nome de quem cada pedido chega
+  pedidos: {metodo: string; caminho: string; busca: string; corpo: unknown; prefer?: string; quem?: string | null}[];
 }
 
 const EU = {id: '00000000-0000-4000-8000-000000000001', nome: 'Você Teste'};
 
-function base64url(o: unknown) {
+// O sub do JWT que veio no pedido; a chave pública (anon) não tem.
+function quemMandou(autorizacao: string | undefined): string | null {
+  try { return JSON.parse(Buffer.from((autorizacao || '').split('.')[1], 'base64url').toString()).sub || null; } catch { return null; }
+}
+
+export function base64url(o: unknown) {
   return Buffer.from(JSON.stringify(o)).toString('base64url');
 }
 
@@ -70,7 +76,7 @@ export async function ligarNuvemFalsa(context: BrowserContext, nuvem: NuvemFalsa
     const json = (corpo: unknown, status = 200) => r.fulfill({status, contentType: 'application/json', headers: cors, body: JSON.stringify(corpo)});
     let corpo: unknown = null;
     try { corpo = r.request().postDataJSON(); } catch { corpo = r.request().postData(); }
-    nuvem.pedidos.push({metodo, caminho, busca: u.search, corpo, prefer: r.request().headers()['prefer']});
+    nuvem.pedidos.push({metodo, caminho, busca: u.search, corpo, prefer: r.request().headers()['prefer'], quem: quemMandou(r.request().headers()['authorization'])});
     if (caminho === 'user') return json(sessaoFalsa().user);
     if (caminho === 'token') return json(sessaoFalsa());
     if (caminho === 'logout') return r.fulfill({status: 204, headers: cors});

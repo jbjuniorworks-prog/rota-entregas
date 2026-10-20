@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import XLSX from 'xlsx';
 import {BUSCAS_MAX, ErroNuvem, FILA_MAX, criarFila, operacoesDaPlanilha, type ClienteNuvem} from './fila';
-import {CHAVES, backupRecente, carregarEstado, estadoVazio, guardaNaMemoria, resetarDia, salvarEstado} from './guarda';
+import {CHAVES, backupRecente, carregarEstado, estadoVazio, guardaEm, guardaNaMemoria, resetarDia, salvarEstado} from './guarda';
 import {adicionarDaPlanilha, adicionarLinhas, resumoPlanilha} from './importar';
 import {criarMemoria} from './memoria';
 import {montarRota} from './montagem';
@@ -444,6 +444,43 @@ describe('fila da nuvem', () => {
     f.guardarBusca(busca('b1'));
     f.guardarBusca(busca('b1'));
     expect(f.buscas()).toBe(1);
+  });
+
+  // Auditoria da fila, primeira rodada (20/10): o retrato de como é HOJE, defeitos incluídos.
+  // Quando um conserto mudar o comportamento, o teste muda junto, com a decisão escrita.
+  it('hoje: passando de 3.000, a fila descarta os mais antigos calada, e sem a rota a entrega dela também se perde', async () => {
+    const g = guardaNaMemoria(), f = criarFila(g, () => 'uuid-1'), {c, chamadas} = servidor();
+    f.enfileirar(...ops, {tipo: 'entregue', rota: 'ATTESTE0001', tns: ['BRTESTA0002'], quando: '2026-10-20T12:00:00Z'});
+    f.enfileirar(...Array.from({length: FILA_MAX - 2}, (_, i) => ({tipo: 'observacao' as const, chave: 'x|' + i, lat: 1, lng: 1, precisao: 10, endereco: 'Rua Um, 1', rua: 'Rua Um', ruaChave: 'um'})));
+    expect(f.pendentes()).toBe(FILA_MAX);
+    f.enfileirar({tipo: 'correcao', chave: 'nova|1', lat: 1, lng: 1});
+    const tipos = g.ler<{tipo: string}[]>(CHAVES.fila, []).map(o => o.tipo);
+    expect(tipos).toHaveLength(FILA_MAX);
+    // o mais antigo, a rota da planilha, saiu para a correção nova entrar
+    expect(tipos).not.toContain('rota');
+    expect(tipos[0]).toBe('entregue');
+    // a primeira passagem para por falta de rede: o que importa é o envio da entrega, antes dela
+    c.inserirObservacao = async () => { throw new ErroNuvem('offline', true); };
+    await f.enviar(c);
+    // sem a rota criada, a entrega não tem para onde ir: sai da fila sem ir a lugar nenhum, e nada avisa
+    expect(chamadas.some(x => x.startsWith('rota') || x.startsWith('entregue'))).toBe(false);
+    expect(g.ler<{tipo: string}[]>(CHAVES.fila, []).map(o => o.tipo)).not.toContain('entregue');
+    expect(f.erro()).toBe('');
+  });
+  it('hoje: com a memória do aparelho cheia, o que entra na fila, nas seguradas e no estado se perde calado', () => {
+    const dados: Record<string, string> = {};
+    let cheio = false;
+    const g = guardaEm({getItem: k => dados[k] ?? null, setItem: (k, v) => { if (cheio) throw new DOMException('cheio', 'QuotaExceededError'); dados[k] = v; }});
+    const f = criarFila(g);
+    f.enfileirar({tipo: 'correcao', chave: 'antes|1', lat: 1, lng: 1});
+    cheio = true;
+    expect(() => f.enfileirar({tipo: 'entregue', rota: 'R1', tns: ['BRTESTA0002'], quando: '2026-10-20T12:00:00Z'})).not.toThrow();
+    f.segurar('p1', [{tipo: 'correcao', chave: 'porta|1', lat: 1, lng: 1}], Date.now() + 1000);
+    expect(g.ler<{tipo: string}[]>(CHAVES.fila, []).map(o => o.tipo)).toEqual(['correcao']);
+    expect(g.ler(CHAVES.seguradas, [])).toEqual([]);
+    expect(f.erro()).toBe('');
+    // o estado também não grava; quem chama recebe false (e hoje ninguém olha)
+    expect(salvarEstado(g, estadoVazio())).toBe(false);
   });
 });
 

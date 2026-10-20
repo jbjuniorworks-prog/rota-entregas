@@ -16,9 +16,9 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
 2. **Mapa que para de seguir** (15/10, em "Tela nova"). Publicada em 15/10 (`f08736e`), aguardando
    a rua. Próximo: abrir uma parada pela Lista, fechar o cartão e ver o mapa voltar a acompanhar
    sem tocar na mira.
-3. **Auditoria de entregar e desfazer** (12/10). Pendente, a primeira de código. Próximo:
-   reproduzir a gravação que falha calada no celular e a fila cortada em 3.000, cada uma com o seu
-   teste. Entra junto o "Entreguei" da Lista, que descarta o GPS ruim sem avisar (suspeita de 14/10).
+3. **Auditoria de entregar e desfazer** (12/10). Primeira rodada feita em 20/10: os quatro riscos
+   reproduzidos com teste, nada consertado (seção "Auditoria da fila do motorista (20/10)").
+   Próximo: decidir os consertos, um por vez, começando pela troca de conta.
 4. **Desfazer retira a passagem** (12/10, em "Desfazer a entrega"). Decidida, não feita. Próximo:
    na auditoria, conferir o caminho e escrever a migração para o dono rodar.
 5. **Parada sem pino** (14/10). Pendente. Próximo: reproduzir. Hoje ela não pode ser marcada como
@@ -482,6 +482,40 @@ permissão para o anônimo, e o gatilho. O app ainda não grava.
   achou outro lugar, e o peso do censo, do ViaCEP e do banco. Só com esses números decidir entre
   pedir a porta conhecida antes, cortar chamadas ao Nominatim, buscar mais de uma parada por vez,
   ou outra causa. A troca de conta na fila do motorista fica no topo da auditoria (passo 2).
+
+## Auditoria da fila do motorista (20/10): primeira rodada, só reprodução, nada consertado
+
+Passo 2 do plano, aprovado pela revisão em 20/10: primeiro reproduzir cada risco com teste, sem
+mexer no código do app, e decidir os consertos depois, um por vez. Os testes são retratos de como é
+hoje, defeito incluído (nomes começando com "hoje:"), em `testes/e2e/auditoria-fila.spec.ts` e no
+fim de "fila da nuvem" em `app/src/logica/fluxo.test.ts`. Quando um conserto mudar o comportamento,
+o retrato muda junto, de propósito. Cada um quebra quando o comportamento retratado muda: seis
+sabotagens, uma por retrato, desfeitas e conferidas.
+
+| Risco | Como é hoje | Perde dado? | Teste |
+|---|---|---|---|
+| Troca de conta | A sai, B entra no mesmo aparelho: a fila de A sai na sessão de B. A rota da planilha de A é criada como de B, a correção de pino de A entra no nome de B, e a rota de A continua na tela de B. | Sim: o trabalho de A fica no nome de B; e a entrega de A pode sumir (abaixo) | ponta a ponta |
+| Corte das 3.000 | O item 3.001 tira o mais antigo, calado. Se for a rota da planilha, as entregas dela saem da fila sem ir a lugar nenhum (sem a rota criada, não há para onde mandar). | Sim, mas raro: algo como 20 dias sem enviar | unidade |
+| Memória do aparelho cheia | O estado, a fila e as seguradas não gravam, e nada avisa. A tela mostra "Entregue."; ao reabrir o app, a entrega não está lá e não foi para a nuvem. | Sim | unidade e ponta a ponta |
+| GPS ruim no "Entregue" da Lista | Com margem acima de 40 m: a entrega vale e chega à nuvem, nada avisa do GPS, e a passagem é descartada. Com 6 m (controle), a passagem fica segurada para depois do prazo de desfazer. | A passagem, não a entrega: a porta não ganha confirmação por essa entrega | ponta a ponta |
+
+- **A entrega que some na troca de conta.** Se a rota de A já existia na nuvem (enviada antes de
+  ele sair), a entrega dele vai com a sessão de B para a rota de A. O banco responde "ok, 0
+  linhas", como o retrato de acesso da 024 já mostrava ("m2 marca entregue na rota de m1: ok, 0
+  linha(s)"), e o app conta como enviada: sai da fila, e a entrega não fica em lugar nenhum. O
+  mesmo acontece com a fila de um motorista desativado ("inativo marca entregue: ok, 0 linha(s)").
+  Esta variante está provada pelo banco e pelo código (`marcarEntregue` não olha quantas linhas
+  mudou), não por um teste do app, porque a nuvem simulada não tem as regras de acesso.
+- **De passagem, sem mexer:** o "Sair" do app desconecta a conta de todos os aparelhos (o pedido sai
+  com `scope=global`). Se isso é o que se quer, é decisão de produto.
+- **O que esta rodada não cobriu:** as portas seguradas (passagem e lugar esperando os 10 minutos
+  do desfazer) também saem na sessão de quem estiver quando vencem; está no código, não num teste.
+- **A frequência real de cada um não sei.** O GPS ruim deve ser o mais comum: eles entregam quase
+  sempre pela Lista (relato de 14/10). A troca de conta depende de alguém entrar com outra conta
+  num aparelho que tinha fila; a memória cheia, de quanto o aparelho guarda (a memória de portas
+  cresce com o tempo).
+- **Próximo:** decidir os consertos, um por vez, começando pela troca de conta. Cada conserto vira
+  o seu commit, com o retrato correspondente mudando para o comportamento decidido.
 
 ## Admin como painel (19/10, pedido do dono): partes 1 e 2 publicadas em 19/10, falta o menu lateral
 
