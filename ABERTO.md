@@ -238,10 +238,23 @@ rodado na produção.
   - A busca de rua caiu menos que o esperado. A regra agora é calculada uma vez (de 25.705 para
     1.724 acessos à memória do banco), mas a consulta continua lendo os 23.982 trechos com
     `ilike '%palavra%'`, e é esse filtro que custa os 566 ms. Não é mais a regra de acesso: é a
-    falta de um índice para busca por parte do nome (trigramas, `pg_trgm`). Próximo, a decidir: medir
-    com o mesmo arquivo as outras duas buscas da base de ruas (bairro e conjunto, por expressão
-    regular, em `servicos/base.ts`), escrever a 025 com o índice, conferir local, e medir antes e
-    depois do mesmo jeito.
+    falta de um índice para busca por parte do nome (trigramas, `pg_trgm`).
+  - **Só o índice não basta (conferido num Postgres 17 local em 20/10):** com a regra de acesso, o
+    Postgres só usa índice para comparação marcada como segura para rodar antes da regra
+    (`leakproof`). O `=` é; `ilike` e `~*` não são. Com 24 mil trechos inventados e o índice de
+    trigramas em `nome_chave`, a busca como `postgres` usa o índice (0,7 ms), e como o app
+    (`authenticated`) continua lendo a tabela inteira (18 a 36 ms). Medir como `postgres` mostraria
+    um ganho que o celular não tem. Funciona por dentro de uma função do banco (`security definer`,
+    como `posicoes` e `lugares_conhecidos`) que confere `eh_ativo()` ela mesma: 1 ms, e o desativado
+    não recebe nada. Isso pede mudar o `servicos/base.ts`, e portanto publicar.
+  - **Também conferido local:** `create index concurrently` falha quando vai junto com outras
+    instruções numa ida só (viram uma transação, e tudo é desfeito), e não faz falta aqui: o
+    motorista só lê `ruas`, e o índice comum bloqueia só a gravação, por 0,2 s. Repor 20 mil trechos
+    (o que o `prefeitura -- gravar` faz) passa de 0,3 s para 0,8 s com um índice, 1,4 s com três.
+  - Próximo, a decidir: medir como o app, num arquivo só, as três buscas da base de ruas (rua por
+    parte do nome; bairro e conjunto, por expressão regular, em `servicos/base.ts`); a 025 com o
+    índice onde a medição pedir e a função, sem mudar o app; medir antes e depois; e só então o app
+    chamar a função, publicado à parte.
   - No Admin, o banco já não é o gargalo: as consultas dele somam menos de 100 ms. A demora que o
     app media (a contagem em 2,1 s em 19/10) está na rede e nas idas e voltas, e é outra frente.
 
