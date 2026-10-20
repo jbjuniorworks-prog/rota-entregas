@@ -443,6 +443,9 @@ permissão para o anônimo, e o gatilho. O app ainda não grava.
   da tarde. Quem tinha entrega pendente não foi interrompido (a versão nova só avisa e espera
   "Atualizar"); quem não tinha recebeu a nova sozinho. Para a próxima: a hora de Aracaju sai do
   node (`toLocaleString` com `America/Maceio`), não do `date` do Git Bash.
+- **Conferido no ar em 20/10:** o dono colou um endereço na conta dele e a linha chegou: origem
+  `colada`, 1 pendente, 2,3 s, 0,6 s de Nominatim. Essa linha é do admin, de teste: ao ler os dias
+  dos motoristas, deixar de fora o `motorista_id` do admin.
 - **A mudança no app** (aval da revisão):
   - `logica/telemetria.ts`: o medidor, que os serviços avisam a cada ida ao Nominatim (com a vez
     na fila à parte), ao ViaCEP, ao censo e ao banco, e por parada; e o registro, montado campo a
