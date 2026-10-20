@@ -729,6 +729,25 @@ test.describe('o nome da rua no mapa', () => {
     await expect(tracos).toHaveCount(1);
   });
 
+  // O ajudante do teste acima: ir para longe no meio de um zoom animado, e o Leaflet voltava sozinho
+  // para onde o zoom ia quando a transição acabava, depois de o teste já ter conferido o centro.
+  test('o verNoMapa no meio de um zoom animado deixa o mapa onde pediu', async ({page}) => {
+    const {garantirMapa, verNoMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await garantirMapa(page);
+    await verNoMapa(page, -10.9506, -37.05, 14);
+    // parado antes: com um zoom ainda andando, o Leaflet ignora o pedido de zoom seguinte
+    await page.waitForFunction(() => !document.querySelector('.leaflet-zoom-anim'));
+    // o zoom anima por 250 ms: o verNoMapa vem logo atrás, ainda dentro deles
+    await page.evaluate(() => (window as any).rotaTeste.irPara(-10.9506, -37.05, 17));
+    await verNoMapa(page, -10.99, -37.09, 17);
+    await page.waitForTimeout(600);
+    const c = await page.evaluate(() => (window as any).rotaTeste.centro());
+    expect(Math.abs(c.lat + 10.99)).toBeLessThan(1e-4);
+    expect(Math.abs(c.lng + 37.09)).toBeLessThan(1e-4);
+  });
+
   // Revisão de 17/10: desfazer a 023 tira a coluna. O app tem de seguir igual, só sem os nomes, e o
   // erro de JavaScript que escapasse a fixture pega.
   test('sem a coluna da 023 na nuvem, o mapa e a rota seguem como sempre, sem nomes e sem aviso', async ({page, context, nuvem}) => {

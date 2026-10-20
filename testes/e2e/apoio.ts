@@ -202,13 +202,23 @@ export async function zoom(page: Page, z: number) {
   await page.evaluate(z2 => (window as any).rotaTeste.zoom(z2), z);
 }
 
+// O zoom animado do Leaflet já diz o centro e o zoom novos, mas só termina quando a transição acaba
+// (250 ms, mais com a máquina ocupada). Ir para longe no mesmo zoom antes disso, e ele volta para
+// onde o zoom ia, sozinho; e o fim redesenha os nomes das ruas. Era a instabilidade do teste dos
+// nomes no mapa (20/10): o mapa voltava depois de o teste conferir o centro.
+const semZoomAnimado = (page: Page) => page.waitForFunction(() => !document.querySelector('.leaflet-zoom-anim'));
+
 // Leva o mapa até um ponto. Pino fora da tela existe no DOM mas não tem texto nenhum, então
 // procurar pilha pelo rótulo só funciona olhando para onde ela está.
 export async function verNoMapa(page: Page, lat: number, lng: number, z = 18) {
   await page.waitForFunction(() => !!(window as any).rotaTeste);
   // confere que pegou: o mapa pode reenquadrar sozinho logo depois de montar
   await expect.poll(async () => {
+    await semZoomAnimado(page);
     await page.evaluate(([a, b, c]) => (window as any).rotaTeste.irPara(a, b, c), [lat, lng, z]);
+    // o zoom pedido começa no quadro seguinte: espera ele começar, se começar, e acabar
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await semZoomAnimado(page);
     const c = await page.evaluate(() => (window as any).rotaTeste.centro());
     // o centro cai no pixel inteiro: de longe, um pixel passa de 1e-4 grau
     const folga = Math.max(1e-4, 2 * 360 / (256 * 2 ** z));
