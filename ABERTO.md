@@ -240,15 +240,16 @@ rodado na produção.
     `ilike '%palavra%'`, e é esse filtro que custa os 566 ms. Não é mais a regra de acesso: é a
     falta de um índice para busca por parte do nome (trigramas, `pg_trgm`).
   - **Corrigido em 20/10, com as medições da 025:** os 566 ms não eram o custo da busca. O mesmo
-    plano, com os mesmos 1.724 acessos, levou 381 ms numa rodada e 36 ms na seguinte; a outra
-    leitura inteira da mesma rodada, 22 a 25 ms. O tempo na produção varia muito de uma rodada
-    para outra, e a primeira busca pesada de cada rodada saiu sempre a mais lenta (814, 566, 381 ms).
-    A causa não sei; o palpite é a máquina compartilhada do plano grátis. Cache frio não é: em
+    plano, com os mesmos 1.724 acessos, levou 381, 36 e 332 ms em três rodadas; a busca que não
+    acha, com a mesma leitura inteira, ficou em 22 a 25 ms nas três. Escrevi antes que a primeira
+    busca pesada de cada rodada saía a mais lenta; a terceira rodada desmentiu (a de 332 ms não foi
+    a primeira). A causa não sei; o palpite é a máquina compartilhada do plano grátis. Cache frio não é: em
     nenhuma das medições houve leitura de disco (`shared read`), todas as páginas já estavam na
     memória do banco. O que não varia são os
     acessos, e a queda da 024 está neles: contagem das rotas de 8.152 para 1.084, por dentro de
     8.005 para 937, marcações da semana de 1.341 para 46, busca de rua de 25.705 para 1.724.
-    Comparar tempo, só dentro da mesma rodada.
+    Comparar pelos acessos. Tempo, só dentro da mesma rodada, e nem assim uma amostra só basta:
+    uma consulta pode sair 10 vezes mais lenta sozinha; para valer, repetir cada uma.
   - **Só o índice não basta (conferido num Postgres 17 local em 20/10):** com a regra de acesso, o
     Postgres só usa índice para comparação marcada como segura para rodar antes da regra
     (`leakproof`). O `=` é; `ilike` e `~*` não são. Com 24 mil trechos inventados e o índice de
@@ -291,12 +292,14 @@ O app não mudou: continua buscando direto na tabela.
   - **O termo de conjunto "que acha" não achou nada na produção** (nenhum conjunto com "augusto" em
     Aracaju na base), então o caso que acha do conjunto ficou sem medir lá. A medição ganhou um
     caso com o termo tirado da própria base (a palavra mais comprida do conjunto mais comum de
-    Aracaju, com os acentos do `comAcento`), ensaiado local; falta rodar na produção.
+    Aracaju, com os acentos do `comAcento`). Rodado na produção em 20/10, o termo saiu "vivendas":
+    direto na tabela 68 linhas, 562 acessos, 4,1 ms; pela função 68 linhas, 63 acessos, 0,7 ms, com
+    o índice de conjunto no plano. A lacuna fechou.
   - Os três pares ficaram: as três buscas liam a tabela inteira ou quase, e pela função passam a ler
     de 11 a 133. O ganho de tempo é pequeno em número: de 3 a 36 ms para menos de 1 ms por busca, com
     a ida e volta do celular, de 100 a 300 ms, por cima. Os índices somam 1,8 MB (de 4,2 para 6,0).
-  - A medição de antes mostra a variação da produção: a mesma busca de rua levou 381 ms ali, a
-    primeira da rodada, e 36 ms na de depois.
+  - A variação da produção aparece aqui: a mesma busca de rua direto na tabela levou 381 ms na
+    medição de antes, 36 ms na de depois e 332 ms na do conjunto.
 
 - **A medição:** `supabase/medir_buscas_da_base.sql`, só leitura, para rodar antes e depois da 025.
   As buscas do `servicos/base.ts` como o app manda (rua por parte do nome; é bairro?; conjunto
@@ -345,6 +348,35 @@ O app não mudou: continua buscando direto na tabela.
   minuto para localizar a lista está em outro lugar: os endereços vão um depois do outro e o
   Nominatim espera 1,1 s entre chamadas. Quanto custa cada fonte é a telemetria (passo 3), que é a
   frente que mais vale agora.
+
+## O minuto de localizar a lista (20/10): o registro que existe não responde, falta telemetria
+
+Antes de construir telemetria, a revisão aprovou olhar o que já está gravado: `pacotes.fonte`, a
+origem da posição de cada pacote, que o app manda ao fim da busca e ao fazer a rota.
+
+- **Contado pelo dono em 20/10**, nas 42 rotas com entrega dos últimos 14 dias (1.934 portas, cada
+  porta contada uma vez por rota): censo 510; nossa base 1; Nominatim, "não achou", CEP e memória do
+  aparelho 0; mudadas pelo motorista 39; sem origem nenhuma 221, em 5 rotas inteiras (rotas que
+  nunca chegaram a registrar). As outras 1.163 têm origens que a consulta não separou: errei a
+  lista e deixei de fora `planilha`, `outro motorista`, `minha correcao`, `vizinha` e `bairro`.
+- **O registro não diz quanto a busca custou, e não vai dizer.** Ele guarda a origem final, e a
+  final esconde o caminho:
+  - a parada da planilha já vem com posição e nem passa pela busca;
+  - as portas que já tiveram entrega (`outro motorista`, `minha correcao`) só são pedidas à nuvem
+    depois da busca inteira (`acoes/enderecos.ts`, fim do `buscarPendentes`), e passam por cima do
+    que a busca achou;
+  - o censo e as correções do motorista também passam por cima depois.
+
+  Uma porta que esperou o Nominatim e depois recebeu a porta conhecida aparece como "outro
+  motorista". O zero do Nominatim diz só que nenhuma posição final veio dele.
+- **Hipótese para a telemetria medir, não construir ainda:** a parada pendente cuja porta a nuvem
+  já conhece passa pela busca inteira, com as esperas do Nominatim, para ser trocada no fim. Pedir
+  as portas conhecidas antes da busca pularia essas. Há um motivo para a ordem de hoje: a linha sem
+  CEP e sem bairro só tem chave depois que a busca acha o bairro. Mas a que tem CEP ou bairro já tem
+  chave antes.
+- **Próximo:** a telemetria do passo 3, por busca de lista, sem endereço nenhum: quantas pendentes,
+  o tempo total, chamadas e tempo de cada fonte (a espera do Nominatim à parte), em qual fonte cada
+  uma terminou, e quantas tinham porta já conhecida na nuvem.
 
 ## Admin como painel (19/10, pedido do dono): partes 1 e 2 publicadas em 19/10, falta o menu lateral
 
