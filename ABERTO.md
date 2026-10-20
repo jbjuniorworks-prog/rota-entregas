@@ -392,9 +392,12 @@ origem da posição de cada pacote, que o app manda ao fim da busca e ao fazer a
   porta já conhecida na nuvem. Numa tabela própria, que não dependa de rota nem de pacote: senão
   ela também só veria a planilha.
 
-## Telemetria da busca de lista (026): rascunho ensaiado local em 20/10, falta rodar na produção
+## Telemetria da busca de lista (026): rodada na produção em 20/10, falta o app gravar
 
-Passo 3 do plano. Desenho aprovado pela revisão em 20/10, com os ajustes abaixo. O app ainda não grava.
+Passo 3 do plano. Desenho aprovado pela revisão em 20/10, com os ajustes abaixo. O dono rodou a 026
+em 20/10, e a conferência saiu como a do ensaio: tabela com a regra de acesso ligada, as regras
+`buscas_gravar` (INSERT) e `buscas_ver` (SELECT), `authenticated` só com INSERT e SELECT, nenhuma
+permissão para o anônimo, e o gatilho. O app ainda não grava.
 
 - **A tabela:** `supabase/026_buscas_de_lista.sql` cria `buscas_de_lista`, uma linha por vez que o
   app busca as pendentes de uma lista. Só números com limite e a origem da lista numa lista
@@ -433,7 +436,7 @@ Passo 3 do plano. Desenho aprovado pela revisão em 20/10, com os ajustes abaixo
   - Um engano meu, pego antes de valer: a primeira conferência das permissões rodou no banco da
     última sabotagem (a sem o revoke) e mostrou o anônimo com tudo. Refeita com a 026 de verdade:
     `authenticated` só grava e lê, o anônimo nada.
-- **Próximo:** o dono roda a 026 e a conferência; depois a mudança no app, publicada à parte: o
+- **Próximo:** a mudança no app, publicada à parte: o
   registro vai pela fila com o id gerado no aparelho, gravado com "se já existe, ignora"; nunca
   atrapalha o "Entreguei" (com a fila cheia, a telemetria sai primeiro); e a soma das fontes
   conferida em teste. Coletar alguns dias, e só então decidir o que mudar na busca.

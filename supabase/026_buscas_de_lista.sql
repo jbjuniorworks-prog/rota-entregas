@@ -1,6 +1,8 @@
 -- O registro de cada busca de lista, só com contagens e tempos, para saber onde vai o minuto (20/10).
 --
--- RASCUNHO, não rodada na produção.
+-- Rodada na produção em 20/10 e conferida em seguida (regra de acesso ligada, as duas regras, só
+-- gravar e ler para `authenticated`, nada para o anônimo, o gatilho); ABERTO.md, "Telemetria da
+-- busca de lista (026)".
 --
 -- Uma lista de 60 paradas leva mais de um minuto para ser localizada, e nada guardado hoje diz
 -- onde vai esse tempo. `pacotes.fonte` não serve: só a planilha cria pacote, e a lista que demora
