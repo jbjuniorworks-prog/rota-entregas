@@ -1,4 +1,5 @@
 import {haversine} from '../logica/geo';
+import {medidor} from '../logica/telemetria';
 import {chaveRua, normal, palavrasRua, pistasBatem, quaseIgual, semTipoDeArea, tipoDaRua} from '../logica/texto';
 import type {TrechoDaBase} from '../logica/nomesNoMapa';
 import type {Candidato, Ponto} from '../logica/tipos';
@@ -74,7 +75,7 @@ async function lugarEnsinado(supa: NonNullable<typeof nuvem.cliente>, ditos: str
   const palavras = [...new Set(ditos.flatMap(d => d.split(' ')).filter(w => w.length >= 5))].slice(0, 50);
   if (!palavras.length) return null;
   try {
-    const {data} = await supa.rpc('lugares_conhecidos', {palavras, cidade_: daCidade});
+    const {data} = await medidor.medir('banco', () => supa.rpc('lugares_conhecidos', {palavras, cidade_: daCidade}));
     for (const dito of ditos) {
       const meu = dito.split(' ').filter(w => w.length >= 5);
       const achou = (data || []).find((x: {nome_chave: string; situacao: string}) =>
@@ -96,10 +97,10 @@ async function lugarNaBase(ditos: string[], cidade: string): Promise<{ponto: Pon
     if (!palavra) continue;
     const memoria = daCidade + '|' + dito;
     if (!lugaresVistos.has(memoria)) {
-      const ehBairro = await supa.from('ruas').select('bairro').filter('bairro', 'imatch', `^${comAcento(dito)}$`).limit(1);
+      const ehBairro = await medidor.medir('banco', () => supa.from('ruas').select('bairro').filter('bairro', 'imatch', `^${comAcento(dito)}$`).limit(1));
       const r = ehBairro.data && ehBairro.data.length
         ? {data: []}
-        : await supa.from('ruas').select('conjunto, lat, lng').filter('conjunto', 'imatch', comAcento(palavra)).ilike('cidade', daCidade).limit(200);
+        : await medidor.medir('banco', () => supa.from('ruas').select('conjunto, lat, lng').filter('conjunto', 'imatch', comAcento(palavra)).ilike('cidade', daCidade).limit(200));
       const linhas = (r.data || []).filter((t: {conjunto: string | null}) => bate(semTipoDeArea(t.conjunto || ''), dito));
       const {ponto, junto} = linhas.length ? centroEJunto(linhas as Ponto[]) : {ponto: null, junto: false};
       lugaresVistos.set(memoria, ponto && junto ? {ponto, nome: (linhas[0] as {conjunto: string}).conjunto} : null);
@@ -121,11 +122,11 @@ export async function ruaNaBase(rua: string, cidade: string, perto: Ponto | null
     let data: any[] = [];
     if (ditos.length) {
       const filtros = ditos.flatMap(l => [`bairro.ilike.*${l}*`, `conjunto.ilike.*${l}*`]).join(',');
-      const r = await pelaChave().or(filtros).limit(80);
+      const r = await medidor.medir('banco', () => pelaChave().or(filtros).limit(80));
       data = r.data || [];
     }
     if (!data.length) {
-      const r = await pelaChave().limit(80);
+      const r = await medidor.medir('banco', () => pelaChave().limit(80));
       if (r.error) return null;
       data = r.data || [];
     }
@@ -134,7 +135,7 @@ export async function ruaNaBase(rua: string, cidade: string, perto: Ponto | null
       const palavra = maiorPalavra(rua);
       const daCidade = normal(cidade.split(/[,\-\/]/)[0]);
       const parecidas = palavra.length >= 4 && daCidade
-        ? await supa.from('ruas').select(campos).ilike('nome_chave', `%${palavra}%`).ilike('cidade', daCidade).limit(80)
+        ? await medidor.medir('banco', () => supa.from('ruas').select(campos).ilike('nome_chave', `%${palavra}%`).ilike('cidade', daCidade).limit(80))
         : {data: []};
       const comONome = (parecidas.data || []).filter((t: any) => t.nome && cabeNoNome(rua, t.nome));
       if (comONome.length) data = comONome;
@@ -198,7 +199,7 @@ export async function carregarAncorasDeCep(ceps: string[]): Promise<number> {
   for (let i = 0; i < novos.length; i += 500) {
     const pedaco = novos.slice(i, i + 500);
     try {
-      const {data, error} = await supa.rpc('ancoras_de_cep', {ceps: pedaco});
+      const {data, error} = await medidor.medir('banco', () => supa.rpc('ancoras_de_cep', {ceps: pedaco}));
       if (error) return achadas;
       for (const r of (data || []) as ({cep: string} & AncoraDeCep)[]) {
         ancorasDeCep.set(r.cep, {lat: r.lat, lng: r.lng, raio: r.raio, marcas: r.marcas});

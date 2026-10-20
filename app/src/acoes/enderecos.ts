@@ -2,13 +2,15 @@
 import {cidadeDaParada, haversine, levarGenericaAoBairro, levarGenericaParaARua, levarParaOCenso, marcarIsoladas, marcarPontoGenerico, mediana, marcarNumerosIncoerentes, moverGenericasPeloBairro, moverParaOBairro, moverPeloBairro, voltarDoBairro} from '../logica/geo';
 import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from '../logica/importar';
 import {CORES, DA_PLANILHA} from '../logica/rotulos';
+import {medidor, montarEvento, origemDe, tipoDoArquivo, type OrigemLista} from '../logica/telemetria';
 import {decompor, extrairEnderecos, lerEdicao, ruaGenerica} from '../logica/texto';
-import type {Parada, Precisao} from '../logica/tipos';
+import type {Parada, Ponto, Precisao} from '../logica/tipos';
 import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
 import {carregarAncorasDeCep} from '../servicos/base';
 import {centroDaCidade, centroDoBairro, geocodificar, usarRegiao} from '../servicos/geocodificacao';
 import {corretorDeNomes, enderecoDoIbge, nomeCorrigidoPeloCenso, portaNoBairroDoIbge, portasDaRuaNoIbge, portasDoCep, ruaNoIbge} from '../servicos/ibge';
+import {nuvem} from '../servicos/nuvem';
 import {desatualizarRota, e, enviarFila, fila, invalidarRota, memoria, ui} from './base';
 import {irPara} from './navegacao';
 import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, focar} from './posicoes';
@@ -76,11 +78,12 @@ export async function buscarParada(p: Parada) {
   }
 }
 
-export async function buscarPendentes(resumoAntes = '') {
+export async function buscarPendentes(resumoAntes = '', origem: OrigemLista = 'de_novo') {
   if (ui.ocupado) return;
   const alvo = e().paradas.filter(p => p.precisao === 'pendente');
   if (!alvo.length) return;
   ui.ocupado = true;
+  medidor.comecar();
   await garantirRegiao();
   // Uma consulta só, antes de começar: onde ficam os CEPs desta rota, pelo que já foi entregue.
   await carregarAncorasDeCep(alvo.map(p => decompor(p.texto).cep || '').filter(Boolean));
@@ -89,7 +92,9 @@ export async function buscarPendentes(resumoAntes = '') {
     status(`Buscando endereços… ${i + 1} de ${alvo.length}`);
     // a que ele já marcou enquanto a lista andava não é mais buscada
     if (alvo[i].precisao !== 'pendente') continue;
+    medidor.naParada(alvo[i].id);
     try { await buscarParada(alvo[i]); } catch (err) { erro = err as Error; }
+    medidor.naParada(null);
     loja.mudou();
   }
   ui.ocupado = false;
@@ -98,10 +103,28 @@ export async function buscarPendentes(resumoAntes = '') {
   loja.mudou();
   const resultado = erro ? 'Alguns falharam (' + erro.message + '). Toque em "Buscar sem posição", em Conferir endereços.'
     : longe ? `Pronto! ${longe} parada(s) longe das outras entregas: confira o pino.` : 'Pronto! Confira os laranja e os vermelhos, se houver.';
+  // onde a busca pôs cada uma, antes de as portas da nuvem passarem por cima
+  const achadas = new Map(alvo.map(p => [p.id, p.lat != null && p.lng != null ? {lat: p.lat, lng: p.lng} : null]));
   const comp = avisoCompartilhadas(await consultarCompartilhadas());
+  guardarBuscaDaLista(alvo, achadas, origem);
   registrarComoFicou();
   enviarFila();
   status((resumoAntes ? `${resumoAntes} Busca dos sem posição: ${resultado}` : resultado) + comp, resumoAntes || comp ? 15000 : longe ? 8000 : 4000);
+}
+
+// O registro desta busca (026), só com números. Vai com o id de quem buscou: se outra conta entrar
+// no aparelho antes do envio, o banco recusa em vez de pôr no nome dela. O que der errado aqui
+// fica sem registro e não atrapalha a busca.
+function guardarBuscaDaLista(alvo: Parada[], achadas: Map<string, Ponto | null>, origem: OrigemLista) {
+  const medicao = medidor.terminar();
+  const motorista = nuvem.sessao?.user.id;
+  if (!medicao || !motorista) return;
+  try {
+    fila.guardarBusca(montarEvento({
+      id: crypto.randomUUID(), motorista, origem, quando: new Date(), versao: __VERSAO__.id, paradas: e().paradas.length,
+      pendentes: alvo.map(p => ({id: p.id, achada: achadas.get(p.id) || null, lat: p.lat, lng: p.lng, fonte: p.fonte})), medicao,
+    }));
+  } catch {}
 }
 
 // As longe da planilha, e o ponto genérico que nem o censo nem as outras entregas do bairro
@@ -239,6 +262,8 @@ async function importarPlanilhas(files: Blob[]) {
 // O que a leitura de prints e vídeo pôs na lista, para o "Adicionar" saber quantos cartões iguais ela
 // viu: repetido colado ou digitado é engano, repetido lido é outro cartão (decisão de 15/10).
 let doLeitor: string[] = [];
+// e de que arquivos ela leu, para o registro da busca saber se a lista veio de print ou de gravação
+let doLeitorTipos: OrigemLista[] = [];
 
 export function lerPrints(files: File[], textoAtual: string): Promise<string | null> {
   return semRecarregar(() => lerPrintsAgora(files, textoAtual));
@@ -256,7 +281,7 @@ async function lerPrintsAgora(files: File[], textoAtual: string): Promise<string
       loja.mudou();
       const resumo = resumoPlanilha(r) + (e().rota ? ' A rota de agora continua na tela: toque em "Refazer a rota" para as novas entrarem na sequência.' : '');
       status(resumo, r.longe || e().rota ? 12000 : 5000);
-      await buscarPendentes(resumo);
+      await buscarPendentes(resumo, origemDe(['planilha', ...outros.map(tipoDoArquivo)])!);
     } catch (err) {
       status('Não consegui ler a planilha: ' + (err as Error).message, 6000);
     }
@@ -281,6 +306,7 @@ async function lerPrintsAgora(files: File[], textoAtual: string): Promise<string
           ? `Não consegui ler.${avisos}`
           : 'Não achei endereços. Use o print ou a gravação da LISTA de paradas, onde os endereços aparecem escritos. Print do mapa não serve.', daComanda ? 20000 : 8000);
     doLeitor = textoAtual.trim() ? [...doLeitor, ...unicos] : [...unicos];
+    doLeitorTipos = textoAtual.trim() ? [...doLeitorTipos, ...files.map(tipoDoArquivo)] : files.map(tipoDoArquivo);
     return (textoAtual.trim() ? textoAtual.trim() + '\n' : '') + unicos.join('\n');
   } catch (err) {
     status('Não consegui ler a imagem: ' + (err as Error).message, 5000);
@@ -328,7 +354,8 @@ async function lerCompartilhado() {
     const {novas, repetidas} = adicionarLinhas(e(), linhas, lidas);
     status(daPlanilha ? resumoPlanilha(daPlanilha) : `${novas} parada(s) nova(s)${repetidas ? `, ${repetidas} já existia(m)` : ''}. Buscando no mapa…`);
     irPara('rota');
-    await buscarPendentes();
+    await buscarPendentes('', origemDe([...(planilhas.length ? ['planilha' as const] : []), ...outros.map(tipoDoArquivo),
+      ...(texto.trim() ? ['colada' as const] : [])]) || 'colada');
     await montarRota();
     // por último, para o "Rota pronta" não cobrir o complemento que ficou de fora
     if (daComanda) status(daComanda, 20000);
@@ -341,7 +368,12 @@ export async function adicionarTexto(texto: string) {
   const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
   if (!linhas.length) { status('Cole pelo menos um endereço.', 2500); return false; }
   const {novas, repetidas, arrumadas, coladas} = adicionarLinhas(e(), linhas, doLeitor);
+  // a linha que o leitor pôs vem do print ou da gravação; a que ele digitou ou mudou, colada
+  const lidas = new Set(doLeitor);
+  const origem = origemDe([...(linhas.some(l => lidas.has(l)) ? doLeitorTipos : []),
+    ...(linhas.some(l => !lidas.has(l)) ? ['colada' as const] : [])]) || 'colada';
   doLeitor = [];
+  doLeitorTipos = [];
   // O local colado do mapa é correção, não palpite: fica guardado neste aparelho e vai para os
   // outros motoristas, como se ele tivesse marcado na porta.
   let guardadas = 0;
@@ -351,7 +383,7 @@ export async function adicionarTexto(texto: string) {
     ? ` ${arrumadas ? `${arrumadas} parada(s) arrumada(s)` : `${coladas.length} com local`} pelo local colado do mapa${guardadas < coladas.length ? ' (sem CEP nem bairro na linha, não deu para guardar para as próximas rotas)' : ', guardado para as próximas rotas'}.`
     : '';
   status(`${novas} adicionada(s)${repetidas ? `, ${repetidas} repetida(s) ignorada(s)` : ''}.${doMapa}`, doMapa ? 9000 : 2500);
-  await buscarPendentes();
+  await buscarPendentes('', origem);
   return true;
 }
 

@@ -436,10 +436,39 @@ permissão para o anônimo, e o gatilho. O app ainda não grava.
   - Um engano meu, pego antes de valer: a primeira conferência das permissões rodou no banco da
     última sabotagem (a sem o revoke) e mostrou o anônimo com tudo. Refeita com a 026 de verdade:
     `authenticated` só grava e lê, o anônimo nada.
-- **Próximo:** a mudança no app, publicada à parte: o
-  registro vai pela fila com o id gerado no aparelho, gravado com "se já existe, ignora"; nunca
-  atrapalha o "Entreguei" (com a fila cheia, a telemetria sai primeiro); e a soma das fontes
-  conferida em teste. Coletar alguns dias, e só então decidir o que mudar na busca.
+- **A mudança no app, preparada em 20/10 e não publicada** (aval da revisão; publicar só com a
+  autorização do dono, fora de rota):
+  - `logica/telemetria.ts`: o medidor, que os serviços avisam a cada ida ao Nominatim (com a vez
+    na fila à parte), ao ViaCEP, ao censo e ao banco, e por parada; e o registro, montado campo a
+    campo só com números. A busca de lista (`buscarPendentes`) liga o medidor, anota onde cada
+    pendente estava antes das portas da nuvem, e no fim guarda o registro.
+  - **Fila própria** (`CHAVES.buscas`, até 30), não a do motorista: lá o registro disputaria a vez
+    com entrega, desfazer e passagem, e o corte das 3.000 (que tira as mais antigas, sejam o que
+    forem) podia levar uma entrega no lugar dele. Ela só anda com a do motorista vazia, uma de cada
+    vez, e o que ele fizer no meio passa na frente da próxima. Recusada, sai calada; sem rede, fica.
+  - O id nasce com o registro (`crypto.randomUUID`), fica gravado no aparelho e vai igual em todo
+    reenvio; o banco ignora o repetido (`on_conflict=id`, `ignore-duplicates`).
+  - **O id de quem buscou vai junto.** Trocar de conta não limpa nada guardado no aparelho: sem
+    isso, o registro de um iria no nome do outro. Com ele, a regra da 026 recusa. A mesma troca de
+    conta vale para a fila do motorista (entrega e passagem guardadas saem na sessão de quem entrar
+    depois): fica para a auditoria da fila, o passo 2.
+  - A origem vem de quem chama a busca: planilha (com print junto, mista), print ou gravação pelo
+    tipo do arquivo lido, colada (o que ele digitou ou mudou depois de lido), compartilhada pela
+    mistura, e "de novo" no botão de Conferir e nos nomes corrigidos ao abrir.
+- **Onde saiu do contrato que a revisão escreveu:** os nomes e as categorias são os da 026 já
+  rodada, não os do texto da revisão (renomear pediria outra migração); "tempo de outras coisas"
+  não tem coluna, porque é o total menos as partes, numa busca que vai uma parada por vez; e a
+  recusa não fica registrada no aparelho, porque ninguém lê o armazenamento do celular. O teste
+  confere que a recusa não quebra a busca nem deixa aviso.
+- **Testes:** 15 novos de unidade (a soma fecha, só as colunas da 026 lidas do próprio arquivo, só
+  números, limites, origem fora da lista, a porta conhecida a 30 m, o medidor com relógio falso, a
+  fila depois do trabalho dele, o que ele faz no meio passando na frente, sem rede com o mesmo id
+  depois de reabrir, recusa calada, fila dele cheia intocada, sem duplicar) e 3 de ponta a ponta
+  (a lista colada até o pedido que chega, com `on_conflict` e sem texto da lista; sem rede, o mesmo
+  id depois de reabrir; recusado pelo banco sem atrapalhar). Doze sabotagens, cada uma desfeita
+  e conferida: as oito de unidade e as quatro de ponta a ponta quebram o teste certo.
+- **Próximo:** publicar com a autorização do dono, fora de rota; coletar alguns dias; e só então
+  decidir o que mudar na busca.
 
 ## Admin como painel (19/10, pedido do dono): partes 1 e 2 publicadas em 19/10, falta o menu lateral
 

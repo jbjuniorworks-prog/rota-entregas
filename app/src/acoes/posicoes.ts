@@ -3,6 +3,7 @@ import {aplicarReclamacoes, chaveCliente} from '../logica/reclamacoes';
 import {haversine, marcarIsoladas, noPino} from '../logica/geo';
 import type {Operacao} from '../logica/fila';
 import {avisoGuardou} from '../logica/memoria';
+import {medidor} from '../logica/telemetria';
 import {chaveCidade, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
 import type {Parada, PortaAntes, Ponto} from '../logica/tipos';
 import {loja, MINIMIZADO, status} from '../loja';
@@ -19,7 +20,7 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
   const chaves = [...new Set(e().paradas.filter(p => !p.entregue).map(chaveDe).filter((k): k is string => !!k))];
   if (!chaves.length) return saida;
   try {
-    Object.assign(saida, aplicarCompartilhadas(e().paradas, await c.posicoes(chaves), chaveDe));
+    Object.assign(saida, aplicarCompartilhadas(e().paradas, await medidor.medir('banco', () => c.posicoes(chaves)), chaveDe));
     if (saida.confirmadas || saida.minhas) desatualizarRota();
     // o que a barra oferecia acabou de entrar
     ui.pinosNovos = null;
@@ -29,7 +30,7 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
   try {
     const clienteDe = (p: Parada) => chaveCliente(p.texto, p.bairro, e().cidade);
     const clientes = [...new Set(e().paradas.filter(p => !p.entregue).map(clienteDe).filter((k): k is string => !!k))];
-    if (clientes.length) saida.xaropes = aplicarReclamacoes(e().paradas, await c.reclamacoes(clientes), clienteDe);
+    if (clientes.length) saida.xaropes = aplicarReclamacoes(e().paradas, await medidor.medir('banco', () => c.reclamacoes(clientes)), clienteDe);
   } catch {}
   loja.mudou();
   return saida;

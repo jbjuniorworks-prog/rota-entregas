@@ -1,6 +1,6 @@
 import {readFileSync} from 'node:fs';
 import XLSX from 'xlsx';
-import {ErroNuvem, criarFila, operacoesDaPlanilha, type ClienteNuvem} from './fila';
+import {BUSCAS_MAX, ErroNuvem, FILA_MAX, criarFila, operacoesDaPlanilha, type ClienteNuvem} from './fila';
 import {CHAVES, backupRecente, carregarEstado, estadoVazio, guardaNaMemoria, resetarDia, salvarEstado} from './guarda';
 import {adicionarDaPlanilha, adicionarLinhas, resumoPlanilha} from './importar';
 import {criarMemoria} from './memoria';
@@ -8,6 +8,7 @@ import {montarRota} from './montagem';
 import {matrizAproximada} from './otimizacao';
 import {itensDaPlanilha} from './planilha';
 import {previsoes} from './previsao';
+import {montarEvento} from './telemetria';
 import {juntarLeituras, juntarQuadros} from './texto';
 
 const ler = (arq: string) => {
@@ -266,9 +267,9 @@ describe('guardar estado e reset do dia', () => {
 });
 
 describe('fila da nuvem', () => {
-  function servidor(falhas: {rede?: number; recusar?: string} = {}) {
+  function servidor(falhas: {rede?: number; recusar?: string; buscaRede?: number; buscaRecusada?: boolean; aoRegistrarBusca?: () => void} = {}) {
     const chamadas: string[] = [];
-    let rede = falhas.rede || 0;
+    let rede = falhas.rede || 0, buscaRede = falhas.buscaRede || 0;
     const c: ClienteNuvem = {
       async rotaExistente(at) { chamadas.push('existe ' + at); return null; },
       async criarRota(id, at) { if (rede-- > 0) throw new ErroNuvem('offline', true); chamadas.push('rota ' + at); },
@@ -285,9 +286,19 @@ describe('fila da nuvem', () => {
       async inserirReclamacao(k, m) { if (falhas.recusar) throw new ErroNuvem(falhas.recusar, false); chamadas.push(`xarope ${k} ${m}`); },
       async tirarReclamacao(k, m) { chamadas.push(`tirar xarope ${k} ${m}`); },
       async reclamacoes() { return []; },
+      async registrarBusca(ev) {
+        if (buscaRede-- > 0) throw new ErroNuvem('offline', true);
+        if (falhas.buscaRecusada) throw new ErroNuvem('new row violates row-level security policy', false);
+        chamadas.push('busca ' + ev.id);
+        falhas.aoRegistrarBusca?.();
+      },
     };
     return {c, chamadas};
   }
+  const busca = (id: string) => montarEvento({id, motorista: 'm1', origem: 'colada', quando: new Date(0), versao: 'v', paradas: 1,
+    pendentes: [{id: 'p1', achada: null, lat: -10.9, lng: -37.05, fonte: 'IBGE'}], medicao: {tempo_ms: 1000, fontes: {
+      nominatim: {chamadas: 0, ms: 0, espera: 0}, cep: {chamadas: 0, ms: 0, espera: 0}, censo: {chamadas: 1, ms: 10, espera: 0}, banco: {chamadas: 0, ms: 0, espera: 0}},
+    paradas: new Map()}});
   const e = estadoVazio();
   const {rotaDe} = adicionarDaPlanilha(e, A, () => false);
   const ops = operacoesDaPlanilha(A, rotaDe, 'Aracaju');
@@ -379,6 +390,61 @@ describe('fila da nuvem', () => {
     await f.enviar(c);
     expect(f.erro()).toContain('reclamacoes');
   });
+
+  // A telemetria da busca de lista (026) nunca passa na frente do trabalho do motorista.
+  it('o registro da busca só sai depois do trabalho do motorista', async () => {
+    const f = criarFila(guardaNaMemoria()), {c, chamadas} = servidor();
+    f.guardarBusca(busca('b1'));
+    f.enfileirar({tipo: 'correcao', chave: 'x|1', lat: 1, lng: 1});
+    await f.enviar(c);
+    expect(chamadas).toEqual(['correcao x|1', 'busca b1']);
+    expect(f.buscas()).toBe(0);
+  });
+  it('o que o motorista faz enquanto um registro vai passa na frente do próximo', async () => {
+    let f: ReturnType<typeof criarFila>;
+    const {c, chamadas} = servidor({aoRegistrarBusca: () => { if (chamadas.length === 1) f.enfileirar({tipo: 'correcao', chave: 'x|1', lat: 1, lng: 1}); }});
+    f = criarFila(guardaNaMemoria());
+    f.guardarBusca(busca('b1'));
+    f.guardarBusca(busca('b2'));
+    await f.enviar(c);
+    expect(chamadas).toEqual(['busca b1', 'correcao x|1', 'busca b2']);
+  });
+  it('sem internet o registro fica, e volta com o mesmo id', async () => {
+    const g = guardaNaMemoria(), f = criarFila(g), {c, chamadas} = servidor({buscaRede: 1});
+    f.guardarBusca(busca('b1'));
+    await f.enviar(c);
+    expect(chamadas).toEqual([]);
+    expect(f.buscas()).toBe(1);
+    // fechar e abrir o app: a fila é lida de novo do aparelho
+    const outra = criarFila(g);
+    await outra.enviar(c);
+    expect(chamadas).toEqual(['busca b1']);
+    expect(outra.buscas()).toBe(0);
+  });
+  it('registro recusado (motorista desativado, outra conta) sai calado', async () => {
+    const f = criarFila(guardaNaMemoria()), {c} = servidor({buscaRecusada: true});
+    f.guardarBusca(busca('b1'));
+    await f.enviar(c);
+    expect(f.buscas()).toBe(0);
+    expect(f.erro()).toBe('');
+  });
+  it('o registro não entra na fila do motorista, nem com ela cheia, e guarda no máximo 30', () => {
+    const g = guardaNaMemoria(), f = criarFila(g);
+    f.enfileirar(...Array.from({length: FILA_MAX}, (_, i) => ({tipo: 'correcao' as const, chave: 'x|' + i, lat: 1, lng: 1})));
+    for (let i = 0; i < 40; i++) f.guardarBusca(busca('b' + i));
+    const dele = g.ler<{chave: string}[]>(CHAVES.fila, []);
+    expect(dele).toHaveLength(FILA_MAX);
+    expect(dele[0].chave).toBe('x|0');
+    expect(f.pendentes()).toBe(FILA_MAX);
+    expect(f.buscas()).toBe(BUSCAS_MAX);
+    expect(g.ler<{id: string}[]>(CHAVES.buscas, [])[0].id).toBe('b10');
+  });
+  it('guardar de novo o mesmo registro não duplica', () => {
+    const f = criarFila(guardaNaMemoria());
+    f.guardarBusca(busca('b1'));
+    f.guardarBusca(busca('b1'));
+    expect(f.buscas()).toBe(1);
+  });
 });
 
 describe('desfazer correção já enviada', () => {
@@ -397,6 +463,7 @@ describe('desfazer correção já enviada', () => {
       inserirReclamacao: async () => {},
       tirarReclamacao: async () => {},
       reclamacoes: async () => [],
+      registrarBusca: async () => {},
     };
     f.enfileirar({tipo: 'correcao', chave: 'k|1', lat: -11.5, lng: -37.5});
     await f.enviar(c);

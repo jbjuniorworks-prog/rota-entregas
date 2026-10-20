@@ -1,5 +1,6 @@
 import {haversine, LONGE_DA_ANCORA} from '../logica/geo';
 import {RANK} from '../logica/rotulos';
+import {medidor} from '../logica/telemetria';
 import {conjuntoDoEndereco, decompor, mesmaRua, normal} from '../logica/texto';
 import type {Candidato, Ponto, Precisao, Regiao} from '../logica/tipos';
 import {ancoraDeCep, ruaNaBase} from './base';
@@ -46,12 +47,12 @@ function caixaDaRegiao(r: Regiao): string {
 }
 
 async function nominatim(params: Record<string, string>): Promise<Candidato[]> {
-  await espacado('nominatim', 1100);
+  medidor.esperou('nominatim', await espacado('nominatim', 1100));
   const u = new URL('https://nominatim.openstreetmap.org/search');
   const base: Record<string, string> = {format: 'jsonv2', addressdetails: '1', namedetails: '1', limit: '5', countrycodes: 'br', 'accept-language': 'pt-BR'};
   if (regiaoAtual) { base.viewbox = caixaDaRegiao(regiaoAtual); base.bounded = '1'; }
   Object.entries({...base, ...params}).forEach(([k, v]) => u.searchParams.set(k, v));
-  return (await buscarJson<any[]>(u)).map(candidatoOSM).filter(c => !foraDaRegiao(c));
+  return (await medidor.medir('nominatim', () => buscarJson<any[]>(u))).map(candidatoOSM).filter(c => !foraDaRegiao(c));
 }
 
 export async function centroDoBairro(bairro: string, cidade: string): Promise<{lat: number; lng: number} | null> {
@@ -87,8 +88,8 @@ async function ruaNosCorreios(rua: string, cidade: string): Promise<{bairro: str
   const nome = rua.replace(/^\s*(rua|r\.?|avenida|av\.?|travessa|tv\.?|pra[çc]a)\s+/i, '').trim();
   if (!lugar || nome.length < 4) return null;
   try {
-    await espacado('viacep', 400);
-    const achados = await buscarJson<any[]>(`https://viacep.com.br/ws/${lugar.uf}/${encodeURIComponent(lugar.cidade)}/${encodeURIComponent(nome)}/json/`, 8000);
+    medidor.esperou('cep', await espacado('viacep', 400));
+    const achados = await medidor.medir('cep', () => buscarJson<any[]>(`https://viacep.com.br/ws/${lugar.uf}/${encodeURIComponent(lugar.cidade)}/${encodeURIComponent(nome)}/json/`, 8000));
     const bairro = Array.isArray(achados) ? bairroDeMaisCEPs(achados, rua) : '';
     return bairro ? {bairro, cidade: lugar.cidade} : null;
   } catch {
@@ -98,10 +99,10 @@ async function ruaNosCorreios(rua: string, cidade: string): Promise<{bairro: str
 
 async function cepComCoordenada(cep: string): Promise<Cep | null> {
   try {
-    const v = await buscarJson(`https://viacep.com.br/ws/${cep}/json/`, 8000);
+    const v = await medidor.medir('cep', () => buscarJson(`https://viacep.com.br/ws/${cep}/json/`, 8000));
     // O ViaCEP diz a rua e o bairro mas não onde fica. Quem sabe onde é o censo, pelo setor do CEP.
     if (v && !v.erro) {
-      const a = await ancoraDoIbge(cep, v.bairro || '', v.localidade || '');
+      const a = await medidor.medir('censo', () => ancoraDoIbge(cep, v.bairro || '', v.localidade || ''));
       return {logradouro: v.logradouro || '', bairro: v.bairro || '', cidade: v.localidade, uf: v.uf, lat: a ? a.lat : null, lng: a ? a.lng : null};
     }
   } catch {}
@@ -120,7 +121,7 @@ async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: 
   // perguntar nada para fora — nem o CEP, nem o mapa. É o caminho que funciona sem sinal.
   // Só o casamento exato passa na frente da nossa base; o aproximado espera a vez lá embaixo.
   if (d.cep && d.numero) {
-    const ibge = await enderecoDoIbge(d.cep, d.numero, cidade, true);
+    const ibge = await medidor.medir('censo', () => enderecoDoIbge(d.cep!, d.numero!, cidade, true));
     if (ibge && !foraDaRegiao(ibge)) return [ibge];
   }
   const cep = d.cep ? await cepComCoordenada(d.cep) : null;
@@ -150,7 +151,7 @@ async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: 
   // ruas de mesmo nome — "Rua Vinte e Cinco" está em quatro bairros. O censo sabe em qual delas
   // o número da porta existe, e isso não custa rede nenhuma.
   if (!d.cep && d.numero && d.rua && !lugares.length) {
-    const doCenso = await ruaDoIbge(d.rua, d.numero, cidade, perto);
+    const doCenso = await medidor.medir('censo', () => ruaDoIbge(d.rua!, d.numero!, cidade, perto));
     if (doCenso && !foraDaRegiao(doCenso)) return [doCenso];
   }
   // Rua que nenhum mapa tem, mas onde já entregamos: o CEP aprendido chega mais perto que
@@ -167,7 +168,7 @@ async function geoOSM(txt: string, cidade: string, perto: Ponto | null, bairro: 
   // cruzamento junto com cinco entregas da Sílvio Teixeira, num pino só.
   // O número aqui já pode ter sido corrigido pelo CEP, logo acima.
   if (d.cep && d.numero) {
-    const ibge = await enderecoDoIbge(d.cep, d.numero, cep ? cep.cidade : cidade);
+    const ibge = await medidor.medir('censo', () => enderecoDoIbge(d.cep!, d.numero!, cep ? cep.cidade : cidade));
     if (ibge && !foraDaRegiao(ibge)) return [ibge];
   }
   const naBase = logradouro ? await ruaNaBase(logradouro, cep ? `${cep.cidade}, ${cep.uf}` : cidade, perto, lugares) : null;
@@ -210,10 +211,10 @@ export async function ancoraDoEndereco(txt: string, cidade: string, bairro: stri
   // O que os motoristas já marcaram neste CEP vale mais que o centro do bairro: 80 m contra 600 m.
   const aprendida = ancoraDeCep(d.cep);
   if (aprendida) return {lat: aprendida.lat, lng: aprendida.lng, raio: aprendida.raio, nome: `CEP ${d.cep!.slice(0, 5)}-${d.cep!.slice(5)}`};
-  const dito = await ancoraDoIbge(d.cep, bairro, cidade);
+  const dito = await medidor.medir('censo', () => ancoraDoIbge(d.cep, bairro, cidade));
   if (dito) return dito;
   for (const parte of d.resto) {
-    const a = await ancoraDoIbge(null, parte, cidade);
+    const a = await medidor.medir('censo', () => ancoraDoIbge(null, parte, cidade));
     if (a) return a;
   }
   return null;
@@ -230,7 +231,7 @@ export async function geocodificar(txt: string, opcoes: {cidade: string; perto?:
   // Nada achou a rua: o nome pode ter vindo torto ("Capitão José Vochoo af)", de um quadro do vídeo,
   // ou digitado errado). Com o nome do censo, a busca vai de novo — a mesma regra do leitor (11/10).
   if (!cands.some(c => ACHOU.has(c.precisao))) {
-    const certo = await nomeCorrigidoPeloCenso(txt, opcoes.cidade);
+    const certo = await medidor.medir('censo', () => nomeCorrigidoPeloCenso(txt, opcoes.cidade));
     const deNovo = certo ? await geoOSM(certo, opcoes.cidade, opcoes.perto || null, opcoes.bairro || '') : [];
     if (deNovo.some(c => ACHOU.has(c.precisao))) {
       cands = deNovo.map(c => ({...c, exibido: `${c.exibido} (o nome da rua veio torto, corrigido pelo censo)`}));

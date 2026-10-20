@@ -2,6 +2,7 @@
 import type {ItemPlanilha} from './planilha';
 import type {PosicaoCompartilhada} from './compartilhadas';
 import type {ReclamacaoDaNuvem} from './reclamacoes';
+import type {EventoBusca} from './telemetria';
 import {chaveLugar} from './texto';
 import type {MotivoReclamacao} from './tipos';
 import type {LinhaDeUso} from './uso';
@@ -68,9 +69,15 @@ export interface ClienteNuvem {
   inserirReclamacao(chave: string, motivo: MotivoReclamacao): Promise<void>;
   tirarReclamacao(chave: string, motivo: MotivoReclamacao): Promise<void>;
   reclamacoes(chaves: string[]): Promise<ReclamacaoDaNuvem[]>;
+  registrarBusca(e: EventoBusca): Promise<void>;
 }
 
 export const FILA_MAX = 3000;
+
+// A telemetria da busca de lista (026) é medição nossa, não trabalho do motorista. Na fila dele ela
+// disputaria a vez com entrega, desfazer e passagem, e o corte das 3.000 podia levar uma entrega no
+// lugar dela. Fica numa fila própria, pequena, que só anda com a dele vazia; cheia, sai a mais antiga.
+export const BUSCAS_MAX = 30;
 
 export function operacoesDaPlanilha(itens: ItemPlanilha[], rotaDe: (it: ItemPlanilha) => string, cidade: string): Operacao[] {
   const porRota = new Map<string, Extract<Operacao, {tipo: 'rota'}>>();
@@ -97,6 +104,7 @@ export interface Segurada {id: string; ate: number; ops: Operacao[]}
 export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.randomUUID()) {
   const ler = () => g.ler<Operacao[]>(CHAVES.fila, []);
   const lerSeguradas = () => g.ler<Segurada[]>(CHAVES.seguradas, []);
+  const lerBuscas = () => g.ler<EventoBusca[]>(CHAVES.buscas, []);
   let enviando = false;
   let erro = '';
 
@@ -140,6 +148,17 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
         return 'descartar';
       }
       return 'rede';
+    }
+  }
+
+  // Recusada (motorista desativado, outra conta no aparelho, a 026 sem rodar) sai calada, como o
+  // contador de botões: não é trabalho dele, e repetir não muda a resposta.
+  async function enviarBusca(c: ClienteNuvem, e: EventoBusca): Promise<'ok' | 'rede'> {
+    try {
+      await c.registrarBusca(e);
+      return 'ok';
+    } catch (err) {
+      return err instanceof ErroNuvem && !err.deRede ? 'ok' : 'rede';
     }
   }
 
@@ -192,17 +211,31 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
       }
       return resto.length ? Math.min(...resto.map(x => x.ate)) : null;
     },
+    // O id é do registro desde que ele nasce, e vai igual em todo reenvio: o banco ignora o repetido.
+    guardarBusca(e: EventoBusca) {
+      g.gravar(CHAVES.buscas, [...lerBuscas().filter(x => x.id !== e.id), e].slice(-BUSCAS_MAX));
+    },
+    buscas: () => lerBuscas().length,
     async enviar(c: ClienteNuvem | null): Promise<void> {
       if (!c || enviando) return;
       enviando = true;
       try {
-        while (ler().length) {
-          const r = await enviarUma(c, ler()[0]);
-          if (r === 'rede') break;
-          const f = ler();
-          f.shift();
-          g.gravar(CHAVES.fila, f);
-          if (!f.length) g.gravar(CHAVES.filaDesde, 0);
+        for (;;) {
+          if (ler().length) {
+            const r = await enviarUma(c, ler()[0]);
+            if (r === 'rede') break;
+            const f = ler();
+            f.shift();
+            g.gravar(CHAVES.fila, f);
+            if (!f.length) g.gravar(CHAVES.filaDesde, 0);
+            continue;
+          }
+          // Só com a fila do motorista vazia, e uma de cada vez: o que ele fizer enquanto uma vai
+          // passa na frente da próxima.
+          const b = lerBuscas()[0];
+          if (!b) break;
+          if (await enviarBusca(c, b) === 'rede') break;
+          g.gravar(CHAVES.buscas, lerBuscas().filter(x => x.id !== b.id));
         }
       } finally {
         enviando = false;

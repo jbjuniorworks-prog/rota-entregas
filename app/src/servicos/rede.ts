@@ -12,8 +12,10 @@ export async function buscarJson<T = any>(url: string | URL, ms = 15000): Promis
 }
 
 const ultimaChamada: Record<string, number> = {};
-export async function espacado(chave: string, ms: number) {
+// Devolve quanto esperou: é o que a telemetria da busca de lista conta como a vez na fila.
+export async function espacado(chave: string, ms: number): Promise<number> {
   const espera = ms - (Date.now() - (ultimaChamada[chave] || 0));
   ultimaChamada[chave] = Date.now() + Math.max(0, espera);
   if (espera > 0) await dorme(espera);
+  return Math.max(0, espera);
 }

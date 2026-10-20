@@ -157,5 +157,11 @@ export function clienteNuvem(): ClienteNuvem | null {
       }
       return saida;
     },
+    // O id repetido é ignorado pelo banco (a chave da 026), não por aqui: a fila reenvia depois de
+    // falha de rede sem saber se a primeira chegou.
+    async registrarBusca(e) {
+      const {error} = await s.from('buscas_de_lista').upsert(e, {onConflict: 'id', ignoreDuplicates: true});
+      if (error) throw erro(error);
+    },
   };
 }

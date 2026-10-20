@@ -31,6 +31,7 @@ export const CHAVES = {
   filaDesde: 'rota-entregas-fila-desde',
   seguradas: 'rota-entregas-fila-seguradas',
   uso: 'rota-entregas-uso',
+  buscas: 'rota-entregas-buscas',
   adminVisto: 'rota-entregas-admin-visto',
 } as const;
 
