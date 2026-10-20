@@ -225,9 +225,11 @@ Fora da lista:
     por horário e id;
   - a base de ruas só conta quando a seção abre, com "contando…", erro e "Tentar de novo";
   - o painel do dia sai da lista de rotas, sem esperar a contagem delas;
-  - cada carga tem a sua vez: a resposta de uma carga anterior não mexe na atual, e uma ação no meio
-    da carga (Encerrar conferência, Aprovar, Apagar) recarrega em vez de ser ignorada, como era.
-    O Admin não tem troca de dia nem filtro: esse caso não se aplica.
+  - cada carga tem a sua vez: a resposta de uma carga anterior não mexe na atual. O Admin não tem
+    troca de dia nem filtro: esse caso não se aplica.
+- **Mudança de comportamento, não só de tempo (no mesmo commit):** uma ação no meio de uma carga
+  (Encerrar conferência, Aprovar, Apagar) agora recarrega o Admin; antes, o pedido de recarga era
+  ignorado e a tela ficava com o estado de antes da ação até o próximo Atualizar.
 - **Testado:** 10 testes de tela novos (nomes depois e falhando, resposta antiga dos nomes e das
   marcações, painel com a contagem atrasada, base de ruas, e o corte das 500 com menos de 500,
   exatamente 500, mais de 500 e horário empatado). A nuvem falsa passou a filtrar por data e a
@@ -241,16 +243,105 @@ Fora da lista:
   (158 de 265 entregues, 98 de 154 verificados, 3 rotas para conferir). 47 cartões saem antes com o
   endereço provisório e terminam com o mesmo nome.
 - **Primeira exibição útil, por aproximação com a chave de serviço (sem regras de acesso):**
-  decisões de 1,75 s para 1,23 s (mediana de 3); números do dia de 0,53 s para 0,27 s. O tempo com
-  a conta de admin depende de autorização específica para medir.
+  decisões de 1,75 s para 1,23 s (mediana de 3); números do dia de 0,53 s para 0,27 s. Evidência
+  preliminar: o tempo com a conta de admin depende de autorização específica para medir.
+- **Etapa local aceita pela revisão (20/10); `61a8f91` congelado, sem publicar.** Próximo passo: a
+  medição autenticada, só depois de o dono confirmar a exclusão das duas sessões antigas e autorizar
+  expressamente o novo login e a medição. Publicar depende de outra autorização.
+- **Procedimento da medição, preparado sem autenticar (fora do git, no rascunho da sessão):**
+  - as duas versões montadas de cada commit (`git archive`) e servidas na mesma origem, cada uma na
+    sua pasta: um login por senha, digitado pelo dono, vale para as duas. Sem link administrativo;
+  - seis aberturas alternadas, publicado primeiro. Cada rodada confere o commit da pasta, o script
+    de entrada carregado e que nada recarregou;
+  - service worker bloqueado nas duas, conferido em cada rodada (zero registros, página sem
+    controlador); cache do navegador desligado e limpo antes de cada rodada;
+  - limpeza entre rodadas com a página anterior fechada, numa página neutra da mesma origem: apaga
+    do localStorage `rota-entregas-v2`, `-backup`, `-posicoes`, `-fila`, `-fila-desde`,
+    `-fila-seguradas`, `-rotas-nuvem`, `-uso`, `-admin-visto`, `-instalar-adiado` e
+    `-cartao-minimizado` (e anota qualquer outra), mais CacheStorage e IndexedDB; fica só
+    `rota-entregas-auth`. Fila offline com alguma coisa antes de uma rodada para a medição sem apagar;
+  - o que alteraria dados é barrado e anotado: POST, PATCH, PUT e DELETE em tabelas, e funções do
+    banco fora das sete de leitura (todas `stable`, sem escrita no corpo). Login, renovação e
+    saída passam, e leituras também;
+  - mede, em cada rodada: decisões, números do dia, fim das cargas automáticas (a última resposta
+    da nuvem ou o último desses desenhos na tela, o que vier depois) e pedidos à nuvem, com a
+    autenticação à parte. A base de ruas à parte: no publicado, quando ficou contada dentro da
+    abertura; no candidato, do clique na seção até a contagem. É trabalho adiado, não eliminado;
+  - no fim, e também quando a medição para por erro ou por um Ctrl+C, o script tenta a saída com
+    escopo local da sessão da medição e registra o resultado: aceita, recusada ou falhou. Se o
+    processo for morto, o terminal fechar ou o computador desligar, não há tentativa nem mensagem
+    final. O id da sessão aparece e é gravado no arquivo do resultado assim que o login acontece, e
+    as rodadas são gravadas uma a uma; a sessão só conta como encerrada depois que o dono conferir
+    no SQL;
+  - ensaiado contra a nuvem falsa dos testes do app, sem falar com a nuvem de verdade: 5 testes
+    passam, e 7 sabotagens (escrita liberada, POST em tabela liberado, fila ignorada, limpeza que
+    não apaga, versão não conferida, saída global, service worker liberado) quebram, cada uma, um
+    teste. No ensaio, com poucas marcações, o candidato mostra as decisões ~0,1 s depois do
+    publicado, o que bate com o código: com menos de 500 marcações na semana, ele lê as mais velhas
+    depois da semana, em sequência; o publicado lia as duas ao mesmo tempo. Nos dados reais de 20/10
+    o caso não acontece (638 endereços marcados na semana, logo 500 ou mais marcações: o candidato
+    nem faz essa leitura). Fica como limitação conhecida: numa semana com menos de 500 marcações,
+    o candidato pode mostrar as decisões depois do publicado, e a medição desta semana não diz que
+    ele é mais rápido em todos os casos. Pedir as duas leituras juntas é só hipótese para uma
+    próxima mudança, não aprovada: traria de volta a leitura que a otimização evitou.
+- **Medição autenticada (20/10, das 01:55 às 02:00 de Aracaju), autorizada pelo dono:** login por
+  senha feito por ele na janela do roteiro, seis aberturas alternadas, a mesma conta e máquina.
+  Tempos em ms; as diferenças saem das medianas em ms.
+
+  | rodada | versão | decisões | números do dia | fim das cargas | leituras | base de ruas |
+  |---|---|---|---|---|---|---|
+  | 1 | 3389b45 | 2778 | 1197 | 2778 | 26 | contada 1867 depois de abrir |
+  | 2 | 61a8f91 | 2580 | 1429 | 3230 | 24 | 301 do clique |
+  | 3 | 3389b45 | 2365 | 1084 | 2365 | 26 | contada 680 depois de abrir |
+  | 4 | 61a8f91 | 1511 | 643 | 2183 | 24 | 289 do clique |
+  | 5 | 3389b45 | 2538 | 1053 | 2538 | 26 | contada 686 depois de abrir |
+  | 6 | 61a8f91 | 2144 | 658 | 5946 | 24 | 287 do clique |
+  | mediana | 3389b45 | 2538 | 1084 | 2538 | 26 | 686, dentro da abertura |
+  | mediana | 61a8f91 | 2144 | 658 | 3230 | 24 (+1 ao abrir a seção) | 289 do clique |
+
+  - proteções: as seis rodadas conferiram o commit e os scripts da própria pasta; nenhum service
+    worker; fila vazia antes de todas; a limpeza só achou `rota-entregas-admin-visto` para apagar;
+    nenhuma escrita barrada (nenhuma tentada); nenhum erro de JavaScript; nenhuma renovação de login
+    durante as aberturas;
+  - leituras iguais nas duas, menos duas: o candidato não pediu "as 500 mais novas" (a semana tem
+    mais de 1.000 marcações, duas páginas) e deixou a base de ruas para quando a seção abre;
+  - decisões 394 ms antes e números do dia 426 ms antes, nas medianas; fim das cargas 692 ms
+    **depois**, porque os nomes agora chegam numa etapa depois das decisões. Três rodadas de cada
+    dão um sinal favorável para a primeira exibição útil, não garantia em todo acesso: o candidato
+    foi de 1511 a 2580 nas decisões, o publicado de 2365 a 2778. Não é "o Admin inteiro ficou mais
+    rápido";
+  - a rodada 6 terminou as cargas em 5946 por uma resposta lenta de causa desconhecida: o roteiro
+    não guarda o tempo de cada pedido. Fica no registro sem explicação;
+  - a base de ruas não entra no fim das cargas do candidato: é trabalho adiado (289 ao abrir a
+    seção), não eliminado;
+  - não comparável com os 4,3 s de 19/10: outra hora, outro endereço, cache desligado aqui;
+  - saída: o pedido de saída com escopo local voltou 204, e a chamada seguinte ao serviço de login
+    com o mesmo token voltou 403. É a recusa daquela chamada, não prova de que o token deixou de
+    valer em todos os serviços; o login foi apagado do navegador. Conferência: o dono rodou no SQL
+    a consulta da sessão da medição pelo id (passado a ele, fora do git) e liberou a publicação; o
+    resultado em si não foi colado.
+- **Decisão do dono (20/10):** manter o candidato `61a8f91` e publicá-lo exatamente como testado,
+  sem nova mudança de código, depois de confirmar no SQL que a sessão da medição não existe mais.
+  A busca das duas leituras em paralelo continua só hipótese, não aprovada. Depois de publicar: o
+  commit publicado, e a conferência no Admin feita pelo dono na sessão dele de sempre (estados de
+  carregamento, nomes finais, contagens, Atualizar e base de ruas sob demanda).
+- **Publicado em 20/10 às 02:12 de Aracaju: `61a8f91`, exatamente o testado.** Antes de enviar,
+  aqui: guarda de segredos, tipos, 469 de unidade, build e 195 e2e. A primeira bateria e2e teve 1
+  falha no teste instável do mapa já anotado ("de perto, o nome da planilha…", desta vez na espera
+  de "de longe, sem nomes"); sozinho passou 6 de 6, e a bateria inteira de novo passou 195 de 195.
+  No GitHub, "Testar e publicar" passou nos dois passos. O Admin no ar tem os textos que só o
+  candidato tem ("Contando a base de ruas…"). **Falta** a conferência do dono no Admin.
 - **Não rodado:** os testes `@nuvem`, que escrevem no banco de produção.
 - **Fica como está:** o selo do botão Mais conta só as decisões; o cartão "Esperando você" soma
   também as paradas sem local e as rotas para conferir.
-- **Sessões da conferência de 19/10, pendente:** duas sessões entraram pela conta de admin por link
-  (`otp`, user_agent `node`), em 19/10/2026 às 23:11:07 e 23:13:15, horário de Aracaju (02:11:07 e
-  02:13:15 UTC de 20/10), identificadas pelo dono no SQL Editor; todas as outras entraram por senha.
-  O dono vai apagar as duas pelo id e confirmar. Ainda não encerradas no registro. A validade dos
-  tokens já emitidos não foi verificada: depende do `exp` de cada um.
+- **Sessões da conferência de 19/10, apagadas em 20/10:** duas sessões entraram pela conta de
+  admin por link (`otp`, user_agent `node`), em 19/10/2026 às 23:11:07 e 23:13:15, horário de
+  Aracaju (02:11:07 e 02:13:15 UTC de 20/10); todas as outras entraram por senha. Em 20/10 o dono
+  conferiu as duas pelo id e pela conta (exatamente duas linhas, as esperadas) e apagou só elas, com
+  o comando restrito aos dois ids e à conta: o `RETURNING` devolveu exatamente as duas, e a consulta
+  de depois pelos dois ids voltou só "Success", sem linha nenhuma. O total de sessões da conta
+  apareceu como 5, sem dizer se antes ou depois da exclusão (conferência auxiliar). A validade dos
+  tokens de acesso já emitidos não foi verificada: depende do `exp` de cada um.
 - **Visto nos dados reais de hoje:** a planilha do Pedro aberta na conta do dono tem 3 entregues
   (o "Sem N", às 17:24, antes do conserto, sem nada gravado) e aparece como rota parada. Cuidado:
   com o conserto no ar, "Entreguei aqui" de teste na conta do admin grava porta de admin.
