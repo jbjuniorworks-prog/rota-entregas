@@ -152,6 +152,27 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Admin como painel (19/10, pedido do dono): parte 1 feita local, falta subir
+
+- **O pedido:** uma tela só para ver e arrumar todo tipo de problema, como um painel de frota. O
+  dono usa o Admin mais no computador, e no celular só na rua.
+- **Parte 1, feita:**
+  - quatro números do dia no alto: rotas hoje (com quantos motoristas na rua), entregues hoje,
+    endereços verificados nas rotas de hoje e esperando você;
+  - "Rotas de hoje": motorista, entregues, verificados, hora da última entrega e situação. A
+    parada vem primeiro: sem entregar há 60 min ou mais, com pacotes por fazer;
+  - no computador o Admin fica largo e o mapa estreito ao lado; com o painel a partir de uns 820 px,
+    o que espera decisão e as rotas de hoje ficam lado a lado. O Admin ganhou a margem das outras
+    telas;
+  - os cortes de 1.000 linhas: rotas de 14 dias e uso dos botões buscados em partes, e a contagem
+    das rotas perguntada em pedaços de 500.
+- **Testado:** unidade da regra (`painel.ts`) e e2e do painel e da leitura acima de 1.000. A nuvem
+  falsa dos testes passou a cortar em 1.000 linhas e a respeitar o `range`, como o servidor.
+  Sabotados as partes, os pedaços, o filtro de hoje e a contagem de endereços: cada um quebra.
+  Bateria inteira: 177 e2e e 457 de unidade.
+- **Próximas partes:** os problemas novos na lista (várias portas do mesmo ponto, parada sem
+  local, rota parada, rota que não é do dia) e o mapa do dia; depois o menu lateral.
+
 ## Muitos usuários em vários lugares (19/10, pergunta do dono), analisado, nada feito
 
 - **Hoje:** 11 contas, uns 6 motoristas por dia, 43 rotas e 4 mil pacotes por semana. Supabase no

@@ -116,7 +116,7 @@ test.describe('administrador', () => {
 
   // 11/10: o Admin levava uns 6 s para abrir. A contagem das rotas baixava os 6 mil pacotes de 14
   // dias para contar, e a tela esperava ela para mostrar o que esperava decisão.
-  const umaRota = (nuvem: {tabelas: Record<string, Record<string, unknown>[]>; rpc: Record<string, unknown[]>}) => {
+  const umaRota = (nuvem: {tabelas: Record<string, Record<string, unknown>[]>; rpc: Record<string, unknown>}) => {
     nuvem.tabelas = {
       rotas: [{id: 'r1', dia: hoje, arquivo: 'rota-luan.xlsx', criado_em: agora, motorista_id: 'm1', perfis: {nome: 'Luan'}}],
       pacotes: [
@@ -157,6 +157,65 @@ test.describe('administrador', () => {
     await expect(page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${CHAVE}"]`)).toContainText('Rua B, 20', {timeout: 3000});
     await expect(page.locator('[data-rota="r1"]')).toHaveCount(0);
     await expect(page.locator('[data-rota="r1"]')).toContainText('Luan · 1/2 entregues', {timeout: 10_000});
+  });
+
+  // Painel do dia (dono, 19/10): os números de hoje e a situação de cada rota, a parada primeiro.
+  test('o painel do dia conta as rotas de hoje e diz qual está parada, na rua ou terminou', async ({page, nuvem}) => {
+    const hojeMaceio = new Date().toLocaleDateString('sv-SE', {timeZone: 'America/Maceio'});
+    const antes = (min: number) => new Date(Date.now() - min * 60000).toISOString();
+    const rota = (id: string, nome: string, dia = hojeMaceio) => ({id, dia, arquivo: id + '.xlsx', criado_em: antes(400), motorista_id: nome, perfis: {nome}});
+    const pacote = (rota_id: string, chave_lugar: string | null, entregue_em: string | null, endereco = 'Rua Teste, ' + chave_lugar) =>
+      ({rota_id, chave_lugar, endereco, entregue_em, spx_tn: null, sequencia: null, bairro: null, lat: null, lng: null});
+    nuvem.tabelas = {
+      // a de ontem não entra no painel
+      rotas: [rota('r1', 'Teste Na Rua'), rota('r2', 'Teste Terminou'), rota('r3', 'Teste Parada'), rota('r4', 'Teste Ontem', '2026-01-01')],
+      pacotes: [
+        pacote('r1', '49000100|10', antes(30)), pacote('r1', '49000100|20', antes(10)), pacote('r1', null, null, 'Travessa Teste, Sem N'),
+        pacote('r2', '49000100|10', antes(200)), pacote('r2', '49000100|30', antes(190)),
+        pacote('r3', '49000100|40', antes(125)), pacote('r3', '49000100|50', null), pacote('r3', '49000100|50', null),
+        pacote('r4', '49000100|60', null),
+      ],
+    };
+    nuvem.rpc = {posicoes: [
+      {chave_lugar: '49000100|10', lat: -10.9, lng: -37.0, situacao: 'confirmado', motoristas: 2},
+      {chave_lugar: '49000100|20', lat: -10.9, lng: -37.0, situacao: 'sugestao', motoristas: 1},
+    ]};
+    await abrir(page);
+    await menu(page, /^Admin/);
+    const kpi = (k: string) => page.locator(`[data-kpi="${k}"]`);
+    await expect(kpi('rotas')).toContainText('3Rotas hoje1 motorista(s) na rua agora');
+    await expect(kpi('entregues')).toContainText('5 de 8');
+    // r1: 3 endereços (um sem chave), 1 verificado; r2: 2 e 1; r3: 2 e 0
+    await expect(kpi('verificados')).toContainText('2 de 7');
+    await expect(kpi('esperando')).toContainText('0');
+    const linhas = page.locator('[data-secao="Rotas de hoje"] [data-rota-hoje]');
+    await expect(linhas).toHaveCount(3);
+    expect(await linhas.locator('[data-situacao]').evaluateAll(es => es.map(e => e.getAttribute('data-situacao')))).toEqual(['parada', 'na rua', 'terminou']);
+    await expect(linhas.nth(0)).toContainText(/Teste Parada.*1\/3.*0\/2.*Parada há 2h(?!\d)/);
+    await expect(linhas.nth(1)).toContainText(/Teste Na Rua.*2\/3.*1\/3.*Na rua/);
+    await expect(linhas.nth(2)).toContainText(/Teste Terminou.*2\/2.*1\/2.*Terminou/);
+  });
+
+  // O servidor devolve 1.000 linhas e cala: 30 dias de uso dos botões passam disso no ritmo de
+  // outubro, e 14 dias de rotas com uns 70 motoristas por dia.
+  test('o Admin lê tudo em partes: uso dos botões e rotas acima de 1.000', async ({page, nuvem}) => {
+    // longe de hoje em qualquer fuso, para o painel do dia não buscar os pacotes delas
+    const ontem = new Date(Date.now() - 2 * 864e5).toLocaleDateString('sv-SE', {timeZone: 'America/Maceio'});
+    nuvem.tabelas = {
+      uso_dos_botoes: Array.from({length: 1200}, (_, i) => ({dia: ontem, botao: 'aqui', antes: '', vezes: 1, motorista_id: 'm' + i})),
+      rotas: Array.from({length: 1001}, (_, i) => ({id: 'r' + i, dia: ontem, arquivo: null, criado_em: ontem + 'T12:00:00Z', motorista_id: 'm1', perfis: {nome: 'Teste'}})),
+    };
+    // a contagem responde só pelas rotas que pediram, e também para em 1.000
+    nuvem.rpc = {contagem_das_rotas: (corpo: {ids: string[]}) => corpo.ids.map(id => ({rota_id: id, pacotes: 2, entregues: 1}))};
+    await abrir(page);
+    await menu(page, /^Admin/);
+    await expect(page.locator('summary', {hasText: /^Rotas dos últimos 14 dias/})).toHaveText('Rotas dos últimos 14 dias (1001)', {timeout: 15_000});
+    await expect(page.locator('[data-rota="r1000"]')).toContainText('1/2 entregues');
+    // contou no banco, sem cair em baixar os pacotes
+    expect(nuvem.pedidos.filter(p => p.caminho === 'pacotes' && decodeURIComponent(p.busca).includes('rota_id=in.'))).toHaveLength(0);
+    await page.locator('summary', {hasText: 'Uso dos botões do cartão'}).click();
+    await page.getByRole('button', {name: 'Ver a medição'}).click();
+    await expect(page.locator('.item', {hasText: 'Estou aqui'})).toContainText('Estou aqui · 1200 vez(es)');
   });
 
   // Pedido de 03/10: colar o e-mail e sair com a senha, em vez do terminal. Que a conta entra de

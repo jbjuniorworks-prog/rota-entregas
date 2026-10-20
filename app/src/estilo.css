@@ -243,4 +243,25 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
   #app.tela-rota>.mapwrap,#app.tela-admin>.mapwrap,#app.tela-rota.folha-lista>.mapwrap{grid-column:2;grid-row:1/-1;height:auto}
   #app.tela-rota>#painel,#app.tela-rota.folha-proxima>#painel,#app.tela-rota.folha-escolher>#painel,#app.tela-rota.folha-circular>#painel,#app.tela-admin>#painel{grid-column:1;grid-row:2;max-height:none;height:auto;border-radius:0;margin:0;box-shadow:none;border-right:1px solid var(--bd)}
   #app:not(.tela-rota):not(.tela-admin){max-width:640px;margin:0 auto;border-left:1px solid var(--bd);border-right:1px solid var(--bd)}
+  /* o Admin é um painel no computador (dono, 19/10): ele largo, o mapa estreito ao lado */
+  #app.tela-admin{grid-template-columns:minmax(560px,3fr) minmax(320px,2fr)}
 }
+
+/* Painel do dia no Admin */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+.kpi{border:1px solid var(--bd);border-radius:14px;padding:12px 14px;background:#fff}
+.kpi.atencao{border-color:#fb923c;background:#fff7ed}
+.kpi-num{font-size:28px;font-weight:800;line-height:1.1}
+.kpi-num small{font-size:15px;font-weight:600;color:var(--mut)}
+.kpi-nome{font-size:14px;font-weight:700;margin-top:4px}
+.kpi-sub{font-size:13px;color:var(--mut)}
+.painel-colunas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(400px,100%),1fr));gap:0 20px;align-items:start}
+.cartao-painel{border:1px solid var(--bd);border-radius:14px;padding:10px 12px;margin:8px 0;background:#fff}
+.cartao-painel h3{font-size:16px;margin:2px 0 8px}
+.tabela-rolar{overflow-x:auto}
+.tabela-dia{width:100%;border-collapse:collapse;font-size:14px}
+.tabela-dia th{text-align:left;font-size:12px;color:var(--mut);font-weight:700;padding:4px 5px;border-bottom:1px solid var(--bd)}
+.tabela-dia td{padding:8px 5px;border-bottom:1px solid var(--bd);vertical-align:top}
+.tabela-dia tr:last-child td{border-bottom:0}
+.tabela-dia .barra{max-width:110px}
+.tabela-dia .tag{white-space:nowrap}

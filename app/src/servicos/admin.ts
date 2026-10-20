@@ -1,6 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {lugaresDaBusca, peneiraDaNuvem, peneiraDeChave, type LugarDaBusca} from '../logica/busca';
 import {agruparConferencia, type MarcaEmConferencia, type MotoristaEmConferencia} from '../logica/conferencia';
+import {hojeEmMaceio, resumirDia, type Dia, type PacoteDoDia} from '../logica/painel';
 import type {PortaDaNuvem} from '../logica/triagem';
 import {nuvem} from './nuvem';
 
@@ -113,9 +114,9 @@ export async function mudarConferir(id: string, conferir: boolean) {
 export async function listarRotas(dias = 14): Promise<RotaResumo[]> {
   const s = cliente();
   const desde = new Date(Date.now() - dias * 864e5).toISOString().slice(0, 10);
-  const {data, error} = await s.from('rotas').select('id, dia, arquivo, criado_em, perfis(nome)').gte('dia', desde).order('dia', {ascending: false}).order('criado_em', {ascending: false});
-  falhou(error);
-  const rotas = (data || []) as any[];
+  // em partes: o servidor devolve 1.000 e cala, e 14 dias passam disso com uns 70 motoristas por dia
+  const rotas = await paginado<any>((de, ate) => s.from('rotas').select('id, dia, arquivo, criado_em, perfis(nome)').gte('dia', desde)
+    .order('dia', {ascending: false}).order('criado_em', {ascending: false}).order('id').range(de, ate));
   const ids = rotas.map(r => r.id as string);
   const contagem = await contarNoBanco(s, ids) || await contarBaixando(s, ids);
   return rotas.map(r => ({id: r.id, dia: r.dia, arquivo: r.arquivo, criado_em: r.criado_em, motorista: r.perfis?.nome || '?', ...contagem.get(r.id)!}));
@@ -127,9 +128,10 @@ type Contagem = Map<string, {pacotes: number; entregues: number}>;
 // 14 dias só para contar. Sem a função no banco, ou sem uma linha para cada rota, conta baixando.
 async function contarNoBanco(s: SupabaseClient, ids: string[]): Promise<Contagem | null> {
   if (!ids.length) return new Map();
-  const {data, error} = await s.rpc('contagem_das_rotas', {ids});
-  if (error || !Array.isArray(data)) return null;
-  const contagem: Contagem = new Map(data.map((x: any) => [x.rota_id, {pacotes: x.pacotes, entregues: x.entregues}]));
+  // em pedaços: a resposta da função também para nas 1.000 linhas
+  const partes = await Promise.all(pedacos(ids, 500).map(parte => s.rpc('contagem_das_rotas', {ids: parte})));
+  if (partes.some(({data, error}) => error || !Array.isArray(data))) return null;
+  const contagem: Contagem = new Map(partes.flatMap(({data}) => (data as any[]).map(x => [x.rota_id, {pacotes: x.pacotes, entregues: x.entregues}] as const)));
   return ids.every(id => contagem.has(id)) ? contagem : null;
 }
 
@@ -147,6 +149,27 @@ async function contarBaixando(s: SupabaseClient, ids: string[]): Promise<Contage
     }
   }));
   return contagem;
+}
+
+// O painel do dia: os pacotes das rotas de hoje e quais endereços já têm a porta verificada, pela
+// mesma `posicoes` que o celular pergunta ao carregar.
+export async function resumoDeHoje(rotas: RotaResumo[], agora = Date.now()): Promise<Dia> {
+  const s = cliente();
+  const hoje = rotas.filter(r => r.dia === hojeEmMaceio(agora));
+  const pacotes: PacoteDoDia[] = [];
+  await Promise.all(pedacos(hoje.map(r => r.id), 50).map(async parte => {
+    pacotes.push(...await paginado<PacoteDoDia>((de, ate) => s.from('pacotes')
+      .select('rota_id, chave_lugar, endereco, entregue_em').in('rota_id', parte).order('id').range(de, ate)));
+  }));
+  const chaves = [...new Set(pacotes.map(p => p.chave_lugar).filter((k): k is string => !!k))];
+  const confirmadas = new Set<string>();
+  // a `posicoes` recusa mais de 500 chaves de uma vez
+  await Promise.all(pedacos(chaves, 500).map(async parte => {
+    const {data, error} = await s.rpc('posicoes', {chaves: parte});
+    falhou(error);
+    for (const p of (data || []) as {chave_lugar: string; situacao: string}[]) if (p.situacao === 'confirmado') confirmadas.add(p.chave_lugar);
+  }));
+  return resumirDia(hoje.map(r => ({id: r.id, motorista: r.motorista, arquivo: r.arquivo})), pacotes, confirmadas, agora);
 }
 
 export async function pacotesDaRota(id: string): Promise<PacoteAdmin[]> {
@@ -212,9 +235,10 @@ export interface UsoDoBotao {
 // preenchido é "este botão foi tocado logo depois daquele".
 export async function usoDosBotoes(dias = 30): Promise<{lista: UsoDoBotao[]; diasComDado: number}> {
   const desde = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
-  const {data, error} = await cliente().from('uso_dos_botoes').select('dia, botao, antes, vezes').gte('dia', desde).limit(5000);
-  falhou(error);
-  const linhas = (data || []) as {dia: string; botao: string; antes: string; vezes: number}[];
+  // em partes: o limit(5000) não passava das 1.000 que o servidor devolve, e 30 dias passam disso
+  // no ritmo de outubro (uns 230 por semana)
+  const linhas = await paginado<{dia: string; botao: string; antes: string; vezes: number}>((de, ate) => cliente().from('uso_dos_botoes')
+    .select('dia, botao, antes, vezes').gte('dia', desde).order('dia').order('motorista_id').order('botao').order('antes').range(de, ate));
   const total = new Map<string, number>();
   const pares = new Map<string, Map<string, number>>();
   for (const l of linhas) {

@@ -6,7 +6,8 @@ export const ROTA_B = 'testes/planilhas/rota-b.xlsx';
 export interface NuvemFalsa {
   papel: 'motorista' | 'admin' | null;
   tabelas: Record<string, Record<string, unknown>[]>;
-  rpc: Record<string, unknown[]>;
+  // a resposta fixa, ou calculada do que o app mandou
+  rpc: Record<string, unknown[] | ((corpo: any) => unknown[])>;
   pedidos: {metodo: string; caminho: string; busca: string; corpo: unknown}[];
 }
 
@@ -51,13 +52,21 @@ export async function ligarNuvemFalsa(context: BrowserContext, nuvem: NuvemFalsa
     if (caminho === 'user') return json(sessaoFalsa().user);
     if (caminho === 'token') return json(sessaoFalsa());
     if (caminho === 'logout') return r.fulfill({status: 204, headers: cors});
-    if (caminho.startsWith('rpc/')) return json(nuvem.rpc[caminho.slice(4)] || []);
+    // Como o servidor de verdade: nunca mais que 1.000 linhas por resposta, e calado.
+    const MAXIMO = 1000;
+    if (caminho.startsWith('rpc/')) {
+      const r = nuvem.rpc[caminho.slice(4)];
+      return json((typeof r === 'function' ? r(corpo) : r || []).slice(0, MAXIMO));
+    }
     if (metodo === 'DELETE') return json([{id: 1}]);
     if (metodo !== 'GET') return json([], metodo === 'POST' ? 201 : 200);
     if (caminho === 'perfis' && u.searchParams.get('id') === 'eq.' + EU.id) {
       return r.request().headers()['accept']?.includes('vnd.pgrst.object') ? json(eu) : json([eu]);
     }
-    return json(filtrar(caminho === 'perfis' ? [eu, ...(nuvem.tabelas.perfis || [])] : nuvem.tabelas[caminho] || [], u.searchParams));
+    const linhas = filtrar(caminho === 'perfis' ? [eu, ...(nuvem.tabelas.perfis || [])] : nuvem.tabelas[caminho] || [], u.searchParams);
+    // o .range() do app chega como offset e limit
+    const de = +(u.searchParams.get('offset') || 0);
+    return json(linhas.slice(de, de + Math.min(+(u.searchParams.get('limit') || MAXIMO), MAXIMO)));
   });
 }
 

@@ -3,6 +3,7 @@ import {haversine} from '../logica/geo';
 import {contarConferencia, type ItemEmConferencia, type MotoristaEmConferencia} from '../logica/conferencia';
 import {CHAVES} from '../logica/guarda';
 import {fmtKm} from '../logica/otimizacao';
+import type {Dia, LinhaDoDia} from '../logica/painel';
 import * as A from '../acoes';
 import {origemDaPorta, porQuePrecisaDeVoce, situacaoDoLugar, triar} from '../logica/triagem';
 import {guarda, loja, status, useLoja, type Marca} from '../loja';
@@ -51,6 +52,7 @@ export function TelaAdmin() {
   const [rotas, setRotas] = useState<Adm.RotaResumo[] | null>(null);
   const [lugares, setLugares] = useState<Adm.LugarCorrigido[] | null>(null);
   const [conferencia, setConferencia] = useState<MotoristaEmConferencia[] | {erro: string} | null>(null);
+  const [dia, setDia] = useState<Dia | {erro: string} | null>(null);
   const [erro, setErro] = useState('');
   // A visita anterior, lida uma vez ao abrir: o "novo" continua na tela enquanto ele está aqui,
   // e a hora desta visita só é gravada depois que as marcações chegaram de verdade.
@@ -66,7 +68,11 @@ export function TelaAdmin() {
     const falha = (err: unknown) => setErro((err as Error).message);
     await Promise.all([
       Adm.listarMotoristas().then(setMotoristas, falha),
-      Adm.listarRotas().then(setRotas, falha),
+      // o painel do dia sai das rotas: um erro nele fica nele, e as rotas continuam na tela
+      Adm.listarRotas().then(r => {
+        setRotas(r);
+        return Adm.resumoDeHoje(r).then(setDia, err => setDia({erro: (err as Error).message}));
+      }, falha),
       Adm.listarCorrecoes().then(l => {
         setLugares(l);
         guarda.gravar(CHAVES.adminVisto, Date.now());
@@ -85,38 +91,104 @@ export function TelaAdmin() {
     loja.mudou(false);
   }, [lugares, nConferir]);
 
-  if (nuvem.perfil?.papel !== 'admin') return <div className="info">Só quem administra vê esta tela.</div>;
+  if (nuvem.perfil?.papel !== 'admin') return <div className="corpo"><div className="info">Só quem administra vê esta tela.</div></div>;
   const corDe = (id: string) => CORES_MOTORISTA[Math.max(0, (motoristas || []).findIndex(m => m.id === id)) % CORES_MOTORISTA.length];
   const t = lugares ? triar(lugares, Date.now(), visto) : null;
   const doLugar = {corDe, recarregar: carregar, novo: t ? t.novo : () => false};
 
-  // O que os motoristas mexeram vem primeiro: ficava no fim da página, depois de 14 dias de
-  // rotas, e o que esperava decisão dele tinha de ser procurado. O que é de vez em quando
-  // (motoristas, base de ruas, medição dos botões) fica fechado, a um toque.
-  return <>
+  // Painel (dono, 19/10): os números do dia no alto; embaixo, o que espera decisão ao lado das rotas
+  // de hoje, em duas colunas no computador e uma embaixo da outra no celular. O que os motoristas
+  // mexeram vem antes de 14 dias de rotas; o que é de vez em quando (motoristas, base de ruas,
+  // medição dos botões) fica fechado, a um toque.
+  const esperando = t ? t.decidir.length + nConferir : null;
+  return <div className="corpo">
     <h2>Administração</h2>
     <div className="linha" style={{marginTop: 0}}><button className="btn" onClick={carregar} disabled={lendo}>{lendo ? 'Buscando…' : '↻ Atualizar'}</button></div>
     {erro && <div className="aviso">Não consegui carregar: {erro}</div>}
     {(!motoristas || !rotas || !lugares) && !erro && <div className="info">Carregando…</div>}
-    {t && <div className={t.decidir.length + nConferir ? 'aviso laranja' : 'info'} data-resumo>
-      {t.decidir.length + nConferir ? <b>{t.decidir.length + nConferir} esperando você.</b> : 'Nada esperando você.'}
-      {visto != null && (t.novas
-        ? ` 🆕 ${t.novas} marcação(ões) nova(s) desde ${dataHora(new Date(visto).toISOString())}.`
-        : ` Nada novo desde ${dataHora(new Date(visto).toISOString())}.`)}
-    </div>}
-    {t && <Lugares titulo={`📌 Precisa de você (${t.decidir.length})`} lista={t.decidir} aberta decidir {...doLugar}
-      vazio="Nenhuma marcação esperando decisão." />}
-    {conferencia && <EmConferencia estado={conferencia} corDe={corDe} recarregar={carregar} />}
-    {t && <Lugares titulo={`🆕 Marcadas pelos motoristas nos últimos 7 dias (${t.recentes.length})`} lista={t.recentes} aberta {...doLugar}
-      vazio="Nenhuma porta marcada nos últimos 7 dias." />}
-    {/* depois do que espera decisão: a busca é de quando ele já sabe o que quer arrumar */}
-    <ProcurarLugar />
+    <NumerosDoDia dia={dia} esperando={esperando} />
+    <div className="painel-colunas">
+      <div>
+        {t && <div className={esperando ? 'aviso laranja' : 'info'} data-resumo>
+          {esperando ? <b>{esperando} esperando você.</b> : 'Nada esperando você.'}
+          {visto != null && (t.novas
+            ? ` 🆕 ${t.novas} marcação(ões) nova(s) desde ${dataHora(new Date(visto).toISOString())}.`
+            : ` Nada novo desde ${dataHora(new Date(visto).toISOString())}.`)}
+        </div>}
+        {t && <Lugares titulo={`📌 Precisa de você (${t.decidir.length})`} lista={t.decidir} aberta decidir {...doLugar}
+          vazio="Nenhuma marcação esperando decisão." />}
+        {conferencia && <EmConferencia estado={conferencia} corDe={corDe} recarregar={carregar} />}
+        {t && <Lugares titulo={`🆕 Marcadas pelos motoristas nos últimos 7 dias (${t.recentes.length})`} lista={t.recentes} aberta {...doLugar}
+          vazio="Nenhuma porta marcada nos últimos 7 dias." />}
+      </div>
+      <div>
+        <RotasDeHoje dia={dia} />
+        {/* depois do que espera decisão: a busca é de quando ele já sabe o que quer arrumar */}
+        <ProcurarLugar />
+      </div>
+    </div>
     {rotas && <Rotas lista={rotas} />}
     {t && t.outras.length > 0 && <Lugares titulo={`Marcações mais antigas (${t.outras.length})`} lista={t.outras} {...doLugar} vazio="" />}
     {motoristas && <Motoristas lista={motoristas} recarregar={carregar} />}
     <BaseDeRuas />
     <UsoDosBotoes />
+  </div>;
+}
+
+const de = (a: number, b: number) => <>{a}<small> de {b}</small></>;
+
+function NumerosDoDia({dia, esperando}: {dia: Dia | {erro: string} | null; esperando: number | null}) {
+  const d = dia && !('erro' in dia) ? dia : null;
+  return <>
+    {dia && 'erro' in dia && <div className="aviso">Não consegui montar o painel do dia: {dia.erro}</div>}
+    <div className="kpis" data-painel>
+      <div className="kpi" data-kpi="rotas">
+        <div className="kpi-num">{d ? d.linhas.length : '…'}</div>
+        <div className="kpi-nome">Rotas hoje</div>
+        <div className="kpi-sub">{d ? `${d.naRua} motorista(s) na rua agora` : ''}</div>
+      </div>
+      <div className="kpi" data-kpi="entregues">
+        <div className="kpi-num">{d ? de(d.entregues, d.pacotes) : '…'}</div>
+        <div className="kpi-nome">Entregues hoje</div>
+        {d && d.pacotes > 0 && <div className="barra"><i style={{width: `${Math.round(100 * d.entregues / d.pacotes)}%`}} /></div>}
+      </div>
+      <div className="kpi" data-kpi="verificados">
+        <div className="kpi-num">{d ? de(d.verificados, d.enderecos) : '…'}</div>
+        <div className="kpi-nome">Endereços verificados</div>
+        <div className="kpi-sub">nas rotas de hoje</div>
+      </div>
+      <div className={`kpi${esperando ? ' atencao' : ''}`} data-kpi="esperando">
+        <div className="kpi-num">{esperando ?? '…'}</div>
+        <div className="kpi-nome">Esperando você</div>
+        <div className="kpi-sub">em Precisa de você e Em conferência</div>
+      </div>
+    </div>
   </>;
+}
+
+const SITUACAO: Record<LinhaDoDia['situacao'], string> = {'terminou': 'var(--ok)', 'na rua': 'var(--pri)', 'parada': 'var(--laranja)', 'não começou': '#6b7280'};
+// a hora exata está na coluna Última: a etiqueta cabe estreita
+const duracao = (min: number) => min < 60 ? `${min} min` : `${Math.floor(min / 60)}h`;
+const textoDaSituacao = (l: LinhaDoDia) => l.situacao === 'parada' ? `Parada há ${duracao(l.parada)}`
+  : l.situacao === 'na rua' ? 'Na rua' : l.situacao === 'terminou' ? 'Terminou' : 'Não começou';
+
+function RotasDeHoje({dia}: {dia: Dia | {erro: string} | null}) {
+  return <section className="cartao-painel" data-secao="Rotas de hoje">
+    <h3>Rotas de hoje</h3>
+    {!dia && <div className="info">Carregando…</div>}
+    {dia && 'erro' in dia && <div className="info">Sem o painel do dia; as rotas estão mais abaixo.</div>}
+    {dia && !('erro' in dia) && !dia.linhas.length && <div className="info">Nenhuma rota enviada hoje.</div>}
+    {dia && !('erro' in dia) && dia.linhas.length > 0 && <div className="tabela-rolar"><table className="tabela-dia">
+      <thead><tr><th>Motorista</th><th>Entregues</th><th>Verificados</th><th>Última</th><th>Situação</th></tr></thead>
+      <tbody>{dia.linhas.map(l => <tr key={l.id} data-rota-hoje={l.id}>
+        <td><b>{l.motorista}</b><div className="achado">{l.arquivo || 'sem arquivo'}</div></td>
+        <td>{l.entregues}/{l.pacotes}{l.pacotes > 0 && <div className="barra"><i style={{width: `${Math.round(100 * l.entregues / l.pacotes)}%`}} /></div>}</td>
+        <td>{l.verificados}/{l.enderecos}</td>
+        <td>{l.ultima ? hora(l.ultima) : '—'}</td>
+        <td><span className="tag" style={{background: SITUACAO[l.situacao]}} data-situacao={l.situacao}>{textoDaSituacao(l)}</span></td>
+      </tr>)}</tbody>
+    </table></div>}
+  </section>;
 }
 
 // O motorista novo em conferência (022): o que ele marcou ou entregou e mudaria a porta para os
