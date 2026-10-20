@@ -430,14 +430,17 @@ isso, "Ler a gravação da tela" e o Compartilhar ainda aceitam planilha.
 **Teste instável do nome da rua no mapa, resolvido em 20/10:** `mapa.spec.ts`, "de perto, o nome
 da planilha vai em cima da rua…", falhava de vez em quando (1 ou 2 em 40, com 8 testes ao mesmo
 tempo), ora na posição do nome (206 px, ou um nome que tinha acabado de ser trocado), ora com o
-nome "longe das entregas" aparecendo. A causa é do Leaflet: no zoom animado ele já diz o centro e o
-zoom novos, mas só termina quando a transição acaba (250 ms). Mandado para longe no mesmo zoom antes
-disso, ele vai, e no fim da transição volta sozinho para onde o zoom ia, redesenhando os nomes. O
-`verNoMapa` conferia o centro e seguia, e o mapa voltava depois. Agora ele espera o zoom acabar
+nome "longe das entregas" aparecendo. A causa é a interação entre o movimento que o teste manda
+fazer e o zoom animado do Leaflet, não um defeito comprovado da biblioteca: no zoom animado ele já
+diz o centro e o zoom novos, mas só termina quando a transição acaba (250 ms); mandado para longe no
+mesmo zoom antes disso, ele vai, e no fim da transição volta para onde o zoom ia, redesenhando os
+nomes. O `verNoMapa` conferia o centro e seguia, e o mapa voltava depois. Agora ele espera o zoom acabar
 antes e depois de mover (a classe `leaflet-zoom-anim`), sem mexer no app. Teste novo: "o verNoMapa no
 meio de um zoom animado deixa o mapa onde pediu"; sem a espera, falha (o mapa volta 0,039°). Depois:
-80 de 80 sob a mesma carga, bateria inteira 196. No app vale o mesmo para um pulo sem animação logo
-depois de um zoom animado: o mapa voltaria. Ninguém relatou isso na rua; fica só anotado.
+80 de 80 sob a mesma carga, bateria inteira 196 e os tipos, tudo rodado aqui: o envio vai marcado
+para não publicar, e o GitHub não roda os testes nele. No app, é um risco possível e não reproduzido
+no uso real: um pulo sem animação logo depois de um zoom animado poderia fazer o mapa voltar.
+Ninguém relatou isso na rua, e não há autorização para espera ou contorno no código do app.
 
 - **Feito, publicado em 19/10 (`918fa00`):** botão "Fotografar" na entrada de arquivos. Abre a câmera
   de trás (`capture="environment"`, só imagem, uma por vez) e manda a foto para o mesmo
