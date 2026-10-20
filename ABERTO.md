@@ -152,6 +152,99 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Revisão de arquitetura e produto (20/10, pedido do dono): para conversar, nada decidido
+
+Lido o app inteiro, o banco e as ferramentas. Nada mudou no código. Os achados, por prioridade:
+
+- **Serviços públicos sem garantia:** o mapa vem de `tile.openstreetmap.org`, a rota do servidor de
+  demonstração do OSRM e a busca do Nominatim. A rota com mais de 100 pontos sai em linha reta
+  inteira (`servicos/ruas.ts`).
+- **Regras de acesso chamam `eh_admin()`, `eh_ativo()` e `auth.uid()` sem `(select …)`** nas 23
+  políticas: o Postgres pode avaliar por linha. É a hipótese mais forte para o Admin lento; falta o
+  `EXPLAIN ANALYZE`, só lendo.
+- **A identidade da porta (`chaveLugar`)** tem duas formas (CEP e número, ou rua, número, bairro e
+  cidade), depende do bairro que a busca respondeu, e o par CEP e número pode colidir entre ruas.
+  Não medido. Proposta: apelidos da mesma porta.
+- **Fila offline com perdas caladas:** recusa do servidor descarta; o corte de 3.000; a rota sem
+  `at_id` reenviada nasce duplicada (o id é sorteado a cada tentativa). Entra na auditoria de entregar.
+- **A posição é uma máquina de estados implícita:** 16 valores de `Precisao`, regras que mexem na
+  parada em sequência, em três entradas (planilha, abrir o app, busca). Proposta: um resolvedor só.
+- **Compatibilidade com estado antigo** (`voltarDoBairro`, para rotas lidas antes de 09/10): com o
+  reset diário, provavelmente morta. Medir e tirar.
+- **`texto.ts` com 1.079 linhas** misturando chave, leitura de print, Meli e comanda; a chave
+  continua em dois lugares (`texto.ts` e `chave-rua.mjs`).
+- **Um aviso só na tela** (84 chamadas de `status`): a origem de vários "um aviso apaga o outro".
+- **Trabalho pesado na tela:** a otimização pode levar até 3 s por área no fio principal.
+- **"Sair" desconecta todos os aparelhos** (`signOut` global); `criar_motorista` escreve direto nas
+  tabelas internas do login do Supabase.
+- **Sem registro de erro do celular**; endereço de cliente guardado sem prazo; `test:nuvem` escreve
+  em produção; este arquivo virou diário (1.900 linhas); o dono é o único que roda migração, cria
+  conta e confere motorista novo.
+
+## Regras de acesso (024): rodada e medida na produção em 20/10; a busca de rua pede índice
+
+Primeiro passo do plano da revisão de arquitetura, aprovado pela revisão como preparação: nada
+rodado na produção.
+
+- **O que muda:** `supabase/024_regras_avaliadas_uma_vez.sql` põe `eh_admin()`, `eh_ativo()` e
+  `auth.uid()` dentro de `(select …)` nas 23 regras, com `alter policy`: mesmos nomes, comandos,
+  papéis e a mesma conta. O fim do arquivo traz, comentada, cada regra como era, para voltar.
+  Entrou também no fim do `000_rodar_tudo.sql` e do `banco-inteiro.sql`.
+- **Nenhuma regra muda, conferido num Postgres 17 local** com o `banco-inteiro.sql`: o retrato do que
+  admin, dois motoristas e um desativado veem em 9 tabelas e de 19 tentativas de gravar, apagar e
+  mudar, cada um (112 linhas), saiu igual antes e depois, até na soma de verificação das linhas.
+  Três sabotagens (o desativado vendo as marcações dele, o admin criando pacote na rota dos outros,
+  o motorista vendo todos os perfis) mudam o retrato. O `banco-inteiro.sql` novo, de um banco vazio,
+  e o `000_rodar_tudo.sql` sobre o de antes rodam sem erro e deixam 0 regras com função solta.
+- **Sinal local, com dados inventados no tamanho da produção** (500 rotas, 30 mil pacotes, 4 mil
+  marcações, 15 mil trechos de rua), três rodadas antes e três depois, como o admin: contagem das
+  rotas de 14 dias de 108 a 144 ms para 16 a 17 ms; pacotes do dia de 7 a 11 para 2 a 3; marcações
+  da semana de 12 a 14 para 2; busca de rua, a do celular de todo motorista, de 8 a 10 para 0,5. O
+  plano mostra o filtro `eh_admin() OR (eh_ativo() AND …)` em cada uma das 8.040 linhas de pacote.
+  Não é o número da produção: lá entram rede, o servidor do plano grátis e o PostgREST.
+- **Medição de antes, na produção (20/10, rodada pelo dono no SQL Editor, como o admin):**
+  PostgreSQL 17.6; rotas 134, pacotes 12.660, correcoes 3.096, observacoes 3.148, ruas 23.982,
+  perfis 11; regras com função solta: 23.
+
+  | consulta | tempo | o que conferiu |
+  |---|---|---|
+  | contagem das rotas de 14 dias (a chamada do Admin) | 177 ms | 76 rotas |
+  | a mesma, por dentro | 109 ms | 6.995 pacotes, `eh_admin()` em cada |
+  | rotas de 14 dias com o motorista | 2 ms | 76 |
+  | pacotes do painel do dia | 1,5 ms | 62 |
+  | marcações da semana | 43 ms | 950 |
+  | busca de rua por parte do nome | 814 ms | 23.982 trechos para achar 72, `eh_ativo()` antes do nome em cada |
+
+  - Confirma a hipótese: o plano mostra a função avaliada linha a linha. Na base de ruas a regra
+    vem antes do filtro do nome (a regra de acesso sempre roda primeiro), e é a busca do celular de
+    todo motorista: `servicos/base.ts` faz a busca por parte do nome quando a rua não sai pelo nome
+    exato, e mais duas (bairro e conjunto, por expressão regular) por endereço com bairro ou
+    condomínio. É ali que deve estar o ganho maior, não no Admin.
+  - O Admin: os 177 ms são uma parte pequena dos 2,1 s que a contagem levava medida pelo app em
+    19/10; o resto é rede e ida e volta. A 024 deve ajudar pouco ali.
+- **Rodada pelo dono em 20/10, e medida de novo logo depois, com a mesma consulta:** regras com
+  função solta 0.
+
+  | consulta | antes | depois |
+  |---|---|---|
+  | contagem das rotas de 14 dias (a chamada do Admin) | 177 ms | 77 ms |
+  | a mesma, por dentro | 109 ms | 15 ms |
+  | marcações da semana | 43 ms | 3,6 ms |
+  | rotas de 14 dias com o motorista | 2,0 ms | 1,6 ms |
+  | pacotes do painel do dia | 1,5 ms | 0,8 ms |
+  | busca de rua por parte do nome | 814 ms | 566 ms |
+
+  - O critério foi cumprido: 23 para 0, e a contagem e a busca caíram de forma medida.
+  - A busca de rua caiu menos que o esperado. A regra agora é calculada uma vez (de 25.705 para
+    1.724 acessos à memória do banco), mas a consulta continua lendo os 23.982 trechos com
+    `ilike '%palavra%'`, e é esse filtro que custa os 566 ms. Não é mais a regra de acesso: é a
+    falta de um índice para busca por parte do nome (trigramas, `pg_trgm`). Próximo, a decidir: medir
+    com o mesmo arquivo as outras duas buscas da base de ruas (bairro e conjunto, por expressão
+    regular, em `servicos/base.ts`), escrever a 025 com o índice, conferir local, e medir antes e
+    depois do mesmo jeito.
+  - No Admin, o banco já não é o gargalo: as consultas dele somam menos de 100 ms. A demora que o
+    app media (a contagem em 2,1 s em 19/10) está na rede e nas idas e voltas, e é outra frente.
+
 ## Admin como painel (19/10, pedido do dono): partes 1 e 2 publicadas em 19/10, falta o menu lateral
 
 - **Parte 2, feita:**
