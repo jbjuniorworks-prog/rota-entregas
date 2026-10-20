@@ -116,3 +116,12 @@ describe('rota para conferir', () => {
     expect([d.paraConferir.length, d.semLocal.length, d.pontos.length]).toEqual([0, 0, 1]);
   });
 });
+
+describe('parada sem local', () => {
+  it('a que a nuvem já sabe onde fica não entra: o motorista marcou depois de montar a rota', () => {
+    const rotas = [{id: 'a', motorista: 'Teste', arquivo: null}];
+    const p = (chave_lugar: string) => ({rota_id: 'a', chave_lugar, endereco: 'Rua Teste, ' + chave_lugar, entregue_em: null, lat: null, lng: null});
+    const d = resumirDia(rotas, [p('49000100|1'), p('49000100|2')], new Set(), {agora: AGORA, comPosicao: new Set(['49000100|1'])});
+    expect(d.semLocal.map(s => s.chave)).toEqual(['49000100|2']);
+  });
+});

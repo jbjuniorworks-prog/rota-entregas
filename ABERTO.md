@@ -180,14 +180,25 @@ Fora da lista:
     todas no mapa"), com a lista dele de 20 em 20. Eram 342 cartões numa semana;
   - o Admin lia só as 500 marcações mais novas, uns 3 dias em outubro: agora lê a semana inteira
     em partes, mais as 500 mais novas para as antigas.
-- **Limitação antiga, não mexida:** o endereço de cada marcação no Admin vem de uma consulta de
-  pacotes que para em 1.000 linhas por pedaço de 100 chaves; com muitas rotas por endereço, um
-  cartão pode mostrar a chave no lugar do nome.
+- **Revisão completa (dono, 19/10), consertado e publicado:**
+  - **cartão com a chave no lugar do nome:** medido na semana, 47 de 693 endereços ficavam sem nome,
+    quase todos de rota lida de vídeo ou print, que não sobe pacote; 45 têm o nome na passagem.
+    Agora busca na passagem, depois nos pacotes em pedaços menores, um por um se forem até 30, e por
+    fim mostra a chave escrita como endereço ("CEP 49000-100, nº 4");
+  - o "Atualizar" não refazia o mapa do dia;
+  - parada sem local que o motorista já marcou no celular aparecia: o pacote guarda o pino de
+    quando a rota foi montada. Agora sai da lista se a nuvem já tem posição para ela;
+  - os "novos" de um motorista contavam a marcação de outro no mesmo endereço;
+  - o mapa do dia usa a cor do motorista, a mesma do resto do Admin, e não muda a cada recarga;
+  - a ordem das marcações misturadas passou a comparar datas, não texto.
+- **Fica como está:** o selo do botão Mais conta só as decisões; o cartão "Esperando você" soma
+  também as paradas sem local e as rotas para conferir. O Admin abre com umas 30 a 35 consultas
+  (eram umas 15), quase todas em paralelo.
 - **Visto nos dados reais de hoje:** a planilha do Pedro aberta na conta do dono tem 3 entregues
   (o "Sem N", às 17:24, antes do conserto, sem nada gravado) e aparece como rota parada. Cuidado:
   com o conserto no ar, "Entreguei aqui" de teste na conta do admin grava porta de admin.
-- **Testado:** unidade e e2e; onze sabotagens, cada uma quebra um teste. Bateria inteira: 182 e2e
-  e 468 de unidade.
+- **Testado:** unidade e e2e; dezessete sabotagens, cada uma quebra um teste. Bateria inteira: 184
+  e2e e 469 de unidade, mais o `@ui` e o `@leitor`.
 
 - **O pedido:** uma tela só para ver e arrumar todo tipo de problema, como um painel de frota. O
   dono usa o Admin mais no computador, e no celular só na rua.

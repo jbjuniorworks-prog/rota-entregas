@@ -1,5 +1,5 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
-import {lugaresDaBusca, peneiraDaNuvem, peneiraDeChave, type LugarDaBusca} from '../logica/busca';
+import {lugaresDaBusca, peneiraDaNuvem, peneiraDeChave, textoDaChave, type LugarDaBusca} from '../logica/busca';
 import {agruparConferencia, marcadasDoMesmoPonto, type MarcaEmConferencia, type MotoristaEmConferencia, type PontoPendente} from '../logica/conferencia';
 import {hojeEmMaceio, resumirDia, type Dia, type MarcaDoAdmin, type PacoteDoDia} from '../logica/painel';
 import type {PortaDaNuvem} from '../logica/triagem';
@@ -165,12 +165,15 @@ export async function resumoDeHoje(rotas: RotaResumo[], motoristas: string[], ag
       .select('rota_id, chave_lugar, endereco, bairro, lat, lng, entregue_em').in('rota_id', parte).order('id').range(de, ate)));
   }));
   const chaves = [...new Set(pacotes.map(p => p.chave_lugar).filter((k): k is string => !!k))];
-  const confirmadas = new Set<string>();
+  const confirmadas = new Set<string>(), comPosicao = new Set<string>();
   // a `posicoes` recusa mais de 500 chaves de uma vez
   await Promise.all(pedacos(chaves, 500).map(async parte => {
     const {data, error} = await s.rpc('posicoes', {chaves: parte});
     falhou(error);
-    for (const p of (data || []) as {chave_lugar: string; situacao: string}[]) if (p.situacao === 'confirmado') confirmadas.add(p.chave_lugar);
+    for (const p of (data || []) as {chave_lugar: string; situacao: string}[]) {
+      comPosicao.add(p.chave_lugar);
+      if (p.situacao === 'confirmado') confirmadas.add(p.chave_lugar);
+    }
   }));
   // as marcações de quem administra nos endereços das rotas da conta dele: sem uma, a rota é teste
   const doAdmin = hoje.filter(r => r.doAdmin);
@@ -183,7 +186,7 @@ export async function resumoDeHoje(rotas: RotaResumo[], motoristas: string[], ag
       .in('chave_lugar', parte).in('motorista_id', donos).gte('criado_em', desde).order('id').range(de, ate)));
   }));
   return resumirDia(hoje.map(r => ({id: r.id, motorista: r.motorista, motorista_id: r.motorista_id, arquivo: r.arquivo, criado_em: r.criado_em, doAdmin: r.doAdmin})),
-    pacotes, confirmadas, {agora, motoristas, marcasDoAdmin});
+    pacotes, confirmadas, {agora, motoristas, marcasDoAdmin, comPosicao});
 }
 
 // Rota sem entrega, de planilha de outro dia, de outro motorista ou aberta de novo (painel do dia).
@@ -217,7 +220,7 @@ export async function listarCorrecoes(limite = 500): Promise<LugarCorrigido[]> {
   const lugares = new Map<string, LugarCorrigido>();
   // a mais nova primeiro: a primeira de cada motorista é a que vale, e as outras contam "vezes"
   // a do motorista em conferência espera em "Em conferência", com o que mudaria se aprovada
-  for (const c of [...todas.values()].sort((a, b) => b.criado_em.localeCompare(a.criado_em)).filter(c => !c.pendente)) {
+  for (const c of [...todas.values()].sort((a, b) => Date.parse(b.criado_em) - Date.parse(a.criado_em)).filter(c => !c.pendente)) {
     let l = lugares.get(c.chave_lugar);
     if (!l) lugares.set(c.chave_lugar, l = {chave: c.chave_lugar, endereco: '', bairro: '', marcacoes: [], situacao: null, escolhida: null});
     const ja = l.marcacoes.find(m => m.motorista_id === c.motorista_id);
@@ -243,7 +246,35 @@ export async function listarCorrecoes(limite = 500): Promise<LugarCorrigido[]> {
       if (l && !l.endereco) { l.endereco = p.endereco; l.bairro = p.bairro || ''; }
     }
   }));
+  await nomearOsQueFaltam(s, lugares);
   return [...lugares.values()];
+}
+
+// O cartão mostrava a chave no lugar do nome (dono, 19/10: resolver antes de subir). Medido na
+// semana: de 693 endereços, 47 ficavam sem nome, quase todos de rota lida de vídeo ou print, que não
+// sobe pacote, e 45 deles têm o nome na passagem. Além disso, o pedaço de 100 para nas 1.000 linhas,
+// e um endereço com muitas entregas podia encher a resposta. Ordem: a passagem, os pacotes em
+// pedaços menores, um por um se forem poucos, e por fim a própria chave escrita como endereço.
+const UM_POR_UM = 30;
+async function nomearOsQueFaltam(s: SupabaseClient, lugares: Map<string, LugarCorrigido>) {
+  const faltam = () => [...lugares.values()].filter(l => !l.endereco).map(l => l.chave);
+  const passadas: [string, number][] = [['observacoes', 100], ['pacotes', 10], ['pacotes', 1]];
+  for (const [tabela, tamanho] of passadas) {
+    const quais = faltam();
+    if (!quais.length) return;
+    if (tamanho === 1 && quais.length > UM_POR_UM) break;
+    await Promise.all(pedacos(quais, tamanho).map(async parte => {
+      const consulta = s.from(tabela).select(tabela === 'pacotes' ? 'chave_lugar, endereco, bairro' : 'chave_lugar, endereco')
+        .in('chave_lugar', parte).not('endereco', 'is', null).order('criado_em', {ascending: false}).limit(1000);
+      const {data, error} = await consulta;
+      falhou(error);
+      for (const p of (data || []) as any[]) {
+        const l = lugares.get(p.chave_lugar);
+        if (l && !l.endereco && p.endereco) { l.endereco = p.endereco; l.bairro = p.bairro || ''; }
+      }
+    }));
+  }
+  for (const k of faltam()) Object.assign(lugares.get(k)!, textoDaChave(k));
 }
 
 export interface Cobertura {

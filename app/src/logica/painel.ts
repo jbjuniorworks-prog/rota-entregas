@@ -28,6 +28,8 @@ export interface OpcoesDoDia {
   agora?: number;
   motoristas?: string[];
   marcasDoAdmin?: MarcaDoAdmin[];
+  // chaves que a nuvem já sabe onde ficam, verificadas ou não: o celular do motorista as recebe
+  comPosicao?: ReadonlySet<string>;
 }
 
 export interface PacoteDoDia {
@@ -117,7 +119,7 @@ const nomeDaPlanilha = (arquivo: string) => semAcento(arquivo).replace(/\(\d+\)/
 // aqui), de resto é somente eu testando". A rota da conta de quem administra só entra com uma
 // marcação dele num endereço dela, feita depois de ela ser aberta; sem isso some do painel inteiro.
 export function resumirDia(rotas: RotaDoDia[], pacotes: PacoteDoDia[], confirmadas: ReadonlySet<string>, opcoes: OpcoesDoDia = {}): Dia {
-  const {agora = Date.now(), motoristas = [], marcasDoAdmin = []} = opcoes;
+  const {agora = Date.now(), motoristas = [], marcasDoAdmin = [], comPosicao = new Set<string>()} = opcoes;
   const marcou = (r: RotaDoDia) => {
     const chaves = new Set(pacotes.filter(p => p.rota_id === r.id).map(p => p.chave_lugar));
     return marcasDoAdmin.some(m => m.motorista_id === r.motorista_id && chaves.has(m.chave_lugar) && m.criado_em >= (r.criado_em || ''));
@@ -149,6 +151,8 @@ export function resumirDia(rotas: RotaDoDia[], pacotes: PacoteDoDia[], confirmad
   const semLocal = new Map<string, SemLocal>();
   for (const p of pacotes) {
     if (!valem.has(p.rota_id) || p.entregue_em || p.lat != null) continue;
+    // o pacote guarda o pino de quando a rota foi montada: marcada depois no celular, a nuvem já sabe
+    if (p.chave_lugar && comPosicao.has(p.chave_lugar)) continue;
     const k = p.rota_id + '|' + (p.chave_lugar ?? p.endereco);
     const s = semLocal.get(k);
     if (s) s.pacotes++;

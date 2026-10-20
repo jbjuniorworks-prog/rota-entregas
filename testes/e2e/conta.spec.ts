@@ -257,6 +257,10 @@ test.describe('administrador', () => {
       await expect(page.locator('[data-rota-hoje]')).toHaveCount(1);
       // e o mapa do dia abre só com ela, um pino por endereço
       await expect(page.locator('.mapwrap .pino')).toHaveCount(2);
+      // o Atualizar refaz o dia no mapa
+      nuvem.tabelas.pacotes.push(pacote('boa', '49000100|5', 'Rua Teste, 5'));
+      await page.getByRole('button', {name: '↻ Atualizar'}).click();
+      await expect(page.locator('.mapwrap .pino')).toHaveCount(3);
 
       page.on('dialog', d => d.accept());
       await secao.locator('[data-para-conferir="dele"]').getByRole('button', {name: 'Apagar rota'}).click();
@@ -320,6 +324,47 @@ test.describe('administrador', () => {
     await expect(doPedro.locator('[data-lugar]')).toHaveCount(20);
     await doPedro.getByRole('button', {name: 'Mostrar mais 20 de 1030'}).click();
     await expect(doPedro.locator('[data-lugar]')).toHaveCount(40);
+  });
+
+  // Dono, 19/10: o cartão mostrava a chave no lugar do nome. O pedaço de 100 endereços para nas
+  // 1.000 linhas, e um endereço com muitas entregas enchia a resposta. Inventados.
+  test('cada marcação tem o nome do endereço, mesmo ao lado de um com mil entregas, e o da rota de vídeo', async ({page, nuvem}) => {
+    const antes = (min: number) => new Date(Date.now() - min * 60000).toISOString();
+    const marca = (chave_lugar: string) => ({id: chave_lugar, chave_lugar, lat: -10.9, lng: -37.0, criado_em: antes(60), motorista_id: 'm1', perfis: {nome: 'Pedro', papel: 'motorista'}});
+    nuvem.tabelas = {
+      correcoes: [marca('49000100|1'), marca('49000100|2'), marca('49000100|3'), marca('49000100|4')],
+      pacotes: [
+        ...Array.from({length: 1000}, () => ({chave_lugar: '49000100|1', endereco: 'Rua Muito Entregue, 1', bairro: 'Bairro Teste'})),
+        {chave_lugar: '49000100|2', endereco: 'Rua Pouco Entregue, 2', bairro: 'Bairro Teste'},
+      ],
+      // rota lida de vídeo não sobe pacote: o nome fica na passagem
+      observacoes: [{chave_lugar: '49000100|3', endereco: 'Rua Do Video, 3'}],
+    };
+    await abrir(page);
+    await menu(page, /^Admin/);
+    const doPedro = page.locator('[data-marcadas-de="Pedro"]');
+    await doPedro.locator('summary', {hasText: 'Ver a lista (4)'}).click();
+    await expect(doPedro.locator('[data-lugar="49000100|1"] .orig')).toHaveText('Rua Muito Entregue, 1');
+    await expect(doPedro.locator('[data-lugar="49000100|2"] .orig')).toHaveText('Rua Pouco Entregue, 2');
+    await expect(doPedro.locator('[data-lugar="49000100|3"] .orig')).toHaveText('Rua Do Video, 3');
+    // sem nome em lugar nenhum: a chave escrita como endereço, não crua
+    await expect(doPedro.locator('[data-lugar="49000100|4"] .orig')).toHaveText('CEP 49000-100, nº 4');
+  });
+
+  // Revisão de 19/10: o novo de um motorista não é o do outro no mesmo endereço.
+  test('os novos de cada motorista são os que ele marcou depois da última visita', async ({page, context, nuvem}) => {
+    const antes = (min: number) => new Date(Date.now() - min * 60000).toISOString();
+    const marca = (chave_lugar: string, motorista_id: string, nome: string, min: number) =>
+      ({id: chave_lugar + motorista_id, chave_lugar, lat: -10.9, lng: -37.0, criado_em: antes(min), motorista_id, perfis: {nome, papel: 'motorista'}});
+    nuvem.tabelas = {correcoes: [marca('49000100|1', 'm1', 'Pedro', 2 * 1440), marca('49000100|1', 'm2', 'Luan', 60), marca('49000100|2', 'm1', 'Pedro', 3 * 1440)]};
+    // a visita anterior foi há 12 horas
+    await context.addInitScript(t => { if (!localStorage.getItem('rota-entregas-admin-visto')) localStorage.setItem('rota-entregas-admin-visto', t); }, String(Date.now() - 12 * 3600e3));
+    await abrir(page);
+    await menu(page, /^Admin/);
+    // a linha de cada um; o cartão do endereço, lá dentro, continua com o selo de novo
+    const linha = (nome: string) => page.locator(`[data-marcadas-de="${nome}"] > div`).first();
+    await expect(linha('Luan')).toHaveText('Luan · 1 endereço(s) · 1 novo(s)');
+    await expect(linha('Pedro')).toHaveText('Pedro · 2 endereço(s)');
   });
 
   // O servidor devolve 1.000 linhas e cala: 30 dias de uso dos botões passam disso no ritmo de

@@ -12,6 +12,8 @@ import * as Adm from '../servicos/admin';
 import {nuvem} from '../servicos/nuvem';
 
 const CORES_MOTORISTA = ['#1d4ed8', '#db2777', '#ea580c', '#0d9488', '#7c3aed', '#65a30d'];
+// a mesma cor para o mesmo motorista em todo o Admin: na lista, nas marcadas e no mapa do dia
+const coresDe = (lista: Adm.Motorista[] | null) => (id: string) => CORES_MOTORISTA[Math.max(0, (lista || []).findIndex(m => m.id === id)) % CORES_MOTORISTA.length];
 const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
 const diaExtenso = (dia: string) => new Date(dia + 'T12:00:00').toLocaleDateString('pt-BR', {weekday: 'short', day: '2-digit', month: '2-digit'});
@@ -74,11 +76,11 @@ export function TelaAdmin() {
       // nomes dos motoristas dizem de quem é a planilha.
       Adm.listarRotas().then(async r => {
         setRotas(r);
-        const nomes = (await pMotoristas.catch(() => [] as Adm.Motorista[])).filter(m => m.papel === 'motorista').map(m => m.nome);
-        const d = await Adm.resumoDeHoje(r, nomes).catch(err => ({erro: (err as Error).message}));
+        const ms = await pMotoristas.catch(() => [] as Adm.Motorista[]);
+        const d = await Adm.resumoDeHoje(r, ms.filter(m => m.papel === 'motorista').map(m => m.nome)).catch(err => ({erro: (err as Error).message}));
         setDia(d);
-        // o mapa do Admin abre no dia, enquanto ele não pediu outra coisa
-        if (!('erro' in d) && !loja.ui.marcas) verDiaNoMapa(d);
+        // o mapa do Admin abre no dia, e o Atualizar refaz o dia, enquanto ele não pediu outra coisa
+        if (!('erro' in d) && (!loja.ui.marcas || loja.ui.marcas.vez === vezDoDia)) verDiaNoMapa(d, coresDe(ms));
       }, falha),
       Adm.listarCorrecoes().then(l => {
         setLugares(l);
@@ -99,7 +101,7 @@ export function TelaAdmin() {
   }, [lugares, nConferir]);
 
   if (nuvem.perfil?.papel !== 'admin') return <div className="corpo"><div className="info">Só quem administra vê esta tela.</div></div>;
-  const corDe = (id: string) => CORES_MOTORISTA[Math.max(0, (motoristas || []).findIndex(m => m.id === id)) % CORES_MOTORISTA.length];
+  const corDe = coresDe(motoristas);
   const t = lugares ? triar(lugares, Date.now(), visto) : null;
   const doLugar = {corDe, recarregar: carregar, novo: t ? t.novo : () => false};
 
@@ -130,10 +132,10 @@ export function TelaAdmin() {
         {conferencia && <EmConferencia estado={conferencia} corDe={corDe} recarregar={carregar} />}
         {doDia && <ParadasSemLocal lista={doDia.semLocal} recarregar={carregar} />}
         {doDia && <RotasParaConferir lista={doDia.paraConferir} recarregar={carregar} />}
-        {t && <MarcadasPorMotorista lista={t.recentes} {...doLugar} />}
+        {t && <MarcadasPorMotorista lista={t.recentes} visto={visto} {...doLugar} />}
       </div>
       <div>
-        <RotasDeHoje dia={dia} />
+        <RotasDeHoje dia={dia} corDe={corDe} />
         {/* depois do que espera decisão: a busca é de quando ele já sabe o que quer arrumar */}
         <ProcurarLugar />
       </div>
@@ -183,10 +185,10 @@ const duracao = (min: number) => min < 60 ? `${min} min` : `${Math.floor(min / 6
 const textoDaSituacao = (l: LinhaDoDia) => l.situacao === 'parada' ? `Parada há ${duracao(l.parada)}`
   : l.situacao === 'na rua' ? 'Na rua' : l.situacao === 'terminou' ? 'Terminou' : 'Não começou';
 
-function RotasDeHoje({dia}: {dia: Dia | {erro: string} | null}) {
+function RotasDeHoje({dia, corDe}: {dia: Dia | {erro: string} | null; corDe: (id: string) => string}) {
   return <section className="cartao-painel" data-secao="Rotas de hoje">
     <div className="cab-cartao"><h3>Rotas de hoje</h3>
-      {dia && !('erro' in dia) && dia.pontos.length > 0 && <button className="link" data-dia-no-mapa onClick={() => verDiaNoMapa(dia)}>Ver o dia no mapa</button>}</div>
+      {dia && !('erro' in dia) && dia.pontos.length > 0 && <button className="link" data-dia-no-mapa onClick={() => verDiaNoMapa(dia, corDe)}>Ver o dia no mapa</button>}</div>
     {!dia && <div className="info">Carregando…</div>}
     {dia && 'erro' in dia && <div className="info">Sem o painel do dia; as rotas estão mais abaixo.</div>}
     {dia && !('erro' in dia) && !dia.linhas.length && <div className="info">Nenhuma rota enviada hoje.</div>}
@@ -565,14 +567,15 @@ function Lugares({titulo, lista, vazio, aberta, decidir, novo, corDe, recarregar
 
 // Uma linha por motorista (dono, 19/10: "a lista gigante"). Cada marcação já vale ou vira sugestão
 // sozinha; o que pede decisão está em Precisa de você. Aqui é para conferir quando ele quiser.
-function MarcadasPorMotorista({lista, ...doLugar}: {lista: Adm.LugarCorrigido[]} & Pick<PropsDosLugares, 'novo' | 'corDe' | 'recarregar'>) {
+function MarcadasPorMotorista({lista, visto, ...doLugar}: {lista: Adm.LugarCorrigido[]; visto: number | null} & Pick<PropsDosLugares, 'novo' | 'corDe' | 'recarregar'>) {
   const agora = Date.now();
-  const por = new Map<string, {id: string; nome: string; lugares: Adm.LugarCorrigido[]; marcas: Marca[]; ultima: number; novos: number}>();
+  const por = new Map<string, {id: string; nome: string; lugares: Adm.LugarCorrigido[]; ja: Set<string>; marcas: Marca[]; ultima: number; novos: number}>();
   for (const l of lista) for (const m of l.marcacoes) {
     if (m.papel === 'admin' || agora - Date.parse(m.criado_em) > 7 * 864e5) continue;
     let g = por.get(m.motorista_id);
-    if (!g) por.set(m.motorista_id, g = {id: m.motorista_id, nome: m.nome, lugares: [], marcas: [], ultima: 0, novos: 0});
-    if (!g.lugares.includes(l)) { g.lugares.push(l); if (doLugar.novo(l)) g.novos++; }
+    if (!g) por.set(m.motorista_id, g = {id: m.motorista_id, nome: m.nome, lugares: [], ja: new Set(), marcas: [], ultima: 0, novos: 0});
+    // novo é o que este motorista marcou depois da visita anterior, não outro no mesmo endereço
+    if (!g.ja.has(l.chave)) { g.ja.add(l.chave); g.lugares.push(l); if (visto != null && Date.parse(m.criado_em) > visto) g.novos++; }
     g.marcas.push({lat: m.lat, lng: m.lng, rotulo: m.nome.slice(0, 2), texto: `${m.nome} · ${l.endereco || l.chave} · ${dataHora(m.criado_em)}`, cor: doLugar.corDe(m.motorista_id)});
     g.ultima = Math.max(g.ultima, Date.parse(m.criado_em));
   }
@@ -590,11 +593,12 @@ function MarcadasPorMotorista({lista, ...doLugar}: {lista: Adm.LugarCorrigido[]}
   </details>;
 }
 
-// O mapa do dia (dono, 19/10): uma cor por rota, a entregue com ✓ e a por fazer com a inicial do
-// motorista, num pino só por endereço. Não é ao vivo: o celular só manda a posição na entrega.
-const CORES_DO_DIA = ['#1d4ed8', '#db2777', '#ea580c', '#0d9488', '#7c3aed', '#65a30d', '#ca8a04', '#0891b2'];
-function verDiaNoMapa(dia: Dia) {
-  const cor = new Map(dia.linhas.map((l, i) => [l.id, CORES_DO_DIA[i % CORES_DO_DIA.length]]));
+// O mapa do dia (dono, 19/10): a cor do motorista, a mesma do resto do Admin, a entregue com ✓ e a
+// por fazer com a inicial dele em cinza, num pino só por endereço. Não é ao vivo: o celular só manda
+// a posição na entrega. Guarda qual desenho é o do dia, para o Atualizar trocar só ele.
+let vezDoDia = -1;
+function verDiaNoMapa(dia: Dia, corDe: (id: string) => string) {
+  const cor = new Map(dia.linhas.map(l => [l.id, corDe(l.motorista_id || '')]));
   const nome = new Map(dia.linhas.map(l => [l.id, l.motorista]));
   const um = new Map<string, Marca & {feitos: number; total: number}>();
   for (const p of dia.pontos) {
@@ -608,6 +612,7 @@ function verDiaNoMapa(dia: Dia) {
     um.set(k, m);
   }
   mostrarNoMapa([...um.values()].map(({feitos, total, ...m}) => m));
+  vezDoDia = loja.ui.marcas?.vez ?? -1;
 }
 
 function ParadasSemLocal({lista, recarregar}: {lista: SemLocal[]; recarregar: () => void}) {
