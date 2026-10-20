@@ -258,6 +258,58 @@ rodado na produção.
   - No Admin, o banco já não é o gargalo: as consultas dele somam menos de 100 ms. A demora que o
     app media (a contagem em 2,1 s em 19/10) está na rede e nas idas e voltas, e é outra frente.
 
+## Buscas da base de ruas (025): rascunho ensaiado local em 20/10, falta a medição de antes na produção
+
+Passos 2 e 3 do plano, aprovados pela revisão. Nada rodado na produção, e o app não muda.
+
+- **A medição:** `supabase/medir_buscas_da_base.sql`, só leitura, para rodar antes e depois da 025.
+  As buscas do `servicos/base.ts` como o app manda (rua por parte do nome; é bairro?; conjunto
+  parecido; e a busca pela chave, de todo endereço, de controle), cada uma com um termo que acha e
+  um que não acha, como o app (`authenticated`). Diz também se o `pg_trgm` está instalado, a
+  ordenação do banco e os índices de `ruas`. Quando as funções da 025 existem, mede a chamada delas
+  como o app e o plano de dentro de cada uma (o corpo preparado com plano genérico, como o dono:
+  é assim que uma função `security definer` de linguagem sql roda).
+- **A 025, rascunho:** `supabase/025_buscas_da_base.sql` cria o `pg_trgm` no esquema `extensions`,
+  três índices de trigramas (`nome_chave`, `bairro`, `conjunto`) e três funções que fazem as três
+  buscas: `ruas_por_parte_do_nome`, `bairro_na_base` e `conjuntos_na_base`. São `security definer`
+  com `search_path` vazio, todo nome com o esquema, `eh_ativo()` conferido dentro, só
+  `authenticated` executa; as mesmas colunas, filtro e limite da busca de hoje. Sem `concurrently`.
+  Cada par de índice e função só fica se a medição da produção pedir. Entrou no fim do
+  `000_rodar_tudo.sql` e do `banco-inteiro.sql`.
+- **Ensaio local** (Postgres 17, `banco-inteiro.sql` publicado, 23.982 trechos inventados, como o
+  app), com as mesmas consultas do arquivo de medição:
+
+  | busca | hoje, direto na tabela | pela função da 025 |
+  |---|---|---|
+  | rua por parte do nome, acha | 15 ms, 1.852 acessos | 0,7 ms, 102 |
+  | rua por parte do nome, não acha | 19 ms, 2.000 | 0,3 ms, 14 |
+  | é bairro?, acha | 0,2 ms, 3 | 0,6 ms, 35 |
+  | é bairro?, não acha | 10 ms, 2.000 | 1,3 ms, 625 |
+  | conjunto parecido, acha | 1,8 ms, 208 | 2,6 ms, 281 |
+  | conjunto parecido, não acha | 6 ms, 2.007 | 0,4 ms, 26 |
+
+  - O índice ganha em todo "não acha" e na rua; no bairro e no conjunto que acham, a busca de hoje
+    para no primeiro que serve e a função chega a ser um pouco mais lenta. A produção decide: lá a
+    leitura da tabela inteira custou 30 vezes mais que aqui (566 ms).
+  - **Equivalência:** 63 comparações (admin, motorista, desativado, sem perfil), as mesmas linhas
+    nos dois caminhos; desativado e sem perfil não recebem nada, o anônimo é recusado nos dois.
+    Cinco sabotagens quebram a comparação: sem `eh_ativo()`, `=` na cidade, `~` no lugar de `~*`,
+    sem o revoke do `anon` (o ensaio dá execução ao `anon` por padrão, como o Supabase) e outro
+    limite. A primeira rodada das sabotagens passou com a base vazia, por um erro na semente; o
+    ensaio agora para sem os 23.982 trechos, e a comparação acusa se o motorista não acha nada.
+  - **`security invoker`, como a revisão preferia:** o mesmo resultado, mas lê a tabela inteira
+    (cerca de 2.000 acessos, 31 a 58 ms), porque roda com a regra na frente. Por isso `definer`.
+  - O `banco-inteiro.sql` novo monta de um banco vazio; o `000_rodar_tudo.sql` roda duas vezes
+    sobre o banco de antes; a 025 roda de novo sem erro.
+- **Achado à parte, de antes da 025:** o `000_rodar_tudo.sql` não roda num banco que já tem trechos
+  da prefeitura. A trava de `fonte` da 013 volta antes de a 014 aceitar `prefeitura` e recusa as
+  linhas. Num projeto novo não acontece; na produção, quem roda é cada migração sozinha.
+- **Próximo:** o dono roda a medição na produção; decidir pela medição quais pares ficam; ele roda a
+  025 entre duas medições; depois o `servicos/base.ts` passa a chamar as funções, com teste, e é
+  publicado à parte. A demora de um minuto para localizar a lista não deve mudar muito com isso:
+  os endereços vão um depois do outro e o Nominatim espera 1,1 s entre chamadas. Quanto custa cada
+  fonte é a telemetria (passo 3).
+
 ## Admin como painel (19/10, pedido do dono): partes 1 e 2 publicadas em 19/10, falta o menu lateral
 
 - **Parte 2, feita:**
