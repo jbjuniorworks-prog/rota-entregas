@@ -1,4 +1,4 @@
-﻿import {useEffect, useState} from 'react';
+﻿import {useEffect, useRef, useState} from 'react';
 import {haversine} from '../logica/geo';
 import {contarConferencia, type ItemEmConferencia, type MotoristaEmConferencia} from '../logica/conferencia';
 import {CHAVES} from '../logica/guarda';
@@ -62,36 +62,46 @@ export function TelaAdmin() {
   const [visto] = useState(() => guarda.ler<number | null>(CHAVES.adminVisto, null));
 
   const [lendo, setLendo] = useState(false);
+  // Cada carga tem a sua vez: a resposta de uma anterior, chegando atrasada, não mexe na tela da
+  // atual. Antes uma ação no meio da carga (Aprovar, Marcar, Apagar) pedia outra e era ignorada.
+  const vez = useRef(0);
   // Cada parte entra na tela quando chega: esperar as três segurava o "Precisa de você" atrás da
   // contagem das rotas, a parte mais lenta (11/10). Uma que falha não esconde as outras.
   const carregar = async () => {
-    if (lendo) return;
+    const minha = ++vez.current;
+    const atual = () => vez.current === minha;
     setErro('');
     setLendo(true);
-    const falha = (err: unknown) => setErro((err as Error).message);
+    const falha = (err: unknown) => { if (atual()) setErro((err as Error).message); };
     const pMotoristas = Adm.listarMotoristas();
+    const pRotas = Adm.listarRotasDoPeriodo();
     await Promise.all([
-      pMotoristas.then(setMotoristas, falha),
-      // O painel do dia sai das rotas: um erro nele fica nele, e as rotas continuam na tela. Os
-      // nomes dos motoristas dizem de quem é a planilha.
-      Adm.listarRotas().then(async r => {
-        setRotas(r);
+      pMotoristas.then(m => { if (atual()) setMotoristas(m); }, falha),
+      // O painel do dia sai da lista de rotas, sem esperar a contagem delas, que ele não usa (revisão
+      // de 19/10). Um erro nele fica nele. Os nomes dos motoristas dizem de quem é a planilha.
+      pRotas.then(async r => {
         const ms = await pMotoristas.catch(() => [] as Adm.Motorista[]);
         const d = await Adm.resumoDeHoje(r, ms.filter(m => m.papel === 'motorista').map(m => m.nome)).catch(err => ({erro: (err as Error).message}));
+        if (!atual()) return;
         setDia(d);
         // O mapa do Admin abre no dia, e o Atualizar refaz o dia, enquanto ele não pediu outra coisa. Dia
         // sem posição nenhuma não abre: o "Nada com posição para mostrar" a cada carga apagava o aviso
         // de quem tinha acabado de agir (o encerrar a conferência, no teste do GitHub de 19/10).
         if (!('erro' in d) && d.pontos.length && (!loja.ui.marcas || loja.ui.marcas.vez === vezDoDia)) verDiaNoMapa(d, coresDe(ms));
       }, falha),
+      pRotas.then(Adm.contarRotas).then(r => { if (atual()) setRotas(r); }, falha),
       Adm.listarCorrecoes().then(l => {
+        if (!atual()) return;
         setLugares(l);
         guarda.gravar(CHAVES.adminVisto, Date.now());
+        // Os nomes que faltam chegam depois, sem segurar as decisões. Falhando, fica o endereço
+        // escrito pela chave, e nenhum aviso cobre o de quem acabou de agir.
+        Adm.completarNomes(l).then(comNome => { if (atual()) setLugares(comNome); }, () => {});
       }, falha),
       // sem a 022 rodada ela falha, e o resto do Admin tem de abrir mesmo assim
-      Adm.listarEmConferencia().then(setConferencia, err => setConferencia({erro: (err as Error).message})),
+      Adm.listarEmConferencia().then(c => { if (atual()) setConferencia(c); }, err => { if (atual()) setConferencia({erro: (err as Error).message}); }),
     ]);
-    setLendo(false);
+    if (atual()) setLendo(false);
   };
   useEffect(() => { carregar(); }, []);
   const nConferir = Array.isArray(conferencia) ? contarConferencia(conferencia) : 0;
@@ -368,14 +378,16 @@ function UsoDosBotoes() {
   </details>;
 }
 
+// Os números da base só quando a seção abre (revisão de 19/10): a contagem levava 1,9 s e era pedida
+// ao abrir o Admin, com a seção fechada, disputando o servidor com o que ele veio ver.
 function BaseDeRuas() {
   const [c, setC] = useState<Adm.Cobertura | null>(null);
-  const [erro, setErro] = useState('');
+  const [estado, setEstado] = useState<'fechada' | 'contando' | 'pronta' | {erro: string}>('fechada');
   const {correr, fazendo} = useTrabalho();
   const ver = async () => {
-    try { setC(await Adm.cobertura()); setErro(''); } catch (err) { setErro((err as Error).message); }
+    setEstado('contando');
+    try { setC(await Adm.cobertura()); setEstado('pronta'); } catch (err) { setEstado({erro: (err as Error).message}); }
   };
-  useEffect(() => { ver(); }, []);
   const nomear = async () => {
     const r = await correr('nomear', () => Adm.nomearRuas());
     if (r) status(r.trechos ? `${r.trechos} trecho(s) ganharam nome, em ${r.ruas} rua(s).` : 'Nenhum trecho novo para nomear ainda.', 6000);
@@ -387,9 +399,12 @@ function BaseDeRuas() {
       : 'Nenhuma rua nova ainda: é preciso ter entregado em duas portas diferentes da mesma rua.', 8000);
     ver();
   };
-  return <details>
+  return <details data-secao="Nossa base de ruas" onToggle={ev => { if ((ev.currentTarget as HTMLDetailsElement).open && estado === 'fechada') ver(); }}>
     <summary>Nossa base de ruas</summary>
-    {erro && <div className="aviso">Falta rodar o SQL da base de ruas: {erro}</div>}
+    {/* contando, nada de número: zero ali pareceria uma contagem pronta */}
+    {estado === 'contando' && !c && <div className="info" data-contando>Contando a base de ruas…</div>}
+    {typeof estado === 'object' && <div className="aviso" data-erro-base>Não consegui contar a base de ruas: {estado.erro}{' '}
+      <button className="link" onClick={ver}>Tentar de novo</button></div>}
     {c && <>
       <div className="info">🛣️ {c.ruas_com_nome} ruas com nome · {c.trechos_sem_nome} trechos ainda sem nome{c.trechos_nossos ? ` · ${c.trechos_nossos} nomeados pelas entregas de vocês` : ''}</div>
       <div className="info">📍 {c.passagens} entregas marcadas na porta, em {c.lugares} endereços · {c.lugares_confirmados} já com posição confirmada</div>
@@ -541,7 +556,8 @@ function Lugares({titulo, lista, vazio, aberta, decidir, novo, corDe, recarregar
       const s = situacaoDoLugar(l);
       const motivo = porQuePrecisaDeVoce(l);
       return <div className="item" key={l.chave} data-lugar={l.chave}>
-        <div className="orig">{novo(l) && <span className="tag" style={{background: '#1d4ed8', marginRight: 6}}>novo</span>}{l.endereco || l.chave}</div>
+        {/* sem o nome ainda (ou sem nome nenhum), o endereço escrito pela chave, em cinza */}
+        <div className={l.nomeProvisorio ? 'orig provisorio' : 'orig'} title={l.nomeProvisorio ? 'Buscando o nome deste endereço' : undefined}>{novo(l) && <span className="tag" style={{background: '#1d4ed8', marginRight: 6}}>novo</span>}{l.endereco || l.chave}</div>
         <div className="achado">{l.bairro}</div>
         <span className="tag" style={{background: s.cor}}>{s.texto}</span>
         {decidir && motivo && <div className="aviso laranja" style={{margin: '6px 0'}}>{motivo}</div>}

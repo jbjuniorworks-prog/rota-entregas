@@ -24,14 +24,36 @@ function sessaoFalsa() {
   return {access_token: token, refresh_token: 'renovar', token_type: 'bearer', expires_in: 30 * 86400, expires_at: expira, user};
 }
 
+// Número com número, o resto como texto: as datas do app e dos testes vêm no mesmo formato ISO.
+const comparar = (a: unknown, b: unknown) => {
+  const [x, y] = [Number(a), Number(b)];
+  if (a !== '' && b !== '' && a != null && b != null && !isNaN(x) && !isNaN(y)) return x - y;
+  return String(a ?? '') < String(b ?? '') ? -1 : String(a ?? '') > String(b ?? '') ? 1 : 0;
+};
+
+// Os filtros e a ordem do PostgREST que o app usa. A ordem conta para "as 500 mais novas" (revisão
+// de 19/10): sem ela, a falsa devolvia na ordem da tabela, e um teste do corte passaria por acaso.
 function filtrar(linhas: Record<string, unknown>[], busca: URLSearchParams) {
   let saida = linhas;
   for (const [campo, valor] of busca) {
+    if (['select', 'order', 'limit', 'offset'].includes(campo)) continue;
     if (valor.startsWith('eq.')) saida = saida.filter(l => String(l[campo]) === valor.slice(3));
     if (valor.startsWith('in.(')) {
       const ok = new Set(valor.slice(4, -1).split(',').map(v => v.replace(/^"|"$/g, '')));
       saida = saida.filter(l => ok.has(String(l[campo])));
     }
+    const m = valor.match(/^(gte|gt|lte|lt)\.(.*)$/);
+    if (m) saida = saida.filter(l => l[campo] != null && {gte: (c: number) => c >= 0, gt: (c: number) => c > 0, lte: (c: number) => c <= 0, lt: (c: number) => c < 0}[m[1] as 'gte'](comparar(l[campo], m[2])));
+    if (valor === 'is.null') saida = saida.filter(l => l[campo] == null);
+    if (valor === 'not.is.null') saida = saida.filter(l => l[campo] != null);
+  }
+  const ordem = busca.get('order');
+  if (ordem) {
+    const chaves = ordem.split(',').map(o => { const [c, dir] = o.split('.'); return {c, desc: dir === 'desc'}; });
+    saida = [...saida].sort((a, b) => {
+      for (const {c, desc} of chaves) { const d = comparar(a[c], b[c]); if (d) return desc ? -d : d; }
+      return 0;
+    });
   }
   return saida;
 }

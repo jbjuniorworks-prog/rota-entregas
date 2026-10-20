@@ -209,11 +209,48 @@ Fora da lista:
   painel (`95ee4f3`) 2,8 s até as decisões e 3,2 s até tudo, com 25 consultas; agora 4,3 s e 4,6 s,
   com 54. As mais lentas: `contagem_das_rotas` (2,1 s), `cobertura` (1,9 s, da base de ruas) e as
   buscas de pacotes (1,4 s cada). O caminho das decisões é a leitura das marcações da semana, os
-  pedaços de posição e nome, e a busca dos nomes que faltam. Não otimizado ainda, de propósito.
+  pedaços de posição e nome, e a busca dos nomes que faltam.
+- **Por que mais lento, hipótese e não medida:** com a chave de serviço, sem disputa e sem as regras
+  de acesso, o caminho das decisões custa uns 1,7 s; no navegador do admin, 4,3 s. A disputa entre
+  as consultas e o custo das regras de acesso para o admin são hipóteses que a investigação sustenta,
+  não uma divisão medida desses 2,6 s. Pedir as páginas da semana em paralelo não ajudou (0,81 s
+  juntas contra 0,35 + 0,30 em sequência): descartado.
+- **Desempenho, feito local (20/10), aprovado pela revisão, sem publicar e sem mudar regra de
+  acesso:**
+  - as decisões não esperam os nomes: o que ficou sem nome sai escrito pela chave, em cinza, e o
+    nome chega depois (`completarNomes`). A falha na busca dos nomes não derruba as decisões nem
+    mostra aviso, e o nome nos pacotes dentro da leitura principal também deixou de ser fatal;
+  - "as 500 mais novas" não se buscam de novo quando a semana já tem 500 ou mais (com 500 ou mais
+    na semana, elas estão todas dentro dela); com menos, só as mais velhas que faltam, em ordem fixa
+    por horário e id;
+  - a base de ruas só conta quando a seção abre, com "contando…", erro e "Tentar de novo";
+  - o painel do dia sai da lista de rotas, sem esperar a contagem delas;
+  - cada carga tem a sua vez: a resposta de uma carga anterior não mexe na atual, e uma ação no meio
+    da carga (Encerrar conferência, Aprovar, Apagar) recarrega em vez de ser ignorada, como era.
+    O Admin não tem troca de dia nem filtro: esse caso não se aplica.
+- **Testado:** 10 testes de tela novos (nomes depois e falhando, resposta antiga dos nomes e das
+  marcações, painel com a contagem atrasada, base de ruas, e o corte das 500 com menos de 500,
+  exatamente 500, mais de 500 e horário empatado). A nuvem falsa passou a filtrar por data e a
+  ordenar, como o servidor. Onze sabotagens, cada uma quebra um teste; a da base de ruas só depois
+  de o teste contar os pedidos ele mesmo. Bateria inteira: 195 e2e e 469 de unidade, e os do Admin
+  também no fuso UTC do GitHub. Dois testes que dependiam da hora do dia (a data em UTC e a de
+  Maceió) foram consertados: de dia, no GitHub, um deles falharia.
+- **Equivalência com os dados reais (20/10, só lendo, o código publicado `3389b45` e o novo, pela
+  mesma ligação):** 693 endereços na mesma ordem e com o mesmo conteúdo, diferença vazia; as três
+  listas da triagem e os novos iguais; a lista de 14 dias igual (75 rotas); o painel de 19/10 igual
+  (158 de 265 entregues, 98 de 154 verificados, 3 rotas para conferir). 47 cartões saem antes com o
+  endereço provisório e terminam com o mesmo nome.
+- **Primeira exibição útil, por aproximação com a chave de serviço (sem regras de acesso):**
+  decisões de 1,75 s para 1,23 s (mediana de 3); números do dia de 0,53 s para 0,27 s. O tempo com
+  a conta de admin depende de autorização específica para medir.
 - **Não rodado:** os testes `@nuvem`, que escrevem no banco de produção.
 - **Fica como está:** o selo do botão Mais conta só as decisões; o cartão "Esperando você" soma
-  também as paradas sem local e as rotas para conferir. O Admin abre com umas 30 a 35 consultas
-  (eram umas 15), quase todas em paralelo.
+  também as paradas sem local e as rotas para conferir.
+- **Sessões da conferência de 19/10, pendente:** duas sessões entraram pela conta de admin por link
+  (`otp`, user_agent `node`), em 19/10/2026 às 23:11:07 e 23:13:15, horário de Aracaju (02:11:07 e
+  02:13:15 UTC de 20/10), identificadas pelo dono no SQL Editor; todas as outras entraram por senha.
+  O dono vai apagar as duas pelo id e confirmar. Ainda não encerradas no registro. A validade dos
+  tokens já emitidos não foi verificada: depende do `exp` de cada um.
 - **Visto nos dados reais de hoje:** a planilha do Pedro aberta na conta do dono tem 3 entregues
   (o "Sem N", às 17:24, antes do conserto, sem nada gravado) e aparece como rota parada. Cuidado:
   com o conserto no ar, "Entreguei aqui" de teste na conta do admin grava porta de admin.

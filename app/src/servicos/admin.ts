@@ -59,6 +59,8 @@ export interface LugarCorrigido {
   fonte?: string | null;
   motoristas?: number;
   entregas?: number;
+  // o endereço escrito pela chave, enquanto o nome de verdade não chegou (ou não existe)
+  nomeProvisorio?: boolean;
 }
 
 function cliente(): SupabaseClient {
@@ -114,15 +116,28 @@ export async function mudarConferir(id: string, conferir: boolean) {
   falhou(error);
 }
 
-export async function listarRotas(dias = 14): Promise<RotaResumo[]> {
+export type RotaBase = Omit<RotaResumo, 'pacotes' | 'entregues'>;
+
+// A lista de rotas do período, sem contar os pacotes. O painel do dia só precisa dela, e a contagem
+// (2,1 s com o admin, 19/10) segurava os números do dia sem que eles a usassem.
+export async function listarRotasDoPeriodo(dias = 14): Promise<RotaBase[]> {
   const s = cliente();
   const desde = new Date(Date.now() - dias * 864e5).toISOString().slice(0, 10);
   // em partes: o servidor devolve 1.000 e cala, e 14 dias passam disso com uns 70 motoristas por dia
   const rotas = await paginado<any>((de, ate) => s.from('rotas').select('id, dia, arquivo, criado_em, motorista_id, perfis(nome, papel)').gte('dia', desde)
     .order('dia', {ascending: false}).order('criado_em', {ascending: false}).order('id').range(de, ate));
-  const ids = rotas.map(r => r.id as string);
+  return rotas.map(r => ({id: r.id, dia: r.dia, arquivo: r.arquivo, criado_em: r.criado_em, motorista: r.perfis?.nome || '?', motorista_id: r.motorista_id, doAdmin: r.perfis?.papel === 'admin'}));
+}
+
+export async function contarRotas(rotas: RotaBase[]): Promise<RotaResumo[]> {
+  const s = cliente();
+  const ids = rotas.map(r => r.id);
   const contagem = await contarNoBanco(s, ids) || await contarBaixando(s, ids);
-  return rotas.map(r => ({id: r.id, dia: r.dia, arquivo: r.arquivo, criado_em: r.criado_em, motorista: r.perfis?.nome || '?', motorista_id: r.motorista_id, doAdmin: r.perfis?.papel === 'admin', ...contagem.get(r.id)!}));
+  return rotas.map(r => ({...r, ...contagem.get(r.id)!}));
+}
+
+export async function listarRotas(dias = 14): Promise<RotaResumo[]> {
+  return contarRotas(await listarRotasDoPeriodo(dias));
 }
 
 type Contagem = Map<string, {pacotes: number; entregues: number}>;
@@ -156,7 +171,7 @@ async function contarBaixando(s: SupabaseClient, ids: string[]): Promise<Contage
 
 // O painel do dia: os pacotes das rotas de hoje e quais endereços já têm a porta verificada, pela
 // mesma `posicoes` que o celular pergunta ao carregar.
-export async function resumoDeHoje(rotas: RotaResumo[], motoristas: string[], agora = Date.now()): Promise<Dia> {
+export async function resumoDeHoje(rotas: RotaBase[], motoristas: string[], agora = Date.now()): Promise<Dia> {
   const s = cliente();
   const hoje = rotas.filter(r => r.dia === hojeEmMaceio(agora));
   const pacotes: PacoteDoDia[] = [];
@@ -209,14 +224,19 @@ export async function listarCorrecoes(limite = 500): Promise<LugarCorrigido[]> {
   // `*` e não a lista: o `pendente` só existe depois da 022, e pedir uma coluna que falta derruba
   // a lista inteira
   // A semana inteira, em partes, e as 500 mais novas para as antigas: só as 500 eram uns 3 dias
-  // em outubro, e a lista dos últimos 7 dias contava menos do que havia.
+  // em outubro, e a lista dos últimos 7 dias contava menos do que havia. Com a semana já com 500 ou
+  // mais, as 500 mais novas estão todas dentro dela, e buscá-las de novo só disputava o servidor
+  // (revisão de 19/10): agora só se pedem as mais velhas que faltam para dar 500, em ordem fixa.
   const desde = new Date(Date.now() - 7 * 864e5).toISOString();
-  const [semana, {data, error}] = await Promise.all([
-    paginado<any>((de, ate) => s.from('correcoes').select('*, perfis(nome, papel)').gte('criado_em', desde).order('id').range(de, ate)),
-    s.from('correcoes').select('*, perfis(nome, papel)').order('criado_em', {ascending: false}).limit(limite),
-  ]);
-  falhou(error);
-  const todas = new Map<string, any>([...semana, ...(data || [])].map(c => [String(c.id ?? c.chave_lugar + c.motorista_id + c.criado_em), c]));
+  const semana = await paginado<any>((de, ate) => s.from('correcoes').select('*, perfis(nome, papel)').gte('criado_em', desde).order('id').range(de, ate));
+  let antigas: any[] = [];
+  if (semana.length < limite) {
+    const {data, error} = await s.from('correcoes').select('*, perfis(nome, papel)').lt('criado_em', desde)
+      .order('criado_em', {ascending: false}).order('id', {ascending: false}).limit(limite - semana.length);
+    falhou(error);
+    antigas = data || [];
+  }
+  const todas = new Map<string, any>([...semana, ...antigas].map(c => [String(c.id ?? c.chave_lugar + c.motorista_id + c.criado_em), c]));
   const lugares = new Map<string, LugarCorrigido>();
   // a mais nova primeiro: a primeira de cada motorista é a que vale, e as outras contam "vezes"
   // a do motorista em conferência espera em "Em conferência", com o que mudaria se aprovada
@@ -235,18 +255,21 @@ export async function listarCorrecoes(limite = 500): Promise<LugarCorrigido[]> {
       s.rpc('posicoes', {chaves: parte}),
       s.from('pacotes').select('chave_lugar, endereco, bairro').in('chave_lugar', parte).order('criado_em', {ascending: false}).limit(1000),
     ]);
+    // sem posição não há decisão: essa falha para tudo. Sem o nome, não: fica o escrito pela chave,
+    // e completarNomes tenta de novo
     falhou(e1);
-    falhou(e2);
     for (const p of (pos || []) as any[]) {
       const l = lugares.get(p.chave_lugar);
       if (l) Object.assign(l, {situacao: p.situacao, escolhida: {lat: p.lat, lng: p.lng}, fonte: p.fonte, motoristas: p.motoristas, entregas: p.entregas});
     }
-    for (const p of (pac || []) as any[]) {
+    for (const p of (e2 ? [] : pac || []) as any[]) {
       const l = lugares.get(p.chave_lugar);
       if (l && !l.endereco) { l.endereco = p.endereco; l.bairro = p.bairro || ''; }
     }
   }));
-  await nomearOsQueFaltam(s, lugares);
+  // As decisões não dependem do nome (a triagem não lê o endereço): o que ficou sem nome sai já
+  // legível, escrito pela chave, e completarNomes busca o de verdade depois, sem segurar a lista.
+  for (const l of lugares.values()) if (!l.endereco) Object.assign(l, textoDaChave(l.chave), {nomeProvisorio: true});
   return [...lugares.values()];
 }
 
@@ -255,13 +278,18 @@ export async function listarCorrecoes(limite = 500): Promise<LugarCorrigido[]> {
 // sobe pacote, e 45 deles têm o nome na passagem. Além disso, o pedaço de 100 para nas 1.000 linhas,
 // e um endereço com muitas entregas podia encher a resposta. Ordem: a passagem, os pacotes em
 // pedaços menores, um por um se forem poucos, e por fim a própria chave escrita como endereço.
+// Devolve uma lista nova, sem mexer na que está na tela; quem não achou nome fica com o escrito
+// pela chave. Uma falha aqui sobe para quem chamou, que mantém o provisório.
 const UM_POR_UM = 30;
-async function nomearOsQueFaltam(s: SupabaseClient, lugares: Map<string, LugarCorrigido>) {
-  const faltam = () => [...lugares.values()].filter(l => !l.endereco).map(l => l.chave);
+export async function completarNomes(lugares: LugarCorrigido[]): Promise<LugarCorrigido[]> {
+  if (!lugares.some(l => l.nomeProvisorio)) return lugares;
+  const s = cliente();
+  const achados = new Map<string, {endereco: string; bairro: string}>();
+  const faltam = () => lugares.filter(l => l.nomeProvisorio && !achados.has(l.chave)).map(l => l.chave);
   const passadas: [string, number][] = [['observacoes', 100], ['pacotes', 10], ['pacotes', 1]];
   for (const [tabela, tamanho] of passadas) {
     const quais = faltam();
-    if (!quais.length) return;
+    if (!quais.length) break;
     if (tamanho === 1 && quais.length > UM_POR_UM) break;
     await Promise.all(pedacos(quais, tamanho).map(async parte => {
       const consulta = s.from(tabela).select(tabela === 'pacotes' ? 'chave_lugar, endereco, bairro' : 'chave_lugar, endereco')
@@ -269,12 +297,11 @@ async function nomearOsQueFaltam(s: SupabaseClient, lugares: Map<string, LugarCo
       const {data, error} = await consulta;
       falhou(error);
       for (const p of (data || []) as any[]) {
-        const l = lugares.get(p.chave_lugar);
-        if (l && !l.endereco && p.endereco) { l.endereco = p.endereco; l.bairro = p.bairro || ''; }
+        if (p.endereco && !achados.has(p.chave_lugar)) achados.set(p.chave_lugar, {endereco: p.endereco, bairro: p.bairro || ''});
       }
     }));
   }
-  for (const k of faltam()) Object.assign(lugares.get(k)!, textoDaChave(k));
+  return lugares.map(l => !l.nomeProvisorio ? l : {...l, ...(achados.get(l.chave) || textoDaChave(l.chave)), nomeProvisorio: false});
 }
 
 export interface Cobertura {

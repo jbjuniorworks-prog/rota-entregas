@@ -127,8 +127,10 @@ test.describe('administrador', () => {
     };
     nuvem.rpc = {posicoes: [{chave_lugar: CHAVE, lat: -10.9201, lng: -37.0601, situacao: 'sugestao', motoristas: 1, minha: false}]};
   };
+  // a contagem baixando pede só rota e entrega; o painel do dia também busca os pacotes de hoje, e
+  // não é contagem (de dia, com a data de Maceió igual à UTC, ele entrava aqui e o teste falhava)
   const contando = (nuvem: {pedidos: {caminho: string; busca: string}[]}) =>
-    nuvem.pedidos.filter(p => p.caminho === 'pacotes' && decodeURIComponent(p.busca).includes('rota_id=in.'));
+    nuvem.pedidos.filter(p => p.caminho === 'pacotes' && decodeURIComponent(p.busca).includes('select=rota_id,entregue_em&rota_id=in.'));
 
   test('com a função do banco, as rotas são contadas numa ida, sem baixar os pacotes', async ({page, nuvem}) => {
     umaRota(nuvem);
@@ -199,6 +201,8 @@ test.describe('administrador', () => {
   // Painel, parte 2 (19/10): o que tem conserto aparece com o botão que conserta. Inventados.
   test.describe('o que tem conserto no painel', () => {
     const hojeMaceio = () => new Date().toLocaleDateString('sv-SE', {timeZone: 'America/Maceio'});
+    // o dia no nome da planilha, como a Shopee escreve: o de hoje, não um fixo, que vira "outro dia" à meia-noite
+    const planilha = (nome: string) => hojeMaceio().split('-').reverse().join('-') + ' ' + nome + '.xlsx';
     const antes = (min: number) => new Date(Date.now() - min * 60000).toISOString();
     const pacote = (rota_id: string, chave_lugar: string | null, endereco: string, extra: Record<string, unknown> = {}) =>
       ({rota_id, chave_lugar, endereco, entregue_em: null, spx_tn: null, sequencia: null, bairro: 'Bairro Teste', lat: -10.95, lng: -37.05, ...extra});
@@ -236,8 +240,8 @@ test.describe('administrador', () => {
       nuvem.tabelas = {
         perfis: [{id: 'm1', nome: 'Teste', papel: 'motorista', ativo: true}, {id: 'm2', nome: 'Fulano', papel: 'motorista', ativo: true}],
         rotas: [
-          {id: 'boa', dia: hojeMaceio(), arquivo: '19-10-2026 Teste Inventado.xlsx', criado_em: antes(300), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}},
-          {id: 'dele', dia: hojeMaceio(), arquivo: '19-10-2026 Fulano Inventado.xlsx', criado_em: antes(200), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}},
+          {id: 'boa', dia: hojeMaceio(), arquivo: planilha('Teste Inventado'), criado_em: antes(300), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}},
+          {id: 'dele', dia: hojeMaceio(), arquivo: planilha('Fulano Inventado'), criado_em: antes(200), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}},
           {id: 'velha', dia: hojeMaceio(), arquivo: '01-01-2026 Teste Inventado.xlsx', criado_em: antes(100), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}},
         ],
         pacotes: [
@@ -277,7 +281,7 @@ test.describe('administrador', () => {
       nuvem.tabelas = {
         rotas: [
           {id: 'boa', dia: hojeMaceio(), arquivo: 'Teste.xlsx', criado_em: antes(300), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}},
-          minha('testando', '19-10-2026 Fulano Inventado.xlsx'), minha('de-verdade', '19-10-2026 Ciclano Inventado.xlsx'),
+          minha('testando', planilha('Fulano Inventado')), minha('de-verdade', planilha('Ciclano Inventado')),
         ],
         pacotes: [pacote('boa', '49000100|9', 'Rua Teste, 9'), pacote('testando', '49000100|1', 'Rua Teste, 1'), pacote('de-verdade', '49000100|2', 'Rua Teste, 2', {entregue_em: antes(10)})],
         correcoes: [{chave_lugar: '49000100|2', lat: -10.95, lng: -37.05, criado_em: antes(10), motorista_id: EU, perfis: {nome: 'Você Teste', papel: 'admin'}}],
@@ -365,6 +369,210 @@ test.describe('administrador', () => {
     const linha = (nome: string) => page.locator(`[data-marcadas-de="${nome}"] > div`).first();
     await expect(linha('Luan')).toHaveText('Luan · 1 endereço(s) · 1 novo(s)');
     await expect(linha('Pedro')).toHaveText('Pedro · 2 endereço(s)');
+  });
+
+  // Desempenho, revisão de 19/10: o mesmo resultado, com menos coisa antes de a tela servir.
+  test.describe('cargas em partes', () => {
+    const antes = (min: number) => new Date(Date.now() - min * 60000).toISOString();
+    const hojeMaceio = () => new Date().toLocaleDateString('sv-SE', {timeZone: 'America/Maceio'});
+    const CORS = {'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*'};
+    const responder = (r: any, corpo: unknown, status = 200) => r.fulfill({status, contentType: 'application/json', headers: CORS, body: JSON.stringify(corpo)});
+    const portao = () => { let abrir!: () => void; const p = new Promise<void>(ok => { abrir = ok; }); return {p, abrir}; };
+    const K = '49000100|20';
+    // uma marcação só do Luan, que espera decisão; sem pacote, o nome dela vem da passagem
+    const umaDecisao = (nuvem: any) => {
+      nuvem.tabelas = {
+        perfis: [{id: 'm3', nome: 'César', papel: 'motorista', ativo: true, conferir: true}],
+        correcoes: [{id: 1, chave_lugar: K, lat: -10.92, lng: -37.06, criado_em: antes(60), motorista_id: 'm2', perfis: {nome: 'Luan', papel: 'motorista'}}],
+        observacoes: [{chave_lugar: K, endereco: 'Rua Inventada, 20', criado_em: antes(60)}],
+      };
+      nuvem.rpc = {posicoes: [{chave_lugar: K, lat: -10.92, lng: -37.06, situacao: 'sugestao', motoristas: 1, entregas: 0, fonte: 'correcao', minha: false}]};
+    };
+    const cartao = (page: any) => page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${K}"]`);
+    const gravarAvisos = (page: any) => page.addInitScript(() => {
+      const vistos: string[] = (window as any).__avisos = [];
+      new MutationObserver(() => {
+        const t = document.getElementById('status')?.textContent || '';
+        if (t && t !== vistos[vistos.length - 1]) vistos.push(t);
+      }).observe(document, {subtree: true, childList: true, characterData: true});
+    });
+
+    test('as decisões aparecem antes dos nomes, com o endereço escrito pela chave, e o nome que chega é o mesmo', async ({page, nuvem}) => {
+      umaDecisao(nuvem);
+      const nomes = portao();
+      await page.route('**/rest/v1/observacoes**', async r => { await nomes.p; await r.fallback(); });
+      await abrir(page);
+      await menu(page, /^Admin/);
+      await expect(cartao(page)).toContainText('Só Luan marcou');
+      await expect(cartao(page).locator('.orig')).toHaveText('CEP 49000-100, nº 20');
+      await expect(cartao(page).locator('.orig')).toHaveClass(/provisorio/);
+      // a lista está pronta: o Atualizar já não espera os nomes
+      await expect(page.getByRole('button', {name: '↻ Atualizar'})).toBeEnabled();
+      nomes.abrir();
+      await expect(cartao(page).locator('.orig')).toHaveText('Rua Inventada, 20');
+      await expect(cartao(page).locator('.orig')).not.toHaveClass(/provisorio/);
+    });
+
+    test('a busca de nomes falhando não tira as decisões, e não cobre o aviso de quem acabou de agir', async ({page, nuvem}) => {
+      umaDecisao(nuvem);
+      await gravarAvisos(page);
+      await page.route('**/rest/v1/observacoes**', r => responder(r, {message: 'falhou'}, 500));
+      await page.route('**/rest/v1/pacotes**', r => decodeURIComponent(r.request().url()).includes('chave_lugar=in.') ? responder(r, {message: 'falhou'}, 500) : r.fallback());
+      await abrir(page);
+      await menu(page, /^Admin/);
+      await expect(cartao(page)).toContainText('Só Luan marcou');
+      await expect(cartao(page).locator('.orig')).toHaveText('CEP 49000-100, nº 20');
+      await expect(page.getByText(/Não consegui carregar/)).toHaveCount(0);
+      page.on('dialog', d => d.accept());
+      await page.locator('summary', {hasText: /^Motoristas/}).click();
+      await page.locator('[data-motorista="César"]').getByRole('button', {name: 'Encerrar conferência'}).click();
+      await expect(aviso(page)).toContainText('César: conferência encerrada.');
+      // a carga que a ação pediu termina, e os nomes falham de novo, calados
+      await expect(page.getByRole('button', {name: '↻ Atualizar'})).toBeEnabled();
+      await page.waitForTimeout(800);
+      const avisos: string[] = await page.evaluate(() => (window as any).__avisos);
+      expect(avisos[avisos.length - 1]).toBe('César: conferência encerrada.');
+      await expect(cartao(page)).toContainText('Só Luan marcou');
+    });
+
+    test('o nome de uma carga anterior, chegando atrasado, não troca o da carga atual', async ({page, nuvem}) => {
+      umaDecisao(nuvem);
+      const primeira = portao();
+      let vez = 0;
+      await page.route('**/rest/v1/observacoes**', async r => {
+        if (++vez === 1) { await primeira.p; return responder(r, [{chave_lugar: K, endereco: 'Rua Velha, 20'}]); }
+        return responder(r, [{chave_lugar: K, endereco: 'Rua Nova, 20'}]);
+      });
+      await abrir(page);
+      await menu(page, /^Admin/);
+      await expect(cartao(page).locator('.orig')).toHaveText('CEP 49000-100, nº 20');
+      await page.getByRole('button', {name: '↻ Atualizar'}).click();
+      await expect(cartao(page).locator('.orig')).toHaveText('Rua Nova, 20');
+      primeira.abrir();
+      await page.waitForTimeout(800);
+      await expect(cartao(page).locator('.orig')).toHaveText('Rua Nova, 20');
+    });
+
+    test('uma ação no meio da carga recarrega, e a resposta antiga das marcações não volta por cima', async ({page, nuvem}) => {
+      umaDecisao(nuvem);
+      const B = '49000100|30';
+      const marcaDe = (chave_lugar: string) => [{id: 9, chave_lugar, lat: -10.92, lng: -37.06, criado_em: antes(30), motorista_id: 'm2', perfis: {nome: 'Luan', papel: 'motorista'}}];
+      nuvem.rpc.posicoes = [
+        {chave_lugar: K, lat: -10.92, lng: -37.06, situacao: 'sugestao', motoristas: 1, entregas: 0, fonte: 'correcao', minha: false},
+        {chave_lugar: B, lat: -10.92, lng: -37.06, situacao: 'sugestao', motoristas: 1, entregas: 0, fonte: 'correcao', minha: false},
+      ];
+      const primeira = portao();
+      // o app também lê as marcações ao abrir, para o selo do botão Mais: só as do Admin contam
+      let noAdmin = false, vez = 0;
+      await page.route('**/rest/v1/correcoes**', async r => {
+        if (!noAdmin || !decodeURIComponent(r.request().url()).includes('criado_em=gte.')) return r.fallback();
+        if (++vez === 1) { await primeira.p; return responder(r, marcaDe(K)); }
+        return responder(r, marcaDe(B));
+      });
+      page.on('dialog', d => d.accept());
+      await abrir(page);
+      await page.waitForLoadState('networkidle');
+      noAdmin = true;
+      await menu(page, /^Admin/);
+      // a primeira carga está presa nas marcações: o Atualizar espera, mas a ação não pode ser perdida
+      await expect(page.getByRole('button', {name: 'Buscando…'})).toBeDisabled();
+      await page.locator('summary', {hasText: /^Motoristas/}).click();
+      await page.locator('[data-motorista="César"]').getByRole('button', {name: 'Encerrar conferência'}).click();
+      await expect(page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${B}"]`)).toBeVisible();
+      primeira.abrir();
+      await page.waitForTimeout(800);
+      await expect(page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${B}"]`)).toBeVisible();
+      await expect(page.locator(`[data-lugar="${K}"]`)).toHaveCount(0);
+      await expect(page.getByRole('button', {name: '↻ Atualizar'})).toBeEnabled();
+    });
+
+    test('os números do dia não esperam a contagem das rotas, e ela não os troca quando chega', async ({page, nuvem}) => {
+      nuvem.tabelas = {
+        rotas: [{id: 'r1', dia: hojeMaceio(), arquivo: 'Teste.xlsx', criado_em: antes(120), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}}],
+        pacotes: [
+          {rota_id: 'r1', chave_lugar: '49000100|1', endereco: 'Rua Teste, 1', entregue_em: antes(10), lat: -10.9, lng: -37.0},
+          {rota_id: 'r1', chave_lugar: '49000100|2', endereco: 'Rua Teste, 2', entregue_em: null, lat: -10.91, lng: -37.0},
+        ],
+      };
+      const contagem = portao();
+      nuvem.rpc.contagem_das_rotas = [{rota_id: 'r1', pacotes: 2, entregues: 1}];
+      await page.route('**/rest/v1/rpc/contagem_das_rotas', async r => { await contagem.p; await r.fallback(); });
+      await abrir(page);
+      await menu(page, /^Admin/);
+      const numeros = page.locator('[data-kpi]');
+      await expect(page.locator('[data-kpi="entregues"] .kpi-num')).toHaveText('1 de 2');
+      await expect(page.locator('[data-rota-hoje="r1"]')).toContainText('1/2');
+      await expect(page.locator('[data-rota="r1"]')).toHaveCount(0);
+      const enquantoContava = await numeros.allInnerTexts();
+      contagem.abrir();
+      await expect(page.locator('[data-rota="r1"]')).toContainText('1/2 entregues');
+      expect(await numeros.allInnerTexts()).toEqual(enquantoContava);
+    });
+
+    test('a base de ruas só conta quando a seção abre, diz que está contando, e o erro tem tentar de novo', async ({page, nuvem}) => {
+      nuvem.rpc.cobertura = [{ruas_com_nome: 3548, trechos_sem_nome: 970, trechos_nossos: 4, passagens: 130, lugares: 96, lugares_confirmados: 21}];
+      const conta = portao();
+      let vez = 0;
+      await page.route('**/rest/v1/rpc/cobertura', async r => {
+        if (++vez === 1) return responder(r, {message: 'falhou'}, 500);
+        await conta.p;
+        await r.fallback();
+      });
+      await abrir(page);
+      await menu(page, /^Admin/);
+      await expect(page.getByRole('button', {name: '↻ Atualizar'})).toBeEnabled();
+      // contado aqui: as respostas deste teste não passam pela nuvem falsa
+      expect(vez, 'fechada, não conta').toBe(0);
+      const secao = page.locator('[data-secao="Nossa base de ruas"]');
+      await secao.locator('summary').click();
+      await expect(secao.locator('[data-erro-base]')).toContainText('Não consegui contar a base de ruas');
+      await expect(secao).not.toContainText(/\d+ ruas com nome/);
+      await secao.getByRole('button', {name: 'Tentar de novo'}).click();
+      await expect(secao.locator('[data-contando]')).toHaveText('Contando a base de ruas…');
+      await expect(secao).not.toContainText(/\d+ ruas com nome/);
+      conta.abrir();
+      await expect(secao).toContainText('3548 ruas com nome · 970 trechos ainda sem nome');
+      await expect(secao.locator('[data-contando], [data-erro-base]')).toHaveCount(0);
+    });
+  });
+
+  // "As 500 mais novas" sem buscar de novo o que a semana já trouxe (revisão de 19/10): o conjunto
+  // tem de ser o mesmo, nos limites e com horários empatados. Cada marcação num endereço só dela.
+  test.describe('as marcações lidas', () => {
+    const cep = (n: number) => String(n).padStart(8, '0');
+    const semana = (n: number) => Array.from({length: n}, (_, i) => ({id: 10000 + i, chave_lugar: `${cep(49100000 + i)}|1`,
+      lat: -10.9, lng: -37.0, criado_em: new Date(Date.now() - (i + 1) * 60000).toISOString(), motorista_id: 'm1', perfis: {nome: 'Pedro', papel: 'motorista'}}));
+    // as mais velhas, j = 0 a mais nova; as de `empate` com o mesmo horário
+    const velhas = (n: number, empate: number[] = []) => Array.from({length: n}, (_, j) => ({id: 20000 + j, chave_lugar: `${cep(49200000 + j)}|1`,
+      lat: -10.9, lng: -37.0, criado_em: new Date(Date.now() - 8 * 864e5 - (empate.includes(j) ? empate[0] : j) * 60000).toISOString(), motorista_id: 'm1', perfis: {nome: 'Pedro', papel: 'motorista'}}));
+    const velha = (j: number) => `${cep(49200000 + j)}|1`;
+    const antigas = (page: any) => page.locator('[data-secao="Marcações mais antigas"]');
+
+    for (const [nome, n, esperadas] of [['menos de 500', 499, [0]], ['exatamente 500', 500, []], ['mais de 500', 600, []]] as const) {
+      test(`com ${nome} na semana`, async ({page, nuvem}) => {
+        nuvem.tabelas = {correcoes: [...semana(n), ...velhas(30)]};
+        await abrir(page);
+        await menu(page, /^Admin/);
+        await expect(page.locator('[data-marcadas-de="Pedro"]')).toContainText(`Pedro · ${n} endereço(s)`, {timeout: 20_000});
+        if (esperadas.length) {
+          await expect(antigas(page).locator('summary')).toHaveText(`Marcações mais antigas (${esperadas.length})`);
+          for (const j of esperadas) await expect(antigas(page).locator(`[data-lugar="${velha(j)}"]`)).toHaveCount(1);
+        } else {
+          await expect(antigas(page)).toHaveCount(0);
+          expect(nuvem.pedidos.filter(p => p.caminho === 'correcoes' && decodeURIComponent(p.busca).includes('criado_em=lt.')), 'a semana já tem as 500').toHaveLength(0);
+        }
+      });
+    }
+
+    test('com horários empatados no corte, entram as de id maior, sem repetir nem perder', async ({page, nuvem}) => {
+      // faltam 10: as 7 mais novas e 3 das 6 empatadas (7 a 12), as de id maior
+      nuvem.tabelas = {correcoes: [...semana(490), ...velhas(30, [7, 8, 9, 10, 11, 12])]};
+      await abrir(page);
+      await menu(page, /^Admin/);
+      await expect(antigas(page).locator('summary')).toHaveText('Marcações mais antigas (10)', {timeout: 20_000});
+      for (const j of [0, 1, 2, 3, 4, 5, 6, 10, 11, 12]) await expect(antigas(page).locator(`[data-lugar="${velha(j)}"]`)).toHaveCount(1);
+      for (const j of [7, 8, 9, 13]) await expect(page.locator(`[data-lugar="${velha(j)}"]`)).toHaveCount(0);
+    });
   });
 
   // O servidor devolve 1.000 linhas e cala: 30 dias de uso dos botões passam disso no ritmo de
