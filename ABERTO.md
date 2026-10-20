@@ -330,7 +330,16 @@ Fora da lista:
   falha no teste instável do mapa já anotado ("de perto, o nome da planilha…", desta vez na espera
   de "de longe, sem nomes"); sozinho passou 6 de 6, e a bateria inteira de novo passou 195 de 195.
   No GitHub, "Testar e publicar" passou nos dois passos. O Admin no ar tem os textos que só o
-  candidato tem ("Contando a base de ruas…"). **Falta** a conferência do dono no Admin.
+  candidato tem ("Contando a base de ruas…").
+- **Conferência do dono no Admin publicado (20/10, 02:20, versão `mvg88h2q`):** abriu sem erro; 638
+  marcadas nos últimos 7 dias (Luan 309, Pedro 306, César 17), 75 rotas de 14 dias e 55 marcações
+  mais antigas, os mesmos números da equivalência; números do dia zerados porque às 02:20 ainda não
+  havia rota; a lista do Luan com os nomes completos, nenhum em cinza; "Ver no mapa" e "Ver todas no
+  mapa" certos; a base de ruas contou ao abrir (6238 ruas com nome, 3147 entregas na porta em 2707
+  endereços); o Atualizar, clicado várias vezes, voltou sempre igual. **Conferência completa.**
+  Visto de passagem, de antes: num dia sem nenhuma
+  posição o mapa do Admin fica onde estava (a América do Sul inteira ao abrir); centralizar em
+  Aracaju seria mudança nova.
 - **Não rodado:** os testes `@nuvem`, que escrevem no banco de produção.
 - **Fica como está:** o selo do botão Mais conta só as decisões; o cartão "Esperando você" soma
   também as paradas sem local e as rotas para conferir.
