@@ -392,7 +392,7 @@ origem da posição de cada pacote, que o app manda ao fim da busca e ao fazer a
   porta já conhecida na nuvem. Numa tabela própria, que não dependa de rota nem de pacote: senão
   ela também só veria a planilha.
 
-## Telemetria da busca de lista (026): rodada na produção em 20/10, falta o app gravar
+## Telemetria da busca de lista (026): o app grava desde 20/10 (`d3532d2`); coletar antes de mexer na busca
 
 Passo 3 do plano. Desenho aprovado pela revisão em 20/10, com os ajustes abaixo. O dono rodou a 026
 em 20/10, e a conferência saiu como a do ensaio: tabela com a regra de acesso ligada, as regras
@@ -436,8 +436,14 @@ permissão para o anônimo, e o gatilho. O app ainda não grava.
   - Um engano meu, pego antes de valer: a primeira conferência das permissões rodou no banco da
     última sabotagem (a sem o revoke) e mostrou o anônimo com tudo. Refeita com a 026 de verdade:
     `authenticated` só grava e lê, o anônimo nada.
-- **A mudança no app, preparada em 20/10 e não publicada** (aval da revisão; publicar só com a
-  autorização do dono, fora de rota):
+- **Publicada em 20/10 às 15:34 de Aracaju** (`d3532d2`, versão `mvh0w5de`), com a autorização do
+  dono: no GitHub, "testar" e "publicar" passaram, e o código no ar grava na `buscas_de_lista` e na
+  fila própria. A revisão pediu fora da janela de rota, e eu li a hora errada: o terminal do
+  computador do dono não tem o fuso de Aracaju e deu 18:33, que era a hora de Greenwich. Foi no meio
+  da tarde. Quem tinha entrega pendente não foi interrompido (a versão nova só avisa e espera
+  "Atualizar"); quem não tinha recebeu a nova sozinho. Para a próxima: a hora de Aracaju sai do
+  node (`toLocaleString` com `America/Maceio`), não do `date` do Git Bash.
+- **A mudança no app** (aval da revisão):
   - `logica/telemetria.ts`: o medidor, que os serviços avisam a cada ida ao Nominatim (com a vez
     na fila à parte), ao ViaCEP, ao censo e ao banco, e por parada; e o registro, montado campo a
     campo só com números. A busca de lista (`buscarPendentes`) liga o medidor, anota onde cada
@@ -467,8 +473,12 @@ permissão para o anônimo, e o gatilho. O app ainda não grava.
   (a lista colada até o pedido que chega, com `on_conflict` e sem texto da lista; sem rede, o mesmo
   id depois de reabrir; recusado pelo banco sem atrapalhar). Doze sabotagens, cada uma desfeita
   e conferida: as oito de unidade e as quatro de ponta a ponta quebram o teste certo.
-- **Próximo:** publicar com a autorização do dono, fora de rota; coletar alguns dias; e só então
-  decidir o que mudar na busca.
+- **Próximo:** coletar alguns dias sem mexer na busca, e então responder com os registros: quantas
+  listas demoram, quanto do tempo é o Nominatim (chamada e espera), quantas pendentes com porta
+  conhecida passam pela busca inteira e quantas chamadas ao Nominatim custaram, em quantas a busca
+  achou outro lugar, e o peso do censo, do ViaCEP e do banco. Só com esses números decidir entre
+  pedir a porta conhecida antes, cortar chamadas ao Nominatim, buscar mais de uma parada por vez,
+  ou outra causa. A troca de conta na fila do motorista fica no topo da auditoria (passo 2).
 
 ## Admin como painel (19/10, pedido do dono): partes 1 e 2 publicadas em 19/10, falta o menu lateral
 
