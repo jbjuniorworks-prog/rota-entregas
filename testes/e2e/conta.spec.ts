@@ -165,7 +165,7 @@ test.describe('administrador', () => {
     const antes = (min: number) => new Date(Date.now() - min * 60000).toISOString();
     const rota = (id: string, nome: string, dia = hojeMaceio) => ({id, dia, arquivo: id + '.xlsx', criado_em: antes(400), motorista_id: nome, perfis: {nome}});
     const pacote = (rota_id: string, chave_lugar: string | null, entregue_em: string | null, endereco = 'Rua Teste, ' + chave_lugar) =>
-      ({rota_id, chave_lugar, endereco, entregue_em, spx_tn: null, sequencia: null, bairro: null, lat: null, lng: null});
+      ({rota_id, chave_lugar, endereco, entregue_em, spx_tn: null, sequencia: null, bairro: null, lat: -10.9, lng: -37.0});
     nuvem.tabelas = {
       // a de ontem não entra no painel
       rotas: [rota('r1', 'Teste Na Rua'), rota('r2', 'Teste Terminou'), rota('r3', 'Teste Parada'), rota('r4', 'Teste Ontem', '2026-01-01')],
@@ -194,6 +194,90 @@ test.describe('administrador', () => {
     await expect(linhas.nth(0)).toContainText(/Teste Parada.*1\/3.*0\/2.*Parada há 2h(?!\d)/);
     await expect(linhas.nth(1)).toContainText(/Teste Na Rua.*2\/3.*1\/3.*Na rua/);
     await expect(linhas.nth(2)).toContainText(/Teste Terminou.*2\/2.*1\/2.*Terminou/);
+  });
+
+  // Painel, parte 2 (19/10): o que tem conserto aparece com o botão que conserta. Inventados.
+  test.describe('o que tem conserto no painel', () => {
+    const hojeMaceio = () => new Date().toLocaleDateString('sv-SE', {timeZone: 'America/Maceio'});
+    const antes = (min: number) => new Date(Date.now() - min * 60000).toISOString();
+    const pacote = (rota_id: string, chave_lugar: string | null, endereco: string, extra: Record<string, unknown> = {}) =>
+      ({rota_id, chave_lugar, endereco, entregue_em: null, spx_tn: null, sequencia: null, bairro: 'Bairro Teste', lat: -10.95, lng: -37.05, ...extra});
+
+    test('parada de hoje sem local: o admin marca a porta pelo mapa, e a sem chave diz por quê', async ({page, nuvem}) => {
+      nuvem.tabelas = {
+        rotas: [{id: 'r1', dia: hojeMaceio(), arquivo: 'Teste.xlsx', criado_em: antes(90), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}}],
+        pacotes: [
+          pacote('r1', '49000100|5', 'Rua Teste, 5', {entregue_em: antes(20)}),
+          pacote('r1', '49000100|77', 'Rua Inventada, 77', {lat: null, lng: null}), pacote('r1', '49000100|77', 'Rua Inventada, 77', {lat: null, lng: null}),
+          pacote('r1', null, 'Travessa Inventada, Casa Azul', {lat: null, lng: null}),
+          // entregue sem pino: já não é problema
+          pacote('r1', '49000100|88', 'Rua Inventada, 88', {lat: null, lng: null, entregue_em: antes(30)}),
+        ],
+      };
+      await abrir(page);
+      await menu(page, /^Admin/);
+      const secao = page.locator('[data-secao="Paradas de hoje sem local"]');
+      await expect(secao.locator('summary')).toHaveText('Paradas de hoje sem local (2)');
+      await expect(page.locator('[data-kpi="esperando"]')).toContainText('2 paradas sem local');
+      await expect(secao.locator('[data-sem-local="Travessa Inventada, Casa Azul"]')).toContainText('Sem número da porta: a porta marcada não fica guardada.');
+      await expect(secao.locator('[data-sem-local="Travessa Inventada, Casa Azul"]').getByRole('button')).toHaveCount(0);
+      const item = secao.locator('[data-sem-local="49000100|77"]');
+      await expect(item).toContainText('Bairro Teste · Teste · 2 pacotes');
+      page.on('dialog', d => d.accept());
+      await item.getByRole('button', {name: 'Marcar como admin'}).click();
+      await expect(page.locator('[data-armado]')).toContainText('Rua Inventada, 77');
+      await clicarMapa(page, -10.96, -37.04);
+      await expect(aviso(page)).toContainText('Porta gravada: vale para todos os motoristas');
+      expect(nuvem.pedidos.filter(p => p.metodo === 'POST' && p.caminho === 'correcoes').map(p => p.corpo))
+        .toEqual([expect.objectContaining({chave_lugar: '49000100|77', lat: -10.96, lng: -37.04})]);
+    });
+
+    test('rota de outro dia ou de outro motorista fica fora dos números, e se apaga daqui', async ({page, nuvem}) => {
+      nuvem.tabelas = {
+        perfis: [{id: 'm1', nome: 'Teste', papel: 'motorista', ativo: true}, {id: 'm2', nome: 'Fulano', papel: 'motorista', ativo: true}],
+        rotas: [
+          {id: 'boa', dia: hojeMaceio(), arquivo: '19-10-2026 Teste Inventado.xlsx', criado_em: antes(300), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}},
+          {id: 'dele', dia: hojeMaceio(), arquivo: '19-10-2026 Fulano Inventado.xlsx', criado_em: antes(200), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}},
+          {id: 'velha', dia: hojeMaceio(), arquivo: '01-01-2026 Fulano Inventado.xlsx', criado_em: antes(100), motorista_id: 'adm', perfis: {nome: 'Quem Administra', papel: 'admin'}},
+        ],
+        pacotes: [
+          pacote('boa', '49000100|1', 'Rua Teste, 1', {entregue_em: antes(10)}), pacote('boa', '49000100|2', 'Rua Teste, 2'),
+          pacote('dele', '49000100|3', 'Rua Teste, 3'), pacote('velha', '49000100|4', 'Rua Teste, 4'),
+        ],
+      };
+      await abrir(page);
+      await menu(page, /^Admin/);
+      const secao = page.locator('[data-secao="Rotas para conferir"]');
+      await expect(secao.locator('summary')).toHaveText('Rotas para conferir (2)');
+      await expect(secao.locator('[data-para-conferir="dele"]')).toContainText('Planilha de Fulano na conta de Teste');
+      await expect(secao.locator('[data-para-conferir="velha"]')).toContainText('Planilha de 01/01/2026 na conta de Quem Administra');
+      // os números e a tabela só com a rota de verdade
+      await expect(page.locator('[data-kpi="rotas"] .kpi-num')).toHaveText('1');
+      await expect(page.locator('[data-kpi="entregues"] .kpi-num')).toHaveText('1 de 2');
+      await expect(page.locator('[data-rota-hoje]')).toHaveCount(1);
+      // e o mapa do dia abre só com ela, um pino por endereço
+      await expect(page.locator('.mapwrap .pino')).toHaveCount(2);
+
+      page.on('dialog', d => d.accept());
+      await secao.locator('[data-para-conferir="dele"]').getByRole('button', {name: 'Apagar rota'}).click();
+      await expect(aviso(page)).toContainText('Rota apagada.');
+      const apagou = nuvem.pedidos.find(p => p.metodo === 'DELETE' && p.caminho === 'rotas');
+      expect(apagou?.busca).toContain('id=eq.dele');
+    });
+
+    // O César de 19/10 marcou cinco endereços de duas ruas parado num lugar só.
+    test('em conferência, avisa quando endereços de ruas diferentes saíram do mesmo ponto', async ({page, nuvem}) => {
+      const marca = (chave_lugar: string) => ({motorista_id: 'n1', chave_lugar, lat: -10.95, lng: -37.05, criado_em: antes(30), pendente: true, recusada: false});
+      nuvem.tabelas = {observacoes: [marca('49000100|155'), marca('49000100|66'), marca('49000200|60')], correcoes: []};
+      nuvem.rpc = {marcas_em_conferencia: [{
+        motorista_id: 'n1', nome: 'Novo', chave_lugar: '49000100|155', endereco: 'Rua Inventada, 155', criado_em: antes(30),
+        lat: -10.95, lng: -37.05, situacao: 'confirmado', lat_antes: null, lng_antes: null, situacao_antes: null, pino_lat: -10.953, pino_lng: -37.05, no_pino: false,
+      }]};
+      await abrir(page);
+      await menu(page, /^Admin/);
+      await expect(page.locator('[data-conferir="49000100|155"] [data-mesmo-ponto]'))
+        .toHaveText('Marcada do mesmo ponto que outros 2 endereços, de 2 ruas diferentes. Confira antes de aprovar.');
+    });
   });
 
   // O servidor devolve 1.000 linhas e cala: 30 dias de uso dos botões passam disso no ritmo de

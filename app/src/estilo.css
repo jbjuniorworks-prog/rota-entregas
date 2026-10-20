@@ -258,6 +258,7 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
 .painel-colunas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(400px,100%),1fr));gap:0 20px;align-items:start}
 .cartao-painel{border:1px solid var(--bd);border-radius:14px;padding:10px 12px;margin:8px 0;background:#fff}
 .cartao-painel h3{font-size:16px;margin:2px 0 8px}
+.cab-cartao{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .tabela-rolar{overflow-x:auto}
 .tabela-dia{width:100%;border-collapse:collapse;font-size:14px}
 .tabela-dia th{text-align:left;font-size:12px;color:var(--mut);font-weight:700;padding:4px 5px;border-bottom:1px solid var(--bd)}

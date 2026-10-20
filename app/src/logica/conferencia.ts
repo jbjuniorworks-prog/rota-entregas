@@ -30,6 +30,47 @@ export interface ItemEmConferencia extends MarcaEmConferencia {
   // do ponto dele até o pino da rota dele; nulo em rota lida de vídeo, que não sobe pacote
   doPino: number | null;
   texto: string;
+  mesmoPonto?: MesmoPonto;
+}
+
+// O ponto de verdade do que ele marcou ou entregou e espera aprovação. O `lat` da lista acima é a
+// porta que ficaria, que pode ser a de outro motorista.
+export interface PontoPendente {
+  motorista_id: string;
+  chave_lugar: string;
+  lat: number;
+  lng: number;
+  criado_em: string;
+}
+
+export interface MesmoPonto {
+  enderecos: number;
+  ruas: number;
+}
+
+// A rua da chave: o CEP, ou a rua e o bairro da chave sem CEP.
+export const ruaDaChave = (chave: string) => chave.startsWith('r|') ? chave.split('|').filter((_, i) => i !== 2).join('|') : chave.split('|')[0];
+
+const PERTO_M = 15, JANELA_MIN = 30;
+
+// O César de 19/10 marcou cinco endereços de duas ruas parado num lugar só, e dois foram aprovados.
+// Vários do mesmo ponto na mesma rua costumam ser o mesmo prédio ou condomínio, e não marcam nada:
+// o que pesa é ruas diferentes. Devolve, por motorista e chave, quantos endereços e ruas saíram do
+// mesmo ponto em até 30 min.
+export function marcadasDoMesmoPonto(pontos: PontoPendente[]): Map<string, MesmoPonto> {
+  const saida = new Map<string, MesmoPonto>();
+  for (const p of pontos) {
+    const juntos = pontos.filter(q => q.motorista_id === p.motorista_id && haversine(p, q) <= PERTO_M
+      && Math.abs(Date.parse(q.criado_em) - Date.parse(p.criado_em)) <= JANELA_MIN * 60000);
+    const chaves = new Set(juntos.map(q => q.chave_lugar));
+    const ruas = new Set([...chaves].map(ruaDaChave));
+    if (chaves.size < 3 || ruas.size < 2) continue;
+    for (const k of chaves) {
+      const id = p.motorista_id + '|' + k, antes = saida.get(id);
+      if (!antes || chaves.size > antes.enderecos) saida.set(id, {enderecos: chaves.size, ruas: ruas.size});
+    }
+  }
+  return saida;
 }
 
 export interface MotoristaEmConferencia {
@@ -57,7 +98,7 @@ function explicar(m: MarcaEmConferencia & {lat: number; lng: number}, doPino: nu
   return partes.join(' ');
 }
 
-export function agruparConferencia(linhas: MarcaEmConferencia[]): MotoristaEmConferencia[] {
+export function agruparConferencia(linhas: MarcaEmConferencia[], mesmoPonto: ReadonlyMap<string, MesmoPonto> = new Map()): MotoristaEmConferencia[] {
   const grupos = new Map<string, MotoristaEmConferencia>();
   for (const l of linhas) {
     if (l.lat == null || l.lng == null) continue;
@@ -65,7 +106,8 @@ export function agruparConferencia(linhas: MarcaEmConferencia[]): MotoristaEmCon
     const doPino = l.pino_lat != null && l.pino_lng != null ? haversine(ponto, {lat: l.pino_lat, lng: l.pino_lng}) : null;
     let g = grupos.get(l.motorista_id);
     if (!g) grupos.set(l.motorista_id, g = {id: l.motorista_id, nome: l.nome, mexem: [], noPino: []});
-    (l.no_pino ? g.noPino : g.mexem).push({...ponto, doPino, texto: explicar(ponto, doPino)});
+    const junto = mesmoPonto.get(l.motorista_id + '|' + l.chave_lugar);
+    (l.no_pino ? g.noPino : g.mexem).push({...ponto, doPino, texto: explicar(ponto, doPino), ...(junto ? {mesmoPonto: junto} : {})});
   }
   // o mais longe do pino primeiro, e o sem pino junto dele: é onde um erro custa mais
   const risco = (i: ItemEmConferencia) => i.doPino ?? Infinity;

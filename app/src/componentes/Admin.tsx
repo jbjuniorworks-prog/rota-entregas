@@ -3,7 +3,8 @@ import {haversine} from '../logica/geo';
 import {contarConferencia, type ItemEmConferencia, type MotoristaEmConferencia} from '../logica/conferencia';
 import {CHAVES} from '../logica/guarda';
 import {fmtKm} from '../logica/otimizacao';
-import type {Dia, LinhaDoDia} from '../logica/painel';
+import type {Dia, LinhaDoDia, ParaConferir, SemLocal, Suspeita} from '../logica/painel';
+import {faltaNaChave} from '../logica/texto';
 import * as A from '../acoes';
 import {origemDaPorta, porQuePrecisaDeVoce, situacaoDoLugar, triar} from '../logica/triagem';
 import {guarda, loja, status, useLoja, type Marca} from '../loja';
@@ -66,12 +67,18 @@ export function TelaAdmin() {
     setErro('');
     setLendo(true);
     const falha = (err: unknown) => setErro((err as Error).message);
+    const pMotoristas = Adm.listarMotoristas();
     await Promise.all([
-      Adm.listarMotoristas().then(setMotoristas, falha),
-      // o painel do dia sai das rotas: um erro nele fica nele, e as rotas continuam na tela
-      Adm.listarRotas().then(r => {
+      pMotoristas.then(setMotoristas, falha),
+      // O painel do dia sai das rotas: um erro nele fica nele, e as rotas continuam na tela. Os
+      // nomes dos motoristas dizem de quem é a planilha.
+      Adm.listarRotas().then(async r => {
         setRotas(r);
-        return Adm.resumoDeHoje(r).then(setDia, err => setDia({erro: (err as Error).message}));
+        const nomes = (await pMotoristas.catch(() => [] as Adm.Motorista[])).filter(m => m.papel === 'motorista').map(m => m.nome);
+        const d = await Adm.resumoDeHoje(r, nomes).catch(err => ({erro: (err as Error).message}));
+        setDia(d);
+        // o mapa do Admin abre no dia, enquanto ele não pediu outra coisa
+        if (!('erro' in d) && !loja.ui.marcas) verDiaNoMapa(d);
       }, falha),
       Adm.listarCorrecoes().then(l => {
         setLugares(l);
@@ -100,17 +107,20 @@ export function TelaAdmin() {
   // de hoje, em duas colunas no computador e uma embaixo da outra no celular. O que os motoristas
   // mexeram vem antes de 14 dias de rotas; o que é de vez em quando (motoristas, base de ruas,
   // medição dos botões) fica fechado, a um toque.
-  const esperando = t ? t.decidir.length + nConferir : null;
+  const doDia = dia && !('erro' in dia) ? dia : null;
+  const decisoes = t ? t.decidir.length + nConferir : null;
+  const esperando = decisoes == null ? null : decisoes + (doDia ? doDia.semLocal.length + doDia.paraConferir.length : 0);
   return <div className="corpo">
     <h2>Administração</h2>
     <div className="linha" style={{marginTop: 0}}><button className="btn" onClick={carregar} disabled={lendo}>{lendo ? 'Buscando…' : '↻ Atualizar'}</button></div>
     {erro && <div className="aviso">Não consegui carregar: {erro}</div>}
     {(!motoristas || !rotas || !lugares) && !erro && <div className="info">Carregando…</div>}
-    <NumerosDoDia dia={dia} esperando={esperando} />
+    <NumerosDoDia dia={dia} esperando={esperando} partes={[
+      [decisoes || 0, 'decisão', 'decisões'], [doDia?.semLocal.length || 0, 'parada sem local', 'paradas sem local'], [doDia?.paraConferir.length || 0, 'rota para conferir', 'rotas para conferir']]} />
     <div className="painel-colunas">
       <div>
-        {t && <div className={esperando ? 'aviso laranja' : 'info'} data-resumo>
-          {esperando ? <b>{esperando} esperando você.</b> : 'Nada esperando você.'}
+        {t && <div className={decisoes ? 'aviso laranja' : 'info'} data-resumo>
+          {decisoes ? <b>{decisoes} esperando você.</b> : 'Nada esperando você.'}
           {visto != null && (t.novas
             ? ` 🆕 ${t.novas} marcação(ões) nova(s) desde ${dataHora(new Date(visto).toISOString())}.`
             : ` Nada novo desde ${dataHora(new Date(visto).toISOString())}.`)}
@@ -118,6 +128,8 @@ export function TelaAdmin() {
         {t && <Lugares titulo={`📌 Precisa de você (${t.decidir.length})`} lista={t.decidir} aberta decidir {...doLugar}
           vazio="Nenhuma marcação esperando decisão." />}
         {conferencia && <EmConferencia estado={conferencia} corDe={corDe} recarregar={carregar} />}
+        {doDia && <ParadasSemLocal lista={doDia.semLocal} recarregar={carregar} />}
+        {doDia && <RotasParaConferir lista={doDia.paraConferir} recarregar={carregar} />}
         {t && <Lugares titulo={`🆕 Marcadas pelos motoristas nos últimos 7 dias (${t.recentes.length})`} lista={t.recentes} aberta {...doLugar}
           vazio="Nenhuma porta marcada nos últimos 7 dias." />}
       </div>
@@ -137,7 +149,7 @@ export function TelaAdmin() {
 
 const de = (a: number, b: number) => <>{a}<small> de {b}</small></>;
 
-function NumerosDoDia({dia, esperando}: {dia: Dia | {erro: string} | null; esperando: number | null}) {
+function NumerosDoDia({dia, esperando, partes}: {dia: Dia | {erro: string} | null; esperando: number | null; partes: [number, string, string][]}) {
   const d = dia && !('erro' in dia) ? dia : null;
   return <>
     {dia && 'erro' in dia && <div className="aviso">Não consegui montar o painel do dia: {dia.erro}</div>}
@@ -160,7 +172,7 @@ function NumerosDoDia({dia, esperando}: {dia: Dia | {erro: string} | null; esper
       <div className={`kpi${esperando ? ' atencao' : ''}`} data-kpi="esperando">
         <div className="kpi-num">{esperando ?? '…'}</div>
         <div className="kpi-nome">Esperando você</div>
-        <div className="kpi-sub">em Precisa de você e Em conferência</div>
+        <div className="kpi-sub">{esperando ? partes.filter(([n]) => n).map(([n, um, varios]) => `${n} ${n === 1 ? um : varios}`).join(', ') : 'nada para resolver'}</div>
       </div>
     </div>
   </>;
@@ -174,7 +186,8 @@ const textoDaSituacao = (l: LinhaDoDia) => l.situacao === 'parada' ? `Parada há
 
 function RotasDeHoje({dia}: {dia: Dia | {erro: string} | null}) {
   return <section className="cartao-painel" data-secao="Rotas de hoje">
-    <h3>Rotas de hoje</h3>
+    <div className="cab-cartao"><h3>Rotas de hoje</h3>
+      {dia && !('erro' in dia) && dia.pontos.length > 0 && <button className="link" data-dia-no-mapa onClick={() => verDiaNoMapa(dia)}>Ver o dia no mapa</button>}</div>
     {!dia && <div className="info">Carregando…</div>}
     {dia && 'erro' in dia && <div className="info">Sem o painel do dia; as rotas estão mais abaixo.</div>}
     {dia && !('erro' in dia) && !dia.linhas.length && <div className="info">Nenhuma rota enviada hoje.</div>}
@@ -236,6 +249,7 @@ A entrega continua registrada, mas a posição dela não vale para ninguém.`)) 
       {i.endereco}
     </label>
     <div className="achado">{dataHora(i.criado_em)} · {i.texto}</div>
+    {i.mesmoPonto && <div className="aviso" data-mesmo-ponto>Marcada do mesmo ponto que outros {i.mesmoPonto.enderecos - 1} endereços, de {i.mesmoPonto.ruas} ruas diferentes. Confira antes de aprovar.</div>}
     <div className="linha">
       <button className="btn peq" onClick={() => verNoMapa(g, i)}>Ver no mapa</button>
       {!i.no_pino && <button className="btn peq pri" onClick={() => decidir(g, [i], true)} disabled={!!ocupado}>{fazendo('ok' + g.id + i.chave_lugar) ? 'Aprovando…' : 'Aprovar'}</button>}
@@ -544,5 +558,72 @@ function Lugares({titulo, lista, vazio, aberta, decidir, novo, corDe, recarregar
         })))}>Ver no mapa</button></div>
       </div>;
     })}
+  </details>;
+}
+
+// O mapa do dia (dono, 19/10): uma cor por rota, a entregue com ✓ e a por fazer com a inicial do
+// motorista, num pino só por endereço. Não é ao vivo: o celular só manda a posição na entrega.
+const CORES_DO_DIA = ['#1d4ed8', '#db2777', '#ea580c', '#0d9488', '#7c3aed', '#65a30d', '#ca8a04', '#0891b2'];
+function verDiaNoMapa(dia: Dia) {
+  const cor = new Map(dia.linhas.map((l, i) => [l.id, CORES_DO_DIA[i % CORES_DO_DIA.length]]));
+  const nome = new Map(dia.linhas.map(l => [l.id, l.motorista]));
+  const um = new Map<string, Marca & {feitos: number; total: number}>();
+  for (const p of dia.pontos) {
+    const k = p.rota_id + '|' + (p.chave_lugar ?? p.endereco);
+    const m = um.get(k) || {lat: p.lat!, lng: p.lng!, rotulo: '', texto: '', cor: '', feitos: 0, total: 0};
+    m.total++;
+    if (p.entregue_em) m.feitos++;
+    const tudo = m.feitos === m.total;
+    Object.assign(m, {rotulo: tudo ? '✓' : (nome.get(p.rota_id) || '?').slice(0, 1).toUpperCase(), cor: tudo ? cor.get(p.rota_id)! : '#9ca3af',
+      texto: `${nome.get(p.rota_id)} · ${p.endereco}${tudo ? ' · entregue' : m.feitos ? ` · ${m.feitos} de ${m.total} entregues` : ''}`});
+    um.set(k, m);
+  }
+  mostrarNoMapa([...um.values()].map(({feitos, total, ...m}) => m));
+}
+
+function ParadasSemLocal({lista, recarregar}: {lista: SemLocal[]; recarregar: () => void}) {
+  if (!lista.length) return null;
+  const marcar = (p: SemLocal) => {
+    if (window.innerWidth < 900) window.scrollTo(0, 0);
+    A.marcarLugar({endereco: p.endereco, gravar: async (lat, lng) => { await Adm.confirmarPosicao(p.chave!, lat, lng); recarregar(); }});
+  };
+  return <details open data-secao="Paradas de hoje sem local">
+    <summary>Paradas de hoje sem local ({lista.length})</summary>
+    <div className="info">Não encontradas: ficaram fora da rota do motorista. Marcada por você, a porta vale para todos, e o celular dele recebe quando ele voltar ao app.</div>
+    {lista.map(p => <div className="item" key={p.rota_id + (p.chave ?? p.endereco)} data-sem-local={p.chave ?? p.endereco}>
+      <div className="orig">{p.endereco}</div>
+      <div className="achado">{[p.bairro, p.motorista, p.pacotes > 1 ? `${p.pacotes} pacotes` : ''].filter(Boolean).join(' · ')}</div>
+      {p.chave
+        ? <div className="linha"><button className="btn peq pri" onClick={() => marcar(p)}>Marcar como admin</button></div>
+        : <div className="achado">{faltaNaChave(p.endereco)}: a porta marcada não fica guardada. Só o motorista, no celular dele, põe o pino para hoje.</div>}
+    </div>)}
+  </details>;
+}
+
+const POR_QUE: Record<Suspeita['tipo'], (s: any) => string> = {
+  'outro dia': s => `Planilha de ${s.dia}`,
+  'outro motorista': s => `Planilha de ${s.nome}`,
+  'repetida': () => 'A mesma planilha, aberta de novo',
+};
+
+function RotasParaConferir({lista, recarregar}: {lista: ParaConferir[]; recarregar: () => void}) {
+  const {ocupado, correr, fazendo} = useTrabalho();
+  if (!lista.length) return null;
+  const apagar = async (r: ParaConferir) => {
+    if (!confirm(`Apagar a rota "${r.arquivo}" da conta de ${r.motorista}?
+
+Ela não tem nenhuma entrega. As portas marcadas e as entregas de outras rotas ficam.`)) return;
+    if (await correr('apagar' + r.id, () => Adm.apagarRota(r.id)) === undefined) return;
+    status('Rota apagada.', 3000);
+    recarregar();
+  };
+  return <details open data-secao="Rotas para conferir">
+    <summary>Rotas para conferir ({lista.length})</summary>
+    <div className="info">Abertas hoje sem nenhuma entrega, com planilha de outro dia, de outro motorista ou repetida. Não entram nos números do dia.</div>
+    {lista.map(r => <div className="item" key={r.id} data-para-conferir={r.id}>
+      <div><b>{POR_QUE[r.suspeita.tipo](r.suspeita)}</b> na conta de {r.motorista}</div>
+      <div className="achado">{r.arquivo} · {r.pacotes} pacote(s){r.criado_em ? ` · enviada ${hora(r.criado_em)}` : ''}</div>
+      <div className="linha"><button className="btn peq" onClick={() => apagar(r)} disabled={!!ocupado}>{fazendo('apagar' + r.id) ? 'Apagando…' : 'Apagar rota'}</button></div>
+    </div>)}
   </details>;
 }

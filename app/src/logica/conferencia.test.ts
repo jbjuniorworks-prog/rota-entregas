@@ -1,4 +1,4 @@
-import {agruparConferencia, contarConferencia, type MarcaEmConferencia} from './conferencia';
+import {agruparConferencia, contarConferencia, marcadasDoMesmoPonto, ruaDaChave, type MarcaEmConferencia, type PontoPendente} from './conferencia';
 
 const PINO = {lat: -10.9500, lng: -37.0500};
 // ~3,5 km ao norte, como as entregas marcadas de casa em 15/10
@@ -50,5 +50,40 @@ describe('o que o motorista em conferência espera do admin', () => {
     ]);
     expect(gs.map(g => g.nome)).toEqual(['Outro', 'Novo']);
     expect(contarConferencia(gs)).toBe(3);
+  });
+});
+
+// O César de 19/10: cinco endereços de duas ruas marcados parado num lugar só. Inventados.
+describe('marcadas do mesmo ponto', () => {
+  const ponto = (chave: string, metros = 0, minutos = 0, motorista = 'n1'): PontoPendente => ({
+    motorista_id: motorista, chave_lugar: chave, lat: CASA.lat + metros / 111320, lng: CASA.lng,
+    criado_em: new Date(Date.parse('2026-10-19T15:43:00Z') + minutos * 60000).toISOString(),
+  });
+
+  it('a rua da chave é o CEP, ou a rua e o bairro sem o número', () => {
+    expect(ruaDaChave('49000100|155')).toBe('49000100');
+    expect(ruaDaChave('r|rua teste|20|bairro teste|aracaju')).toBe('r|rua teste|bairro teste|aracaju');
+  });
+
+  it('três endereços de duas ruas do mesmo ponto: marca os três, com quantos e de quantas ruas', () => {
+    const m = marcadasDoMesmoPonto([ponto('49000100|155'), ponto('49000100|66', 1), ponto('49000200|60', 0, 1), ponto('49000100|184', 26)]);
+    expect(Object.fromEntries(m)).toEqual({
+      'n1|49000100|155': {enderecos: 3, ruas: 2}, 'n1|49000100|66': {enderecos: 3, ruas: 2}, 'n1|49000200|60': {enderecos: 3, ruas: 2},
+    });
+  });
+
+  it('o mesmo prédio, vários endereços da mesma rua no mesmo ponto, não marca', () => {
+    expect(marcadasDoMesmoPonto([ponto('49000100|10'), ponto('49000100|12'), ponto('49000100|14'), ponto('49000100|16')]).size).toBe(0);
+  });
+
+  it('nem longe no tempo, nem de outro motorista, nem só dois endereços', () => {
+    expect(marcadasDoMesmoPonto([ponto('49000100|1'), ponto('49000200|2'), ponto('49000300|3', 0, 45)]).size).toBe(0);
+    expect(marcadasDoMesmoPonto([ponto('49000100|1'), ponto('49000200|2'), ponto('49000300|3', 0, 0, 'n2')]).size).toBe(0);
+    expect(marcadasDoMesmoPonto([ponto('49000100|1'), ponto('49000200|2')]).size).toBe(0);
+  });
+
+  it('o item da lista leva o aviso', () => {
+    const [g] = agruparConferencia([linha('49000100|155')], new Map([['n1|49000100|155', {enderecos: 3, ruas: 2}]]));
+    expect(g.mexem[0].mesmoPonto).toEqual({enderecos: 3, ruas: 2});
   });
 });

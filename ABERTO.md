@@ -152,7 +152,29 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Admin como painel (19/10, pedido do dono): parte 1 feita local, falta subir
+## Admin como painel (19/10, pedido do dono): parte 1 publicada (`4c8cf59`), parte 2 feita local
+
+- **Parte 2, feita:**
+  - **Mesmo ponto, ruas diferentes:** em "Em conferência", o aviso sai quando 3 ou mais
+    endereços de 2 ou mais ruas foram marcados a até 15 m um do outro, em até 30 min, pelo mesmo
+    motorista. A posição vem das marcações e passagens pendentes, não da lista: lá é a porta que
+    ficaria, que pode ser a de outro. Vários da mesma rua no mesmo ponto são prédio ou condomínio
+    e não avisam (a medição de 15/10 já mostrava isso).
+  - **Paradas de hoje sem local:** as por fazer sem pino, uma por endereço, com "Marcar como
+    admin"; a sem chave diz por quê. O celular do motorista recebe a porta quando ele volta ao app.
+  - **Rotas para conferir:** sem nenhuma entrega, com planilha de outro dia, de outro motorista
+    (só na conta de motorista) ou repetida. Saem dos números e da tabela, e têm "Apagar rota".
+    Medido em 30 dias: 61 de 133 rotas sem entrega, quase todas planilhas abertas na conta do dono;
+    a regra pegou 9, todas plausíveis. Hoje, das 11 rotas, 6 vão para lá.
+  - **Mapa do dia:** o mapa do Admin abre no dia, uma cor por rota, ✓ na entregue e a inicial do
+    motorista em cinza na por fazer. Não é ao vivo.
+  - O cartão "Esperando você" soma decisões, paradas sem local e rotas para conferir, e diz quantas
+    de cada.
+- **Visto nos dados reais de hoje:** a planilha do Pedro aberta na conta do dono tem 3 entregues
+  (o "Sem N", às 17:24, antes do conserto, sem nada gravado) e aparece como rota parada. Cuidado:
+  com o conserto no ar, "Entreguei aqui" de teste na conta do admin grava porta de admin.
+- **Testado:** unidade e e2e; sete sabotagens, cada uma quebra um teste. Bateria inteira: 180 e2e
+  e 467 de unidade.
 
 - **O pedido:** uma tela só para ver e arrumar todo tipo de problema, como um painel de frota. O
   dono usa o Admin mais no computador, e no celular só na rua.

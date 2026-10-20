@@ -1,6 +1,6 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {lugaresDaBusca, peneiraDaNuvem, peneiraDeChave, type LugarDaBusca} from '../logica/busca';
-import {agruparConferencia, type MarcaEmConferencia, type MotoristaEmConferencia} from '../logica/conferencia';
+import {agruparConferencia, marcadasDoMesmoPonto, type MarcaEmConferencia, type MotoristaEmConferencia, type PontoPendente} from '../logica/conferencia';
 import {hojeEmMaceio, resumirDia, type Dia, type PacoteDoDia} from '../logica/painel';
 import type {PortaDaNuvem} from '../logica/triagem';
 import {nuvem} from './nuvem';
@@ -21,6 +21,8 @@ export interface RotaResumo {
   arquivo: string | null;
   criado_em: string;
   motorista: string;
+  // planilha na conta de quem administra é, quase sempre, para ver ou testar
+  doAdmin?: boolean;
   pacotes: number;
   entregues: number;
 }
@@ -115,11 +117,11 @@ export async function listarRotas(dias = 14): Promise<RotaResumo[]> {
   const s = cliente();
   const desde = new Date(Date.now() - dias * 864e5).toISOString().slice(0, 10);
   // em partes: o servidor devolve 1.000 e cala, e 14 dias passam disso com uns 70 motoristas por dia
-  const rotas = await paginado<any>((de, ate) => s.from('rotas').select('id, dia, arquivo, criado_em, perfis(nome)').gte('dia', desde)
+  const rotas = await paginado<any>((de, ate) => s.from('rotas').select('id, dia, arquivo, criado_em, perfis(nome, papel)').gte('dia', desde)
     .order('dia', {ascending: false}).order('criado_em', {ascending: false}).order('id').range(de, ate));
   const ids = rotas.map(r => r.id as string);
   const contagem = await contarNoBanco(s, ids) || await contarBaixando(s, ids);
-  return rotas.map(r => ({id: r.id, dia: r.dia, arquivo: r.arquivo, criado_em: r.criado_em, motorista: r.perfis?.nome || '?', ...contagem.get(r.id)!}));
+  return rotas.map(r => ({id: r.id, dia: r.dia, arquivo: r.arquivo, criado_em: r.criado_em, motorista: r.perfis?.nome || '?', doAdmin: r.perfis?.papel === 'admin', ...contagem.get(r.id)!}));
 }
 
 type Contagem = Map<string, {pacotes: number; entregues: number}>;
@@ -153,13 +155,13 @@ async function contarBaixando(s: SupabaseClient, ids: string[]): Promise<Contage
 
 // O painel do dia: os pacotes das rotas de hoje e quais endereços já têm a porta verificada, pela
 // mesma `posicoes` que o celular pergunta ao carregar.
-export async function resumoDeHoje(rotas: RotaResumo[], agora = Date.now()): Promise<Dia> {
+export async function resumoDeHoje(rotas: RotaResumo[], motoristas: string[], agora = Date.now()): Promise<Dia> {
   const s = cliente();
   const hoje = rotas.filter(r => r.dia === hojeEmMaceio(agora));
   const pacotes: PacoteDoDia[] = [];
   await Promise.all(pedacos(hoje.map(r => r.id), 50).map(async parte => {
     pacotes.push(...await paginado<PacoteDoDia>((de, ate) => s.from('pacotes')
-      .select('rota_id, chave_lugar, endereco, entregue_em').in('rota_id', parte).order('id').range(de, ate)));
+      .select('rota_id, chave_lugar, endereco, bairro, lat, lng, entregue_em').in('rota_id', parte).order('id').range(de, ate)));
   }));
   const chaves = [...new Set(pacotes.map(p => p.chave_lugar).filter((k): k is string => !!k))];
   const confirmadas = new Set<string>();
@@ -169,7 +171,17 @@ export async function resumoDeHoje(rotas: RotaResumo[], agora = Date.now()): Pro
     falhou(error);
     for (const p of (data || []) as {chave_lugar: string; situacao: string}[]) if (p.situacao === 'confirmado') confirmadas.add(p.chave_lugar);
   }));
-  return resumirDia(hoje.map(r => ({id: r.id, motorista: r.motorista, arquivo: r.arquivo})), pacotes, confirmadas, agora);
+  return resumirDia(hoje.map(r => ({id: r.id, motorista: r.motorista, arquivo: r.arquivo, criado_em: r.criado_em, doAdmin: r.doAdmin})),
+    pacotes, confirmadas, agora, motoristas);
+}
+
+// Rota sem entrega, de planilha de outro dia, de outro motorista ou aberta de novo (painel do dia).
+// Os pacotes vão junto (on delete cascade); marcação e passagem não são da rota e ficam.
+export async function apagarRota(id: string): Promise<number> {
+  const {data, error} = await cliente().from('rotas').delete().eq('id', id).select('id');
+  falhou(error);
+  if (!data || !data.length) throw new Error('o servidor não deixou apagar a rota');
+  return data.length;
 }
 
 export async function pacotesDaRota(id: string): Promise<PacoteAdmin[]> {
@@ -299,9 +311,17 @@ export async function procurarLugares(busca: string): Promise<LugarAchado[]> {
 }
 
 export async function listarEmConferencia(): Promise<MotoristaEmConferencia[]> {
-  const {data, error} = await cliente().rpc('marcas_em_conferencia');
+  const s = cliente();
+  const {data, error} = await s.rpc('marcas_em_conferencia');
   if (error) throw new Error(/marcas_em_conferencia/.test(error.message || '') ? 'falta rodar o supabase/022_conferencia.sql' : error.message);
-  return agruparConferencia((data || []) as MarcaEmConferencia[]);
+  if (!data || !data.length) return [];
+  // o ponto de verdade de cada pendente, para achar os marcados parado num lugar só
+  const campos = 'motorista_id, chave_lugar, lat, lng, criado_em';
+  const [marcas, passagens] = await Promise.all([
+    paginado<PontoPendente>((de, ate) => s.from('correcoes').select(campos).eq('pendente', true).order('id').range(de, ate)),
+    paginado<PontoPendente>((de, ate) => s.from('observacoes').select(campos).eq('pendente', true).eq('recusada', false).order('id').range(de, ate)),
+  ]);
+  return agruparConferencia(data as MarcaEmConferencia[], marcadasDoMesmoPonto([...marcas, ...passagens]));
 }
 
 export async function decidirMarcas(motorista: string, chaves: string[], aprovar: boolean): Promise<number> {
