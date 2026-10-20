@@ -392,6 +392,52 @@ origem da posição de cada pacote, que o app manda ao fim da busca e ao fazer a
   porta já conhecida na nuvem. Numa tabela própria, que não dependa de rota nem de pacote: senão
   ela também só veria a planilha.
 
+## Telemetria da busca de lista (026): rascunho ensaiado local em 20/10, falta rodar na produção
+
+Passo 3 do plano. Desenho aprovado pela revisão em 20/10, com os ajustes abaixo. O app ainda não grava.
+
+- **A tabela:** `supabase/026_buscas_de_lista.sql` cria `buscas_de_lista`, uma linha por vez que o
+  app busca as pendentes de uma lista. Só números com limite e a origem da lista numa lista
+  fechada (planilha, print, gravação, colada, mista, de novo); nenhum endereço, CEP, rua, bairro,
+  condomínio, coordenada, texto da lista ou campo livre. Tempo total, e chamadas e tempo de cada
+  fonte (Nominatim com a espera da vez à parte, CEP, censo, banco), em qual fonte cada pendente
+  terminou (a soma fecha com as pendentes), e as pendentes com porta já conhecida na nuvem: quanto
+  tempo e quantas chamadas ao Nominatim custaram, e em quantas a busca achou outro lugar a 30 m
+  ou mais. Entrou no fim do `000_rodar_tudo.sql` e do `banco-inteiro.sql`.
+- **Quem pode:** o motorista ativo grava e lê só os dele, quem administra lê todos, ninguém muda
+  nem apaga, o anônimo nada. Some sozinho depois de 90 dias; no máximo 50 por motorista por dia, o
+  resto ignorado sem erro. As duas coisas num gatilho, porque a regra de acesso não conta o que o
+  motorista não pode ler e o banco não tem agendador.
+- **Onde saiu do desenho da revisão, e por quê:**
+  - o motorista lê os dele, não só o admin: com a regra de acesso, o "se já existe, ignora" do
+    Postgres só vale para quem enxerga a linha que já existe, e sem isso o reenvio da fila era
+    recusado (o ensaio pegou);
+  - o id vem do app, sem valor padrão, para o reenvio bater no mesmo registro;
+  - sem "terminou na planilha", que a pendente nunca é; com base, CEP e "outras", para a soma
+    fechar;
+  - a hora do aparelho junto com a do banco, porque a fila pode entregar horas depois;
+  - 50 por dia, não 20: o limite é contra um defeito em laço, e o dia ruim, de várias buscas, é o
+    que mais interessa medir.
+- **A porta conhecida, conferido no código:** quando a nuvem traz a porta verificada, ou arrumada
+  pelo próprio motorista, ela sempre passa por cima do que a busca achou, e o achado fica em
+  Conferir como "Posição de antes" (`logica/compartilhadas.ts`). A busca hoje não corrige a porta
+  conhecida; pular a busca tiraria essa alternativa. Por isso a coluna das que a busca pôs longe.
+- **Ensaio local** (Postgres 17, `banco-inteiro.sql` publicado, admin, dois motoristas, desativado,
+  sem perfil e anônimo, com as permissões que o Supabase dá por padrão a tabela e função novas):
+  57 linhas de retrato iguais ao esperado (gravar o seu, em nome de outro, reenviar, ler, mudar,
+  apagar, origem inventada, contagem negativa, sem id; o limite em 50; o de 91 dias some, o de 89
+  fica). Seis sabotagens quebram o retrato: gravar em nome de outro, desativado gravando,
+  motorista lendo os dos outros, sem limite, sem validade, sem o revoke. O `banco-inteiro.sql` novo
+  monta de um banco vazio, o `000_rodar_tudo.sql` roda duas vezes sobre o de antes, a 026 roda de
+  novo sem perder nada.
+  - Um engano meu, pego antes de valer: a primeira conferência das permissões rodou no banco da
+    última sabotagem (a sem o revoke) e mostrou o anônimo com tudo. Refeita com a 026 de verdade:
+    `authenticated` só grava e lê, o anônimo nada.
+- **Próximo:** o dono roda a 026 e a conferência; depois a mudança no app, publicada à parte: o
+  registro vai pela fila com o id gerado no aparelho, gravado com "se já existe, ignora"; nunca
+  atrapalha o "Entreguei" (com a fila cheia, a telemetria sai primeiro); e a soma das fontes
+  conferida em teste. Coletar alguns dias, e só então decidir o que mudar na busca.
+
 ## Admin como painel (19/10, pedido do dono): partes 1 e 2 publicadas em 19/10, falta o menu lateral
 
 - **Parte 2, feita:**
