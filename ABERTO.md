@@ -195,6 +195,22 @@ Fora da lista:
     "Nada com posição para mostrar" apagava o aviso de quem tinha acabado de agir. Aqui o teste
     passava por sorte de tempo; lá falhou e a publicação de `f3a75bf` não saiu. Agora o mapa do
     dia só abre sozinho com o que mostrar, e um teste grava todos os avisos para pegar isso sempre.
+- **Conferido no ar (19/10, 3389b45), entrando na conta de admin com autorização do dono, só
+  olhando:**
+  - 638 cartões de marcação, nenhum com a chave crua; nenhum cartão com marcações fora da ordem de
+    data;
+  - o "Atualizar" redesenhou o mapa do dia (154 pinos antes e depois), e as cores voltaram iguais
+    ao abrir de novo;
+  - os "novos" por motorista batem com o banco (Luan 29 de 309, Pedro 35 de 306, César 2 de 17,
+    Jefferson 0 de 6);
+  - sem caso real hoje para conferir: parada sem local que o motorista já resolveu (0 sem pino) e
+    endereço marcado por dois motoristas na semana (0). Esses ficam só com os testes.
+- **Tempo de abertura, medido com a conta real e a nuvem real, alternando 3 vezes:** antes do
+  painel (`95ee4f3`) 2,8 s até as decisões e 3,2 s até tudo, com 25 consultas; agora 4,3 s e 4,6 s,
+  com 54. As mais lentas: `contagem_das_rotas` (2,1 s), `cobertura` (1,9 s, da base de ruas) e as
+  buscas de pacotes (1,4 s cada). O caminho das decisões é a leitura das marcações da semana, os
+  pedaços de posição e nome, e a busca dos nomes que faltam. Não otimizado ainda, de propósito.
+- **Não rodado:** os testes `@nuvem`, que escrevem no banco de produção.
 - **Fica como está:** o selo do botão Mais conta só as decisões; o cartão "Esperando você" soma
   também as paradas sem local e as rotas para conferir. O Admin abre com umas 30 a 35 consultas
   (eram umas 15), quase todas em paralelo.
