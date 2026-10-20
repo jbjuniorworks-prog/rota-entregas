@@ -171,7 +171,7 @@ function NumerosDoDia({dia, esperando, partes}: {dia: Dia | {erro: string} | nul
       <div className={`kpi${esperando ? ' atencao' : ''}`} data-kpi="esperando">
         <div className="kpi-num">{esperando ?? '…'}</div>
         <div className="kpi-nome">Esperando você</div>
-        <div className="kpi-sub">{esperando ? partes.filter(([n]) => n).map(([n, um, varios]) => `${n} ${n === 1 ? um : varios}`).join(', ') : 'nada para resolver'}</div>
+        <div className="kpi-sub">{esperando ? partes.filter(([n]) => n).map(([n, um, varios]) => `${n} ${n === 1 ? um : varios}`).join(', ') : esperando == null ? '' : 'nada para resolver'}</div>
       </div>
     </div>
   </>;

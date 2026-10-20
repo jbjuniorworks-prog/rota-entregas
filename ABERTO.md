@@ -152,7 +152,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Admin como painel (19/10, pedido do dono): parte 1 publicada (`4c8cf59`), parte 2 feita local
+## Admin como painel (19/10, pedido do dono): partes 1 e 2 publicadas em 19/10, falta o menu lateral
 
 - **Parte 2, feita:**
   - **Mesmo ponto, ruas diferentes:** em "Em conferência", o aviso sai quando 3 ou mais
@@ -180,6 +180,9 @@ Fora da lista:
     todas no mapa"), com a lista dele de 20 em 20. Eram 342 cartões numa semana;
   - o Admin lia só as 500 marcações mais novas, uns 3 dias em outubro: agora lê a semana inteira
     em partes, mais as 500 mais novas para as antigas.
+- **Limitação antiga, não mexida:** o endereço de cada marcação no Admin vem de uma consulta de
+  pacotes que para em 1.000 linhas por pedaço de 100 chaves; com muitas rotas por endereço, um
+  cartão pode mostrar a chave no lugar do nome.
 - **Visto nos dados reais de hoje:** a planilha do Pedro aberta na conta do dono tem 3 entregues
   (o "Sem N", às 17:24, antes do conserto, sem nada gravado) e aparece como rota parada. Cuidado:
   com o conserto no ar, "Entreguei aqui" de teste na conta do admin grava porta de admin.
