@@ -12,8 +12,22 @@ export interface RotaDoDia {
   motorista: string;
   arquivo: string | null;
   criado_em?: string;
+  motorista_id?: string;
   // na conta de quem administra entra planilha dos outros de propósito
   doAdmin?: boolean;
+}
+
+// Marcação gravada por quem administra: é o que faz uma rota da conta dele ser de verdade.
+export interface MarcaDoAdmin {
+  motorista_id: string;
+  chave_lugar: string;
+  criado_em: string;
+}
+
+export interface OpcoesDoDia {
+  agora?: number;
+  motoristas?: string[];
+  marcasDoAdmin?: MarcaDoAdmin[];
 }
 
 export interface PacoteDoDia {
@@ -99,8 +113,16 @@ const nomeDaPlanilha = (arquivo: string) => semAcento(arquivo).replace(/\(\d+\)/
 
 // Endereço é a chave do lugar; sem chave (sem número, sem CEP nem bairro), o próprio texto, que
 // conta como não verificado.
-export function resumirDia(rotas: RotaDoDia[], pacotes: PacoteDoDia[], confirmadas: ReadonlySet<string>, agora = Date.now(), motoristas: string[] = []): Dia {
-  const todas = rotas.map(r => {
+// Dono, 19/10: "minhas rotas só é pra ficar marcado quando eu marcar algum pino na rota (entreguei
+// aqui), de resto é somente eu testando". A rota da conta de quem administra só entra com uma
+// marcação dele num endereço dela, feita depois de ela ser aberta; sem isso some do painel inteiro.
+export function resumirDia(rotas: RotaDoDia[], pacotes: PacoteDoDia[], confirmadas: ReadonlySet<string>, opcoes: OpcoesDoDia = {}): Dia {
+  const {agora = Date.now(), motoristas = [], marcasDoAdmin = []} = opcoes;
+  const marcou = (r: RotaDoDia) => {
+    const chaves = new Set(pacotes.filter(p => p.rota_id === r.id).map(p => p.chave_lugar));
+    return marcasDoAdmin.some(m => m.motorista_id === r.motorista_id && chaves.has(m.chave_lugar) && m.criado_em >= (r.criado_em || ''));
+  };
+  const todas = rotas.filter(r => !r.doAdmin || marcou(r)).map(r => {
     const ps = pacotes.filter(p => p.rota_id === r.id);
     const enderecos = new Set(ps.map(p => p.chave_lugar ?? 'texto:' + p.endereco.trim().toLowerCase()));
     const verificados = new Set(ps.map(p => p.chave_lugar).filter((k): k is string => !!k && confirmadas.has(k)));

@@ -1,7 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {lugaresDaBusca, peneiraDaNuvem, peneiraDeChave, type LugarDaBusca} from '../logica/busca';
 import {agruparConferencia, marcadasDoMesmoPonto, type MarcaEmConferencia, type MotoristaEmConferencia, type PontoPendente} from '../logica/conferencia';
-import {hojeEmMaceio, resumirDia, type Dia, type PacoteDoDia} from '../logica/painel';
+import {hojeEmMaceio, resumirDia, type Dia, type MarcaDoAdmin, type PacoteDoDia} from '../logica/painel';
 import type {PortaDaNuvem} from '../logica/triagem';
 import {nuvem} from './nuvem';
 
@@ -21,6 +21,7 @@ export interface RotaResumo {
   arquivo: string | null;
   criado_em: string;
   motorista: string;
+  motorista_id?: string;
   // planilha na conta de quem administra é, quase sempre, para ver ou testar
   doAdmin?: boolean;
   pacotes: number;
@@ -117,11 +118,11 @@ export async function listarRotas(dias = 14): Promise<RotaResumo[]> {
   const s = cliente();
   const desde = new Date(Date.now() - dias * 864e5).toISOString().slice(0, 10);
   // em partes: o servidor devolve 1.000 e cala, e 14 dias passam disso com uns 70 motoristas por dia
-  const rotas = await paginado<any>((de, ate) => s.from('rotas').select('id, dia, arquivo, criado_em, perfis(nome, papel)').gte('dia', desde)
+  const rotas = await paginado<any>((de, ate) => s.from('rotas').select('id, dia, arquivo, criado_em, motorista_id, perfis(nome, papel)').gte('dia', desde)
     .order('dia', {ascending: false}).order('criado_em', {ascending: false}).order('id').range(de, ate));
   const ids = rotas.map(r => r.id as string);
   const contagem = await contarNoBanco(s, ids) || await contarBaixando(s, ids);
-  return rotas.map(r => ({id: r.id, dia: r.dia, arquivo: r.arquivo, criado_em: r.criado_em, motorista: r.perfis?.nome || '?', doAdmin: r.perfis?.papel === 'admin', ...contagem.get(r.id)!}));
+  return rotas.map(r => ({id: r.id, dia: r.dia, arquivo: r.arquivo, criado_em: r.criado_em, motorista: r.perfis?.nome || '?', motorista_id: r.motorista_id, doAdmin: r.perfis?.papel === 'admin', ...contagem.get(r.id)!}));
 }
 
 type Contagem = Map<string, {pacotes: number; entregues: number}>;
@@ -171,8 +172,18 @@ export async function resumoDeHoje(rotas: RotaResumo[], motoristas: string[], ag
     falhou(error);
     for (const p of (data || []) as {chave_lugar: string; situacao: string}[]) if (p.situacao === 'confirmado') confirmadas.add(p.chave_lugar);
   }));
-  return resumirDia(hoje.map(r => ({id: r.id, motorista: r.motorista, arquivo: r.arquivo, criado_em: r.criado_em, doAdmin: r.doAdmin})),
-    pacotes, confirmadas, agora, motoristas);
+  // as marcações de quem administra nos endereços das rotas da conta dele: sem uma, a rota é teste
+  const doAdmin = hoje.filter(r => r.doAdmin);
+  const chavesDoAdmin = [...new Set(pacotes.filter(p => doAdmin.some(r => r.id === p.rota_id)).map(p => p.chave_lugar).filter((k): k is string => !!k))];
+  const donos = [...new Set(doAdmin.map(r => r.motorista_id).filter((x): x is string => !!x))];
+  const desde = doAdmin.map(r => r.criado_em).sort()[0];
+  const marcasDoAdmin: MarcaDoAdmin[] = [];
+  if (donos.length && desde) await Promise.all(pedacos(chavesDoAdmin, 100).map(async parte => {
+    marcasDoAdmin.push(...await paginado<MarcaDoAdmin>((de, ate) => s.from('correcoes').select('motorista_id, chave_lugar, criado_em')
+      .in('chave_lugar', parte).in('motorista_id', donos).gte('criado_em', desde).order('id').range(de, ate)));
+  }));
+  return resumirDia(hoje.map(r => ({id: r.id, motorista: r.motorista, motorista_id: r.motorista_id, arquivo: r.arquivo, criado_em: r.criado_em, doAdmin: r.doAdmin})),
+    pacotes, confirmadas, {agora, motoristas, marcasDoAdmin});
 }
 
 // Rota sem entrega, de planilha de outro dia, de outro motorista ou aberta de novo (painel do dia).
@@ -194,12 +205,19 @@ export async function listarCorrecoes(limite = 500): Promise<LugarCorrigido[]> {
   const s = cliente();
   // `*` e não a lista: o `pendente` só existe depois da 022, e pedir uma coluna que falta derruba
   // a lista inteira
-  const {data, error} = await s.from('correcoes').select('*, perfis(nome, papel)')
-    .order('criado_em', {ascending: false}).limit(limite);
+  // A semana inteira, em partes, e as 500 mais novas para as antigas: só as 500 eram uns 3 dias
+  // em outubro, e a lista dos últimos 7 dias contava menos do que havia.
+  const desde = new Date(Date.now() - 7 * 864e5).toISOString();
+  const [semana, {data, error}] = await Promise.all([
+    paginado<any>((de, ate) => s.from('correcoes').select('*, perfis(nome, papel)').gte('criado_em', desde).order('id').range(de, ate)),
+    s.from('correcoes').select('*, perfis(nome, papel)').order('criado_em', {ascending: false}).limit(limite),
+  ]);
   falhou(error);
+  const todas = new Map<string, any>([...semana, ...(data || [])].map(c => [String(c.id ?? c.chave_lugar + c.motorista_id + c.criado_em), c]));
   const lugares = new Map<string, LugarCorrigido>();
+  // a mais nova primeiro: a primeira de cada motorista é a que vale, e as outras contam "vezes"
   // a do motorista em conferência espera em "Em conferência", com o que mudaria se aprovada
-  for (const c of ((data || []) as any[]).filter(c => !c.pendente)) {
+  for (const c of [...todas.values()].sort((a, b) => b.criado_em.localeCompare(a.criado_em)).filter(c => !c.pendente)) {
     let l = lugares.get(c.chave_lugar);
     if (!l) lugares.set(c.chave_lugar, l = {chave: c.chave_lugar, endereco: '', bairro: '', marcacoes: [], situacao: null, escolhida: null});
     const ja = l.marcacoes.find(m => m.motorista_id === c.motorista_id);

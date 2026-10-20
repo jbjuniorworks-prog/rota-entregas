@@ -238,7 +238,7 @@ test.describe('administrador', () => {
         rotas: [
           {id: 'boa', dia: hojeMaceio(), arquivo: '19-10-2026 Teste Inventado.xlsx', criado_em: antes(300), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}},
           {id: 'dele', dia: hojeMaceio(), arquivo: '19-10-2026 Fulano Inventado.xlsx', criado_em: antes(200), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}},
-          {id: 'velha', dia: hojeMaceio(), arquivo: '01-01-2026 Fulano Inventado.xlsx', criado_em: antes(100), motorista_id: 'adm', perfis: {nome: 'Quem Administra', papel: 'admin'}},
+          {id: 'velha', dia: hojeMaceio(), arquivo: '01-01-2026 Teste Inventado.xlsx', criado_em: antes(100), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}},
         ],
         pacotes: [
           pacote('boa', '49000100|1', 'Rua Teste, 1', {entregue_em: antes(10)}), pacote('boa', '49000100|2', 'Rua Teste, 2'),
@@ -250,7 +250,7 @@ test.describe('administrador', () => {
       const secao = page.locator('[data-secao="Rotas para conferir"]');
       await expect(secao.locator('summary')).toHaveText('Rotas para conferir (2)');
       await expect(secao.locator('[data-para-conferir="dele"]')).toContainText('Planilha de Fulano na conta de Teste');
-      await expect(secao.locator('[data-para-conferir="velha"]')).toContainText('Planilha de 01/01/2026 na conta de Quem Administra');
+      await expect(secao.locator('[data-para-conferir="velha"]')).toContainText('Planilha de 01/01/2026 na conta de Teste');
       // os números e a tabela só com a rota de verdade
       await expect(page.locator('[data-kpi="rotas"] .kpi-num')).toHaveText('1');
       await expect(page.locator('[data-kpi="entregues"] .kpi-num')).toHaveText('1 de 2');
@@ -263,6 +263,28 @@ test.describe('administrador', () => {
       await expect(aviso(page)).toContainText('Rota apagada.');
       const apagou = nuvem.pedidos.find(p => p.metodo === 'DELETE' && p.caminho === 'rotas');
       expect(apagou?.busca).toContain('id=eq.dele');
+    });
+
+    // Dono, 19/10: "minhas rotas só é pra ficar marcado quando eu marcar algum pino na rota
+    // (entreguei aqui), de resto é somente eu testando".
+    test('rota na conta de quem administra só entra no painel com uma marcação dele nela', async ({page, nuvem}) => {
+      const EU = '00000000-0000-4000-8000-000000000001';
+      const minha = (id: string, arquivo: string) => ({id, dia: hojeMaceio(), arquivo, criado_em: antes(100), motorista_id: EU, perfis: {nome: 'Você Teste', papel: 'admin'}});
+      nuvem.tabelas = {
+        rotas: [
+          {id: 'boa', dia: hojeMaceio(), arquivo: 'Teste.xlsx', criado_em: antes(300), motorista_id: 'm1', perfis: {nome: 'Teste', papel: 'motorista'}},
+          minha('testando', '19-10-2026 Fulano Inventado.xlsx'), minha('de-verdade', '19-10-2026 Ciclano Inventado.xlsx'),
+        ],
+        pacotes: [pacote('boa', '49000100|9', 'Rua Teste, 9'), pacote('testando', '49000100|1', 'Rua Teste, 1'), pacote('de-verdade', '49000100|2', 'Rua Teste, 2', {entregue_em: antes(10)})],
+        correcoes: [{chave_lugar: '49000100|2', lat: -10.95, lng: -37.05, criado_em: antes(10), motorista_id: EU, perfis: {nome: 'Você Teste', papel: 'admin'}}],
+      };
+      await abrir(page);
+      await menu(page, /^Admin/);
+      await expect(page.locator('[data-rota-hoje]')).toHaveCount(2);
+      await expect(page.locator('[data-rota-hoje="de-verdade"]')).toContainText('Você Teste');
+      await expect(page.locator('[data-rota-hoje="testando"]')).toHaveCount(0);
+      // nem para conferir: some do painel inteiro
+      await expect(page.locator('[data-secao="Rotas para conferir"]')).toHaveCount(0);
     });
 
     // O César de 19/10 marcou cinco endereços de duas ruas parado num lugar só.
@@ -278,6 +300,26 @@ test.describe('administrador', () => {
       await expect(page.locator('[data-conferir="49000100|155"] [data-mesmo-ponto]'))
         .toHaveText('Marcada do mesmo ponto que outros 2 endereços, de 2 ruas diferentes. Confira antes de aprovar.');
     });
+  });
+
+  // Dono, 19/10: "a lista gigante" das marcadas pelos motoristas, 342 endereços numa semana. Uma linha
+  // por motorista, e a lista dele de 20 em 20. A semana inteira: só as 500 mais novas eram uns 3 dias.
+  test('as marcadas pelos motoristas vêm uma linha por motorista, com a semana inteira, e a lista de 20 em 20', async ({page, nuvem}) => {
+    const antes = (min: number) => new Date(Date.now() - min * 60000).toISOString();
+    const marca = (i: number, motorista_id: string, nome: string) =>
+      ({id: motorista_id + i, chave_lugar: `4900${motorista_id === 'm1' ? 1 : 2}${String(i).padStart(3, '0')}|${i}`, lat: -10.9, lng: -37.0, criado_em: antes(60 + i), motorista_id, perfis: {nome, papel: 'motorista'}});
+    nuvem.tabelas = {correcoes: [...Array.from({length: 1050}, (_, i) => marca(i, 'm1', 'Pedro')), ...Array.from({length: 3}, (_, i) => marca(i, 'm2', 'Luan'))]};
+    await abrir(page);
+    await menu(page, /^Admin/);
+    const linhas = page.locator('[data-marcadas-de]');
+    await expect(linhas).toHaveCount(2, {timeout: 20_000});
+    await expect(linhas.nth(0)).toContainText('Pedro · 1050 endereço(s)');
+    await expect(linhas.nth(1)).toContainText('Luan · 3 endereço(s)');
+    const doPedro = linhas.nth(0);
+    await doPedro.locator('summary', {hasText: 'Ver a lista (1050)'}).click();
+    await expect(doPedro.locator('[data-lugar]')).toHaveCount(20);
+    await doPedro.getByRole('button', {name: 'Mostrar mais 20 de 1030'}).click();
+    await expect(doPedro.locator('[data-lugar]')).toHaveCount(40);
   });
 
   // O servidor devolve 1.000 linhas e cala: 30 dias de uso dos botões passam disso no ritmo de
@@ -392,6 +434,10 @@ test.describe('administrador', () => {
       await expect(decidir.getByRole('button', {name: 'Confirmar'})).toBeVisible();
       await expect(decidir).not.toContainText('novo');
 
+      // uma linha por motorista; a lista dele abre de 20 em 20
+      const doPedro = page.locator('[data-marcadas-de="Pedro"]');
+      await expect(doPedro).toContainText('Pedro · 1 endereço(s) · 1 novo(s)');
+      await doPedro.locator('summary', {hasText: 'Ver a lista (1)'}).click();
       const porta = page.locator(`[data-secao="🆕 Marcadas pelos motoristas nos últimos 7 dias"] [data-lugar="${PORTA}"]`);
       await expect(porta).toContainText('Confirmada na porta, com a entrega');
       await expect(porta).toContainText('novo');
@@ -402,6 +448,8 @@ test.describe('administrador', () => {
       await page.locator('.cabecalho').getByRole('button', {name: 'Voltar'}).click();
       await menu(page, /^Admin/);
       await expect(page.locator('[data-resumo]')).toContainText('Nada novo desde');
+      await expect(doPedro).not.toContainText('novo');
+      await doPedro.locator('summary', {hasText: 'Ver a lista (1)'}).click();
       await expect(porta).toBeVisible();
       await expect(porta).not.toContainText('novo');
     });

@@ -170,11 +170,21 @@ Fora da lista:
     motorista em cinza na por fazer. Não é ao vivo.
   - O cartão "Esperando você" soma decisões, paradas sem local e rotas para conferir, e diz quantas
     de cada.
+- **Depois de ver a parte 1 no ar (dono, 19/10):**
+  - "minhas rotas só é pra ficar marcado quando eu marcar algum pino na rota (entreguei aqui), de
+    resto é somente eu testando": a rota da conta de quem administra só entra no painel se ele
+    gravou marcação num endereço dela depois de abri-la. Sem isso some do painel inteiro, até de
+    "Rotas para conferir". Nos dados de hoje, das 6 rotas da conta dele só a de 19/09 do Pedro
+    fica, porque ele marcou nela às 14:11; vai para conferir, por ser de outro dia;
+  - "Marcadas pelos motoristas" virou uma linha por motorista (endereços, novos, última, "Ver
+    todas no mapa"), com a lista dele de 20 em 20. Eram 342 cartões numa semana;
+  - o Admin lia só as 500 marcações mais novas, uns 3 dias em outubro: agora lê a semana inteira
+    em partes, mais as 500 mais novas para as antigas.
 - **Visto nos dados reais de hoje:** a planilha do Pedro aberta na conta do dono tem 3 entregues
   (o "Sem N", às 17:24, antes do conserto, sem nada gravado) e aparece como rota parada. Cuidado:
   com o conserto no ar, "Entreguei aqui" de teste na conta do admin grava porta de admin.
-- **Testado:** unidade e e2e; sete sabotagens, cada uma quebra um teste. Bateria inteira: 180 e2e
-  e 467 de unidade.
+- **Testado:** unidade e e2e; onze sabotagens, cada uma quebra um teste. Bateria inteira: 182 e2e
+  e 468 de unidade.
 
 - **O pedido:** uma tela só para ver e arrumar todo tipo de problema, como um painel de frota. O
   dono usa o Admin mais no computador, e no celular só na rua.

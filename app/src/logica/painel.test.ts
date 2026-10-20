@@ -40,7 +40,7 @@ describe('resumo do dia', () => {
   const confirmadas = new Set(['49000100|10', '49000100|30', '49000100|99']);
 
   it('conta pacotes, entregues, endereços e verificados por rota e no dia', () => {
-    const d = resumirDia(rotas, pacotes, confirmadas, AGORA);
+    const d = resumirDia(rotas, pacotes, confirmadas, {agora: AGORA});
     const a = d.linhas.find(l => l.id === 'a')!, b = d.linhas.find(l => l.id === 'b')!;
     expect([a.pacotes, a.entregues, a.enderecos, a.verificados, a.ultima, a.situacao]).toEqual([4, 2, 3, 1, antes(20), 'na rua']);
     expect([b.pacotes, b.entregues, b.enderecos, b.verificados, b.situacao, b.parada]).toEqual([2, 1, 2, 1, 'parada', 90]);
@@ -49,7 +49,7 @@ describe('resumo do dia', () => {
 
   it('a parada vem primeiro, e a que terminou por último', () => {
     const terminou = {id: 'c', motorista: 'Teste Três', arquivo: null};
-    const d = resumirDia([terminou, ...rotas], [...pacotes, {rota_id: 'c', chave_lugar: null, endereco: 'Rua X, 1', entregue_em: antes(5)}], confirmadas, AGORA);
+    const d = resumirDia([terminou, ...rotas], [...pacotes, {rota_id: 'c', chave_lugar: null, endereco: 'Rua X, 1', entregue_em: antes(5)}], confirmadas, {agora: AGORA});
     expect(d.linhas.map(l => l.situacao)).toEqual(['parada', 'na rua', 'terminou']);
   });
 });
@@ -74,12 +74,12 @@ describe('rota para conferir', () => {
   it('fica fora dos números e da tabela, e a repetida também', () => {
     const rotas = [
       {id: 'boa', motorista: 'Teste', arquivo: '19-10-2026 Teste Da Silva.xlsx', criado_em: '2026-10-19T09:00:00Z'},
-      {id: 'velha', motorista: 'Admin', arquivo: '19-09-2026 Teste Da Silva.xlsx', criado_em: '2026-10-19T10:00:00Z', doAdmin: true},
+      {id: 'velha', motorista: 'Teste', arquivo: '19-09-2026 Teste Da Silva.xlsx', criado_em: '2026-10-19T10:00:00Z'},
       {id: 'dele', motorista: 'Beltrano', arquivo: '19-10-2026 Teste Da Silva.xlsx', criado_em: '2026-10-19T11:00:00Z'},
-      {id: 'de-novo', motorista: 'Admin', arquivo: '(1)19-10-2026 Teste Da Silva.xlsx', criado_em: '2026-10-19T12:00:00Z', doAdmin: true},
+      {id: 'de-novo', motorista: 'Teste', arquivo: '(1)19-10-2026 Teste Da Silva.xlsx', criado_em: '2026-10-19T12:00:00Z'},
     ];
     const pacotes = rotas.map(r => ({rota_id: r.id, chave_lugar: '49000100|1', endereco: 'Rua Teste, 1', entregue_em: r.id === 'boa' ? antes(10) : null, lat: -10.9, lng: -37.0}));
-    const d = resumirDia(rotas, pacotes, new Set(), AGORA, ['Teste', 'Beltrano']);
+    const d = resumirDia(rotas, pacotes, new Set(), {agora: AGORA, motoristas: ['Teste', 'Beltrano']});
     expect(d.linhas.map(l => l.id)).toEqual(['boa']);
     expect(d.paraConferir.map(l => [l.id, l.suspeita.tipo])).toEqual([['velha', 'outro dia'], ['dele', 'outro motorista'], ['de-novo', 'repetida']]);
     expect([d.pacotes, d.entregues, d.pontos.length]).toEqual([1, 1, 1]);
@@ -93,10 +93,26 @@ describe('rota para conferir', () => {
       p('a', '49000100|5', 'Rua Teste, 5'), p('a', '49000100|5', 'Rua Teste, 5'),
       p('a', null, 'Travessa Teste, Sem N'), p('a', '49000100|7', 'Rua Teste, 7', antes(5)), p('a', '49000100|9', 'Rua Teste, 9', null, -10.9),
       p('b', '49000100|5', 'Rua Teste, 5'),
-    ], new Set(), AGORA);
+    ], new Set(), {agora: AGORA});
     expect(d.semLocal).toEqual([
       {rota_id: 'a', motorista: 'Teste', endereco: 'Rua Teste, 5', bairro: 'Bairro Teste', chave: '49000100|5', pacotes: 2},
       {rota_id: 'a', motorista: 'Teste', endereco: 'Travessa Teste, Sem N', bairro: 'Bairro Teste', chave: null, pacotes: 1},
     ]);
+  });
+
+  it('a rota na conta de quem administra só entra com uma marcação dele nela, feita depois de abrir', () => {
+    const rota = (id: string, arquivo: string) => ({id, motorista: 'Admin', motorista_id: 'adm', arquivo, criado_em: '2026-10-19T12:00:00Z', doAdmin: true});
+    const rotas = [rota('marcada', '19-10-2026 Teste.xlsx'), rota('antes', '19-10-2026 Outra.xlsx'), rota('teste', '19-09-2026 Teste.xlsx')];
+    const pacote = (rota_id: string, chave_lugar: string, lat: number | null = -10.9) => ({rota_id, chave_lugar, endereco: 'Rua Teste, ' + chave_lugar, entregue_em: null, lat, lng: -37});
+    const d = resumirDia(rotas, [pacote('marcada', '49000100|1'), pacote('antes', '49000100|2'), pacote('teste', '49000100|3', null)], new Set(), {agora: AGORA, marcasDoAdmin: [
+      {motorista_id: 'adm', chave_lugar: '49000100|1', criado_em: '2026-10-19T12:30:00Z'},
+      // marcada antes de abrir a rota, no Admin: não faz a rota ser de verdade
+      {motorista_id: 'adm', chave_lugar: '49000100|2', criado_em: '2026-10-19T11:00:00Z'},
+      // de outra pessoa
+      {motorista_id: 'outro', chave_lugar: '49000100|3', criado_em: '2026-10-19T12:30:00Z'},
+    ]});
+    expect(d.linhas.map(l => l.id)).toEqual(['marcada']);
+    // o teste some do painel inteiro: nem para conferir, nem parada sem local
+    expect([d.paraConferir.length, d.semLocal.length, d.pontos.length]).toEqual([0, 0, 1]);
   });
 });

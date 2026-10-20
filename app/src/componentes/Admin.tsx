@@ -130,8 +130,7 @@ export function TelaAdmin() {
         {conferencia && <EmConferencia estado={conferencia} corDe={corDe} recarregar={carregar} />}
         {doDia && <ParadasSemLocal lista={doDia.semLocal} recarregar={carregar} />}
         {doDia && <RotasParaConferir lista={doDia.paraConferir} recarregar={carregar} />}
-        {t && <Lugares titulo={`🆕 Marcadas pelos motoristas nos últimos 7 dias (${t.recentes.length})`} lista={t.recentes} aberta {...doLugar}
-          vazio="Nenhuma porta marcada nos últimos 7 dias." />}
+        {t && <MarcadasPorMotorista lista={t.recentes} {...doLugar} />}
       </div>
       <div>
         <RotasDeHoje dia={dia} />
@@ -519,6 +518,8 @@ interface PropsDosLugares {
 
 function Lugares({titulo, lista, vazio, aberta, decidir, novo, corDe, recarregar}: PropsDosLugares) {
   const {ocupado, correr, fazendo} = useTrabalho();
+  // de 20 em 20: 342 endereços numa semana de outubro viravam uma página sem fim
+  const [quantos, setQuantos] = useState(20);
   const confirmar = async (l: Adm.LugarCorrigido, m: Adm.Marcacao) => {
     await correr('ok' + l.chave + m.motorista_id, () => Adm.confirmarPosicao(l.chave, m.lat, m.lng), 'Posição confirmada: agora vale para todos os motoristas.');
     recarregar();
@@ -532,7 +533,7 @@ function Lugares({titulo, lista, vazio, aberta, decidir, novo, corDe, recarregar
     <summary>{titulo}</summary>
     {decidir && <div className="info">Uma porta vale para todos quando dois motoristas marcam no mesmo ponto (até 30 m), quando um marca e alguém entrega ali, ou quando você confirma.</div>}
     {!lista.length && vazio && <div className="info">{vazio}</div>}
-    {lista.map(l => {
+    {lista.slice(0, quantos).map(l => {
       const s = situacaoDoLugar(l);
       const motivo = porQuePrecisaDeVoce(l);
       return <div className="item" key={l.chave} data-lugar={l.chave}>
@@ -558,6 +559,34 @@ function Lugares({titulo, lista, vazio, aberta, decidir, novo, corDe, recarregar
         })))}>Ver no mapa</button></div>
       </div>;
     })}
+    {lista.length > quantos && <div className="linha"><button className="btn peq" data-mais onClick={() => setQuantos(q => q + 20)}>Mostrar mais {Math.min(20, lista.length - quantos)} de {lista.length - quantos}</button></div>}
+  </details>;
+}
+
+// Uma linha por motorista (dono, 19/10: "a lista gigante"). Cada marcação já vale ou vira sugestão
+// sozinha; o que pede decisão está em Precisa de você. Aqui é para conferir quando ele quiser.
+function MarcadasPorMotorista({lista, ...doLugar}: {lista: Adm.LugarCorrigido[]} & Pick<PropsDosLugares, 'novo' | 'corDe' | 'recarregar'>) {
+  const agora = Date.now();
+  const por = new Map<string, {id: string; nome: string; lugares: Adm.LugarCorrigido[]; marcas: Marca[]; ultima: number; novos: number}>();
+  for (const l of lista) for (const m of l.marcacoes) {
+    if (m.papel === 'admin' || agora - Date.parse(m.criado_em) > 7 * 864e5) continue;
+    let g = por.get(m.motorista_id);
+    if (!g) por.set(m.motorista_id, g = {id: m.motorista_id, nome: m.nome, lugares: [], marcas: [], ultima: 0, novos: 0});
+    if (!g.lugares.includes(l)) { g.lugares.push(l); if (doLugar.novo(l)) g.novos++; }
+    g.marcas.push({lat: m.lat, lng: m.lng, rotulo: m.nome.slice(0, 2), texto: `${m.nome} · ${l.endereco || l.chave} · ${dataHora(m.criado_em)}`, cor: doLugar.corDe(m.motorista_id)});
+    g.ultima = Math.max(g.ultima, Date.parse(m.criado_em));
+  }
+  const grupos = [...por.values()].sort((a, b) => b.lugares.length - a.lugares.length || a.nome.localeCompare(b.nome));
+  return <details open data-secao="🆕 Marcadas pelos motoristas nos últimos 7 dias">
+    <summary>🆕 Marcadas pelos motoristas nos últimos 7 dias ({lista.length})</summary>
+    {!lista.length && <div className="info">Nenhuma porta marcada nos últimos 7 dias.</div>}
+    {lista.length > 0 && <div className="info">Cada marcação já vale ou vira sugestão sozinha; o que pede decisão está em Precisa de você.</div>}
+    {grupos.map(g => <div className="item" key={g.id} data-marcadas-de={g.nome}>
+      <div><span className="dot-motorista" style={{background: doLugar.corDe(g.id)}} /><b>{g.nome}</b> · {g.lugares.length} endereço(s){g.novos ? ` · ${g.novos} novo(s)` : ''}</div>
+      <div className="achado">Última em {dataHora(new Date(g.ultima).toISOString())}</div>
+      <div className="linha"><button className="btn peq" onClick={() => mostrarNoMapa(g.marcas)}>Ver todas no mapa</button></div>
+      <Lugares titulo={`Ver a lista (${g.lugares.length})`} lista={g.lugares} vazio="" {...doLugar} />
+    </div>)}
   </details>;
 }
 
