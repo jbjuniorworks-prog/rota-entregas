@@ -1391,9 +1391,10 @@ alter policy uso_ver on public.uso_dos_botoes
 -- ===== 025_buscas_da_base.sql =====
 -- As buscas do celular na base de ruas por dentro de funções do banco, com índice de trigramas (20/10).
 --
--- RASCUNHO, não rodada na produção. Cada par de índice e função só fica se a medição de antes
--- (`supabase/medir_buscas_da_base.sql`, como o app) mostrar a tabela inteira lida e ganho de
--- verdade; o que não mostrar sai daqui antes de rodar.
+-- Rodada na produção em 20/10, entre duas medições com a mesma consulta
+-- (`supabase/medir_buscas_da_base.sql`; os números no ABERTO.md, "Buscas da base de ruas (025)").
+-- Os três pares ficaram: nas três buscas, a de hoje lia a tabela inteira ou quase (de 562 a 4.632
+-- acessos à memória do banco), e pela função lê de 11 a 133.
 --
 -- Por que funções, e não só os índices: na base de ruas a regra de acesso (`ruas_ver`) roda antes
 -- do filtro da busca, e o Postgres só deixa um índice passar na frente dela quando a comparação é

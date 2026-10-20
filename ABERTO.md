@@ -239,6 +239,14 @@ rodado na produção.
     1.724 acessos à memória do banco), mas a consulta continua lendo os 23.982 trechos com
     `ilike '%palavra%'`, e é esse filtro que custa os 566 ms. Não é mais a regra de acesso: é a
     falta de um índice para busca por parte do nome (trigramas, `pg_trgm`).
+  - **Corrigido em 20/10, com as medições da 025:** os 566 ms não eram o custo da busca. O mesmo
+    plano, com os mesmos 1.724 acessos, levou 381 ms numa rodada e 36 ms na seguinte; a outra
+    leitura inteira da mesma rodada, 22 a 25 ms. O tempo na produção varia muito de uma rodada
+    para outra, e a primeira busca pesada de cada rodada saiu sempre a mais lenta (814, 566, 381 ms).
+    A causa não sei; o palpite é a máquina compartilhada do plano grátis. O que não varia são os
+    acessos, e a queda da 024 está neles: contagem das rotas de 8.152 para 1.084, por dentro de
+    8.005 para 937, marcações da semana de 1.341 para 46, busca de rua de 25.705 para 1.724.
+    Comparar tempo, só dentro da mesma rodada.
   - **Só o índice não basta (conferido num Postgres 17 local em 20/10):** com a regra de acesso, o
     Postgres só usa índice para comparação marcada como segura para rodar antes da regra
     (`leakproof`). O `=` é; `ilike` e `~*` não são. Com 24 mil trechos inventados e o índice de
@@ -251,16 +259,40 @@ rodado na produção.
     instruções numa ida só (viram uma transação, e tudo é desfeito), e não faz falta aqui: o
     motorista só lê `ruas`, e o índice comum bloqueia só a gravação, por 0,2 s. Repor 20 mil trechos
     (o que o `prefeitura -- gravar` faz) passa de 0,3 s para 0,8 s com um índice, 1,4 s com três.
-  - Próximo, a decidir: medir como o app, num arquivo só, as três buscas da base de ruas (rua por
-    parte do nome; bairro e conjunto, por expressão regular, em `servicos/base.ts`); a 025 com o
-    índice onde a medição pedir e a função, sem mudar o app; medir antes e depois; e só então o app
-    chamar a função, publicado à parte.
+  - Feito em 20/10, na seção seguinte: as três buscas da base de ruas medidas como o app, e a 025
+    com os índices e as funções rodada entre duas medições. Falta o app chamar as funções.
   - No Admin, o banco já não é o gargalo: as consultas dele somam menos de 100 ms. A demora que o
     app media (a contagem em 2,1 s em 19/10) está na rede e nas idas e voltas, e é outra frente.
 
-## Buscas da base de ruas (025): rascunho ensaiado local em 20/10, falta a medição de antes na produção
+## Buscas da base de ruas (025): rodada e medida na produção em 20/10; o app ainda não chama as funções
 
-Passos 2 e 3 do plano, aprovados pela revisão. Nada rodado na produção, e o app não muda.
+Passos 2 e 3 do plano, aprovados pela revisão. O dono rodou a medição, a 025 e a medição de novo.
+O app não mudou: continua buscando direto na tabela.
+
+- **Na produção, a medição de depois** (as duas formas na mesma rodada, como o app; tempo e acessos
+  à memória do banco):
+
+  | busca | hoje, direto na tabela | pela função da 025 |
+  |---|---|---|
+  | rua por parte do nome, acha (72) | 36 ms, 1.724 | 1,0 ms, 63 |
+  | rua por parte do nome, não acha | 25 ms, 1.724 | 0,4 ms, 11 |
+  | é bairro?, acha | 7,2 ms, 2.366 | 0,6 ms, 32 |
+  | é bairro?, não acha | 12,8 ms, 4.632 | 0,7 ms, 133 |
+  | conjunto parecido, "acha" | 4,0 ms, 562 | 0,4 ms, 25 |
+  | conjunto parecido, não acha | 3,4 ms, 562 | 0,4 ms, 23 |
+
+  - Por dentro de cada função, o plano usa o índice de trigramas dela. Direto na tabela, como o app
+    faz hoje, a rua lê os 23.982 trechos, o bairro passa por 9.444 a 17.923 pelo índice comum (que
+    só serve de lista), e o conjunto lê os 2.687 que têm conjunto.
+  - O mesmo número de linhas nos dois caminhos em todas (72 e 72, e assim por diante). A
+    equivalência linha a linha foi provada no ensaio local.
+  - **O termo de conjunto "que acha" não achou nada na produção** (nenhum conjunto com "augusto" em
+    Aracaju na base), então o caso que acha do conjunto ficou sem medir lá.
+  - Os três pares ficaram: as três buscas liam a tabela inteira ou quase, e pela função passam a ler
+    de 11 a 133. O ganho de tempo é pequeno em número: de 3 a 36 ms para menos de 1 ms por busca, com
+    a ida e volta do celular, de 100 a 300 ms, por cima. Os índices somam 1,8 MB (de 4,2 para 6,0).
+  - A medição de antes mostra a variação da produção: a mesma busca de rua levou 381 ms ali, a
+    primeira da rodada, e 36 ms na de depois.
 
 - **A medição:** `supabase/medir_buscas_da_base.sql`, só leitura, para rodar antes e depois da 025.
   As buscas do `servicos/base.ts` como o app manda (rua por parte do nome; é bairro?; conjunto
@@ -269,13 +301,12 @@ Passos 2 e 3 do plano, aprovados pela revisão. Nada rodado na produção, e o a
   ordenação do banco e os índices de `ruas`. Quando as funções da 025 existem, mede a chamada delas
   como o app e o plano de dentro de cada uma (o corpo preparado com plano genérico, como o dono:
   é assim que uma função `security definer` de linguagem sql roda).
-- **A 025, rascunho:** `supabase/025_buscas_da_base.sql` cria o `pg_trgm` no esquema `extensions`,
+- **A 025:** `supabase/025_buscas_da_base.sql` cria o `pg_trgm` no esquema `extensions`,
   três índices de trigramas (`nome_chave`, `bairro`, `conjunto`) e três funções que fazem as três
   buscas: `ruas_por_parte_do_nome`, `bairro_na_base` e `conjuntos_na_base`. São `security definer`
   com `search_path` vazio, todo nome com o esquema, `eh_ativo()` conferido dentro, só
   `authenticated` executa; as mesmas colunas, filtro e limite da busca de hoje. Sem `concurrently`.
-  Cada par de índice e função só fica se a medição da produção pedir. Entrou no fim do
-  `000_rodar_tudo.sql` e do `banco-inteiro.sql`.
+  Entrou no fim do `000_rodar_tudo.sql` e do `banco-inteiro.sql`.
 - **Ensaio local** (Postgres 17, `banco-inteiro.sql` publicado, 23.982 trechos inventados, como o
   app), com as mesmas consultas do arquivo de medição:
 
@@ -289,8 +320,8 @@ Passos 2 e 3 do plano, aprovados pela revisão. Nada rodado na produção, e o a
   | conjunto parecido, não acha | 6 ms, 2.007 | 0,4 ms, 26 |
 
   - O índice ganha em todo "não acha" e na rua; no bairro e no conjunto que acham, a busca de hoje
-    para no primeiro que serve e a função chega a ser um pouco mais lenta. A produção decide: lá a
-    leitura da tabela inteira custou 30 vezes mais que aqui (566 ms).
+    para no primeiro que serve e a função chega a ser um pouco mais lenta. Na produção o bairro que
+    acha também ganhou: lá o índice comum passa por 9.444 bairros em ordem antes de chegar a Jardins.
   - **Equivalência:** 63 comparações (admin, motorista, desativado, sem perfil), as mesmas linhas
     nos dois caminhos; desativado e sem perfil não recebem nada, o anônimo é recusado nos dois.
     Cinco sabotagens quebram a comparação: sem `eh_ativo()`, `=` na cidade, `~` no lugar de `~*`,
@@ -304,11 +335,12 @@ Passos 2 e 3 do plano, aprovados pela revisão. Nada rodado na produção, e o a
 - **Achado à parte, de antes da 025:** o `000_rodar_tudo.sql` não roda num banco que já tem trechos
   da prefeitura. A trava de `fonte` da 013 volta antes de a 014 aceitar `prefeitura` e recusa as
   linhas. Num projeto novo não acontece; na produção, quem roda é cada migração sozinha.
-- **Próximo:** o dono roda a medição na produção; decidir pela medição quais pares ficam; ele roda a
-  025 entre duas medições; depois o `servicos/base.ts` passa a chamar as funções, com teste, e é
-  publicado à parte. A demora de um minuto para localizar a lista não deve mudar muito com isso:
-  os endereços vão um depois do outro e o Nominatim espera 1,1 s entre chamadas. Quanto custa cada
-  fonte é a telemetria (passo 3).
+- **Próximo, sem pressa:** o `servicos/base.ts` chamar as três funções no lugar das buscas direto
+  na tabela (três lugares), com a nuvem simulada dos testes respondendo a elas, publicado à parte.
+  O motorista quase não deve sentir: são dezenas de milissegundos por endereço. A demora de um
+  minuto para localizar a lista está em outro lugar: os endereços vão um depois do outro e o
+  Nominatim espera 1,1 s entre chamadas. Quanto custa cada fonte é a telemetria (passo 3), que é a
+  frente que mais vale agora.
 
 ## Admin como painel (19/10, pedido do dono): partes 1 e 2 publicadas em 19/10, falta o menu lateral
 
