@@ -190,7 +190,11 @@ Fora da lista:
     quando a rota foi montada. Agora sai da lista se a nuvem já tem posição para ela;
   - os "novos" de um motorista contavam a marcação de outro no mesmo endereço;
   - o mapa do dia usa a cor do motorista, a mesma do resto do Admin, e não muda a cada recarga;
-  - a ordem das marcações misturadas passou a comparar datas, não texto.
+  - a ordem das marcações misturadas passou a comparar datas, não texto;
+  - **achado pelo GitHub:** dia sem nenhuma posição abria o mapa do dia vazio a cada carga, e o
+    "Nada com posição para mostrar" apagava o aviso de quem tinha acabado de agir. Aqui o teste
+    passava por sorte de tempo; lá falhou e a publicação de `f3a75bf` não saiu. Agora o mapa do
+    dia só abre sozinho com o que mostrar, e um teste grava todos os avisos para pegar isso sempre.
 - **Fica como está:** o selo do botão Mais conta só as decisões; o cartão "Esperando você" soma
   também as paradas sem local e as rotas para conferir. O Admin abre com umas 30 a 35 consultas
   (eram umas 15), quase todas em paralelo.

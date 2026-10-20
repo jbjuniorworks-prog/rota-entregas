@@ -653,3 +653,25 @@ test.describe('administrador', () => {
     });
   });
 });
+
+// GitHub, 19/10: sem posição nenhuma no dia, o Admin abria o mapa do dia vazio a cada carga, e o
+// "Nada com posição para mostrar" apagava o aviso de quem tinha acabado de agir.
+test.describe('o Admin sem entrega com posição no dia', () => {
+  test.use({papel: 'admin'});
+  test('não avisa nada sobre o mapa ao abrir nem ao atualizar', async ({page}) => {
+    await page.addInitScript(() => {
+      const vistos: string[] = (window as any).__avisos = [];
+      new MutationObserver(() => {
+        const t = document.getElementById('status')?.textContent || '';
+        if (t && t !== vistos[vistos.length - 1]) vistos.push(t);
+      }).observe(document, {subtree: true, childList: true, characterData: true});
+    });
+    await abrir(page);
+    await menu(page, /^Admin/);
+    await expect(page.locator('[data-secao="Rotas de hoje"]')).toContainText('Nenhuma rota enviada hoje.');
+    await page.getByRole('button', {name: '↻ Atualizar'}).click();
+    await expect(page.getByRole('button', {name: '↻ Atualizar'})).toBeEnabled();
+    await page.waitForTimeout(500);
+    expect(await page.evaluate(() => (window as any).__avisos)).not.toContain('Nada com posição para mostrar.');
+  });
+});

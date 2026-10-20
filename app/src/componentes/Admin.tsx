@@ -79,8 +79,10 @@ export function TelaAdmin() {
         const ms = await pMotoristas.catch(() => [] as Adm.Motorista[]);
         const d = await Adm.resumoDeHoje(r, ms.filter(m => m.papel === 'motorista').map(m => m.nome)).catch(err => ({erro: (err as Error).message}));
         setDia(d);
-        // o mapa do Admin abre no dia, e o Atualizar refaz o dia, enquanto ele não pediu outra coisa
-        if (!('erro' in d) && (!loja.ui.marcas || loja.ui.marcas.vez === vezDoDia)) verDiaNoMapa(d, coresDe(ms));
+        // O mapa do Admin abre no dia, e o Atualizar refaz o dia, enquanto ele não pediu outra coisa. Dia
+        // sem posição nenhuma não abre: o "Nada com posição para mostrar" a cada carga apagava o aviso
+        // de quem tinha acabado de agir (o encerrar a conferência, no teste do GitHub de 19/10).
+        if (!('erro' in d) && d.pontos.length && (!loja.ui.marcas || loja.ui.marcas.vez === vezDoDia)) verDiaNoMapa(d, coresDe(ms));
       }, falha),
       Adm.listarCorrecoes().then(l => {
         setLugares(l);
