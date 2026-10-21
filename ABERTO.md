@@ -164,13 +164,23 @@ Fora da lista:
 - **A leitura mudou para todas as tabelas.** Cada página começa depois da última linha lida
   (pela chave da tabela), não num número de linha. A `uso_dos_botoes` não tem `id` (a chave são
   quatro colunas), e o `order=id` de antes faria o backup da noite parar inteiro nela. E contar
-  linhas repete ou pula quando alguém grava no meio da leitura.
+  linhas repete ou pula quando alguém grava no meio da leitura. A ordem é sempre por uma chave
+  única com todas as partes no ponto de partida da página: o `id` (chave primária) em nove
+  tabelas, e as quatro colunas da chave primária na `uso_dos_botoes`.
+- **O que isso não garante** (revisão de 21/10): o backup não é uma fotografia do banco num
+  instante. Linha gravada durante a leitura com chave antes do ponto já lido fica para o backup
+  seguinte; uma que mude de chave no meio (nenhuma tabela troca chave hoje) pode sair duas vezes
+  ou nenhuma; e entre uma tabela e outra o banco anda: um pacote de rota criada depois de lidas as
+  rotas iria sem a rota dele, e a restauração recusaria esse pacote. Fotografia única pede uma
+  transação só (`repeatable read`) lendo tudo, o que o PostgREST não dá entre pedidos. O backup
+  roda às 21h, fora da rota; não está sendo mudado por isso.
 - **Ensaio local** (Postgres e PostgREST descartáveis, limite de 1.000 linhas como o Supabase; nada
   disso no repositório): as três formas de chave (quatro colunas, `id` numérico, `id` uuid), valores
   com vírgula, parêntese, aspas, barra, ponto, acento e o vazio, páginas de 1.000, de 7 e de 1, e a
-  ordem de texto simples e a linguística (ICU). Sempre a mesma sequência que o banco. Gravando
-  linhas no meio da leitura e apagando uma à frente: nenhuma repetida, nenhuma faltando; contar
-  linhas, no mesmo caso, repetiu 20 e 9. Sem as aspas nos valores do filtro, a leitura quebra nos
+  ordem de texto simples e a linguística (ICU). Sempre a mesma sequência que o banco. Nos casos
+  ensaiados de gravação no meio da leitura (linhas novas antes e depois do ponto lido, uma apagada
+  à frente): nenhuma repetida, nenhuma das que já estavam faltando; contar linhas, no mesmo caso,
+  repetiu 20 e 9. Sem as aspas nos valores do filtro, a leitura quebra nos
   valores com vírgula.
 - **Conferido na produção, só lendo, às 18:10 de 21/10:** o backup numa pasta temporária, as 11
   tabelas com o número de linhas igual ao do resumo e ao do banco antes e depois, soma de

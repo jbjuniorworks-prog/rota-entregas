@@ -46,7 +46,8 @@ function depoisDe(chave, ultima) {
 
 // Cada página começa depois da última linha lida, não num número de linha: contando linhas, uma
 // gravada no meio da leitura empurra as seguintes e uma sai duas vezes; uma apagada deixa outra de
-// fora.
+// fora. Não é uma fotografia do banco: o gravado antes do ponto já lido, ou numa tabela já lida,
+// fica para a próxima leitura.
 export async function linhasDe(chamar, tabela, tamanho = 1000) {
   const chave = chaveDe(tabela), ordem = chave.map(c => c + '.asc').join(',');
   const saida = [];
