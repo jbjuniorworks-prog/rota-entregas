@@ -152,6 +152,41 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Backup: as quatro tabelas que faltavam (21/10, pergunta do dono): backup conferido, restauração não
+
+**Estado: backup das quatro tabelas conferido; restauração completa ainda não validada.**
+
+- **O que faltava.** A lista de tabelas do backup é de 20/09 e não acompanhou o banco: `lugares`
+  (010), `reclamacoes` (018), `uso_dos_botoes` (016) e `buscas_de_lista` (026) nunca foram salvas,
+  embora o README dissesse "todas as tabelas". A que importa é `lugares`: 1.094 posições guardadas
+  pelo nome do lugar (condomínio, loja), que se perderiam junto com o Supabase. Aprovado pelo dono
+  e pela revisão em 21/10: as quatro, no mesmo destino e com a mesma guarda das outras.
+- **A leitura mudou para todas as tabelas.** Cada página começa depois da última linha lida
+  (pela chave da tabela), não num número de linha. A `uso_dos_botoes` não tem `id` (a chave são
+  quatro colunas), e o `order=id` de antes faria o backup da noite parar inteiro nela. E contar
+  linhas repete ou pula quando alguém grava no meio da leitura.
+- **Ensaio local** (Postgres e PostgREST descartáveis, limite de 1.000 linhas como o Supabase; nada
+  disso no repositório): as três formas de chave (quatro colunas, `id` numérico, `id` uuid), valores
+  com vírgula, parêntese, aspas, barra, ponto, acento e o vazio, páginas de 1.000, de 7 e de 1, e a
+  ordem de texto simples e a linguística (ICU). Sempre a mesma sequência que o banco. Gravando
+  linhas no meio da leitura e apagando uma à frente: nenhuma repetida, nenhuma faltando; contar
+  linhas, no mesmo caso, repetiu 20 e 9. Sem as aspas nos valores do filtro, a leitura quebra nos
+  valores com vírgula.
+- **Conferido na produção, só lendo, às 18:10 de 21/10:** o backup numa pasta temporária, as 11
+  tabelas com o número de linhas igual ao do resumo e ao do banco antes e depois, soma de
+  verificação certa, nenhuma chave repetida. A pasta foi apagada depois.
+- **A tarefa das 21h** roda o código desta pasta, então passa a usar este a partir da noite em
+  que ele estiver aqui. Para voltar ao de antes: `git revert` deste commit; os backups antigos
+  continuam na pasta.
+- **A restauração está preparada, não comprovada.** Ela devolve as quatro tabelas ligando cada
+  linha à conta recriada, sem o `id` gerado de lugares e reclamações, compara linha a linha e no
+  fim apaga tudo do projeto de teste. As quatro saem antes das contas, porque três delas apontam
+  para o perfil sem apagar junto. Falta o ensaio num projeto de teste do Supabase (o dono cria, roda
+  o `banco-inteiro.sql`, põe as chaves no `.env`), e nele conferir que a limpeza deixou o projeto
+  vazio, não só que ela rodou.
+- **As senhas não têm backup** (o Supabase não exporta): a restauração recria as contas com senha
+  nova.
+
 ## Revisão de arquitetura e produto (20/10, pedido do dono): para conversar, nada decidido
 
 Lido o app inteiro, o banco e as ferramentas. Nada mudou no código. Os achados, por prioridade:

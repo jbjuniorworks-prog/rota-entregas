@@ -2,7 +2,7 @@ import {createHash, randomInt} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import {readFileSync, existsSync, readdirSync} from 'node:fs';
 import {join} from 'node:path';
-import {ambiente, api, linhasDe, mesmoBanco, usuariosDe, TABELAS} from './banco.mjs';
+import {ambiente, api, chaveDe, linhasDe, mesmoBanco, usuariosDe, TABELAS} from './banco.mjs';
 
 const PADRAO = join(process.env.USERPROFILE || process.env.HOME || '.', 'OneDrive', 'backups', 'rota-entregas');
 const alvo = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : ultimoBackup();
@@ -44,11 +44,13 @@ async function enviar(tabela, linhas, opcoes = '') {
   }
 }
 
-const TABELAS_DE_DADOS = ['pacotes', 'rotas', 'correcoes', 'observacoes', 'ruas'];
+// Antes das contas: lugares, reclamações e uso dos botões apontam para o perfil sem apagar junto,
+// e com eles lá o banco não deixa apagar a conta.
+const TABELAS_DE_DADOS = ['pacotes', 'rotas', 'correcoes', 'observacoes', 'ruas', 'lugares', 'reclamacoes', 'uso_dos_botoes', 'buscas_de_lista'];
 
 async function limpar(contas) {
   for (const t of TABELAS_DE_DADOS) {
-    await doTeste(`/rest/v1/${t}?id=not.is.null`, {method: 'DELETE', headers: {Prefer: 'return=minimal'}});
+    await doTeste(`/rest/v1/${t}?${chaveDe(t)[0]}=not.is.null`, {method: 'DELETE', headers: {Prefer: 'return=minimal'}});
   }
   const usuariosLa = await usuariosDe(doTeste);
   let apagadas = 0;
@@ -99,6 +101,11 @@ if (!soConferir) {
   await enviar('correcoes', ler('correcoes').map(({id, ...resto}) => trocar(resto)));
   await enviar('observacoes', ler('observacoes').map(({id, ...resto}) => trocar(resto)));
   await enviar('ruas', ler('ruas').map(({id, ...resto}) => resto), '?on_conflict=osm_id');
+  // o id dos lugares e das reclamações o banco gera (identity), e recusa o que vier junto
+  await enviar('lugares', ler('lugares').map(({id, ...resto}) => trocar(resto)), '?on_conflict=nome_chave,cidade,motorista_id,dia');
+  await enviar('reclamacoes', ler('reclamacoes').map(({id, ...resto}) => trocar(resto)), '?on_conflict=chave_lugar,motivo,motorista_id');
+  await enviar('uso_dos_botoes', ler('uso_dos_botoes').map(trocar), '?on_conflict=motorista_id,dia,botao,antes');
+  await enviar('buscas_de_lista', ler('buscas_de_lista').map(trocar), '?on_conflict=id');
 }
 
 const ESSENCIA = {
@@ -108,6 +115,10 @@ const ESSENCIA = {
   observacoes: l => [l.chave_lugar, l.lat, l.lng, l.precisao_m, l.rua_chave].join('|'),
   ruas: l => [l.osm_id, l.nome_chave, l.nome_chave2, l.tipo, l.bairro, l.conjunto, l.cidade].join('|'),
   perfis: l => [l.nome, l.papel, l.ativo].join('|'),
+  lugares: l => [l.nome_chave, l.nome, l.cidade, l.lat, l.lng, l.endereco, l.dia, l.pendente].join('|'),
+  reclamacoes: l => [l.chave_lugar, l.motivo, l.criado_em].join('|'),
+  uso_dos_botoes: l => [l.dia, l.botao, l.antes, l.vezes].join('|'),
+  buscas_de_lista: l => [l.id, l.origem, l.buscado_em, l.versao, l.paradas, l.pendentes, l.tempo_ms].join('|'),
 };
 const digerir = (tabela, linhas) =>
   createHash('sha256').update(linhas.map(ESSENCIA[tabela]).sort().join('|')).digest('hex').slice(0, 12);

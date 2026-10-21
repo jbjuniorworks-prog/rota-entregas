@@ -1,6 +1,13 @@
 import {readFileSync} from 'node:fs';
 
-export const TABELAS = ['perfis', 'rotas', 'pacotes', 'correcoes', 'observacoes', 'ruas'];
+// Todas as tabelas. Ficaram de fora de 21/09 a 21/10 as quatro do fim, criadas depois desta lista:
+// o backup dizia "todas" e não levava os lugares.
+export const TABELAS = ['perfis', 'rotas', 'pacotes', 'correcoes', 'observacoes', 'ruas',
+  'lugares', 'reclamacoes', 'uso_dos_botoes', 'buscas_de_lista'];
+
+// A chave de cada tabela, que dá a ordem da leitura. A uso_dos_botoes não tem id (016).
+const CHAVE = {uso_dos_botoes: ['motorista_id', 'dia', 'botao', 'antes']};
+export const chaveDe = tabela => CHAVE[tabela] || ['id'];
 
 export function ambiente(sufixo = '') {
   const env = Object.fromEntries(readFileSync(new URL('../.env', import.meta.url), 'utf8')
@@ -24,12 +31,30 @@ export function api({url, chave}) {
   };
 }
 
+// Valor entre aspas dentro do or=(...): vírgula, ponto e parêntese são a sintaxe do filtro.
+const literal = v => `"${String(v).replace(/[\\"]/g, m => '\\' + m)}"`;
+
+// (a, b, …) > (x, y, …), do jeito que o PostgREST entende.
+function depoisDe(chave, ultima) {
+  if (chave.length === 1) return `${chave[0]}=gt.${encodeURIComponent(ultima[chave[0]])}`;
+  const ramos = chave.map((c, i) => {
+    const partes = [...chave.slice(0, i).map(k => `${k}.eq.${literal(ultima[k])}`), `${c}.gt.${literal(ultima[c])}`];
+    return partes.length > 1 ? `and(${partes.join(',')})` : partes[0];
+  });
+  return 'or=' + encodeURIComponent(`(${ramos.join(',')})`);
+}
+
+// Cada página começa depois da última linha lida, não num número de linha: contando linhas, uma
+// gravada no meio da leitura empurra as seguintes e uma sai duas vezes; uma apagada deixa outra de
+// fora.
 export async function linhasDe(chamar, tabela, tamanho = 1000) {
+  const chave = chaveDe(tabela), ordem = chave.map(c => c + '.asc').join(',');
   const saida = [];
-  for (let de = 0; ; de += tamanho) {
-    const parte = await chamar(`/rest/v1/${tabela}?select=*&order=id.asc&offset=${de}&limit=${tamanho}`);
+  for (let ultima = null; ;) {
+    const parte = await chamar(`/rest/v1/${tabela}?select=*&order=${ordem}${ultima ? '&' + depoisDe(chave, ultima) : ''}&limit=${tamanho}`);
     saida.push(...parte);
     if (parte.length < tamanho) return saida;
+    ultima = parte[parte.length - 1];
   }
 }
 
