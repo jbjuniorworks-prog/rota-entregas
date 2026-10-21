@@ -450,10 +450,13 @@ permissão para o anônimo, e o gatilho. O app ainda não grava.
   perfis`, `papel <> 'admin'`), porque a conta do dono é admin. Um teste feito com conta de
   motorista entraria na conta como uso real.
 - **Primeira olhada, 20/10 às 22:51:** nenhuma linha de motorista, e é o esperado: a última rota de
-  planilha de qualquer motorista foi às 09:52, antes da versão com a telemetria (15:34). O ciclo
-  que vale é a rota da manhã seguinte: toda rota criada depois das 15:34 de 20/10 tem de ter uma
-  busca do mesmo motorista. As rotas só enxergam planilha (print, gravação e colada não criam
-  rota), então "nenhuma busca" só é suspeito com o motorista confirmando que montou a lista.
+  planilha de qualquer motorista foi às 09:52, antes da versão com a telemetria (15:34).
+  **Corrigido em 21/10:** escrevi aqui que toda rota criada depois disso teria de ter uma busca, e
+  está errado. O registro só nasce quando a lista fica com parada sem posição depois de lida
+  (`buscarPendentes` sai antes do medidor quando não há pendente): planilha com a posição de todas
+  as linhas não busca nada e não grava nada. Rota sem busca só é suspeita quando houve busca de
+  verdade (o "Localizando…" na tela, ou pacote da rota posicionado pela busca), e as rotas só
+  enxergam planilha (print, gravação e colada não criam rota).
 - **A mudança no app** (aval da revisão):
   - `logica/telemetria.ts`: o medidor, que os serviços avisam a cada ida ao Nominatim (com a vez
     na fila à parte), ao ViaCEP, ao censo e ao banco, e por parada; e o registro, montado campo a
