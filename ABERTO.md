@@ -446,6 +446,14 @@ permissão para o anônimo, e o gatilho. O app ainda não grava.
 - **Conferido no ar em 20/10:** o dono colou um endereço na conta dele e a linha chegou: origem
   `colada`, 1 pendente, 2,3 s, 0,6 s de Nominatim. Essa linha é do admin, de teste: ao ler os dias
   dos motoristas, deixar de fora o `motorista_id` do admin.
+- **Premissa das consultas de acompanhamento:** elas tiram a linha de teste pelo papel (`join
+  perfis`, `papel <> 'admin'`), porque a conta do dono é admin. Um teste feito com conta de
+  motorista entraria na conta como uso real.
+- **Primeira olhada, 20/10 às 22:51:** nenhuma linha de motorista, e é o esperado: a última rota de
+  planilha de qualquer motorista foi às 09:52, antes da versão com a telemetria (15:34). O ciclo
+  que vale é a rota da manhã seguinte: toda rota criada depois das 15:34 de 20/10 tem de ter uma
+  busca do mesmo motorista. As rotas só enxergam planilha (print, gravação e colada não criam
+  rota), então "nenhuma busca" só é suspeito com o motorista confirmando que montou a lista.
 - **A mudança no app** (aval da revisão):
   - `logica/telemetria.ts`: o medidor, que os serviços avisam a cada ida ao Nominatim (com a vez
     na fila à parte), ao ViaCEP, ao censo e ao banco, e por parada; e o registro, montado campo a
@@ -510,6 +518,12 @@ sabotagens, uma por retrato, desfeitas e conferidas.
   com `scope=global`). Se isso é o que se quer, é decisão de produto.
 - **O que esta rodada não cobriu:** as portas seguradas (passagem e lugar esperando os 10 minutos
   do desfazer) também saem na sessão de quem estiver quando vencem; está no código, não num teste.
+  Depois do conserto, coberto por teste (20/10, pedido da revisão; só teste, o app não mudou): A
+  entrega, a passagem fica segurada, A sai e B entra. Vencendo com B entrado, o temporizador da
+  porta dispara e B não manda nada nem vê nada de A; A volta e a passagem sai na sessão dele.
+  Voltando antes de vencer, ela continua segurada e sai com A quando vence. Duas sabotagens quebram
+  os dois testes: as seguradas ficando com o aparelho em vez da conta (a passagem de A sai na
+  sessão de B), e a volta sem devolver o dia.
 - **A frequência real de cada um não sei.** O GPS ruim deve ser o mais comum: eles entregam quase
   sempre pela Lista (relato de 14/10). A troca de conta depende de alguém entrar com outra conta
   num aparelho que tinha fila; a memória cheia, de quanto o aparelho guarda (a memória de portas

@@ -134,6 +134,69 @@ test('a telemetria de A também espera A', async ({page, nuvem}) => {
   await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'buscas_de_lista' && p.metodo === 'POST').map(p => p.quem), {timeout: 20_000}).toEqual([A]);
 });
 
+// A porta segurada (passagem e lugar esperando os 10 minutos do desfazer) não aparece na tela, e
+// tem um temporizador próprio, que pode vencer com outra conta entrada. Pedido da revisão de 20/10:
+// até aqui era só o código dizendo que ela vai para o lado junto com o dia.
+test.describe('trocar de conta com a porta da entrega ainda segurada', () => {
+  test.use({permissions: ['geolocation'], geolocation: {latitude: -10.9605, longitude: -37.0455, accuracy: 12}});
+  const passagens = (nuvem, quem?: string) => nuvem.pedidos.filter(p => p.caminho === 'observacoes' && p.metodo === 'POST' && (!quem || p.quem === quem));
+
+  async function entregarESairComA(page: Page, nuvem) {
+    page.on('dialog', d => d.accept());
+    nuvem.tabelas.perfis = [{id: B, nome: 'Outro Motorista', papel: 'motorista', ativo: true}];
+    let quemEntra = B;
+    await page.route('**/auth/v1/token**', r => r.request().method() === 'OPTIONS'
+      ? r.fulfill({status: 204, headers: CORS})
+      : r.fulfill({status: 200, contentType: 'application/json', headers: CORS, body: JSON.stringify(sessaoDe(quemEntra))}));
+    await page.clock.install();
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await page.locator('.proxima [data-acao="entregue"]').first().click();
+    await expect.poll(async () => (await seguradas(page)).flatMap(s => s.ops.map(o => o.tipo))).toContain('observacao');
+    // a entrega mesmo não espera: sai na hora, na sessão de A
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'pacotes' && p.metodo === 'PATCH' && p.busca.includes('rota_id')).map(p => p.quem)).toEqual([A]);
+    await menu(page, 'Sair');
+    await entrarComo(page, B);
+    return {voltaA: () => { quemEntra = A; }};
+  }
+
+  async function bNaoTemNadaDeA(page: Page, nuvem) {
+    expect(passagens(nuvem)).toEqual([]);
+    expect(await seguradas(page)).toEqual([]);
+    expect(await fila(page)).toEqual([]);
+  }
+
+  test('vence com B na sessão: B não manda, e quando A volta ela sai na sessão de A', async ({page, nuvem}) => {
+    const {voltaA} = await entregarESairComA(page, nuvem);
+    // o temporizador da porta de A dispara com B entrado
+    await page.clock.fastForward('11:00');
+    await page.waitForTimeout(1500);
+    await bNaoTemNadaDeA(page, nuvem);
+    await menu(page, 'Sair');
+    voltaA();
+    await entrarComo(page, A);
+    await expect.poll(() => passagens(nuvem).map(p => p.quem), {timeout: 20_000}).toEqual([A]);
+    expect(await seguradas(page)).toEqual([]);
+  });
+
+  test('A volta antes de vencer: ela continua segurada, e sai com A quando vence', async ({page, nuvem}) => {
+    const {voltaA} = await entregarESairComA(page, nuvem);
+    await page.clock.fastForward('04:00');
+    await page.waitForTimeout(1500);
+    await bNaoTemNadaDeA(page, nuvem);
+    await menu(page, 'Sair');
+    voltaA();
+    await entrarComo(page, A);
+    await page.waitForTimeout(1500);
+    // ainda dentro do prazo de desfazer: segurada como ele deixou, e nada saiu
+    expect((await seguradas(page)).flatMap(s => s.ops.map(o => o.tipo))).toContain('observacao');
+    expect(passagens(nuvem)).toEqual([]);
+    await page.clock.fastForward('07:00');
+    await expect.poll(() => passagens(nuvem).map(p => p.quem), {timeout: 20_000}).toEqual([A]);
+  });
+});
+
 test.describe('a primeira abertura da versão que separa o dia por conta', () => {
   const ANTIGO = {
     'rota-entregas-v2': JSON.stringify({cidade: 'Aracaju', regiao: null, tamTrecho: 9, inicio: null, voltar: false, ordemDoApp: false,
