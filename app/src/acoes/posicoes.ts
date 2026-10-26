@@ -1,6 +1,6 @@
 ﻿import {aplicarCompartilhadas, separarAsQueMovem} from '../logica/compartilhadas';
 import {aplicarReclamacoes, chaveCliente} from '../logica/reclamacoes';
-import {haversine, marcarIsoladas, noPino} from '../logica/geo';
+import {haversine, longeDaPorta, marcarIsoladas, noPino} from '../logica/geo';
 import type {Operacao} from '../logica/fila';
 import {avisoGuardou} from '../logica/memoria';
 import {medidor} from '../logica/telemetria';
@@ -151,7 +151,8 @@ export function guardarPassagens(ps: Parada[]) {
   comMinhaPosicao((lat, lng, precisao) => {
     if (precisao > GPS_PASSAGEM || foraDaRegiao({lat, lng})) return;
     // desfeita enquanto o GPS respondia: não há porta desta entrega para guardar
-    for (const {p, chave} of alvos) if (p.entregue && loja.parada(p.id) === p) segurarPorta(p, chave, lat, lng, precisao, p);
+    // longe demais do pino, o GPS não é a porta: a entrega vale, a passagem não (26/10)
+    for (const {p, chave} of alvos) if (p.entregue && loja.parada(p.id) === p && !longeDaPorta(p, {lat, lng})) segurarPorta(p, chave, lat, lng, precisao, p);
     enviarFila();
   }, () => {}, '');
 }

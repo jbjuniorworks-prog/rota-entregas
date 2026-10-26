@@ -20,6 +20,16 @@ export const NO_PINO = 30;
 export function noPino(seguia: {lat?: number | null; lng?: number | null}, gps: Ponto): boolean {
   return seguia.lat != null && seguia.lng != null && haversine({lat: seguia.lat, lng: seguia.lng}, gps) <= NO_PINO;
 }
+// Pedro, 26/10: pôs em dia, na base, a rota da manhã, e o "Entreguei aqui" gravou como porta da
+// mercearia e de um condomínio da Chico Mendes o lugar onde ele estava, a 18 km, com GPS de ±4 m.
+// Mais longe que isto do pino que ele seguia, o GPS não é a porta de ninguém: a entrega vale, e
+// porta, passagem e verificação ficam como estavam. É a mesma régua do piso de sanidade, e
+// deixa passar a correção de 1,4 km da mercearia, que estava certa. Só a mais: em 3 km, vale.
+export const LONGE_DA_PORTA = LONGE_DA_ANCORA;
+export const passaDaPorta = (metros: number): boolean => metros > LONGE_DA_PORTA;
+export const longeDaPorta = (seguia: {lat?: number | null; lng?: number | null}, gps: Ponto): boolean =>
+  seguia.lat != null && seguia.lng != null && passaDaPorta(haversine({lat: seguia.lat, lng: seguia.lng}, gps));
+
 export const MESMO_LUGAR = 150;
 export const PERTO_A_PE = 300;
 export const ISOLADA_MIN = 7000;

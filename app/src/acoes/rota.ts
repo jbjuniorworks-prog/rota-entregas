@@ -1,4 +1,4 @@
-import {proximaAPe} from '../logica/geo';
+import {haversine, longeDaPorta, proximaAPe} from '../logica/geo';
 import {backupRecente, CHAVES, estadoVazio, resetarDia} from '../logica/guarda';
 import {aplicarGrupos, circular, gruposValidos, tirarGrupos as tirarOsGrupos} from '../logica/grupos';
 import {juntarDeNovo, novoId, separarParada} from '../logica/importar';
@@ -198,6 +198,8 @@ ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
     // nos outros como sugestão. Mexer no pino assim não é o que o botão promete.
     if (precisao > GPS_PASSAGEM) { soEntregue(`O GPS está impreciso agora (±${margem} m).`); return; }
     if (foraDaRegiao({lat, lng})) { soEntregue('O GPS deu um ponto fora da região das entregas.'); return; }
+    const longe = vivas.find(p => longeDaPorta(p, {lat, lng}));
+    if (longe) { soEntregue(`Você está a ${(haversine(longe as Ponto, {lat, lng}) / 1000).toFixed(1).replace('.', ',')} km do pino, longe demais para ser a porta.`); return; }
     const {guardou} = portaDaEntrega(vivas, lat, lng, precisao);
     status(`Entregue${quantas}, com a porta marcada aqui (±${margem} m).` + (guardou
       ? ' Vai para os outros motoristas como porta confirmada.'
