@@ -10,7 +10,7 @@ const MERCEARIA = {latitude: -10.948, longitude: -37.05};
 const DO_CONDOMINIO = /\|por tras do condominio portal teste$/;
 
 const paradas = (page: Page) => page.evaluate(() =>
-  (JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas as {texto: string; lat: number; entregue: boolean; precisao: string; pacotes: string[]; separada?: boolean}[]));
+  (JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas as {id: string; texto: string; lat: number; lng: number; entregue: boolean; precisao: string; pacotes: string[]; separada?: boolean}[]));
 const porLinha = (page: Page) => page.locator('[data-folha="proxima"] [data-acao="aqui-uma"]');
 
 test.describe('separar os pacotes de uma parada', () => {
@@ -112,6 +112,58 @@ test.describe('separar os pacotes de uma parada', () => {
     await page.getByRole('button', {name: 'Pino errado? Estou aqui'}).click();
     const naMercearia = async () => (await paradas(page)).filter(p => Math.abs(p.lat - MERCEARIA.latitude) < 1e-4).map(p => p.texto.split(',')[2].trim());
     await expect.poll(naMercearia).toEqual(['Mercearia Nova Opção Teste', 'Na mercearia nova opção teste']);
+  });
+
+  // O print do dono, 26/10: a porta geral do "67" estava verificada, as separadas herdaram o
+  // "verificado", e o app escondia delas o Arrumar e o Entreguei aqui. Só sobrava o ✓.
+  test('com a porta geral verificada, a separada com complemento ainda se arruma e se entrega na porta', async ({page, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    // a nuvem conhece só a porta geral do "67": a chave da rua, sem complemento
+    nuvem.rpc.posicoes = (corpo: {chaves: string[]}) => corpo.chaves.filter(k => k.startsWith('r|') && k.split('|').length === 5).map(chave_lugar =>
+      ({chave_lugar, lat: -10.9501, lng: -37.0501, situacao: 'confirmado', motoristas: 2, entregas: 2, fonte: 'entrega', minha: false}));
+    await abrir(page);
+    await carregar(page, ROTA_E);
+    await montar(page);
+    const proxima = page.locator('[data-folha="proxima"]');
+    await expect(proxima.getByText('Endereço verificado')).toBeVisible();
+    await proxima.getByRole('button', {name: 'Separar os 4 pacotes'}).click();
+    // as três com complemento; a sem complemento é a porta geral, e continua verificada
+    await expect(porLinha(page)).toHaveCount(3);
+    await proxima.locator('[data-acao="ver-uma"]', {hasText: 'condomínio'}).click();
+    const pino = page.locator('[data-folha="pino"]');
+    await expect(pino).toContainText('Por trás do condomínio Portal Teste');
+    await expect(pino.getByRole('button', {name: 'Arrumar o pino'})).toBeVisible();
+  });
+
+  test('as separadas no mesmo ponto abrem em leque no mapa, cada uma com o seu pino', async ({page}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_E);
+    await montar(page);
+    const antes = (await paradas(page))[0];
+    await page.locator('[data-folha="proxima"]').getByRole('button', {name: 'Separar os 4 pacotes'}).click();
+    const separadas = (await paradas(page)).filter(p => p.separada);
+    expect(separadas).toHaveLength(4);
+    // o leque é só desenho: a posição gravada de cada uma é a de antes
+    for (const p of separadas) expect([p.lat, p.lng]).toEqual([antes.lat, antes.lng]);
+    const ids = separadas.map(p => p.id);
+    const centros: {x: number; y: number}[] = [];
+    for (const id of ids) {
+      const caixa = await page.locator(`.pino[data-ids="${id}"]`).boundingBox();
+      expect(caixa).not.toBeNull();
+      centros.push({x: caixa!.x + caixa!.width / 2, y: caixa!.y + caixa!.height / 2});
+    }
+    for (let i = 0; i < centros.length; i++) for (let j = i + 1; j < centros.length; j++) {
+      expect(Math.hypot(centros[i].x - centros[j].x, centros[i].y - centros[j].y)).toBeGreaterThan(20);
+    }
+    // o pino de uma abre o cartão só dela
+    await page.getByRole('button', {name: 'Minimizar'}).click();
+    const doCondominio = separadas.find(p => p.texto.includes('condomínio'))!;
+    await page.locator(`.pino[data-ids="${doCondominio.id}"]`).click();
+    const cartao = page.locator('[data-folha="pino"]');
+    await expect(cartao.locator('.titulo')).toHaveText('Neste pino');
+    await expect(cartao).toContainText('Por trás do condomínio Portal Teste');
+    await expect(cartao.getByRole('button', {name: 'Arrumar o pino'})).toBeVisible();
   });
 
   test('a porta que alguém já marcou para o complemento chega quando separa', async ({page, nuvem}) => {

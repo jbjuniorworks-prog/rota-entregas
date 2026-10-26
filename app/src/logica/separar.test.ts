@@ -59,6 +59,22 @@ describe('separar os pacotes de uma parada', () => {
     expect(e2.paradas).toHaveLength(5);
   });
 
+  // O print do dono, 26/10: a porta geral do "67" estava verificada (a da mercearia), as cinco
+  // separadas herdaram o "verificado", e o app escondia delas o Arrumar e o Entreguei aqui.
+  it('a porta verificada da chave geral não passa para as separadas com complemento', () => {
+    const e = carregar();
+    const p = e.paradas[0];
+    Object.assign(p, {precisao: 'confirmado', exibido: 'Endereço verificado'});
+    const [mercearia, condominio, casa, naMercearia] = [p, ...separarParada(e, p)];
+    for (const q of [mercearia, condominio, naMercearia]) expect(q).toMatchObject({precisao: 'vizinha', precisaoAntes: 'confirmado', lat: p.lat});
+    // a sem complemento é a chave geral: a porta é dela também
+    expect(casa.precisao).toBe('confirmado');
+
+    // o que não é porta de ninguém (o ponto da planilha) não muda
+    const e2 = carregar(), [m2, ...outras] = [e2.paradas[0], ...separarParada(e2, e2.paradas[0])];
+    expect([m2, ...outras].map(q => q.precisao)).toEqual(['planilha', 'planilha', 'planilha', 'planilha']);
+  });
+
   it('a separada guarda a porta com o complemento; a que ninguém separou, com a chave de sempre', () => {
     const e = carregar();
     const p = e.paradas[0];

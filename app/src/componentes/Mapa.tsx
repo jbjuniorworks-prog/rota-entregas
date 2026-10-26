@@ -6,7 +6,7 @@ import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
 import {haversine} from '../logica/geo';
 import {emendar, rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
-import {empilhar} from '../logica/pinos';
+import {emLeque, empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {loja, useLoja} from '../loja';
@@ -102,6 +102,7 @@ export default function Mapa() {
   const camadaLacos = useRef<L.LayerGroup | null>(null);
   const camadaNomes = useRef<L.LayerGroup | null>(null);
   const camadaTracos = useRef<L.LayerGroup | null>(null);
+  const camadaLeque = useRef<L.LayerGroup | null>(null);
   const nomesFeitos = useRef<NomeNoMapa[] | null>(null);
   const lacosFeitos = useRef<Grupo[] | null>(null);
   const pinos = useRef<Record<string, NoMapa>>({});
@@ -123,6 +124,7 @@ export default function Mapa() {
     m.createPane('tracos').style.zIndex = '350';
     camadaTracos.current = L.layerGroup().addTo(m);
     camadaFundo.current = L.layerGroup().addTo(m);
+    camadaLeque.current = L.layerGroup().addTo(m);
     camadaPinos.current = L.layerGroup().addTo(m);
     camadaLacos.current = L.layerGroup().addTo(m);
     camadaNomes.current = L.layerGroup().addTo(m);
@@ -185,7 +187,7 @@ export default function Mapa() {
       .sort((a, b) => a.i - b.i)[0]?.p;
 
     const z = m.getZoom();
-    const pilhas = empilhar(comLocal, q => m.project([q.lat, q.lng], z), q => ondeNaRota(q.id) ?? 1e6);
+    const pilhas = emLeque(empilhar(comLocal, q => m.project([q.lat, q.lng], z), q => ondeNaRota(q.id) ?? 1e6));
     const desenho = [
       pilhas.map(g => g.ps.map(p => [p.id, p.lat, p.lng, p.entregue, p.adiada, p.precisao, p.area, p.stop, p.adicional, p.unidades, rotuloDe(p),
         (p.reclamacoes || []).map(r => r.motivo).join('+')].join(',')).join(';')).join('/'),
@@ -196,6 +198,8 @@ export default function Mapa() {
       marcasAdmin ? 'admin' + marcasAdmin.vez : '',
       escolhendo ? 'escolhidas' + escolhidas.join(',') : '',
       circulando ? 'grupos' + grupos.map(g => g.ids.join(',')).join('|') : '',
+      // o leque é em pixels: muda de lugar no mapa a cada zoom
+      pilhas.some(g => g.dx != null) ? 'leque' + z : '',
     ].join('#');
 
     if (desenho !== desenhado.current) {
@@ -209,8 +213,13 @@ export default function Mapa() {
       // A próxima parada é a que ele mais olha e a que menos saltava: num mapa com quarenta
       // pinos iguais, achar qual é exigia ler os números um por um.
       const proxima = alvo?.id;
+      const leque = camadaLeque.current!;
+      leque.clearLayers();
       for (const g of pilhas) {
         const p = g.ps[0];
+        // no leque o pino é desenhado ao lado do ponto, e um traço mostra onde ela está de verdade
+        const onde = g.dx == null ? {lat: p.lat!, lng: p.lng!} : m.unproject(m.project([p.lat!, p.lng!], z).add([g.dx, g.dy!]), z);
+        if (g.dx != null) L.polyline([[p.lat!, p.lng!], [onde.lat, onde.lng]], {color: '#374151', weight: 2, opacity: .7, interactive: false}).addTo(leque);
         const chave = g.ps.map(x => x.id).join('+');
         // escolhido para o Maps: a letra que ele vai ter lá, num pino escuro
         const letra = escolhendo ? letraDoPino(escolhidas, g.ps.map(x => x.id)) : '';
@@ -235,11 +244,11 @@ export default function Mapa() {
           adicionais: pendentes.filter(x => x.adicional).length,
           pacotes: pendentes.reduce((n, x) => n + (x.unidades || 1), 0),
         })).trim());
-        const sig = [p.lat, p.lng, rotulo, cor, apagado, borda, balao].join('|');
+        const sig = [onde.lat, onde.lng, rotulo, cor, apagado, borda, balao].join('|');
         const antes = pinos.current[chave];
         if (antes && antes.sig === sig) continue;
         if (!antes) {
-          const mk = L.marker([p.lat!, p.lng!], {icon: icone(rotulo, cor, apagado, borda, chave)});
+          const mk = L.marker([onde.lat, onde.lng], {icon: icone(rotulo, cor, apagado, borda, chave)});
           // O pino abre o cartão de baixo com as entregas dele, os mesmos botões do cartão da
           // próxima. O balão do Leaflet era pequeno para o dedo e montado em texto, à parte.
           mk.on('click', () => {
@@ -251,13 +260,13 @@ export default function Mapa() {
           });
           if (balao) mk.bindTooltip(balao, BALAO);
           mk.addTo(camadaP);
-          pinos.current[chave] = {mk, sig, lat: p.lat!, lng: p.lng!, balao};
+          pinos.current[chave] = {mk, sig, lat: onde.lat, lng: onde.lng, balao};
           continue;
         }
-        if (antes.lat !== p.lat || antes.lng !== p.lng) {
-          antes.mk.setLatLng([p.lat!, p.lng!]);
-          antes.lat = p.lat!;
-          antes.lng = p.lng!;
+        if (antes.lat !== onde.lat || antes.lng !== onde.lng) {
+          antes.mk.setLatLng([onde.lat, onde.lng]);
+          antes.lat = onde.lat;
+          antes.lng = onde.lng;
         }
         antes.mk.setIcon(icone(rotulo, cor, apagado, borda, chave));
         if (antes.balao !== balao) {

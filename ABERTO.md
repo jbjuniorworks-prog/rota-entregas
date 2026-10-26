@@ -169,6 +169,38 @@ Fora da lista:
   - Medido antes: separar sozinho pelo complemento quebraria os prédios (abaixo); por isso é ele
     quem separa.
 
+### O teste do dono no ar (26/10, depois da publicação): dois defeitos, consertados, não publicados
+
+- **O que o print mostrou:** separadas as cinco do "Chico Mendes, 67", o cartão só oferecia o ✓
+  de cada uma, e o mapa continuava com um pino só. E o aviso "Marque cada uma na porta dela"
+  soou como pedido de marcar no mapa.
+- **Por quê:** a porta geral do "67" estava verificada (a mercearia, do Pedro), e as cinco
+  herdaram o "verificado"; para porta verificada o app esconde o Arrumar e o Entreguei aqui. E
+  as cinco ficavam no mesmo ponto, que o mapa desenha como um pino.
+- **Conserto (pedido do dono: "ao clicar já separar os pinos e poder arrumar de um por um"):**
+  - A separada com complemento deixa a porta herdada (verificada, lembrada ou arrumada) e fica
+    "Na porta da vizinha de mesmo número — confira na porta" (`vizinha`). A sem complemento é a
+    chave geral, e continua com ela.
+  - No mapa, separada que falta tem o seu pino, não entra na pilha de ninguém nem recebe, e as
+    que dividem o ponto abrem em leque em volta dele (30 px, crescendo com quantas forem), com
+    um traço até o ponto de verdade. Só o desenho anda: a posição gravada não muda.
+  - O aviso diz "cada uma com o seu pino. Toque no pino de uma para arrumar só ela", e o
+    complemento na lista abre o cartão só daquela entrega, com o Arrumar o pino.
+  - Testes: 3 de unidade nos pinos e 1 na separação; 2 ponta a ponta (o print do dono, com a
+    porta geral verificada na nuvem; e o leque: os quatro pinos em lugares diferentes da tela, a
+    posição gravada de cada uma igual à de antes, e o toque num pino abrindo o cartão só dela).
+    Dez sabotagens desta parte quebram o teste certo; a da separada entrando na pilha de outra
+    passava, até o teste dos pinos ganhar entregas comuns no mesmo ponto.
+- **Candidato a publicação (o commit que traz esta nota):** autorizado pelo dono para subir
+  assim que os testes passassem ("testa o que for preciso, mas vai subir assim que terminar de
+  testar"). Evidências: 216 ponta a ponta, 502 de unidade e a checagem de tipos passando; as 25
+  sabotagens do "Separar" quebrando o teste certo (a do separar sem gravar na hora não tinha
+  rodado na rodada anterior, porque o texto em volta mudou; refeita, quebra).
+  - Volta: para o `f0bbc6b`/`mvpezugf` (o "Separar" sem o leque, com o defeito do "verificado"
+    herdado) ou para o `918d045`/`mvh6s726` (sem o "Separar"), conforme o estado do repositório,
+    pelo plano abaixo. Esta parte não grava nada novo na nuvem: o leque é só desenho, e a porta
+    herdada que vira "confira na porta" é estado do aparelho.
+
 ### Ficha da versão do "Separar" (para a autorização)
 
 - **Commits:** `b46c602` (anotação do caso) e `d05c85c` (o app). O commit seguinte só acrescenta

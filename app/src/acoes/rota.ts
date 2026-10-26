@@ -223,7 +223,8 @@ export async function separar(p: Parada) {
     status('Voltou a ser uma parada só.', 3000);
   };
   loja.mudou();
-  const separada = `Separada em ${todas.length} entregas, no mesmo pino. Marque cada uma na porta dela.`;
+  // "pede pra marcar no mapa?" (dono, 26/10): o aviso diz o que dá para fazer, não pede nada
+  const separada = `Separada em ${todas.length} entregas, cada uma com o seu pino. Toque no pino de uma para arrumar só ela.`;
   status(separada, 10000, juntar);
   await consultarCompartilhadas();
   const foram = todas.filter((q, i) => `${q.lat},${q.lng}` !== onde[i]).length;

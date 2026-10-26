@@ -1,7 +1,7 @@
 import {marcarIsoladas, marcarNumerosIncoerentes, marcarPontoGenerico, moverPeloBairro} from './geo';
 import type {ItemPlanilha} from './planilha';
-import {analisarLinha, coordenadaNoTexto, semLink, chaveEndereco} from './texto';
-import type {Estado, ItemDaParada, Parada} from './tipos';
+import {analisarLinha, chaveDaParada, chaveEndereco, chaveLugar, coordenadaNoTexto, semLink} from './texto';
+import type {Estado, ItemDaParada, Parada, Precisao} from './tipos';
 
 export const novoId = () => Math.random().toString(36).slice(2, 10);
 
@@ -93,6 +93,8 @@ export function adicionarDaPlanilha(
   return {resumo: r, rotaDe};
 }
 
+const HERDADA: ReadonlySet<Precisao> = new Set<Precisao>(['confirmado', 'lembrado', 'manual']);
+
 // "Separar" (Pedro e Luan, 26/10): a planilha junta pacotes de clientes diferentes que têm o
 // mesmo endereço escrito, e um pino só não serve a uma mercearia e a um condomínio a 1,4 km um do
 // outro. Cada pacote vira uma entrega, no mesmo ponto e logo depois dela na sequência, que continua
@@ -107,6 +109,14 @@ export function separarParada(e: Estado, p: Parada): Parada[] {
   });
   Object.assign(p, doItem(itens[0]));
   delete p.itens;
+  // A porta confirmada (ou arrumada) que a parada trazia é a do endereço geral: no "Chico Mendes,
+  // 67" de 26/10, a da mercearia, que o Pedro marcou para os cinco. Ela não é a porta do
+  // condomínio, e "verificado" escondia dele o Arrumar e o Entreguei aqui de cada uma. A sem
+  // complemento continua com a chave geral, e com ela.
+  for (const q of [p, ...novas]) {
+    if (!HERDADA.has(q.precisao) || chaveDaParada(q, e.cidade) === chaveLugar(q.texto, q.bairro, e.cidade)) continue;
+    Object.assign(q, {precisaoAntes: q.precisao, precisao: 'vizinha', exibido: 'Na porta geral deste endereço, marcada para outra entrega de mesmo número. Confira na porta'});
+  }
   e.paradas.splice(e.paradas.indexOf(p) + 1, 0, ...novas);
   for (const ra of e.rota?.areas || []) {
     const i = ra.ordem.indexOf(p.id);

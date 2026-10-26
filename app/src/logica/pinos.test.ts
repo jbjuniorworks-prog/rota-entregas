@@ -1,4 +1,4 @@
-import {empilhar} from './pinos';
+import {emLeque, empilhar} from './pinos';
 import type {Parada, Ponto} from './tipos';
 
 const GRAU = 111320;
@@ -73,5 +73,38 @@ describe('empilhar pinos', () => {
     // o pino é desenhado na primeira da pilha
     expect(Math.abs(doMercure.ps[0].lat! - ps[2].lat!) * GRAU).toBeLessThan(10);
     expect(ids(pilhas)).toEqual([['aquarius', 'ads1623'], ['mercure']]);
+  });
+
+  // Dono, 26/10: separou os 5 pacotes do mesmo endereço e continuou vendo um pino só. Separada é
+  // para ter o seu: no mesmo ponto, as que faltam abrem em leque em volta dele.
+  it('a separada que falta tem o seu pino, e as do mesmo ponto abrem em leque', () => {
+    const ps = [
+      parada('merc', 'Rodovia Teste, 67, Mercearia', 0, {separada: true}),
+      parada('cond', 'Rodovia Teste, 67, Condominio Portal', 0, {separada: true}),
+      parada('casa', 'Rodovia Teste, 67', 0, {separada: true}),
+      parada('feita', 'Rodovia Teste, 67, Outra', 0, {separada: true, entregue: true}),
+      parada('junta1', 'Rua Outra, 10', 200),
+      parada('junta2', 'Rua Outra, 10, Apto 2', 200),
+    ];
+    const pilhas = emLeque(empilhar(ps, tela(0.5)));
+    expect(ids(pilhas)).toEqual([['merc'], ['cond'], ['casa'], ['feita'], ['junta1', 'junta2']]);
+    const leque = pilhas.slice(0, 3).map(g => [g.dx, g.dy]);
+    expect(leque.every(([dx, dy]) => dx != null && Math.round(Math.hypot(dx, dy!)) >= 29)).toBe(true);
+    expect(new Set(leque.map(d => d.join(','))).size).toBe(3);
+    // a entregue e a pilha de sempre ficam no ponto delas
+    for (const g of pilhas.slice(3)) expect(g.dx).toBeUndefined();
+  });
+
+  it('a separada não entra na pilha de outra entrega, nem recebe outra na dela', () => {
+    const merc = () => parada('merc', 'Rodovia Teste, 67, Mercearia', 0, {separada: true});
+    // a outra entrega do mesmo endereço, antes e depois dela na rota, e uma de outra rua a 5 m
+    expect(ids(empilhar([parada('antes', 'Rodovia Teste, 67, Bloco A', 0), merc()], tela(0.5)))).toEqual([['antes'], ['merc']]);
+    expect(ids(empilhar([merc(), parada('depois', 'Rodovia Teste, 67, Bloco B', 0)], tela(0.5)))).toEqual([['merc'], ['depois']]);
+    expect(ids(empilhar([merc(), parada('perto', 'Rua Vizinha, 3', 5)], tela(0.5)))).toEqual([['merc'], ['perto']]);
+  });
+
+  it('uma separada sozinha no ponto não sai do lugar', () => {
+    const pilhas = emLeque(empilhar([parada('so', 'Rodovia Teste, 67, Mercearia', 0, {separada: true}), parada('outra', 'Rua Longe, 5', 300)], tela(0.5)));
+    expect(pilhas.map(g => g.dx)).toEqual([undefined, undefined]);
   });
 });

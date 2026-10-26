@@ -125,7 +125,10 @@ function EntregasDoEndereco({ps}: {ps: Parada[]}) {
     <summary>As {ps.length} entregas deste endereço</summary>
     {ps.map((p, i) => <div className={`sub-entrega${p.entregue ? ' feito' : ''}`} key={p.id} data-item={p.id}>
       <span className="badge" style={{background: loja.area(p.area).cor}}>{rotuloDe(p)}</span>
-      <span className="o-que-muda">{proprio[i] || 'Sem complemento'}{(p.unidades || 1) > 1 ? ` · ${p.unidades} pacotes` : ''}</span>
+      {/* separada, o nome abre o cartão só dela, com o Arrumar o pino */}
+      {p.separada
+        ? <button className="o-que-muda link" data-acao="ver-uma" onClick={() => A.focar(p.id)}>{proprio[i] || 'Sem complemento'}</button>
+        : <span className="o-que-muda">{proprio[i] || 'Sem complemento'}{(p.unidades || 1) > 1 ? ` · ${p.unidades} pacotes` : ''}</span>}
       {p.entregue
         ? <span className="feita">Entregue</span>
         : <>
