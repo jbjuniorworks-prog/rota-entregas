@@ -168,14 +168,61 @@ Fora da lista:
   - "Levar as outras deste endereço junto?", numa separada, oferece só as de mesmo complemento.
   - Medido antes: separar sozinho pelo complemento quebraria os prédios (abaixo); por isso é ele
     quem separa.
-- **Limites:** só vale para planilha lida depois desta versão (a parada de antes não guardou os
-  textos); separar renumera as paradas seguintes da rota (5 pacotes viram 5 entregas); o pino
-  da chave de sempre do "Chico Mendes, 67" continua na mercearia, onde o Pedro marcou.
-- **Testes:** 4 de unidade (`separar.test.ts`) e 3 ponta a ponta em 412×915 (`separar.spec.ts`,
-  planilha `rota-e`); dez sabotagens, uma por peça, quebram o teste certo.
-- **Depois de publicar:** gravar como admin as duas portas pelo complemento (a ferramenta de
-  portas ainda só grava a chave de sempre: pede a mesma regra em `ferramentas/chave-rua.mjs`, com
-  o teste que compara as duas), ou deixar a primeira entrega de cada uma marcar.
+
+### Ficha da versão do "Separar" (para a autorização)
+
+- **Commits:** `b46c602` (anotação do caso) e `d05c85c` (o app). O commit seguinte só acrescenta
+  testes e esta ficha, e vai **sem** a marca de não publicar: o GitHub decide pelo commit do
+  topo do envio, e com a marca nele nada seria publicado. O código do app publicado é o do
+  `d05c85c`.
+- **No ar hoje:** `918d045`, versão `mvh6s726`, publicada em 20/10 às 18:19 de Aracaju. Tudo
+  depois dele foi anotação, sem publicação.
+- **Evidências:** 212 testes ponta a ponta e 498 de unidade passando, e a checagem de tipos
+  (26/10). Do "Separar": 4 de unidade e 5 ponta a ponta em 412×915, com a planilha `rota-e`
+  (a mesma rodovia com nomes inventados): separar e marcar uma; recarregar logo depois de
+  separar e depois de marcar (texto, pacote, entrega e porta de cada uma ficam); separar sem
+  sinal e reabrir; desfazer antes de entregar (junta) e depois (desfaz só a entrega); arrumar uma
+  separada leva junto só a de mesmo complemento; a porta já marcada para um complemento chega
+  ao separar. Quinze sabotagens, uma por proteção, quebram o teste certo; a da gravação sem
+  sinal passava com rede (a consulta à nuvem gravava de novo e escondia), e por isso existe o
+  teste sem sinal.
+- **Limites, conscientes:**
+  - Rota lida antes da atualização não ganha "Separar" (não guardou o texto de cada pacote); não
+    perde nada, e não precisa ser apagada nem lida de novo.
+  - Complemento vazio usa a chave geral do endereço; complemento repetido divide a porta ("Na
+    mercearia" é a "Mercearia").
+  - Separar renumera as paradas seguintes da rota.
+  - O "Endereços verificados" do Admin conta pela chave geral do pacote: porta confirmada só
+    pelo complemento não aparece lá.
+- **Risco aceito:** uma entrega sem complemento pode receber a porta geral do endereço, hoje a
+  mercearia no "Chico Mendes, 67" (marcada pelo Pedro). A correção definitiva depende da
+  ferramenta de portas do Admin, fora deste escopo.
+- **Fora do escopo:** a ferramenta de portas gravar pelo complemento (pede a mesma regra em
+  `ferramentas/chave-rua.mjs`, com o teste que compara as duas) e mexer no pino geral do
+  "Chico Mendes, 67". Tarefa separada, sem bloquear esta.
+- **Plano de volta:**
+  - Gatilho: motorista sem conseguir entregar ou marcar, pacote sumindo ao separar ou
+    desfazer, ou pino indo para lugar errado depois de separar.
+  - Passos: voltar publicando o `918d045`/`mvh6s726`, ou um revert equivalente do `d05c85c`,
+    conforme o estado do repositório no momento (com outros commits depois dele, o revert pode
+    pedir ajuste). Publicar como sempre, fora da rota.
+  - Dados: nada precisa ser apagado. A versão anterior abre a rota já separada (as entregas
+    separadas são paradas comuns, com o seu texto e o seu pacote; o campo novo é ignorado).
+    As portas gravadas pelo complemento ficam no banco como chaves que ninguém consulta, e o pino
+    dessas entregas volta ao da chave geral na próxima consulta à nuvem.
+  - Conferir a volta: `versao.json` no ar com a versão nova da volta; no celular, "Versão do
+    app" em Mais; uma rota separada abrindo e entregando.
+- **Validação depois de publicar** (na conta do dono, com a planilha `rota-e`, que grava rota,
+  pacotes e portas de teste no banco de verdade): conferir a versão no celular; ler a planilha;
+  ver os dois cartões; separar e desfazer; separar de novo, entregar uma e ver as outras
+  pendentes; recarregar e conferir; "Resetar a rota" (em Mais), ler a planilha de novo, separar e
+  ver a porta pelo complemento (no mesmo dia sem resetar, os pacotes já estão no aparelho e não
+  entram de novo). No fim, apagar a rota pelo Admin, e eu listo as marcações de teste para apagar.
+- **Aviso para os motoristas:** "Agora você pode separar os pacotes de uma mesma parada e
+  confirmar cada entrega individualmente. A novidade vale para planilhas importadas depois da
+  atualização. Não precisa apagar nem reimportar uma rota em andamento."
+- **Autorização:** a registrar quando vier, com o commit aprovado, quem autorizou, a janela e a
+  hora de Aracaju conferida no momento de publicar. Esta ficha não é autorização.
 
 - **O caso.** "Rodovia Ecologista Chico Mendes, 67", CEP 49007-000, Areia Branca: na rota do dia,
   5 pacotes de clientes diferentes. Dois "mercearia nova opção", dois "por trás do condomínio
