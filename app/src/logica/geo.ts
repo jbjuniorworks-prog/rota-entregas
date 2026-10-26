@@ -25,10 +25,13 @@ export function noPino(seguia: {lat?: number | null; lng?: number | null}, gps: 
 // Mais longe que isto do pino que ele seguia, o GPS não é a porta de ninguém: a entrega vale, e
 // porta, passagem e verificação ficam como estavam. É a mesma régua do piso de sanidade, e
 // deixa passar a correção de 1,4 km da mercearia, que estava certa. Só a mais: em 3 km, vale.
+// Pino que o próprio app já põe em dúvida (longe das outras, aproximado, só pelo bairro) fica de
+// fora: é o pino que está errado, às vezes por quilômetros, e o GPS na porta é o conserto dele.
 export const LONGE_DA_PORTA = LONGE_DA_ANCORA;
 export const passaDaPorta = (metros: number): boolean => metros > LONGE_DA_PORTA;
-export const longeDaPorta = (seguia: {lat?: number | null; lng?: number | null}, gps: Ponto): boolean =>
-  seguia.lat != null && seguia.lng != null && passaDaPorta(haversine({lat: seguia.lat, lng: seguia.lng}, gps));
+export const longeDaPorta = (seguia: {lat?: number | null; lng?: number | null; precisao?: Precisao}, gps: Ponto): boolean =>
+  seguia.lat != null && seguia.lng != null && !(seguia.precisao && DUVIDA.has(seguia.precisao))
+  && passaDaPorta(haversine({lat: seguia.lat, lng: seguia.lng}, gps));
 
 export const MESMO_LUGAR = 150;
 export const PERTO_A_PE = 300;

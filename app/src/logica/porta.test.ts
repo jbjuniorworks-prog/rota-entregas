@@ -30,6 +30,14 @@ describe('o GPS longe demais do pino não é a porta', () => {
     expect(longeDaPorta(pino, {lat: -10.918952, lng: -37.069245})).toBe(true);
   });
 
+  // O teste de "Entreguei aqui, pelo pino": a planilha pôs a Rua D 12 km longe das outras, e o
+  // motorista na porta conserta o pino com o GPS. Pino em dúvida não é a porta a proteger.
+  it('pino que o app já põe em dúvida pode ser consertado pelo GPS de longe', () => {
+    const longe = {lat: -10.918952, lng: -37.069245};
+    for (const precisao of ['longe', 'aproximada', 'bairro', 'nao', 'ruim', 'numero'] as const) expect(longeDaPorta({...pino, precisao}, longe)).toBe(false);
+    for (const precisao of ['planilha', 'manual', 'lembrado', 'confirmado', 'vizinha'] as const) expect(longeDaPorta({...pino, precisao}, longe)).toBe(true);
+  });
+
   it('sem pino, não tem com o que comparar: fica a regra de sempre', () => {
     expect(longeDaPorta({lat: null, lng: null}, {lat: -10.9, lng: -37.0})).toBe(false);
   });
