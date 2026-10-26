@@ -22,6 +22,8 @@ export interface ResumoPlanilha {
   numeros: number;
   confirmadas: number;
   sugestoes: number;
+  // juntadas pela planilha e separadas sozinhas: alguém já tinha separado e marcado um complemento
+  separadas?: number;
   // endereços de cliente que já reclamou (018), vindos da nuvem depois da busca
   xaropes?: number;
   // levadas para a porta do censo do IBGE: a planilha punha o pino a mais de 80 m dela
@@ -141,6 +143,7 @@ export function resumoPlanilha(r: ResumoPlanilha): string {
     + (r.lembradas ? ` ${r.lembradas} com a posição que você já tinha corrigido.` : '')
     + (r.confirmadas ? ` ${r.confirmadas} com endereço verificado.` : '')
     + (r.sugestoes ? ` ${r.sugestoes} com sugestão de outro motorista: veja em Conferir.` : '')
+    + (r.separadas ? ` ${r.separadas} parada(s) de pacotes juntos separada(s), como já tinham sido separadas antes.` : '')
     + (r.xaropes ? ` ${r.xaropes} de cliente xarope: veja o pino antes de entregar.` : '')
     + (r.longe ? ` ${r.longe} com posição longe das outras entregas: ${r.noBairro === r.longe ? 'levada(s) para o bairro certo, confira no local.' : r.noBairro ? `${r.noBairro} levada(s) para o bairro certo, confira o pino das outras.` : 'confira o pino antes de sair.'}` : '')
     + (r.aproximadas ? ` ${r.aproximadas} com posição aproximada na planilha: confira o pino.` : '')

@@ -4,7 +4,8 @@ import {haversine, marcarIsoladas, noPino} from '../logica/geo';
 import type {Operacao} from '../logica/fila';
 import {avisoGuardou} from '../logica/memoria';
 import {medidor} from '../logica/telemetria';
-import {chaveCidade, chaveDaParada, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
+import {chaveCidade, chaveDaParada, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
+import {separarParada} from '../logica/importar';
 import type {Parada, PortaAntes, Ponto} from '../logica/tipos';
 import {loja, MINIMIZADO, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
@@ -34,6 +35,28 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
   } catch {}
   loja.mudou();
   return saida;
+}
+
+// "Se está verificado, já deveria estar separadas" e "o que adiantou ele corrigir o pino?" (dono,
+// 26/10): a planilha nova juntava de novo o que o Pedro tinha separado e arrumado. Porta com o
+// complemento na chave só existe porque alguém separou aquele endereço, então qualquer uma
+// (verificada, sugestão ou a dele mesmo) basta para a parada chegar separada. A porta de cada uma
+// segue a regra de sempre. Os condomínios não entram: ninguém separa apartamento por apartamento.
+export async function separarAsConhecidas(): Promise<number> {
+  const c = clienteNuvem();
+  if (!c) return 0;
+  const cidade = e().cidade;
+  const juntadas = e().paradas.filter(p => !p.entregue && (p.itens?.length || 0) > 1);
+  const doItem = (p: Parada, texto: string) => chaveDaParada({texto, bairro: p.bairro, separada: true}, cidade);
+  const proprias = (p: Parada) => p.itens!.map(it => doItem(p, it.texto)).filter((k): k is string => !!k && k !== chaveLugar(p.texto, p.bairro, cidade));
+  const chaves = [...new Set(juntadas.flatMap(proprias))];
+  if (!chaves.length) return 0;
+  let marcadas: Set<string>;
+  try { marcadas = new Set((await c.posicoes(chaves)).map(r => r.chave_lugar)); } catch { return 0; }
+  const separar = juntadas.filter(p => proprias(p).some(k => marcadas.has(k)));
+  for (const p of separar) separarParada(e(), p);
+  if (separar.length) loja.mudou();
+  return separar.length;
 }
 
 // As portas da nuvem só chegavam ao ler planilha, buscar ou entrar na conta. Em 13/10 o dono

@@ -13,7 +13,7 @@ import {corretorDeNomes, enderecoDoIbge, nomeCorrigidoPeloCenso, portaNoBairroDo
 import {nuvem} from '../servicos/nuvem';
 import {desatualizarRota, e, enviarFila, fila, invalidarRota, memoria, ui} from './base';
 import {irPara} from './navegacao';
-import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, focar} from './posicoes';
+import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, focar, separarAsConhecidas} from './posicoes';
 import {registrarComoFicou} from './registro';
 import {montarRota} from './rota';
 import {semRecarregar} from './versao';
@@ -250,6 +250,8 @@ async function importarPlanilhas(files: Blob[]) {
   const peloMapa = await levarAoBairroPeloMapa();
   resumo.noBairro += peloMapa.longe;
   if (resumo.genericas) resumo.genericasNoLugar = censo.genericas + pelaRuaOuBairro + peloMapa.genericas;
+  // antes das portas: separada, cada uma recebe a do seu complemento
+  resumo.separadas = await separarAsConhecidas();
   const comp = await consultarCompartilhadas();
   resumo.confirmadas = comp.confirmadas;
   // a que a memória trouxe e a nuvem verificou já sai como verificada: não repete como corrigida

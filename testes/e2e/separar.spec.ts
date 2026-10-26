@@ -166,13 +166,57 @@ test.describe('separar os pacotes de uma parada', () => {
     await expect(cartao.getByRole('button', {name: 'Arrumar o pino'})).toBeVisible();
   });
 
-  test('a porta que alguém já marcou para o complemento chega quando separa', async ({page, nuvem}) => {
+  // "Se está verificado, já deveria estar separadas" e "o que adiantou ele corrigir o pino?" (dono,
+  // 26/10): a planilha nova juntava de novo o que alguém já tinha separado e arrumado.
+  const portaDoCondominio = (situacao: 'confirmado' | 'sugestao') => (corpo: {chaves: string[]}) => corpo.chaves.filter(k => DO_CONDOMINIO.test(k)).map(chave_lugar =>
+    ({chave_lugar, lat: CONDOMINIO.latitude, lng: CONDOMINIO.longitude, situacao, motoristas: 2, entregas: 2, fonte: 'entrega', minha: false}));
+
+  test('a parada chega separada quando um complemento já tem porta verificada, e ela vai para a porta', async ({page, nuvem}) => {
     page.on('dialog', d => d.accept());
-    nuvem.rpc.posicoes = (corpo: {chaves: string[]}) => corpo.chaves.filter(k => DO_CONDOMINIO.test(k)).map(chave_lugar =>
-      ({chave_lugar, lat: CONDOMINIO.latitude, lng: CONDOMINIO.longitude, situacao: 'confirmado', motoristas: 2, entregas: 2, fonte: 'entrega', minha: false}));
+    nuvem.rpc.posicoes = portaDoCondominio('confirmado');
+    await abrir(page);
+    await carregar(page, ROTA_E);
+    await expect(aviso(page)).toContainText('1 parada(s) de pacotes juntos separada(s)');
+    const todas = await paradas(page);
+    expect(todas).toHaveLength(5);
+    expect(todas.find(p => p.texto.includes('condomínio'))).toMatchObject({separada: true, precisao: 'confirmado', lat: CONDOMINIO.latitude});
+    for (const p of todas.filter(p => p.texto.includes('Rodovia') && !p.texto.includes('condomínio'))) expect(p).toMatchObject({separada: true, lat: expect.closeTo(-10.95, 4)});
+  });
+
+  // O pino que o Pedro arrumou no mapa, sem entregar ali, chega nos outros como sugestão: ainda
+  // assim alguém separou aquele endereço, e ele chega separado. O pino espera ele conferir.
+  test('com só a sugestão de outro motorista para um complemento, chega separada e o pino espera', async ({page, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    nuvem.rpc.posicoes = portaDoCondominio('sugestao');
+    await abrir(page);
+    await carregar(page, ROTA_E);
+    await expect(aviso(page)).toContainText('1 parada(s) de pacotes juntos separada(s)');
+    const todas = await paradas(page);
+    expect(todas).toHaveLength(5);
+    expect(todas.find(p => p.texto.includes('condomínio'))).toMatchObject({separada: true, lat: expect.closeTo(-10.95, 4)});
+  });
+
+  test('sem porta marcada para nenhum complemento, continua junta, mesmo com a porta geral verificada', async ({page, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    // a chave geral do "67" (sem complemento) verificada: não diz que ali são lugares diferentes
+    nuvem.rpc.posicoes = (corpo: {chaves: string[]}) => corpo.chaves.filter(k => k.startsWith('r|') && k.split('|').length === 5).map(chave_lugar =>
+      ({chave_lugar, lat: -10.9501, lng: -37.0501, situacao: 'confirmado', motoristas: 2, entregas: 2, fonte: 'entrega', minha: false}));
     await abrir(page);
     await carregar(page, ROTA_E);
     await montar(page);
+    expect(await paradas(page)).toHaveLength(2);
+    await expect(page.locator('[data-folha="proxima"]').getByRole('button', {name: 'Separar os 4 pacotes'})).toBeVisible();
+  });
+
+  // marcada depois de ele ler a planilha: separando na mão, a porta chega na hora
+  test('a porta que alguém marcou para o complemento depois da planilha lida chega quando separa', async ({page, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    let marcada = false;
+    nuvem.rpc.posicoes = (corpo: {chaves: string[]}) => marcada ? portaDoCondominio('confirmado')(corpo) : [];
+    await abrir(page);
+    await carregar(page, ROTA_E);
+    await montar(page);
+    marcada = true;
     await page.locator('[data-folha="proxima"]').getByRole('button', {name: 'Separar os 4 pacotes'}).click();
     await expect(aviso(page)).toContainText('1 já foi para a porta guardada do complemento');
     const todas = await paradas(page);
