@@ -152,7 +152,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" feito, não publicado
+## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" publicado em 26/10 (`f0bbc6b`, `mvpezugf`), falta a validação
 
 - **Decisão do dono (26/10):** "independente de vir junto da Shopee, ele tem que ter a liberdade de
   marcar um por um separadamente". Feito assim, esperando revisão e publicação:
@@ -221,8 +221,20 @@ Fora da lista:
 - **Aviso para os motoristas:** "Agora você pode separar os pacotes de uma mesma parada e
   confirmar cada entrega individualmente. A novidade vale para planilhas importadas depois da
   atualização. Não precisa apagar nem reimportar uma rota em andamento."
-- **Autorização:** a registrar quando vier, com o commit aprovado, quem autorizou, a janela e a
-  hora de Aracaju conferida no momento de publicar. Esta ficha não é autorização.
+- **Autorização:** do dono, em 26/10, para o `f0bbc6b` (com `b46c602` e `d05c85c`), com a
+  condição da revisão de esperar o fim da tarde. Às 12:30 o dono dispensou a espera ("não precisa
+  esperar, pode subir"; "eles querem a atualização na rua já").
+- **Publicação, 26/10:**
+  - Enviado às 12:30 de Aracaju, hora conferida pelo node. Antes, o banco mostrava as duas rotas
+    do dia completas (Pedro 66/66, Luan 61/61), a última entrega 97 min antes, e o topo era o
+    `f0bbc6b` sem nada alterado.
+  - GitHub: "testar" e "publicar" passaram no `f0bbc6b`. No ar: versão `mvpezugf` (26/10, 12:31),
+    e o código publicado tem o "Separar os N pacotes", o "Entreguei aqui" por entrega separada e o
+    aviso da porta guardada pelo complemento.
+  - **Desvio:** publicado ao meio-dia, não no fim da tarde que a revisão pôs como condição, por
+    decisão do dono, com ninguém na rua.
+  - **Falta:** a validação no celular do dono pelo roteiro acima; apagar a rota e as marcações de
+    teste depois dela; o aviso aos motoristas (o dono manda).
 
 - **O caso.** "Rodovia Ecologista Chico Mendes, 67", CEP 49007-000, Areia Branca: na rota do dia,
   5 pacotes de clientes diferentes. Dois "mercearia nova opção", dois "por trás do condomínio
