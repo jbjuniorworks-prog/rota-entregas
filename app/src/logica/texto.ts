@@ -1019,6 +1019,28 @@ export function chaveLugar(texto: string, bairro: string | undefined, cidade: st
   return ['r', rua, numero, b, normal(cidade)].join('|');
 }
 
+// O que é só desta entrega no endereço: o complemento, sem o bairro e a cidade que a planilha
+// repete, e sem o "na"/"no" da frente, que a mesma mercearia vem com e sem (26/10).
+const ARTIGO_NA_FRENTE = /^(?:n[ao]s?|em|[ao]s?|ao)\s+/;
+export function complementoDaParada(texto: string, bairro: string | undefined, cidade: string): string {
+  const fora = new Set([normal(bairro), ...cidade.split(/[,-]/).map(normal)].filter(Boolean));
+  return decompor(analisarLinha(texto).texto).resto
+    .map(s => normal(s).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(s => s && !fora.has(s))
+    .map(s => s.replace(ARTIGO_NA_FRENTE, ''))
+    .join(' ').slice(0, 80);
+}
+
+// A porta da entrega que o motorista separou leva o complemento junto: o "Chico Mendes, 67" da
+// mercearia e o do condomínio, 1,4 km um do outro, eram uma chave só, e marcar um levava o outro.
+// As que ninguém separou continuam com a chave de sempre, e nada do que já está gravado muda.
+export function chaveDaParada(p: {texto: string; bairro?: string; separada?: boolean}, cidade: string): string | null {
+  const k = chaveLugar(p.texto, p.bairro, cidade);
+  if (!k || !p.separada) return k;
+  const c = complementoDaParada(p.texto, p.bairro, cidade);
+  return c ? `${k}|${c}`.slice(0, 300) : k;
+}
+
 // O que faltou para a chave, para o aviso não culpar o CEP de quem tem CEP (Pedro, 19/10).
 export const faltaNaChave = (texto: string): string =>
   decompor(analisarLinha(texto).texto).numero || SEM_NUMERO.test(texto) ? 'Sem CEP nem bairro' : 'Sem número da porta';

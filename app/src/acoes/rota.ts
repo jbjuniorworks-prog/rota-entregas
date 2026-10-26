@@ -1,7 +1,7 @@
 import {proximaAPe} from '../logica/geo';
 import {backupRecente, CHAVES, estadoVazio, resetarDia} from '../logica/guarda';
 import {aplicarGrupos, circular, gruposValidos, tirarGrupos as tirarOsGrupos} from '../logica/grupos';
-import {novoId} from '../logica/importar';
+import {juntarDeNovo, novoId, separarParada} from '../logica/importar';
 import {montarRota as calcularRota} from '../logica/montagem';
 import {linkWaze} from '../logica/otimizacao';
 import {CORES} from '../logica/rotulos';
@@ -12,7 +12,7 @@ import {foraDaRegiao} from '../servicos/geocodificacao';
 import {linhaDaRota, matriz} from '../servicos/ruas';
 import {contar, desatualizarRota, e, enviarFila, fila, ui} from './base';
 import {abrir, irPara} from './navegacao';
-import {comMinhaPosicao, desfazerPorta, GPS_PASSAGEM, guardarPassagem, guardarPassagens, portaDaEntrega} from './posicoes';
+import {comMinhaPosicao, consultarCompartilhadas, desfazerPorta, GPS_PASSAGEM, guardarPassagem, guardarPassagens, portaDaEntrega} from './posicoes';
 import {registrarComoFicou} from './registro';
 
 // Quando vale a posição que o mapa já vem seguindo, em vez de pedir uma nova ao GPS.
@@ -207,6 +207,27 @@ ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
       status('Desfeito: a entrega voltou para a lista e o pino para onde estava.', 4000);
     });
   }, motivo => soEntregue(`Não consegui o GPS: ${motivo}`), `Entregue${quantas}. Marcando a porta pelo GPS…`);
+}
+
+// Os pacotes de uma parada, um por entrega (26/10): cada um com o seu Entreguei e a sua porta. A
+// porta que a nuvem já guardou para o complemento de cada uma chega logo em seguida.
+export async function separar(p: Parada) {
+  const antes = structuredClone(p);
+  const novas = separarParada(e(), p);
+  if (!novas.length) return;
+  const todas = [p, ...novas];
+  const onde = todas.map(q => `${q.lat},${q.lng}`);
+  const juntar = () => {
+    if (!juntarDeNovo(e(), p, antes, novas)) { status('Não dá para juntar de novo: uma delas já foi entregue.', 4000); return; }
+    loja.mudou();
+    status('Voltou a ser uma parada só.', 3000);
+  };
+  loja.mudou();
+  const separada = `Separada em ${todas.length} entregas, no mesmo pino. Marque cada uma na porta dela.`;
+  status(separada, 10000, juntar);
+  await consultarCompartilhadas();
+  const foram = todas.filter((q, i) => `${q.lat},${q.lng}` !== onde[i]).length;
+  if (foram) status(`${separada} ${foram === 1 ? '1 já foi' : foram + ' já foram'} para a porta guardada do complemento.`, 10000, juntar);
 }
 
 // Do cartão da próxima vêm todas as do endereço: adiando só a primeira, o cartão voltava com o

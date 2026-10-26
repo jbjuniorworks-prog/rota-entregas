@@ -53,6 +53,16 @@ const rotaD = Array.from({length: 80}, (_, i) => {
     -10.95 - (i % 20) * 0.0012, -37.05 - Math.floor(i / 20) * 0.0015];
 });
 
+// A rodovia de 26/10 (Pedro e Luan), com nomes de teste: o mesmo número para a mercearia, o
+// condomínio e uma casa, CEP genérico, e a Shopee pondo todos na mesma parada e no mesmo ponto.
+const rotaE = [
+  [24, 9, 'Rodovia Teste Ecológica, 67, Mercearia Nova Opção Teste', 'Bairro Areia Teste', '49099-000', -10.9500, -37.0500],
+  [25, 9, 'Rodovia Teste Ecológica, 67, Por trás do condomínio Portal Teste', 'Bairro Areia Teste', '49099-000', -10.9500, -37.0500],
+  [29, 9, 'Rodovia Teste Ecológica, 67', 'Bairro Areia Teste', '49099-000', -10.9500, -37.0500],
+  [30, 9, 'Rodovia Teste Ecológica, 67, Na mercearia nova opção teste', 'Bairro Areia Teste', '49099-000', -10.9500, -37.0500],
+  [31, 10, 'Rua Outra Teste, 10', 'Bairro Areia Teste', '49099-001', -10.9530, -37.0530],
+];
+
 function planilha(at, prefixo, linhas) {
   const realista = (v, crua) => crua ? v : +(v - 0.0000013).toFixed(7);
   const dados = linhas.map(([seq, stop, end, bairro, cep, lat, lng, crua], i) =>
@@ -68,4 +78,5 @@ writeFileSync(new URL('rota-a.txt', pasta), planilha('ATTESTE0001', 'BRTESTA', r
 writeFileSync(new URL('rota-b.xlsx', pasta), planilha('ATTESTE0002', 'BRTESTB', rotaB));
 writeFileSync(new URL('rota-c.xlsx', pasta), planilha('ATTESTE0003', 'BRTESTC', rotaC));
 writeFileSync(new URL('rota-d.xlsx', pasta), planilha('ATTESTE0004', 'BRTESTD', rotaD));
+writeFileSync(new URL('rota-e.xlsx', pasta), planilha('ATTESTE0005', 'BRTESTE', rotaE));
 console.log('planilhas geradas em testes/planilhas/');

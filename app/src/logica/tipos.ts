@@ -52,6 +52,19 @@ export interface Parada {
   cidade?: string;
   // a planilha deu o mesmo ponto para entregas de vários bairros: não é a porta de ninguém
   pontoGenerico?: boolean;
+  // Cada linha da planilha que entrou nesta parada por ter o mesmo endereço. Só existe quando
+  // juntou mais de uma: é dela que o "Separar" tira o texto de cada pacote (26/10).
+  itens?: ItemDaParada[];
+  // separada pelo motorista: a porta dela é guardada com o complemento (`chaveDaParada`)
+  separada?: boolean;
+}
+
+export interface ItemDaParada {
+  tn: string | null;
+  texto: string;
+  ml: string | null;
+  stop: string | null;
+  adicional: boolean;
 }
 
 // Na própria parada, que é gravada: o Desfazer da lista pode vir horas depois do "aqui", com o

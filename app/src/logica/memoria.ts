@@ -1,6 +1,6 @@
 import {haversine, LONGE_DA_ANCORA} from './geo';
 import {CHAVES, type Guarda} from './guarda';
-import {chaveLugar, chavePorta, faltaNaChave} from './texto';
+import {chaveDaParada, chavePorta, faltaNaChave} from './texto';
 import type {Parada, Ponto} from './tipos';
 
 export interface Lembrada {
@@ -17,7 +17,7 @@ export interface FotoDaMemoria {chave: string; valor?: Lembrada}
 
 export function criarMemoria(g: Guarda, cidade: () => string, aoGuardar: (chave: string, lat: number, lng: number) => void = () => {}) {
   const todas = () => g.ler<Record<string, Lembrada>>(CHAVES.memoria, {});
-  const chave = (p: Parada) => chaveLugar(p.texto, p.bairro, cidade());
+  const chave = (p: Parada) => chaveDaParada(p, cidade());
   return {
     quantas: () => Object.keys(todas()).length,
     esquecer: () => g.gravar(CHAVES.memoria, {}),

@@ -152,7 +152,30 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): medido, nada feito, falta decidir o "Separar"
+## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" feito, não publicado
+
+- **Decisão do dono (26/10):** "independente de vir junto da Shopee, ele tem que ter a liberdade de
+  marcar um por um separadamente". Feito assim, esperando revisão e publicação:
+  - A leitura da planilha guarda o texto de cada linha que juntou numa parada (`itens`).
+  - No cartão da próxima e no do pino, a parada com mais de um pacote mostra "Os N pacotes desta
+    parada" (o número de cada um e o complemento) e "Separar os N pacotes". Cada pacote vira uma
+    entrega, no mesmo ponto e logo depois na sequência; a primeira fica com o id. O aviso tem
+    Desfazer, que junta de novo se nenhuma foi entregue.
+  - Separada, a entrega tem o seu "Entreguei aqui" na linha, e a porta dela vai com o complemento
+    na chave (`chaveDaParada`: a chave de sempre + o complemento sem bairro, cidade e o "na" da
+    frente). A que ninguém separou continua com a chave de sempre, e nada gravado muda. Ao separar,
+    o app pergunta à nuvem pelas portas desses complementos, e a já marcada vai para lá sozinha.
+  - "Levar as outras deste endereço junto?", numa separada, oferece só as de mesmo complemento.
+  - Medido antes: separar sozinho pelo complemento quebraria os prédios (abaixo); por isso é ele
+    quem separa.
+- **Limites:** só vale para planilha lida depois desta versão (a parada de antes não guardou os
+  textos); separar renumera as paradas seguintes da rota (5 pacotes viram 5 entregas); o pino
+  da chave de sempre do "Chico Mendes, 67" continua na mercearia, onde o Pedro marcou.
+- **Testes:** 4 de unidade (`separar.test.ts`) e 3 ponta a ponta em 412×915 (`separar.spec.ts`,
+  planilha `rota-e`); dez sabotagens, uma por peça, quebram o teste certo.
+- **Depois de publicar:** gravar como admin as duas portas pelo complemento (a ferramenta de
+  portas ainda só grava a chave de sempre: pede a mesma regra em `ferramentas/chave-rua.mjs`, com
+  o teste que compara as duas), ou deixar a primeira entrega de cada uma marcar.
 
 - **O caso.** "Rodovia Ecologista Chico Mendes, 67", CEP 49007-000, Areia Branca: na rota do dia,
   5 pacotes de clientes diferentes. Dois "mercearia nova opção", dois "por trás do condomínio
@@ -169,14 +192,12 @@ Fora da lista:
 - **Medido no backup de 26/10:** juntar está certo quase sempre. De 2.034 paradas com 2 ou mais
   pacotes da mesma chave, 781 têm complementos diferentes, e são o mesmo prédio escrito de outro
   jeito ("cond maui" / "condominio maui") ou apartamentos diferentes: separar pelo complemento
-  quebraria os prédios. O caso é o do CEP genérico com o mesmo número para lugares longe.
-- **Proposta, não aprovada:** "Separar" no cartão com vários pacotes: cada pacote com o seu
-  complemento, e o motorista puxa um para uma parada própria, com pino e "Entregue" próprios. A
-  marcação da parada separada, só quando a chave é a da rua, vai para a chave com o complemento
-  junto; a leitura procura essa chave antes da da rua. A chave de sempre não muda em lugar
-  nenhum (ela é calculada em nove pontos do app e em `ferramentas/chave-rua.mjs`). A nuvem aceita
-  qualquer chave de 3 a 300 letras: sem migração. Depois, gravar as duas portas pelo
-  complemento como admin.
+  quebraria os prédios. O caso é o do CEP genérico com o mesmo número para lugares longe. Nem
+  restrito à chave da rua (CEP genérico ou sem CEP) dá para decidir sozinho: de 103 paradas
+  juntadas, 51 têm complementos diferentes, quase todas condomínios da orla com apartamento.
+- **A proposta de antes** previa a chave com complemento só para a chave da rua. Com a decisão do
+  dono, vale para toda parada separada, qualquer que seja a chave: o motorista separar já diz que
+  ali são lugares diferentes. A nuvem aceita qualquer chave de 3 a 300 letras: sem migração.
 
 ## Backup: as quatro tabelas que faltavam (21/10, pergunta do dono): backup conferido, restauração não
 

@@ -1,7 +1,7 @@
 import {marcarIsoladas, marcarNumerosIncoerentes, marcarPontoGenerico, moverPeloBairro} from './geo';
 import type {ItemPlanilha} from './planilha';
 import {analisarLinha, coordenadaNoTexto, semLink, chaveEndereco} from './texto';
-import type {Estado, Parada} from './tipos';
+import type {Estado, ItemDaParada, Parada} from './tipos';
 
 export const novoId = () => Math.random().toString(36).slice(2, 10);
 
@@ -42,6 +42,9 @@ export function adicionarDaPlanilha(
   // mesma entrega, e ele teve de apagar um (29/09).
   const pacotesNaRota = new Set(e.paradas.flatMap(x => x.pacotes || []));
   const desta = new Map<string, Parada>();
+  // A linha que abriu cada parada: a primeira só vira item quando a segunda chega.
+  const primeira = new Map<Parada, ItemPlanilha>();
+  const itemDe = (it: ItemPlanilha): ItemDaParada => ({tn: it.tn, texto: it.texto, ml: it.ml, stop: numeroDaParada(it.parada), adicional: ehAdicional(it.parada)});
   const r: ResumoPlanilha = {novas: 0, juntas: 0, repetidas: 0, semPosicao: 0, longe: 0, lembradas: 0, noBairro: 0, aproximadas: 0, numeros: 0, confirmadas: 0, sugestoes: 0, genericas: 0};
   const rotaDe = (it: ItemPlanilha) => it.at || `${it.arquivo}:${agora}`;
   for (const it of itens) {
@@ -51,6 +54,7 @@ export function adicionarDaPlanilha(
     if (ja) {
       ja.unidades = (ja.unidades || 1) + 1;
       if (it.tn) ja.pacotes!.push(it.tn);
+      ja.itens = [...(ja.itens || [itemDe(primeira.get(ja)!)]), itemDe(it)];
       if (!ja.stop) ja.stop = numeroDaParada(it.parada);
       if (ehAdicional(it.parada)) ja.adicional = true;
       r.juntas++;
@@ -70,6 +74,7 @@ export function adicionarDaPlanilha(
     if (!lembrada && p.precisao === 'aproximada') r.aproximadas++;
     e.paradas.push(p);
     desta.set(chave, p);
+    primeira.set(p, it);
     r.novas++;
     if (lembrada) r.lembradas++;
     else if (!temCoord) r.semPosicao++;
@@ -86,6 +91,39 @@ export function adicionarDaPlanilha(
     if (r.noBairro) e.rota.mudouMuito = true;
   }
   return {resumo: r, rotaDe};
+}
+
+// "Separar" (Pedro e Luan, 26/10): a planilha junta pacotes de clientes diferentes que têm o
+// mesmo endereço escrito, e um pino só não serve a uma mercearia e a um condomínio a 1,4 km um do
+// outro. Cada pacote vira uma entrega, no mesmo ponto e logo depois dela na sequência, que continua
+// de pé. A primeira fica com o id: o pino aberto e o cartão da próxima continuam apontando para ela.
+export function separarParada(e: Estado, p: Parada): Parada[] {
+  const itens = p.itens;
+  if (p.entregue || !itens || itens.length < 2) return [];
+  const doItem = (it: ItemDaParada) => ({texto: it.texto, ml: it.ml, stop: it.stop, adicional: it.adicional, pacotes: it.tn ? [it.tn] : [], unidades: null, separada: true});
+  const novas = itens.slice(1).map(it => {
+    const {itens: _, reclamacoes: __, ...resto} = p;
+    return {...resto, id: novoId(), candidatos: [...p.candidatos], ...doItem(it)} as Parada;
+  });
+  Object.assign(p, doItem(itens[0]));
+  delete p.itens;
+  e.paradas.splice(e.paradas.indexOf(p) + 1, 0, ...novas);
+  for (const ra of e.rota?.areas || []) {
+    const i = ra.ordem.indexOf(p.id);
+    if (i >= 0) ra.ordem.splice(i + 1, 0, ...novas.map(q => q.id));
+  }
+  return novas;
+}
+
+// O desfazer do "Separar": volta a ser uma parada só, como estava, se nenhuma foi entregue.
+export function juntarDeNovo(e: Estado, p: Parada, antes: Parada, novas: Parada[]): boolean {
+  if (p.entregue || novas.some(q => q.entregue)) return false;
+  const ids = new Set(novas.map(q => q.id));
+  e.paradas = e.paradas.filter(q => !ids.has(q.id));
+  for (const ra of e.rota?.areas || []) ra.ordem = ra.ordem.filter(id => !ids.has(id));
+  for (const k of Object.keys(p) as (keyof Parada)[]) delete p[k];
+  Object.assign(p, antes);
+  return true;
 }
 
 export function resumoPlanilha(r: ResumoPlanilha): string {

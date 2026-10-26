@@ -77,7 +77,7 @@ function EntregasDoPonto({ps}: {ps: Parada[]}) {
         <button className="btn contorno" onClick={() => A.abrirXarope(g.ps[0])}>Cliente reclamou</button>
       </div>}
       {g.ps.some(p => loja.ui.xarope === p.id) && <MarcarXarope p={g.ps[0]} />}
-      {varias && <EntregasDoEndereco ps={g.ps} />}
+      {varias ? <EntregasDoEndereco ps={g.ps} /> : <PacotesDaParada p={g.ps[0]} />}
     </div>;
   })}</>;
 }
@@ -120,16 +120,38 @@ function BotoesDoEndereco({abertas, ids, quantas, noChao}: {abertas: Parada[]; i
 // pacotes. Fechado quando são muitas, para os botões do endereço continuarem à vista.
 function EntregasDoEndereco({ps}: {ps: Parada[]}) {
   const {proprio} = partesDoEndereco(ps);
-  return <details className="do-endereco" open={ps.length <= 3}>
+  // aberto também depois de separar: foi para marcar uma por uma que ele separou
+  return <details className="do-endereco" open={ps.length <= 3 || ps.some(p => p.separada)}>
     <summary>As {ps.length} entregas deste endereço</summary>
     {ps.map((p, i) => <div className={`sub-entrega${p.entregue ? ' feito' : ''}`} key={p.id} data-item={p.id}>
       <span className="badge" style={{background: loja.area(p.area).cor}}>{rotuloDe(p)}</span>
       <span className="o-que-muda">{proprio[i] || 'Sem complemento'}{(p.unidades || 1) > 1 ? ` · ${p.unidades} pacotes` : ''}</span>
       {p.entregue
         ? <span className="feita">Entregue</span>
-        : <button className="quadrado ok" aria-label={`Entregue ${rotuloDe(p)}`} data-acao="entregue-uma" onClick={() => A.marcarEntregue(p, true)}><Icone nome="check" /></button>}
+        : <>
+          {/* separada é porque pode ficar noutro lugar: a porta dela se marca sozinha (26/10) */}
+          {p.separada && p.precisao !== 'confirmado' && <button className="btn ok peq" data-acao="aqui-uma" onClick={() => { A.contar('separada-aqui'); A.entregueAqui([p]); }}>Entreguei aqui</button>}
+          <button className="quadrado ok" aria-label={`Entregue ${rotuloDe(p)}`} data-acao="entregue-uma" onClick={() => A.marcarEntregue(p, true)}><Icone nome="check" /></button>
+        </>}
     </div>)}
   </details>;
+}
+
+// Os pacotes que a planilha juntou numa parada por terem o mesmo endereço escrito. Podem ser de
+// clientes em lugares diferentes (26/10, Chico Mendes 67: a mercearia e o condomínio a 1,4 km):
+// separando, cada um ganha o seu Entreguei e a sua porta.
+function PacotesDaParada({p}: {p: Parada}) {
+  if (p.entregue || !p.itens || p.itens.length < 2) return null;
+  const {proprio} = partesDoEndereco(p.itens.map(it => ({texto: it.texto}) as Parada));
+  return <>
+    <details className="do-endereco" data-pacotes={p.id} open={p.itens.length <= 3}>
+      <summary>Os {p.itens.length} pacotes desta parada</summary>
+      {p.itens.map((it, i) => <div className="sub-entrega" key={i}>
+        <span className="o-que-muda">{it.ml ? `#${it.ml} · ` : ''}{proprio[i] || 'Sem complemento'}</span>
+      </div>)}
+    </details>
+    <button className="btn contorno" data-acao="separar" onClick={() => { A.contar('separar'); A.separar(p); }}>Separar os {p.itens.length} pacotes</button>
+  </>;
 }
 
 function CartaoPino({ids}: {ids: string[]}) {
@@ -273,7 +295,7 @@ function CartaoProxima() {
         {podeAqui && entreguei('btn contorno-ok')}
         <button className="btn contorno" onClick={() => A.deixarParaDepois(...pend)}>Depois</button>
       </div>
-      {pend.length > 1 && <EntregasDoEndereco ps={pend} />}
+      {pend.length > 1 ? <EntregasDoEndereco ps={pend} /> : <PacotesDaParada p={alvo} />}
     </> : <>
       <div className="info">{pend.length} entregas {mesmoEndereco(pend.map(p => p.texto)) ? 'no mesmo endereço' : 'aqui perto'}:</div>
       <EntregasDoPonto ps={pend} />

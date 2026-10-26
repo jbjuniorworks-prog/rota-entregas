@@ -4,7 +4,7 @@ import {haversine, marcarIsoladas, noPino} from '../logica/geo';
 import type {Operacao} from '../logica/fila';
 import {avisoGuardou} from '../logica/memoria';
 import {medidor} from '../logica/telemetria';
-import {chaveCidade, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
+import {chaveCidade, chaveDaParada, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
 import type {Parada, PortaAntes, Ponto} from '../logica/tipos';
 import {loja, MINIMIZADO, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
@@ -16,7 +16,7 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
   const saida = {confirmadas: 0, sugestoes: 0, minhas: 0, lembradasVerificadas: 0, xaropes: 0};
   const c = clienteNuvem();
   if (!c) return saida;
-  const chaveDe = (p: Parada) => chaveLugar(p.texto, p.bairro, e().cidade);
+  const chaveDe = (p: Parada) => chaveDaParada(p, e().cidade);
   const chaves = [...new Set(e().paradas.filter(p => !p.entregue).map(chaveDe).filter((k): k is string => !!k))];
   if (!chaves.length) return saida;
   try {
@@ -47,7 +47,7 @@ export async function verPinosNovos() {
   if (!navigator.onLine || Date.now() - pinosPerguntados < PINOS_DE_NOVO) return;
   const c = clienteNuvem();
   if (!c) return;
-  const chaveDe = (p: Parada) => chaveLugar(p.texto, p.bairro, e().cidade);
+  const chaveDe = (p: Parada) => chaveDaParada(p, e().cidade);
   const chaves = [...new Set(e().paradas.filter(p => !p.entregue).map(chaveDe).filter((k): k is string => !!k))];
   if (!chaves.length) return;
   pinosPerguntados = Date.now();
@@ -62,7 +62,7 @@ export async function verPinosNovos() {
 export function atualizarPinos() {
   const novos = ui.pinosNovos;
   if (!novos) return;
-  const chaveDe = (p: Parada) => chaveLugar(p.texto, p.bairro, e().cidade);
+  const chaveDe = (p: Parada) => chaveDaParada(p, e().cidade);
   const r = aplicarCompartilhadas(e().paradas, novos.resultados, chaveDe);
   const movidas = r.confirmadas + r.minhas;
   ui.pinosNovos = null;
@@ -119,7 +119,7 @@ function segurarPorta(p: Parada, chave: string, lat: number, lng: number, precis
 }
 
 export function guardarPassagens(ps: Parada[]) {
-  const alvos = ps.map(p => ({p, chave: chaveLugar(p.texto, p.bairro, e().cidade)})).filter((x): x is {p: Parada; chave: string} => !!x.chave);
+  const alvos = ps.map(p => ({p, chave: chaveDaParada(p, e().cidade)})).filter((x): x is {p: Parada; chave: string} => !!x.chave);
   if (!alvos.length) return;
   // Pela mesma porta do "Estou aqui": com o mapa da Rota aberto o GPS já está sendo seguido, e um
   // pedido novo pode ficar sem resposta até estourar o prazo. Pedindo sempre de novo, a passagem
@@ -253,8 +253,12 @@ const CONFIAVEL: ReadonlySet<string> = new Set(['manual', 'lembrado', 'confirmad
 
 export function irmasDoMesmoEndereco(p: Parada): Parada[] {
   if (p.lat == null || p.lng == null) return [];
+  // separada, irmã é só a de mesmo complemento: levar as outras junto desfaria o que ele separou
+  const mesmo = p.separada
+    ? (q: Parada) => chaveDaParada(q, e().cidade) === chaveDaParada(p, e().cidade)
+    : (q: Parada) => mesmoEndereco([q.texto, p.texto]);
   return e().paradas.filter(q => q !== p && !q.entregue && q.lat != null && q.lng != null
-    && mesmoEndereco([q.texto, p.texto]) && haversine(q as Ponto, p as Ponto) <= JUNTO_DAQUI);
+    && mesmo(q) && haversine(q as Ponto, p as Ponto) <= JUNTO_DAQUI);
 }
 
 // Duas entregas de endereços diferentes que já estão no mesmo pino não têm o que juntar: quem
@@ -371,7 +375,7 @@ export function portaDaEntrega(ps: Parada[], lat: number, lng: number, precisao:
     delete p.sugestao;
     Object.assign(p, {lat, lng, precisao: 'manual', exibido: `Sua localização na porta (±${Math.round(precisao)} m)`, fonte: 'motorista', portaAntes: antes[i]});
     guardou = memoria.lembrar(p) || guardou;
-    const chave = chaveLugar(p.texto, p.bairro, e().cidade);
+    const chave = chaveDaParada(p, e().cidade);
     if (chave) segurarPorta(p, chave, lat, lng, precisao, seguia);
   });
   if (ps.some(p => p.adiada)) marcarIsoladas(e().paradas);
