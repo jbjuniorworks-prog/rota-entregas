@@ -200,6 +200,17 @@ Fora da lista:
     herdado) ou para o `918d045`/`mvh6s726` (sem o "Separar"), conforme o estado do repositório,
     pelo plano abaixo. Esta parte não grava nada novo na nuvem: o leque é só desenho, e a porta
     herdada que vira "confira na porta" é estado do aparelho.
+- **Publicado em 26/10, `919db27`:** enviado às 13:17 de Aracaju (hora do node), com o
+  `7c616e3` (o registro do meio-dia) antes dele. GitHub: "testar" e "publicar" passaram. No ar:
+  versão `mvpgo65n` (26/10, 13:18), com o aviso novo, o complemento que abre o cartão e a porta
+  herdada como "confira na porta".
+  - **Desvio:** o Luan tinha carregado às 13:13 uma rota de 85 pacotes, sem nenhuma entrega
+    ainda; podia estar saindo. Publicado assim mesmo, pelo pedido do dono ("eles querem a
+    atualização na rua já"): a rota dele foi lida na versão que já separa, e a versão nova não
+    perde nada, no máximo recarrega o app quando ele volta para a tela.
+  - **Falta:** a validação no celular do dono, agora também com o leque (separar, ver os pinos
+    em volta do ponto, tocar num e arrumar só ele); a limpeza da rota e das marcações de teste;
+    o aviso aos motoristas.
 
 ### Ficha da versão do "Separar" (para a autorização)
 
