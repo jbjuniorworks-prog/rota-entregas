@@ -152,6 +152,32 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): medido, nada feito, falta decidir o "Separar"
+
+- **O caso.** "Rodovia Ecologista Chico Mendes, 67", CEP 49007-000, Areia Branca: na rota do dia,
+  5 pacotes de clientes diferentes. Dois "mercearia nova opção", dois "por trás do condomínio
+  portal" e um sem complemento, com 1,4 km entre a mercearia e o condomínio (pontos dados pelo
+  dono). A Shopee pôs os 5 na mesma parada e no mesmo ponto (a 33 m do condomínio).
+- **Por que o app não deixa separar.** Na leitura da planilha, linhas com a mesma rua, número e
+  CEP viram uma parada (`adicionarDaPlanilha`); do complemento só contam apto, bloco, casa, sala,
+  lote e quadra (`complementoChave`). Uma parada, um pino: "Entregue" marca os 5 e "Arrumar o
+  pino" move os 5. Na nuvem é uma porta só: o CEP termina em 000, então a chave é a da rua
+  (`chaveLugar`), e todo "Chico Mendes, 67" divide a posição.
+- **O que ficou gravado.** O Pedro marcou os 5 de uma vez às 09:06, na mercearia, e o pino da
+  chave foi para lá; a Shopee registra o do condomínio entregue às 08:55. A rota do Luan tem os
+  mesmos 5 pacotes (cópia da mesma planilha), por fazer.
+- **Medido no backup de 26/10:** juntar está certo quase sempre. De 2.034 paradas com 2 ou mais
+  pacotes da mesma chave, 781 têm complementos diferentes, e são o mesmo prédio escrito de outro
+  jeito ("cond maui" / "condominio maui") ou apartamentos diferentes: separar pelo complemento
+  quebraria os prédios. O caso é o do CEP genérico com o mesmo número para lugares longe.
+- **Proposta, não aprovada:** "Separar" no cartão com vários pacotes: cada pacote com o seu
+  complemento, e o motorista puxa um para uma parada própria, com pino e "Entregue" próprios. A
+  marcação da parada separada, só quando a chave é a da rua, vai para a chave com o complemento
+  junto; a leitura procura essa chave antes da da rua. A chave de sempre não muda em lugar
+  nenhum (ela é calculada em nove pontos do app e em `ferramentas/chave-rua.mjs`). A nuvem aceita
+  qualquer chave de 3 a 300 letras: sem migração. Depois, gravar as duas portas pelo
+  complemento como admin.
+
 ## Backup: as quatro tabelas que faltavam (21/10, pergunta do dono): backup conferido, restauração não
 
 **Estado: backup das quatro tabelas conferido; restauração completa ainda não validada.**
