@@ -292,6 +292,28 @@ Fora da lista:
     do 67 com 3970, 3981 e 5579 intactas; a geral do 50 intacta; os 9 pacotes das chaves gerais
     entregues;
   - cópia dos registros apagados: `OneDrive/backups/rota-entregas/consertos/chico-mendes-2026-10-26.json`.
+- **Complemento do conserto: apagada a `observacoes` 5636** às 00:20 de 27/10, hora de Aracaju,
+  com autorização do dono só para ela.
+  - **O que era:** passagem do Pedro, 26/10 às 14:23:56, gravada da base (-10.918952,
+    -37.069245, ±4 m) na chave `…|67|areia branca|aracaju|por tras do condominio portal`. Ficava a
+    18,2 km da porta 4033.
+  - **Por que saiu:** não mudava pino nenhum, porque a porta de admin vence e ela estava longe
+    demais para contar. Mas o `nomear_ruas` usa o `rua_chave` das passagens e podia chamar de
+    "Chico Mendes" um trecho perto da base. Era o único registro do Pedro em 26/10 a menos de 500 m
+    daquele ponto.
+  - **Cópia:** `OneDrive/backups/rota-entregas/consertos/observacao-5636-2026-10-26.json`.
+  - **Como foi apagada:** o registro foi conferido igual à cópia antes de apagar, e o filtro levou
+    id, chave, motorista e coordenadas.
+  - **Antes e depois:** 226 registros nas chaves da Chico Mendes e do Pedro em 26/10. Depois,
+    225: só a 5636 sumiu, nenhum mudou, nenhum novo.
+  - **Reconsulta da chave:** a porta continua a 4033 (confirmada, admin, -11.073285, -37.125546),
+    e nenhuma passagem sobrou nela.
+  - **Os pontos certos do Pedro na Chico Mendes continuam todos lá:**
+    - as seis correções do condomínio (4012 a 4021), a 0–43 m da porta;
+    - a das 09:06 na geral do 67 (3981), com a passagem 5579, no ponto da mercearia;
+    - as do 50, do 46 e do 275 de 26/10;
+    - as de 28/09, 14/10 e 16/10.
+    Cada uma está a 0–108 m da porta que os motoristas recebem.
 
 ### Ficha da versão do "Separar" (para a autorização)
 
