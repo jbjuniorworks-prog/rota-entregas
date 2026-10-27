@@ -1,5 +1,5 @@
 import type {Page} from '@playwright/test';
-import {abrir, aviso, carregar, expect, lista, montar, test} from './apoio';
+import {abrir, aviso, carregar, clicarMapa, expect, lista, montar, test} from './apoio';
 
 // Pedro e Luan, 26/10: "Rodovia Ecologista Chico Mendes, 67" para clientes diferentes, a mercearia
 // e o condomínio a 1,4 km um do outro, e o app juntava tudo numa parada, sem deixar marcar cada um
@@ -164,6 +164,24 @@ test.describe('separar os pacotes de uma parada', () => {
     await expect(cartao.locator('.titulo')).toHaveText('Neste pino');
     await expect(cartao).toContainText('Por trás do condomínio Portal Teste');
     await expect(cartao.getByRole('button', {name: 'Arrumar o pino'})).toBeVisible();
+  });
+
+  // Como o Pedro arrumou o condomínio em 26/10: pelo "Arrumar o pino", tocando no mapa. A porta vai
+  // com o complemento, e as outras do mesmo endereço ficam onde estavam.
+  test('arrumar o pino no mapa numa separada grava a porta dela e não mexe nas outras', async ({page, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_E);
+    await montar(page);
+    const proxima = page.locator('[data-folha="proxima"]');
+    await proxima.getByRole('button', {name: 'Separar os 4 pacotes'}).click();
+    await proxima.locator('[data-acao="ver-uma"]', {hasText: 'condomínio'}).click();
+    await page.locator('[data-folha="pino"]').getByRole('button', {name: 'Arrumar o pino'}).click();
+    await clicarMapa(page, CONDOMINIO.latitude, CONDOMINIO.longitude);
+    await expect.poll(async () => (await paradas(page)).find(p => p.texto.includes('condomínio'))!.lat).toBeCloseTo(CONDOMINIO.latitude, 5);
+    for (const p of (await paradas(page)).filter(p => p.texto.includes('Rodovia') && !p.texto.includes('condomínio'))) expect(p.lat).toBeCloseTo(-10.95, 4);
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'correcoes' && p.metodo === 'POST').map(p => (p.corpo as {chave_lugar: string}).chave_lugar))
+      .toEqual([expect.stringMatching(DO_CONDOMINIO)]);
   });
 
   // "Se está verificado, já deveria estar separadas" e "o que adiantou ele corrigir o pino?" (dono,

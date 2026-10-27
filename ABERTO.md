@@ -212,6 +212,71 @@ Fora da lista:
     em volta do ponto, tocar num e arrumar só ele); a limpeza da rota e das marcações de teste;
     o aviso aos motoristas.
 
+### Separar sozinha e a trava de 3 km (26/10, tarde): candidato, não publicado
+
+- **O que o dono viu:** relida a planilha, a parada do "Chico Mendes, 67" chegou junta de novo,
+  e a correção do Pedro só servia depois de separar outra vez ("se está verificado, já deveria
+  estar separadas"; "o que adiantou ele corrigir o pino?").
+- **Separar sozinha** (`7225106`): ao ler a planilha, o app pergunta à nuvem pelas chaves com
+  complemento de cada parada juntada; qualquer resposta (verificada, sugestão ou a do próprio
+  motorista) separa a parada antes das portas. Chave com complemento só existe porque alguém
+  separou aquele endereço. A primeira regra era só verificada, mas o pino que o Pedro arrumou no
+  mapa, sem entregar ali, chega nos outros como sugestão, e a parada seguiria juntando. A chave
+  geral verificada não separa nada; condomínio não é afetado (ninguém separa apartamento).
+- **O que achou o padrão do dia** (leitura do banco, 26/10): às 14:10–14:15 o Pedro pôs em dia,
+  na base, 30 pacotes da rota da manhã, e o "Entreguei aqui" gravou a 18 km, com GPS de ±4 m, a
+  porta confirmada da "mercearia nova opção" (67) e da "por trás do condomínio" (50). O resto
+  do dia sem defeito: nenhuma passagem com o pacote sem entrega no banco, nenhuma chave de hoje
+  longe das entregas de outros dias, as correções do Luan de 240 a 540 m sobre pino da planilha.
+- **Trava de 3 km** (`f0260fa`), contrato da revisão: mais de 3 km do pino que ele seguia, o
+  "Entreguei aqui" entrega e não grava nem altera porta, passagem ou verificação, e diz a
+  distância; o Entreguei com GPS deixa de mandar a passagem. Exatamente 3 km ainda vale; dentro
+  disso, nada muda; sem GPS, nada mudava e agora tem teste. 3 km é o piso de sanidade do app, e
+  deixa passar a correção de 1,4 km da mercearia, que estava certa.
+  - **Desvio do contrato** (`8410831`): a trava vale para pino que o app trata como bom
+    (planilha, arrumado, lembrado, verificado, porta da vizinha), não para o que ele mesmo põe em
+    dúvida (longe das outras, aproximado, só pelo bairro, não achado, ruim, número que não
+    bate). A bateria completa pegou: dois testes antigos consertam com o "Entreguei aqui" a
+    "Rua D, 49" que a planilha pôs a 12 km, e a trava bloqueava esse conserto, que é o motorista
+    na porta certa. Os pinos do Pedro em 26/10 eram dos bons, então os toques a 18 km continuam
+    barrados.
+  - **O aviso e o "Estou aqui"** (`e4b840e`, pedido do dono): barrado, o aviso diz a distância
+    e como arrumar de onde ele está ("toque no pino e em Arrumar o pino", que funciona de
+    qualquer lugar; no cartão da próxima não há Arrumar). O "Pino errado? Estou aqui" também
+    levava o pino para o GPS, e da base levaria para a base: tem a mesma trava e o mesmo aviso.
+  - As correções certas do Pedro em 26/10 (o condomínio e a geral do 50) foram feitas com o
+    "Arrumar o pino" no mapa, que a trava não toca. Agora com teste: arrumar no mapa uma
+    separada grava a porta dela pelo complemento e não mexe nas outras.
+- **Candidato a publicação (o commit que traz esta nota, sobre `7225106`, `f0260fa`, `8410831` e
+  `e4b840e`):**
+  - No ar: `919db27`, versão `mvpgo65n` (26/10, 13:18).
+  - Evidências (26/10, noite): tipos; 225 ponta a ponta e 505 de unidade passando; 41
+    sabotagens do "Separar", da separação sozinha e da trava, cada uma quebrando o teste certo.
+    No caminho, a bateria completa pegou a trava barrando o conserto de pino em dúvida (ajustado
+    no `8410831`), e duas sabotagens passavam até ganharem teste próprio (o limite exato de
+    3 km e o "Arrumar o pino" no mapa numa separada).
+  - Dados: o conserto da Chico Mendes, pré-requisito da separação sozinha, já foi feito (acima).
+    Na nuvem, o "67" tem hoje porta de admin para os dois complementos (mercearia, 4111; condomínio,
+    4033): a próxima planilha com ele chega separada, cada uma na sua porta.
+  - Volta: para o `919db27`/`mvpgo65n` (separar à mão, com o leque) ou um revert equivalente,
+    conforme o repositório. Nada novo é gravado na nuvem por estas mudanças: a separação sozinha
+    só lê, e a trava deixa de gravar; voltar não pede conserto de dados.
+  - Validação depois de publicar: a do roteiro abaixo, mais ler uma planilha com um endereço
+    já separado (o "Chico Mendes, 67" quando vier) e ver que chega separada; e, longe de
+    qualquer entrega, o "Estou aqui" num pino bom dizendo a distância sem mexer nele.
+- **Conserto dos dados, pré-requisito da separação sozinha** (sem ele, a mercearia e o 50 do
+  condomínio chegariam separados com o pino a 18 km). Autorizado pelo dono para o conjunto exato,
+  feito às 18:13 de 26/10:
+  - apagadas `correcoes` 4022 e 4023 e `observacoes` 5639 (chave `…|67|areia branca|aracaju|mercearia
+    nova opcao`), e `correcoes` 4014, 4015 e 4016 e `observacoes` 5632 (chave `…|50|areia
+    branca|aracaju|por tras do condominio`);
+  - gravada a marcação de admin `correcoes` 4111 na chave da mercearia, em -11.06524,
+    -37.136334: a entrega do Pedro às 09:06, ±4 m, a 5 m do ponto do dono;
+  - relido depois: mercearia só com a 4111; a do 50 vazia (volta à porta geral do 50); a geral
+    do 67 com 3970, 3981 e 5579 intactas; a geral do 50 intacta; os 9 pacotes das chaves gerais
+    entregues;
+  - cópia dos registros apagados: `OneDrive/backups/rota-entregas/consertos/chico-mendes-2026-10-26.json`.
+
 ### Ficha da versão do "Separar" (para a autorização)
 
 - **Commits:** `b46c602` (anotação do caso) e `d05c85c` (o app). O commit seguinte só acrescenta
