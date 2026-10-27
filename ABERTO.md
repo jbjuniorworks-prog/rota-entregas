@@ -280,6 +280,37 @@ Fora da lista:
     As três do mesmo ponto abrem em leque. Os prints ficaram no diretório de rascunho da sessão.
   - **Falta:** a validação no celular do dono e o "Estou aqui" longe de um pino bom; a limpeza
     das rotas e marcações de teste; o aviso aos motoristas.
+  - **Os testes no endereço publicado (27/10, por volta de 00:30):** com `APP_URL` no GitHub Pages e a nuvem
+    simulada, sem gravar na produção. Passaram 53 de 53, de `separar`, `porta-longe` e `mapa`:
+    - a separação sozinha, com porta verificada e com sugestão;
+    - o leque e o cartão de cada uma;
+    - separar sem sinal e reabrir;
+    - Desfazer;
+    - a porta por complemento, e a sem complemento na porta geral;
+    - Resetar e reler;
+    - o "Entreguei aqui" e o "Estou aqui" a mais de 3 km sem porta nem passagem, e o Entreguei
+      sem GPS.
+  - **Aviso aos motoristas:** dado pelo próprio dono na noite de 26/10. Mostrou os três pinos
+    da mercearia juntos, que é o normal (mesma porta), e as duas do condomínio na porta que o
+    Pedro marcou. Pediu que testem na rua.
+    - Em vez do celular do dono, a validação fica para o uso dos motoristas em 27/10. Conferir
+      depois, no banco, os toques de "Separar", as paradas separadas sozinhas e se algum
+      "Entreguei aqui" foi barrado pela trava.
+    - Correção de um texto de revisão para não ir aos motoristas: o "Estou aqui" longe não
+      entrega nada, só deixa o pino onde está. Quem entrega sem mexer na porta é o "Entreguei
+      aqui" longe.
+  - **Dados de teste (levantados em 27/10, só lendo), nada apagado:**
+    - quatro rotas na conta de admin de 26/10, cópias das planilhas: 114 pacotes às 14:00, 66 às
+      14:00 (a do Pedro), 92 às 18:00, e 79 às 18:04 (a do Luan de 23/10). Só a de 79 tem
+      entregas, duas às 18:06 na `49004390|468`;
+    - as correções de admin 4107 a 4110, às 18:05–18:06 na mesma `49004390|468`. Ficam a 0–25 m
+      da porta que o Luan marcou em 23/10 (3749) e da de admin 3753; a porta não muda com nem sem
+      elas;
+    - nenhuma passagem nem lugar da conta de admin desde 26/10;
+    - as outras correções de admin desde 26/10 são de verdade e ficam: as portas marcadas a
+      pedido do dono (4008, 4009, 4011, 4033, 4034, 4111) e as aprovações das correções dos
+      motoristas (4044, 4045, 4064 a 4069, 4090, 4105, 4106), cada uma a 0 m da marca do
+      motorista.
 - **Conserto dos dados, pré-requisito da separação sozinha** (sem ele, a mercearia e o 50 do
   condomínio chegariam separados com o pino a 18 km). Autorizado pelo dono para o conjunto exato,
   feito às 18:13 de 26/10:
