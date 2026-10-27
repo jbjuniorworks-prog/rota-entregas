@@ -278,10 +278,11 @@ Fora da lista:
     - as duas do condomínio na porta delas (4033), a 1,5 km dali;
     - a sem complemento na porta geral do 67, que é o mesmo ponto da mercearia.
     As três do mesmo ponto abrem em leque. Os prints ficaram no diretório de rascunho da sessão.
-  - **Falta:** a validação no celular do dono e o "Estou aqui" longe de um pino bom; a limpeza
-    das rotas e marcações de teste; o aviso aos motoristas.
-  - **Os testes no endereço publicado (27/10, por volta de 00:30):** com `APP_URL` no GitHub Pages e a nuvem
-    simulada, sem gravar na produção. Passaram 53 de 53, de `separar`, `porta-longe` e `mapa`:
+  - **O que faltava** (a validação, o "Estou aqui" longe de um pino bom, a limpeza dos dados de
+    teste e o aviso aos motoristas) está nos itens abaixo.
+  - **Os testes no endereço publicado (27/10, por volta de 00:30):** com `APP_URL` no GitHub
+    Pages e a nuvem simulada, sem gravar na produção. Passaram 53 de 53, de `separar`,
+    `porta-longe` e `mapa`:
     - a separação sozinha, com porta verificada e com sugestão;
     - o leque e o cartão de cada uma;
     - separar sem sinal e reabrir;
@@ -299,10 +300,10 @@ Fora da lista:
     - Correção de um texto de revisão para não ir aos motoristas: o "Estou aqui" longe não
       entrega nada, só deixa o pino onde está. Quem entrega sem mexer na porta é o "Entreguei
       aqui" longe.
-  - **Dados de teste (levantados em 27/10, só lendo), nada apagado:**
-    - quatro rotas na conta de admin de 26/10, cópias das planilhas: 114 pacotes às 14:00, 66 às
-      14:00 (a do Pedro), 92 às 18:00, e 79 às 18:04 (a do Luan de 23/10). Só a de 79 tem
-      entregas, duas às 18:06 na `49004390|468`;
+  - **Dados de teste (levantados em 27/10, só lendo):**
+    - quatro rotas na conta de admin de 26/10, cópias de planilhas antigas do Luan: 114 pacotes às
+      14:00 (a de 24/10), 66 às 14:00 (19/10), 92 às 18:00 (21/10) e 79 às 18:04 (23/10). Só a de
+      79 tem entregas, duas às 18:06 na `49004390|468`;
     - as correções de admin 4107 a 4110, às 18:05–18:06 na mesma `49004390|468`. Ficam a 0–25 m
       da porta que o Luan marcou em 23/10 (3749) e da de admin 3753; a porta não muda com nem sem
       elas;
@@ -311,6 +312,38 @@ Fora da lista:
       pedido do dono (4008, 4009, 4011, 4033, 4034, 4111) e as aprovações das correções dos
       motoristas (4044, 4045, 4064 a 4069, 4090, 4105, 4106), cada uma a 0 m da marca do
       motorista.
+  - **As quatro rotas de teste foram apagadas** às 00:42 de 27/10, hora de Aracaju, com
+    autorização do dono só para elas.
+    - **Rotas:** `48e31fc4-7d3a-4dbf-9285-c2b4d1d6c3f2`, `13dc3f85-4673-40ec-8f0b-62edb779e6b7`,
+      `d36716d6-0e95-45df-8be4-558071dccc2b` e `efe5b15c-d8cd-4537-a88d-8bd379771182`. Os 351
+      pacotes delas foram junto, pelo `on delete cascade`.
+    - **Por que direto no banco:** o Admin não conseguia apagar. O "Apagar" de lá só aparece para
+      rotas do dia de hoje sem nenhuma entrega.
+    - **Método:** antes de apagar, cada rota foi conferida igual à cópia, com a mesma conta e o
+      mesmo número de pacotes. O filtro levou o id e a conta de admin. Nenhum motorista tinha rota
+      aberta em 27/10.
+    - **Contagem antes → depois:**
+
+      | | antes | depois |
+      |---|---|---|
+      | rotas | 154 | 150 |
+      | pacotes | 14.626 | 14.275 |
+      | correções | 3.804 | 3.804 |
+      | passagens | 3.886 | 3.886 |
+      | lugares | 1.277 | 1.277 |
+
+    - **Conferências:**
+      - não ficou pacote nenhum das quatro rotas;
+      - as duas entregas de teste das 18:06 sumiram;
+      - as duas entregas reais do Luan na `49004390|468`, da rota dele de 23/10, continuam;
+      - as correções 4107 a 4110 continuam;
+      - a cópia segue legível, com 4 rotas e 351 pacotes.
+    - **Cópia:** `OneDrive/backups/rota-entregas/consertos/rotas-de-teste-admin-2026-10-26.json`.
+  - **As correções 4107 a 4110 ficam**, por decisão do dono. Estão a 0–25 m da porta certa, não
+    mudam a porta e não confundem o motorista; apagar seria limpeza cosmética, com escrita no
+    banco sem ganho.
+  - **Fechamento:** a liberação não tem mais pendência de dados, de registro nem de publicação.
+    Fica só a conferência do uso na rua em 27/10, como está no aviso acima.
 - **Conserto dos dados, pré-requisito da separação sozinha** (sem ele, a mercearia e o 50 do
   condomínio chegariam separados com o pino a 18 km). Autorizado pelo dono para o conjunto exato,
   feito às 18:13 de 26/10:
