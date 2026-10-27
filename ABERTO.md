@@ -212,7 +212,7 @@ Fora da lista:
     em volta do ponto, tocar num e arrumar só ele); a limpeza da rota e das marcações de teste;
     o aviso aos motoristas.
 
-### Separar sozinha e a trava de 3 km (26/10, tarde): candidato, não publicado
+### Separar sozinha e a trava de 3 km (26/10, tarde): publicado em 27/10 (`0883309`, `mvq3nxzu`)
 
 - **O que o dono viu:** relida a planilha, a parada do "Chico Mendes, 67" chegou junta de novo,
   e a correção do Pedro só servia depois de separar outra vez ("se está verificado, já deveria
@@ -264,6 +264,22 @@ Fora da lista:
   - Validação depois de publicar: a do roteiro abaixo, mais ler uma planilha com um endereço
     já separado (o "Chico Mendes, 67" quando vier) e ver que chega separada; e, longe de
     qualquer entrega, o "Estou aqui" num pino bom dizendo a distância sem mexer nele.
+- **Publicado: `0883309`**, enviado às 23:54 de 26/10, hora de Aracaju pelo node, com autorização
+  do dono ("pode subir"). Com ele subiram o `b232616` (o registro do `919db27`) e do `7225106`
+  ao `e4b840e`.
+  - **Antes de enviar:** as 4 rotas de motorista do dia estavam completas (Pedro 66/66 e 96/96,
+    Luan 61/61 e 85/85), e a última entrega tinha sido às 17:30.
+  - **GitHub:** "testar" e "publicar" passaram. No ar: a versão `mvq3nxzu` (27/10, 00:02).
+  - **Conferido no endereço publicado (27/10, 00:08)**, sem gravar nada: a planilha da manhã do
+    Pedro de 26/10, lida como motorista. Foi a nuvem simulada dos testes, com as portas e a base
+    de ruas lidas da produção; a rota e os pacotes que a leitura manda foram barrados. Leu em 3 s,
+    com o aviso "1 parada(s) de pacotes juntos separada(s)". O "67" chegou em 5 entregas:
+    - as duas da mercearia na porta do admin (4111), a 0 m;
+    - as duas do condomínio na porta delas (4033), a 1,5 km dali;
+    - a sem complemento na porta geral do 67, que é o mesmo ponto da mercearia.
+    As três do mesmo ponto abrem em leque. Os prints ficaram no diretório de rascunho da sessão.
+  - **Falta:** a validação no celular do dono e o "Estou aqui" longe de um pino bom; a limpeza
+    das rotas e marcações de teste; o aviso aos motoristas.
 - **Conserto dos dados, pré-requisito da separação sozinha** (sem ele, a mercearia e o 50 do
   condomínio chegariam separados com o pino a 18 km). Autorizado pelo dono para o conjunto exato,
   feito às 18:13 de 26/10:
