@@ -31,6 +31,8 @@ test.describe('"Entreguei aqui" longe do pino', () => {
     await page.waitForTimeout(5500);
     await page.locator('.proxima [data-acao="aqui"]').click();
     await expect(aviso(page)).toContainText(/a \d+,\d km do pino, longe demais para ser a porta/);
+    // e diz como arrumar de onde ele está: "Arrumar o pino" mora no cartão do pino
+    await expect(aviso(page)).toContainText('Para arrumar daqui, toque no pino e em "Arrumar o pino".');
     await expect(page.locator('.resumo')).toContainText('1 de 10 entregas');
     // nem depois do prazo de desfazer: nada de porta nem passagem na nuvem, nada lembrado no aparelho
     await page.clock.fastForward('11:00');
@@ -60,6 +62,23 @@ test.describe('"Entreguei aqui" longe do pino', () => {
     await page.locator('.proxima [data-acao="aqui"]').click();
     await expect(aviso(page)).toContainText('com a porta marcada aqui');
     await expect.poll(() => enviados(nuvem, 'correcoes').length).toBe(1);
+  });
+
+  // O "Pino errado? Estou aqui" também leva o pino para o GPS: da base, levaria para a base.
+  test('o Estou aqui a mais de 3 km não mexe no pino e diz como arrumar', async ({page, context, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const alvo = await proxima(page);
+    await context.setGeolocation(aNorte(alvo, 5000));
+    await page.waitForTimeout(5500);
+    await page.getByRole('button', {name: 'Pino errado? Estou aqui'}).click();
+    await expect(aviso(page)).toContainText(/a \d+,\d km do pino, longe demais para ser a porta\. O pino ficou onde estava\. Para arrumar daqui/);
+    await page.waitForTimeout(1500);
+    expect(enviados(nuvem, 'correcoes')).toEqual([]);
+    expect(await lembradas(page)).toBe(0);
+    expect((await estado(page)).paradas.find(p => p.id === alvo.id)).toMatchObject({entregue: false, lat: alvo.lat, lng: alvo.lng, precisao: alvo.precisao});
   });
 
   test('o Entreguei com o GPS a mais de 3 km entrega e não manda passagem', async ({page, context, nuvem}) => {

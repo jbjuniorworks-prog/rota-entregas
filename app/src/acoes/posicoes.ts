@@ -348,7 +348,15 @@ export const GPS_PRECISO = 50;
 // Na porta, posição de dez segundos atrás ainda é a porta. Mais velha que isso, não.
 const NA_PORTA = 10000;
 
+// O GPS longe demais do pino (26/10): o aviso diz quanto, e o caminho para arrumar de onde ele está.
+// No cartão da próxima não há "Arrumar o pino": ele mora no cartão do pino.
+export const longeDemais = (p: Ponto, gps: Ponto) =>
+  `Você está a ${(haversine(p, gps) / 1000).toFixed(1).replace('.', ',')} km do pino, longe demais para ser a porta.`;
+export const ARRUMAR_DE_LONGE = 'Para arrumar daqui, toque no pino e em "Arrumar o pino".';
+
 function marcarNaPorta(p: Parada, lat: number, lng: number, precisao: number) {
+  // o "Estou aqui" também leva o pino para o GPS: da base, levava para a base
+  if (longeDaPorta(p, {lat, lng})) { status(`${longeDemais(p as Ponto, {lat, lng})} O pino ficou onde estava. ${ARRUMAR_DE_LONGE}`, 8000); return; }
   const margem = Math.round(precisao);
   if (margem > GPS_PRECISO && !confirm(`O GPS está impreciso agora (±${margem} m). Usar mesmo assim como posição desta entrega?
 

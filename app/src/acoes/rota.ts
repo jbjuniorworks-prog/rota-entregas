@@ -1,4 +1,4 @@
-import {haversine, longeDaPorta, proximaAPe} from '../logica/geo';
+import {longeDaPorta, proximaAPe} from '../logica/geo';
 import {backupRecente, CHAVES, estadoVazio, resetarDia} from '../logica/guarda';
 import {aplicarGrupos, circular, gruposValidos, tirarGrupos as tirarOsGrupos} from '../logica/grupos';
 import {juntarDeNovo, novoId, separarParada} from '../logica/importar';
@@ -12,7 +12,7 @@ import {foraDaRegiao} from '../servicos/geocodificacao';
 import {linhaDaRota, matriz} from '../servicos/ruas';
 import {contar, desatualizarRota, e, enviarFila, fila, ui} from './base';
 import {abrir, irPara} from './navegacao';
-import {comMinhaPosicao, consultarCompartilhadas, desfazerPorta, GPS_PASSAGEM, guardarPassagem, guardarPassagens, portaDaEntrega} from './posicoes';
+import {ARRUMAR_DE_LONGE, comMinhaPosicao, consultarCompartilhadas, desfazerPorta, GPS_PASSAGEM, guardarPassagem, guardarPassagens, longeDemais, portaDaEntrega} from './posicoes';
 import {registrarComoFicou} from './registro';
 
 // Quando vale a posição que o mapa já vem seguindo, em vez de pedir uma nova ao GPS.
@@ -185,7 +185,7 @@ ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
   alvo.forEach(p => marcarEntregue(p, true, false, false));
   const quantas = alvo.length > 1 ? ` as ${alvo.length}` : '';
   const desfazerEntrega = () => alvo.forEach(p => marcarEntregue(p, false, false, false));
-  const soEntregue = (motivo: string) => status(`Entregue${quantas}. ${motivo} O pino ficou onde estava.`, 8000, () => {
+  const soEntregue = (motivo: string, depois = '') => status(`Entregue${quantas}. ${motivo} O pino ficou onde estava.${depois ? ' ' + depois : ''}`, 8000, () => {
     desfazerEntrega();
     status('Entrega desfeita.', 3000);
   });
@@ -199,7 +199,7 @@ ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
     if (precisao > GPS_PASSAGEM) { soEntregue(`O GPS está impreciso agora (±${margem} m).`); return; }
     if (foraDaRegiao({lat, lng})) { soEntregue('O GPS deu um ponto fora da região das entregas.'); return; }
     const longe = vivas.find(p => longeDaPorta(p, {lat, lng}));
-    if (longe) { soEntregue(`Você está a ${(haversine(longe as Ponto, {lat, lng}) / 1000).toFixed(1).replace('.', ',')} km do pino, longe demais para ser a porta.`); return; }
+    if (longe) { soEntregue(longeDemais(longe as Ponto, {lat, lng}), ARRUMAR_DE_LONGE); return; }
     const {guardou} = portaDaEntrega(vivas, lat, lng, precisao);
     status(`Entregue${quantas}, com a porta marcada aqui (±${margem} m).` + (guardou
       ? ' Vai para os outros motoristas como porta confirmada.'
