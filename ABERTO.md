@@ -171,8 +171,17 @@ Fora da lista:
   (`maps.app.goo.gl`) não traz a coordenada.
 - **Conferido depois:** o Luan entregou os 2 pacotes às 10:19, e as marcações dele na entrega
   ficaram a 6 e 9 m do ponto do link; a passagem (±4 m) também a 9 m.
-- **Feito, não publicado: o link e a localização levam o pino.** O dono lembrou que a localização
-  chega como mensagem de localização do WhatsApp.
+- **Publicado em 28/10 (`d86319c`, versão `mvs77w22`, 11:17): o link e a localização levam o
+  pino.** O dono lembrou que a localização chega como mensagem de localização do WhatsApp.
+  - **Envio:** às 11:16 de Aracaju, hora do node, com o `9eb49cd` e o `36072a5`. A autorização do
+    dono foi para subir já, com o Luan na rua (57 de 109, última entrega às 11:07). A versão nova
+    não interrompe a rota: avisa e espera ele tocar em Atualizar.
+  - **Conferido:** "testar" e "publicar" passaram, e os 8 testes de `colar-link` passaram contra
+    o endereço publicado, com a nuvem simulada.
+  - **Na revisão antes de subir** (`d86319c`): pela faixa do Arrumar, o pino andava com o modo
+    "toque no mapa" ainda armado. Agora desarma antes, como o toque no mapa.
+  - **Falta:** ver no celular o que o WhatsApp oferece para compartilhar uma localização, e os
+    toques de "colar-link" e "local-recebido" no Admin nos próximos dias.
   - **"Colar link do mapa":** no cartão da próxima, ao lado do "Pino errado? Estou aqui" e com a
     mesma regra (não em porta verificada), e na faixa do "Arrumar o pino". Lê o que ele copiou;
     sem permissão ou sem link copiado, pede para colar. Mais de 3 km do pino pergunta antes, por
