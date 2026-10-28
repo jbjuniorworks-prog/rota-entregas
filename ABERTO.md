@@ -152,6 +152,24 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Porta pelo link do cliente (28/10, Luan): Curva do Rio, 96
+
+- **O que houve:** o dono mandou, às 10:08, o link do Maps de uma entrega do Luan do dia
+  (`49005338|96`, 2 pacotes não entregues). A planilha punha o pino a 681 m do link. O Luan
+  arrumou às 09:17 (4235) num ponto a 506 m do link, e o dono aprovou às 10:04 (4241, admin) o
+  mesmo ponto. A rua não está no OpenStreetMap nem na base de ruas: o link é a melhor referência.
+- **Feito às 10:10:** a marcação de admin da chave foi trocada, como faz o `portas.mjs`: saiu a
+  4241 e entrou a 4244 no ponto do link (-11.034105, -37.104927). Só essa chave; o `portas.mjs`
+  gravaria também uma chave `r|…` com bairro inventado, por isso foi direto. A 4235 do Luan fica.
+  A nuvem responde confirmada, admin, a 0 m do link. O app do Luan oferece "Atualizar" ao voltar
+  para a tela.
+- **Cópia das correções da chave antes da troca:**
+  `OneDrive/backups/rota-entregas/consertos/curva-do-rio-96-2026-10-28.json`.
+- **Pedido do dono:** "uma forma mais rápida de arrumar assim". Hoje o link colado só vale pelo
+  Editar, dentro de Conferir endereços (16 toques no Editar de todos os motoristas desde 14/10,
+  contra 1.696 no "Entreguei aqui" do balão). O link de "Compartilhar" do Maps no celular
+  (`maps.app.goo.gl`) não traz a coordenada.
+
 ## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" publicado em 26/10 (`f0bbc6b`, `mvpezugf`), falta a validação
 
 - **Decisão do dono (26/10):** "independente de vir junto da Shopee, ele tem que ter a liberdade de
