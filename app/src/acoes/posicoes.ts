@@ -276,27 +276,35 @@ function linkLonge(p: Parada, ali: Ponto): boolean {
   return passaDaPorta(metros) && !confirm(`O link fica a ${(metros / 1000).toFixed(1).replace('.', ',')} km do pino de agora.\n\nLevar o pino para lá?`);
 }
 
-async function levarAoLink(p: Parada) {
+async function linkPara(p: Parada): Promise<Ponto | null> {
   const ali = await posicaoDoLink();
-  if (!ali || linkLonge(p, ali)) return false;
-  corrigirPosicao(p, ali.lat, ali.lng, 'Pino no local do link', 'Local do link do mapa');
-  return true;
+  return !ali || linkLonge(p, ali) ? null : ali;
 }
+
+const levarAoLink = (p: Parada, ali: Ponto) => corrigirPosicao(p, ali.lat, ali.lng, 'Pino no local do link', 'Local do link do mapa');
 
 // Do cartão da próxima, sem passar pelo Arrumar.
 export async function colarLinkDoMapa(p: Parada) {
   contar('colar-link');
   if (!podeMexer(p)) return;
-  if (await levarAoLink(p)) focar(p.id);
+  const ali = await linkPara(p);
+  if (!ali) return;
+  levarAoLink(p, ali);
+  focar(p.id);
 }
 
 // Da faixa do Arrumar o pino: no lugar de tocar no mapa. O podeMexer já foi perguntado ao armar.
+// Sem link, o modo continua armado: ele ainda pode tocar no mapa ou cancelar.
 export async function colarLinkNoArrumar() {
   contar('colar-link');
   const p = ui.posicionando && ui.posicionando !== 'fim' ? loja.parada(ui.posicionando) : null;
   if (!p) return;
-  if (!(await levarAoLink(p))) return;
+  const ali = await linkPara(p);
+  // o toque no mapa pode ter resolvido enquanto ele colava
+  if (!ali || ui.posicionando !== p.id) return;
+  // como o toque no mapa: desarma antes de mexer, e o desenho que sai já é sem a faixa
   ui.posicionando = null;
+  levarAoLink(p, ali);
   terminouDePosicionar();
 }
 
