@@ -92,6 +92,15 @@ export function lerEdicao(antes: string, novo: string | null): Edicao {
   return {tipo: 'endereco', texto: t};
 }
 
+// O que veio no "Colar link do mapa": ali só a posição interessa, e texto sem link não é nada (a
+// área de transferência pode ter qualquer coisa que ele copiou antes).
+export function posicaoColada(texto: string | null): {tipo: 'posicao'; lat: number; lng: number} | {tipo: 'link sem posicao'} | {tipo: 'nada'} {
+  const t = (texto || '').trim();
+  const c = t ? coordenadaNoTexto(t) : null;
+  if (c) return {tipo: 'posicao', ...c};
+  return PARECE_LINK.test(t) ? {tipo: 'link sem posicao'} : {tipo: 'nada'};
+}
+
 export interface LinhaAnalisada {
   ml: string | null;
   texto: string;

@@ -33,6 +33,8 @@ export interface Ui {
   // o toque no mapa do Admin armado para gravar a porta de um endereço como quem administra; quem
   // grava é a tela do Admin, que sabe a chave
   marcandoLugar: {endereco: string; gravar: (lat: number, lng: number) => Promise<void>} | null;
+  // a localização que chegou pelo Compartilhar (a do cliente, pelo WhatsApp), esperando ele dizer de qual entrega é
+  localRecebido: {lat: number; lng: number} | null;
   selecionada: string | null;
   soDuvidas: boolean;
   ocupado: boolean;
@@ -75,7 +77,7 @@ let estado = carregarEstado(guarda);
 const ui: Ui = {
   tela: estado.paradas.length ? 'rota' : 'inicio', folha: 'proxima', escolhidas: [], grupos: [], pino: null, menu: false,
   // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
-  posicionando: null, marcandoLugar: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
+  posicionando: null, marcandoLugar: null, localRecebido: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
   euAqui: null, irParaMim: 0, seguindo: true, esperandoAdmin: 0, xarope: null, versaoNova: null, pinosNovos: null, nomesNoMapa: [], podeInstalar: false,
   minimizado: lerMinimizado(),
 };

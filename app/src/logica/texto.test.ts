@@ -1,4 +1,4 @@
-import {coordenadaNoTexto, lerEdicao, semLink,chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, ehComanda, enderecoDaComanda, enderecosDaLista, juntarComandas, lerComanda, conjuntoDoEndereco, semTipoDeArea, chaveLugar, faltaNaChave, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, mesmaPortaPeloNome, normal, pistasDeLugar, ruaCompleta, ruaDoComplemento} from './texto';
+import {coordenadaNoTexto, lerEdicao, posicaoColada, semLink,chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, ehComanda, enderecoDaComanda, enderecosDaLista, juntarComandas, lerComanda, conjuntoDoEndereco, semTipoDeArea, chaveLugar, faltaNaChave, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, mesmaPortaPeloNome, normal, pistasDeLugar, ruaCompleta, ruaDoComplemento} from './texto';
 
 describe('mesmo condomínio, endereços diferentes', () => {
   const p = (texto: string, bairro = 'Jardins') => ({texto, bairro});
@@ -1066,6 +1066,28 @@ describe('o que o Editar faz com o que ele confirmou', () => {
     expect(lerEdicao(ANTES, 'https://maps.google.com/?q=-10.9436218,-37.0527487')).toEqual({tipo: 'posicao', lat: -10.9436218, lng: -37.0527487});
     expect(lerEdicao(ANTES, '-10.943622, -37.052749')).toEqual({tipo: 'posicao', lat: -10.943622, lng: -37.052749});
     expect(lerEdicao(ANTES, ' Rua Inventada 210, CEP 49000-100 ')).toEqual({tipo: 'endereco', texto: 'Rua Inventada 210, CEP 49000-100'});
+  });
+});
+
+// 28/10: o "Colar link do mapa" lê o que ele copiou por último, que pode ser qualquer coisa.
+// Links e números inventados, no formato dos de verdade.
+describe('o que o Colar link do mapa faz com o que veio colado', () => {
+  it('o link de lugar do Google vai para a porta (!3d!4d), não para o enquadramento (@)', () => {
+    expect(posicaoColada('https://www.google.com/maps/place/11%C2%B002\'02.8%22S/@-10.9500000,-37.0600000,19.25z/data=!4m4!3m3!8m2!3d-10.9512345!4d-37.0598765?hl=pt-BR'))
+      .toEqual({tipo: 'posicao', lat: -10.9512345, lng: -37.0598765});
+  });
+
+  it('a localização do WhatsApp e os números copiados do Maps também levam', () => {
+    expect(posicaoColada('https://maps.google.com/maps?q=-10.9436218%2C-37.0527487&z=17&hl=pt-BR')).toEqual({tipo: 'posicao', lat: -10.9436218, lng: -37.0527487});
+    expect(posicaoColada(' -10.943622, -37.052749 ')).toEqual({tipo: 'posicao', lat: -10.943622, lng: -37.052749});
+  });
+
+  it('o link curto do Compartilhar não leva, e diz por quê', () => {
+    expect(posicaoColada('https://maps.app.goo.gl/AbCdEf123Inventado?g_st=aw')).toEqual({tipo: 'link sem posicao'});
+  });
+
+  it('texto qualquer, vazio ou nada copiado não é link: pede para colar', () => {
+    for (const t of ['Rua Inventada, 120, CEP 49000-100', 'ok, chego em 5 min', '', '   ', null]) expect([t, posicaoColada(t)]).toEqual([t, {tipo: 'nada'}]);
   });
 });
 

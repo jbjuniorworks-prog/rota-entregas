@@ -10,7 +10,9 @@ import {TelaConferir} from './componentes/TelaConferir';
 import {TelaInicio} from './componentes/TelaInicio';
 import {FolhaRota, SobreOMapa, TopoRota} from './componentes/TelaRota';
 import {loja, useLoja} from './loja';
+import {haversine} from './logica/geo';
 import {rotuloDe} from './logica/rotulo';
+import type {Parada, Ponto} from './logica/tipos';
 import {guardarLeitor} from './servicos/arquivos';
 import {nuvem} from './servicos/nuvem';
 
@@ -40,13 +42,29 @@ function Armado({alvo}: {alvo: string}) {
   const p = alvo === 'fim' ? null : loja.parada(alvo);
   return <div className="armado" data-armado>
     <span>{p ? `Toque no mapa, no local da entrega ${rotuloDe(p)} · ${p.texto.split(',').slice(0, 2).join(',')}.` : 'Toque no mapa, onde você quer terminar.'}</span>
+    {p && <button className="btn peq" data-acao="colar-link" onClick={A.colarLinkNoArrumar}>Colar link do mapa</button>}
     <button className="btn peq" onClick={A.pararDePosicionar}>Cancelar</button>
+  </div>;
+}
+
+// A localização que chegou pelo Compartilhar: as entregas que faltam, da mais perto do local para a
+// mais longe, e as sem pino no fim (pode ser justamente a que precisa dele).
+function LocalRecebido({ali}: {ali: {lat: number; lng: number}}) {
+  const faltam = loja.e.paradas.filter(p => !p.entregue);
+  const longe = (p: Parada) => p.lat == null || p.lng == null ? Infinity : haversine(p as Ponto, ali);
+  const ordem = faltam.map(p => ({p, m: longe(p)})).sort((a, b) => a.m - b.m).slice(0, 6);
+  const quanto = (m: number) => m === Infinity ? 'sem pino' : m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`;
+  return <div className="armado local-recebido" data-local-recebido>
+    <span>Local recebido. É de qual entrega?</span>
+    {ordem.map(({p, m}) => <button key={p.id} className="btn peq" data-ids={p.id} onClick={() => A.levarAoLocalRecebido(p)}>
+      {rotuloDe(p)} · {p.texto.split(',').slice(0, 2).join(',')} · {quanto(m)}</button>)}
+    <button className="btn peq" onClick={A.esquecerLocalRecebido}>Cancelar</button>
   </div>;
 }
 
 function Status() {
   const {ui} = useLoja();
-  return <div id="status" className={ui.aviso || ui.posicionando || ui.marcandoLugar || ui.versaoNova || ui.pinosNovos || ui.podeInstalar ? 'on' : ''}>
+  return <div id="status" className={ui.aviso || ui.posicionando || ui.marcandoLugar || ui.localRecebido || ui.versaoNova || ui.pinosNovos || ui.podeInstalar ? 'on' : ''}>
     {ui.podeInstalar && <div className="instalar" data-instalar>
       <span>Instale o app: fica com ícone na tela inicial, abre em tela cheia, e o Compartilhar do WhatsApp manda os prints direto para cá.</span>
       <span className="botoes"><button className="btn peq pri" onClick={A.instalarApp}>Instalar</button><button className="btn peq" onClick={A.instalarDepois}>Agora não</button></span>
@@ -60,8 +78,10 @@ function Status() {
       <button className="btn peq" onClick={A.atualizarPinos}>Atualizar</button>
     </div>}
     {ui.posicionando && <Armado alvo={ui.posicionando} />}
+    {ui.localRecebido && <LocalRecebido ali={ui.localRecebido} />}
     {ui.marcandoLugar && <div className="armado" data-armado>
       <span>Toque no mapa, no lugar certo de {ui.marcandoLugar.endereco}.</span>
+      <button className="btn peq" data-acao="colar-link" onClick={A.colarLinkNoLugar}>Colar link do mapa</button>
       <button className="btn peq" onClick={A.pararDeMarcarLugar}>Cancelar</button>
     </div>}{ui.aviso}
     {ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>Desfazer</button></>}

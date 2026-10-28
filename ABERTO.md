@@ -169,6 +169,30 @@ Fora da lista:
   Editar, dentro de Conferir endereços (16 toques no Editar de todos os motoristas desde 14/10,
   contra 1.696 no "Entreguei aqui" do balão). O link de "Compartilhar" do Maps no celular
   (`maps.app.goo.gl`) não traz a coordenada.
+- **Conferido depois:** o Luan entregou os 2 pacotes às 10:19, e as marcações dele na entrega
+  ficaram a 6 e 9 m do ponto do link; a passagem (±4 m) também a 9 m.
+- **Feito, não publicado: o link e a localização levam o pino.** O dono lembrou que a localização
+  chega como mensagem de localização do WhatsApp.
+  - **"Colar link do mapa":** no cartão da próxima, ao lado do "Pino errado? Estou aqui" e com a
+    mesma regra (não em porta verificada), e na faixa do "Arrumar o pino". Lê o que ele copiou;
+    sem permissão ou sem link copiado, pede para colar. Mais de 3 km do pino pergunta antes, por
+    causa de um link velho esquecido na área de transferência. Usa o mesmo `corrigirPosicao` do
+    toque no mapa, com Desfazer.
+  - **No Admin:** o mesmo botão na faixa do "Marcar como admin", que grava a porta de todos
+    depois da mesma pergunta do toque.
+  - **Localização recebida pelo Compartilhar do celular:** com a rota na mão, texto sem endereço e
+    com posição abre "Local recebido. É de qual entrega?". As que faltam aparecem da mais perto
+    para a mais longe, com a distância, e as sem pino no fim; a escolhida vai para o local. Antes
+    viraria parada nova. Com endereço junto, segue o caminho de sempre.
+  - **O link curto** diz que não traz a posição e como pegar os números no Maps; não vira parada.
+  - **Testes:** 4 de unidade e 8 ponta a ponta (`colar-link.spec.ts`). As sabotagens estão em
+    `sabotar-colar.mjs`, no diretório de rascunho da sessão. A ordem por distância só passou a ser
+    guardada quando o teste trocou a primeira entrega da planilha pela última.
+  - **Não sei ainda** o que o WhatsApp do Android entrega no Compartilhar de uma localização. Pode
+    não oferecer, e no Maps o Compartilhar dá o link curto. O caminho que funciona com certeza: no
+    Maps, tocar nos números do local, que copia, e "Colar link do mapa". Conferir no celular
+    depois de publicar e, se o link curto for o caminho comum, medir antes de fazer um resolvedor
+    no servidor.
 
 ## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" publicado em 26/10 (`f0bbc6b`, `mvpezugf`), falta a validação
 

@@ -1,10 +1,10 @@
 ﻿import {aplicarCompartilhadas, separarAsQueMovem} from '../logica/compartilhadas';
 import {aplicarReclamacoes, chaveCliente} from '../logica/reclamacoes';
-import {haversine, longeDaPorta, marcarIsoladas, noPino} from '../logica/geo';
+import {haversine, longeDaPorta, marcarIsoladas, noPino, passaDaPorta} from '../logica/geo';
 import type {Operacao} from '../logica/fila';
 import {avisoGuardou} from '../logica/memoria';
 import {medidor} from '../logica/telemetria';
-import {chaveCidade, chaveDaParada, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar} from '../logica/texto';
+import {chaveCidade, chaveDaParada, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar, posicaoColada} from '../logica/texto';
 import {separarParada} from '../logica/importar';
 import type {Parada, PortaAntes, Ponto} from '../logica/tipos';
 import {loja, MINIMIZADO, status} from '../loja';
@@ -250,6 +250,84 @@ export function tocouNoMapa(lat: number, lng: number) {
   if (!p) return;
   corrigirPosicao(p, lat, lng, 'Local definido');
   terminouDePosicionar();
+}
+
+// "Uma forma mais rápida de arrumar assim" (dono, 28/10, com o link que o cliente da Curva do Rio
+// mandou): o link copiado no WhatsApp leva o pino direto, sem procurar o lugar no mapa. Só existia
+// no Editar da Conferir, e quase ninguém chegava lá. Lê o que ele copiou; sem permissão ou sem link
+// copiado, pede para colar.
+export const SEM_POSICAO = 'Esse link não traz a posição (é o link curto do Compartilhar do Maps). No Maps, toque e segure no lugar e copie os números que aparecem, ou toque aqui no mapa, no lugar certo.';
+
+async function posicaoDoLink(): Promise<Ponto | null> {
+  let copiado = '';
+  try { copiado = await navigator.clipboard.readText(); } catch {}
+  let lido = posicaoColada(copiado);
+  if (lido.tipo === 'nada') lido = posicaoColada(prompt('Cole aqui o link do mapa:'));
+  if (lido.tipo === 'posicao') return {lat: lido.lat, lng: lido.lng};
+  if (lido.tipo === 'link sem posicao') status(SEM_POSICAO, 10000);
+  return null;
+}
+
+// Um link velho esquecido na área de transferência levaria o pino para o lugar de outra entrega.
+// Até 3 km é ajuste de porta; mais longe, ele confirma.
+function linkLonge(p: Parada, ali: Ponto): boolean {
+  if (p.lat == null || p.lng == null) return false;
+  const metros = haversine(p as Ponto, ali);
+  return passaDaPorta(metros) && !confirm(`O link fica a ${(metros / 1000).toFixed(1).replace('.', ',')} km do pino de agora.\n\nLevar o pino para lá?`);
+}
+
+async function levarAoLink(p: Parada) {
+  const ali = await posicaoDoLink();
+  if (!ali || linkLonge(p, ali)) return false;
+  corrigirPosicao(p, ali.lat, ali.lng, 'Pino no local do link', 'Local do link do mapa');
+  return true;
+}
+
+// Do cartão da próxima, sem passar pelo Arrumar.
+export async function colarLinkDoMapa(p: Parada) {
+  contar('colar-link');
+  if (!podeMexer(p)) return;
+  if (await levarAoLink(p)) focar(p.id);
+}
+
+// Da faixa do Arrumar o pino: no lugar de tocar no mapa. O podeMexer já foi perguntado ao armar.
+export async function colarLinkNoArrumar() {
+  contar('colar-link');
+  const p = ui.posicionando && ui.posicionando !== 'fim' ? loja.parada(ui.posicionando) : null;
+  if (!p) return;
+  if (!(await levarAoLink(p))) return;
+  ui.posicionando = null;
+  terminouDePosicionar();
+}
+
+// "Eles recebem assim pelo WhatsApp" (dono, 28/10): a localização do cliente, compartilhada para o
+// app. Ela não diz de qual entrega é; a faixa mostra as que faltam, da mais perto para a mais longe.
+export function escolherEntregaDoLocal(ali: Ponto) {
+  ui.localRecebido = ali;
+  loja.mudou(false);
+}
+
+export function esquecerLocalRecebido() {
+  ui.localRecebido = null;
+  loja.mudou(false);
+}
+
+export function levarAoLocalRecebido(p: Parada) {
+  const ali = ui.localRecebido;
+  ui.localRecebido = null;
+  loja.mudou(false);
+  if (!ali) return;
+  contar('local-recebido');
+  if (!podeMexer(p)) return;
+  corrigirPosicao(p, ali.lat, ali.lng, 'Pino no local recebido', 'Local recebido pelo Compartilhar');
+  focar(p.id);
+}
+
+// Da faixa do "Marcar como admin": a porta de todos no ponto do link, com a mesma pergunta do toque.
+export async function colarLinkNoLugar() {
+  contar('colar-link');
+  const ali = await posicaoDoLink();
+  if (ali) await gravarLugar(ali.lat, ali.lng);
 }
 
 function prepararDesfazer(p: Parada): () => void {

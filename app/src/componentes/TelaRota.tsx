@@ -306,6 +306,7 @@ function CartaoProxima() {
     <AvisosDaRota />
     <div className="secundarios">
       {alvo.precisao !== 'confirmado' && <button className="link" onClick={() => A.estouAqui(alvo)}>Pino errado? Estou aqui</button>}
+      {alvo.precisao !== 'confirmado' && <button className="link" data-acao="colar-link" onClick={() => A.colarLinkDoMapa(alvo)}>Colar link do mapa</button>}
       <a className="link" href={linkMaps(alvo as Ponto)} target="_blank" rel="noopener">Google Maps</a>
       <button className="link" data-escolher-maps onClick={A.escolherParaMaps}>Escolher pinos para o Maps</button>
     </div>
