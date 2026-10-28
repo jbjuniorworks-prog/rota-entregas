@@ -221,8 +221,14 @@ Fora da lista:
     A extensão do Supabase não segue o salto: devolve o destino dele. O banco recusou um link
     qualquer, um link curto com `../` no caminho e o link com `?g_st` (o app manda sem). Sem login,
     a função responde 401, sem permissão.
-  - **Falta, em ordem:** autorização para publicar; no celular, compartilhar do Maps com a rota
-    aberta.
+  - **Publicado em 28/10 (`2d41a1a`, versão `mvsc32h3`, 13:33).** Enviado às 13:32 de Aracaju,
+    hora do node, com o `ec9a2ef`. O dono disse que o Luan tinha terminado; o banco mostrava 105 de
+    109, última às 13:29. "testar" e "publicar" passaram, e os 12 testes de `colar-link` passaram
+    contra o endereço publicado, com a nuvem simulada.
+  - **Conferido no celular do dono (13:42):** o Compartilhar do Maps, com o nome do lugar e o link
+    curto, abriu "Local recebido. É de qual entrega?" com as da planilha de teste mais perto no
+    topo (13 m). Nada foi gravado pelo teste: as duas correções de admin das 13:40 (4312, 4313)
+    estão a 0 m das do Luan nas mesmas chaves, o jeito de uma aprovação, e nenhuma depois das 13:41.
   - **Não sei ainda** o que o link curto de um ponto solto, sem lugar, devolve.
 
 ## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" publicado em 26/10 (`f0bbc6b`, `mvpezugf`), falta a validação
