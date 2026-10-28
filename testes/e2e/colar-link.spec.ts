@@ -20,6 +20,7 @@ const linkDe = (p: {lat: number; lng: number}) =>
 const aNorte = (p: {lat: number; lng: number}, metros: number) => ({lat: +(p.lat + metros / 111320).toFixed(6), lng: +p.lng.toFixed(6)});
 const copiar = (page: Page, texto: string) => page.evaluate(t => navigator.clipboard.writeText(t), texto);
 const gravadas = (nuvem: NuvemFalsa) => nuvem.pedidos.filter(p => p.metodo === 'POST' && p.caminho === 'correcoes').map(p => p.corpo as {lat: number; lng: number; chave_lugar: string});
+const CURTO = 'https://maps.app.goo.gl/AbCdEf123Inventado';
 const ondeEsta = async (page: Page, id: string) => { const p = await parada(page, id); return {lat: p.lat, lng: p.lng}; };
 
 test.describe('Colar link do mapa', () => {
@@ -44,20 +45,67 @@ test.describe('Colar link do mapa', () => {
     expect(await ondeEsta(page, alvo.id)).toEqual({lat: alvo.lat, lng: alvo.lng});
   });
 
-  test('o link curto do Compartilhar diz por que não leva, e o pino fica', async ({page, nuvem}) => {
+  // "Tem que usar os dois, a versão curta e a longa" (dono, 28/10): o curto, o do Compartilhar do
+  // Maps, quem abre é o banco (027); ele devolve para onde o link leva.
+  test('o link curto o banco abre, e o pino vai para a porta dele', async ({page, nuvem}) => {
     const perguntas: string[] = [];
     page.on('dialog', d => { perguntas.push(d.type()); d.accept(); });
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
     const alvo = await proxima(page);
-    await copiar(page, 'https://maps.app.goo.gl/AbCdEf123Inventado?g_st=aw');
+    const porta = aNorte(alvo, 150);
+    nuvem.rpc.abrir_link_do_mapa = (c: {link: string}) => c.link === CURTO ? linkDe(porta) : null;
+    await copiar(page, CURTO + '?g_st=aw');
     await page.locator('.proxima [data-acao="colar-link"]').click();
-    await expect(aviso(page)).toContainText('Esse link não traz a posição');
+    await expect(aviso(page)).toContainText('Pino no local do link');
+    expect(await ondeEsta(page, alvo.id)).toEqual(porta);
     expect(perguntas).toEqual([]);
-    await page.waitForTimeout(1000);
+    await expect.poll(() => gravadas(nuvem).length).toBe(1);
+  });
+
+  test('o link curto que o banco não abre diz por que não leva, e o pino fica', async ({page, nuvem}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const alvo = await proxima(page);
+    nuvem.rpc.abrir_link_do_mapa = () => null;
+    await copiar(page, CURTO);
+    await page.locator('.proxima [data-acao="colar-link"]').click();
+    await expect(aviso(page)).toContainText('Não consegui tirar a posição desse link do Maps');
     expect(await ondeEsta(page, alvo.id)).toEqual({lat: alvo.lat, lng: alvo.lng});
     expect(gravadas(nuvem)).toEqual([]);
+  });
+
+  test('link longo sem posição não vai ao banco: diz como pegar os números', async ({page, nuvem}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const alvo = await proxima(page);
+    await copiar(page, 'https://www.google.com/maps/place/Lugar+Inventado/data=!4m2!3m1!1s0x0:0x1');
+    await page.locator('.proxima [data-acao="colar-link"]').click();
+    await expect(aviso(page)).toContainText('Esse link não traz a posição. No Maps, toque e segure');
+    expect(nuvem.pedidos.filter(p => p.caminho === 'rpc/abrir_link_do_mapa')).toEqual([]);
+    expect(await ondeEsta(page, alvo.id)).toEqual({lat: alvo.lat, lng: alvo.lng});
+  });
+
+  test('sem sinal, o link curto diz que precisa de sinal; o longo leva assim mesmo', async ({page, nuvem, context}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const alvo = await proxima(page);
+    nuvem.rpc.abrir_link_do_mapa = () => linkDe(aNorte(alvo, 150));
+    await context.setOffline(true);
+    await copiar(page, CURTO);
+    await page.locator('.proxima [data-acao="colar-link"]').click();
+    await expect(aviso(page)).toContainText('Sem sinal para abrir o link do Maps');
+    expect(await ondeEsta(page, alvo.id)).toEqual({lat: alvo.lat, lng: alvo.lng});
+    const porta = aNorte(alvo, 60);
+    await copiar(page, linkDe(porta));
+    await page.locator('.proxima [data-acao="colar-link"]').click();
+    await expect(aviso(page)).toContainText('Pino no local do link');
+    expect(await ondeEsta(page, alvo.id)).toEqual(porta);
   });
 
   // Um link velho esquecido na área de transferência, de outra entrega: longe, ele confirma.
@@ -180,13 +228,34 @@ test.describe('localização recebida pelo Compartilhar', () => {
     await expect.poll(() => gravadas(nuvem).length).toBe(1);
   });
 
-  test('o link curto diz por que não leva, sem parada nova', async ({page, nuvem}) => {
+  // Como chegou no celular do dono (28/10): o nome do lugar e o link curto, nada de posição.
+  test('o nome do lugar com o link curto: o banco abre, e ele escolhe a entrega', async ({page, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const todas = (await estado(page)).paradas;
+    const alvo = todas.filter(p => !p.entregue && p.lat != null).at(-1)!;
+    const local = aNorte(alvo, 30);
+    nuvem.rpc.abrir_link_do_mapa = (c: {link: string}) => c.link === CURTO ? linkDe(local) : null;
+    await compartilhar(page, 'LOJA INVENTADA\n' + CURTO + '?g_st=aw');
+    const faixa = page.locator('[data-local-recebido]');
+    await expect(faixa.locator('button[data-ids]').first()).toHaveAttribute('data-ids', alvo.id);
+    await expect(aviso(page), 'aberto o link, o "Abrindo" não fica').not.toContainText('Abrindo');
+    await faixa.locator('button[data-ids]').first().click();
+    await expect(aviso(page)).toContainText('Pino no local recebido');
+    expect(await ondeEsta(page, alvo.id)).toEqual(local);
+    expect((await estado(page)).paradas.length, 'nem o nome nem o link viram parada').toBe(todas.length);
+  });
+
+  test('o link curto que o banco não abre diz por que não leva, sem parada nova', async ({page, nuvem}) => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
     const quantas = (await estado(page)).paradas.length;
-    await compartilhar(page, 'https://maps.app.goo.gl/AbCdEf123Inventado?g_st=aw');
-    await expect(aviso(page)).toContainText('Esse link não traz a posição');
+    nuvem.rpc.abrir_link_do_mapa = () => null;
+    await compartilhar(page, 'LOJA INVENTADA\n' + CURTO);
+    await expect(aviso(page)).toContainText('Não consegui tirar a posição desse link do Maps');
     await expect(page.locator('[data-local-recebido]')).toHaveCount(0);
     expect((await estado(page)).paradas.length).toBe(quantas);
     expect(gravadas(nuvem)).toEqual([]);

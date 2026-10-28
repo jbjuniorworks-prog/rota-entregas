@@ -168,5 +168,10 @@ export function clienteNuvem(): ClienteNuvem | null {
       const {error} = await s.from('buscas_de_lista').upsert(e, {onConflict: 'id', ignoreDuplicates: true});
       if (error) throw erro(error);
     },
+    async abrirLinkDoMapa(link) {
+      const {data, error} = await s.rpc('abrir_link_do_mapa', {link});
+      if (error) throw erro(error);
+      return typeof data === 'string' ? data : null;
+    },
   };
 }

@@ -70,6 +70,7 @@ export interface ClienteNuvem {
   tirarReclamacao(chave: string, motivo: MotivoReclamacao): Promise<void>;
   reclamacoes(chaves: string[]): Promise<ReclamacaoDaNuvem[]>;
   registrarBusca(e: EventoBusca): Promise<void>;
+  abrirLinkDoMapa(link: string): Promise<string | null>;
 }
 
 export const FILA_MAX = 3000;

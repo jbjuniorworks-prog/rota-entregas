@@ -101,6 +101,13 @@ export function posicaoColada(texto: string | null): {tipo: 'posicao'; lat: numb
   return PARECE_LINK.test(t) ? {tipo: 'link sem posicao'} : {tipo: 'nada'};
 }
 
+// O link curto do Compartilhar do Maps só diz onde é depois de aberto, e quem abre é o banco (027),
+// que recusa qualquer outra coisa. Vai sem o ?g_st=… do fim, que só marca quem compartilhou.
+export function linkCurtoDoMapa(texto: string): string | null {
+  const m = texto.match(/https?:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps)\/([A-Za-z0-9_-]{1,64})(?![A-Za-z0-9_-])/);
+  return m ? `https://${m[1]}/${m[2]}` : null;
+}
+
 export interface LinhaAnalisada {
   ml: string | null;
   texto: string;

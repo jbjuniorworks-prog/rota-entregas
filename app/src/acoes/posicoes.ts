@@ -4,7 +4,7 @@ import {haversine, longeDaPorta, marcarIsoladas, noPino, passaDaPorta} from '../
 import type {Operacao} from '../logica/fila';
 import {avisoGuardou} from '../logica/memoria';
 import {medidor} from '../logica/telemetria';
-import {chaveCidade, chaveDaParada, chaveLugar, chaveRua, decompor, mesmoEndereco, nomeDoLugar, posicaoColada} from '../logica/texto';
+import {chaveCidade, chaveDaParada, chaveLugar, chaveRua, decompor, linkCurtoDoMapa, mesmoEndereco, nomeDoLugar, posicaoColada} from '../logica/texto';
 import {separarParada} from '../logica/importar';
 import type {Parada, PortaAntes, Ponto} from '../logica/tipos';
 import {loja, MINIMIZADO, status} from '../loja';
@@ -256,16 +256,37 @@ export function tocouNoMapa(lat: number, lng: number) {
 // mandou): o link copiado no WhatsApp leva o pino direto, sem procurar o lugar no mapa. Só existia
 // no Editar da Conferir, e quase ninguém chegava lá. Lê o que ele copiou; sem permissão ou sem link
 // copiado, pede para colar.
-export const SEM_POSICAO = 'Esse link não traz a posição (é o link curto do Compartilhar do Maps). No Maps, toque e segure no lugar e copie os números que aparecem, ou toque aqui no mapa, no lugar certo.';
-
 async function posicaoDoLink(): Promise<Ponto | null> {
   let copiado = '';
   try { copiado = await navigator.clipboard.readText(); } catch {}
-  let lido = posicaoColada(copiado);
-  if (lido.tipo === 'nada') lido = posicaoColada(prompt('Cole aqui o link do mapa:'));
+  let lido = await lerLinkDoMapa(copiado);
+  if (lido.tipo === 'nada') lido = await lerLinkDoMapa(prompt('Cole aqui o link do mapa:'));
   if (lido.tipo === 'posicao') return {lat: lido.lat, lng: lido.lng};
-  if (lido.tipo === 'link sem posicao') status(SEM_POSICAO, 10000);
+  if (lido.tipo === 'sem posicao') status(lido.aviso, 10000);
   return null;
+}
+
+const SEM_POSICAO = 'Esse link não traz a posição. No Maps, toque e segure no lugar e copie os números que aparecem, ou toque aqui no mapa, no lugar certo.';
+const CURTO_SEM_SINAL = 'Sem sinal para abrir o link do Maps. Tente de novo com sinal, ou toque aqui no mapa, no lugar certo.';
+const CURTO_SEM_POSICAO = 'Não consegui tirar a posição desse link do Maps. Toque aqui no mapa, no lugar certo.';
+const ABRINDO = 'Abrindo o link do Maps…';
+
+// "Tem que usar os dois, a versão curta e a longa" (dono, 28/10). O longo traz a posição e serve
+// sem sinal. O curto, que é o que o Compartilhar do Maps manda, só diz onde é depois de aberto, e o
+// celular não consegue abrir: o navegador não deixa ler o destino de link de outro site. Quem abre
+// é o banco (027), e o que ele devolve passa pela mesma leitura do longo.
+export async function lerLinkDoMapa(texto: string | null): Promise<{tipo: 'posicao'; lat: number; lng: number} | {tipo: 'sem posicao'; aviso: string} | {tipo: 'nada'}> {
+  const lido = posicaoColada(texto);
+  if (lido.tipo !== 'link sem posicao') return lido;
+  const curto = linkCurtoDoMapa(texto || '');
+  if (!curto) return {tipo: 'sem posicao', aviso: SEM_POSICAO};
+  const c = clienteNuvem();
+  if (!c) return {tipo: 'sem posicao', aviso: CURTO_SEM_SINAL};
+  status(ABRINDO);
+  let aberto: ReturnType<typeof posicaoColada> = {tipo: 'nada'};
+  try { aberto = posicaoColada(await c.abrirLinkDoMapa(curto)); } catch {}
+  if (ui.aviso === ABRINDO) status('');
+  return aberto.tipo === 'posicao' ? aberto : {tipo: 'sem posicao', aviso: CURTO_SEM_POSICAO};
 }
 
 // Um link velho esquecido na área de transferência levaria o pino para o lugar de outra entrega.

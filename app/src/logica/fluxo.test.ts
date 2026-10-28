@@ -286,6 +286,7 @@ describe('fila da nuvem', () => {
       async inserirReclamacao(k, m) { if (falhas.recusar) throw new ErroNuvem(falhas.recusar, false); chamadas.push(`xarope ${k} ${m}`); },
       async tirarReclamacao(k, m) { chamadas.push(`tirar xarope ${k} ${m}`); },
       async reclamacoes() { return []; },
+      async abrirLinkDoMapa() { return null; },
       async registrarBusca(ev) {
         if (buscaRede-- > 0) throw new ErroNuvem('offline', true);
         if (falhas.buscaRecusada) throw new ErroNuvem('new row violates row-level security policy', false);
@@ -501,6 +502,7 @@ describe('desfazer correção já enviada', () => {
       tirarReclamacao: async () => {},
       reclamacoes: async () => [],
       registrarBusca: async () => {},
+      abrirLinkDoMapa: async () => null,
     };
     f.enfileirar({tipo: 'correcao', chave: 'k|1', lat: -11.5, lng: -37.5});
     await f.enviar(c);

@@ -202,6 +202,28 @@ Fora da lista:
     Maps, tocar nos números do local, que copia, e "Colar link do mapa". Conferir no celular
     depois de publicar e, se o link curto for o caminho comum, medir antes de fazer um resolvedor
     no servidor.
+- **O teste do dono no celular (28/10, 12:57 e 13:00): o link curto é o caminho comum.** O app
+  aparece no Compartilhar do Maps. O que chega é o nome do lugar e um link `maps.app.goo.gl`, sem
+  posição. Sem rota aberta, o nome e o link viraram duas paradas "Não encontrado"; esse caminho
+  antigo continua igual. Com a planilha aberta, veio o aviso "Esse link não traz a posição". O
+  dono pediu: "tem que usar os dois, a versão curta e a longa".
+- **Medido daqui, com o link do teste:** o primeiro salto do link curto leva à página do lugar com
+  a posição exata (`!3d…!4d…`). Seguindo até o fim, a página traz a mesma posição uma vez, e também
+  um centro de mapa (`center=` da imagem) a 9 km do lugar. Por isso o banco só aceita o `!3d…!4d…`.
+- **Feito local, não publicado: o banco abre o link curto (027).** Função `abrir_link_do_mapa`
+  com a extensão `http`. Só aceita o link curto do Maps, e só de motorista ativo ou da chave de
+  serviço. Devolve o destino do salto ou o pedaço `!3d…!4d…` da página. O app manda o link limpo
+  e lê a posição com a mesma regra do longo. O longo continua sem precisar de rede. Sem sinal, o
+  aviso diz isso; se o banco não tirar a posição, o aviso pede para tocar no mapa. Testes: 2 de
+  unidade e 6 ponta a ponta novos ou trocados, 8 sabotagens (L1–L8), cada uma quebrando o seu.
+  - **027 rodada pelo dono em 28/10 e conferida daqui** (`conferir-027.mjs`, rascunho da sessão,
+    só leitura). Com a chave de serviço, o link do teste abriu em 0,9 s, na posição medida antes.
+    A extensão do Supabase não segue o salto: devolve o destino dele. O banco recusou um link
+    qualquer, um link curto com `../` no caminho e o link com `?g_st` (o app manda sem). Sem login,
+    a função responde 401, sem permissão.
+  - **Falta, em ordem:** autorização para publicar; no celular, compartilhar do Maps com a rota
+    aberta.
+  - **Não sei ainda** o que o link curto de um ponto solto, sem lugar, devolve.
 
 ## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" publicado em 26/10 (`f0bbc6b`, `mvpezugf`), falta a validação
 

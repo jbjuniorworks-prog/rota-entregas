@@ -7,7 +7,7 @@ export interface NuvemFalsa {
   papel: 'motorista' | 'admin' | null;
   tabelas: Record<string, Record<string, unknown>[]>;
   // a resposta fixa, ou calculada do que o app mandou
-  rpc: Record<string, unknown[] | ((corpo: any) => unknown[])>;
+  rpc: Record<string, unknown | ((corpo: any) => unknown)>;
   // `quem` é o sub da sessão que mandou: a auditoria da fila confere em nome de quem cada pedido chega
   pedidos: {metodo: string; caminho: string; busca: string; corpo: unknown; prefer?: string; quem?: string | null}[];
 }
@@ -84,7 +84,9 @@ export async function ligarNuvemFalsa(context: BrowserContext, nuvem: NuvemFalsa
     const MAXIMO = 1000;
     if (caminho.startsWith('rpc/')) {
       const r = nuvem.rpc[caminho.slice(4)];
-      return json((typeof r === 'function' ? r(corpo) : r || []).slice(0, MAXIMO));
+      const v = typeof r === 'function' ? r(corpo) : r ?? [];
+      // função que devolve um valor só (027) volta como ele é
+      return json(Array.isArray(v) ? v.slice(0, MAXIMO) : v);
     }
     if (metodo === 'DELETE') return json([{id: 1}]);
     if (metodo !== 'GET') return json([], metodo === 'POST' ? 201 : 200);

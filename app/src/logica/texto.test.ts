@@ -1,4 +1,4 @@
-import {coordenadaNoTexto, lerEdicao, posicaoColada, semLink,chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, ehComanda, enderecoDaComanda, enderecosDaLista, juntarComandas, lerComanda, conjuntoDoEndereco, semTipoDeArea, chaveLugar, faltaNaChave, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, mesmaPortaPeloNome, normal, pistasDeLugar, ruaCompleta, ruaDoComplemento} from './texto';
+import {coordenadaNoTexto, lerEdicao, linkCurtoDoMapa, posicaoColada, semLink,chaveRua, chaveBairro, comNumeros, jeitosDeLerBairro, nomeDoLugar, analisarLinha, chaveEndereco, ehComanda, enderecoDaComanda, enderecosDaLista, juntarComandas, lerComanda, conjuntoDoEndereco, semTipoDeArea, chaveLugar, faltaNaChave, decompor, extrairEnderecos, juntarLeituras, juntarQuadros, mesmaRua, mesmoEndereco, mesmoLugarNomeado, mesmaPortaPeloNome, normal, pistasDeLugar, ruaCompleta, ruaDoComplemento} from './texto';
 
 describe('mesmo condomínio, endereços diferentes', () => {
   const p = (texto: string, bairro = 'Jardins') => ({texto, bairro});
@@ -1088,6 +1088,18 @@ describe('o que o Colar link do mapa faz com o que veio colado', () => {
 
   it('texto qualquer, vazio ou nada copiado não é link: pede para colar', () => {
     for (const t of ['Rua Inventada, 120, CEP 49000-100', 'ok, chego em 5 min', '', '   ', null]) expect([t, posicaoColada(t)]).toEqual([t, {tipo: 'nada'}]);
+  });
+
+  // O que o Compartilhar do Maps manda no celular do dono (28/10): o nome do lugar e o link curto.
+  it('do que o Compartilhar mandou, tira só o link curto, limpo, para o banco abrir', () => {
+    expect(linkCurtoDoMapa('LOJA INVENTADA\nhttps://maps.app.goo.gl/AbCdEf123Inventado')).toBe('https://maps.app.goo.gl/AbCdEf123Inventado');
+    expect(linkCurtoDoMapa('Veja: https://maps.app.goo.gl/AbCdEf123Inventado?g_st=aw')).toBe('https://maps.app.goo.gl/AbCdEf123Inventado');
+    expect(linkCurtoDoMapa('http://goo.gl/maps/XyZ789Inventado')).toBe('https://goo.gl/maps/XyZ789Inventado');
+  });
+
+  it('link que não é o curto do Maps o banco não abre', () => {
+    for (const t of ['https://www.google.com/maps/place/Lugar/data=!4m2!3m1!1s0x0:0x1', 'https://goo.gl/AbCdEf', 'https://maps.app.goo.gl.inventado.com/AbCdEf', 'ok, chego em 5 min'])
+      expect([t, linkCurtoDoMapa(t)]).toEqual([t, null]);
   });
 });
 

@@ -13,7 +13,7 @@ import {corretorDeNomes, enderecoDoIbge, nomeCorrigidoPeloCenso, portaNoBairroDo
 import {nuvem} from '../servicos/nuvem';
 import {desatualizarRota, e, enviarFila, fila, invalidarRota, memoria, ui} from './base';
 import {irPara} from './navegacao';
-import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, escolherEntregaDoLocal, focar, SEM_POSICAO, separarAsConhecidas} from './posicoes';
+import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, escolherEntregaDoLocal, focar, lerLinkDoMapa, separarAsConhecidas} from './posicoes';
 import {registrarComoFicou} from './registro';
 import {montarRota} from './rota';
 import {semRecarregar} from './versao';
@@ -339,11 +339,12 @@ async function lerCompartilhado() {
   // "Eles recebem assim pelo WhatsApp" (dono, 28/10): a localização que o cliente mandou. Com a rota
   // na mão, ela vem arrumar uma entrega que já está nela, não virar parada nova. Com endereço junto,
   // segue o caminho de sempre, que já arruma a parada de mesmo endereço pelo local colado.
-  if (!files.length && e().paradas.some(p => !p.entregue) && !extrairEnderecos(semLink(texto)).length) {
-    const lido = posicaoColada(texto);
-    if (lido.tipo !== 'nada') irPara('rota');
-    if (lido.tipo === 'posicao') { escolherEntregaDoLocal({lat: lido.lat, lng: lido.lng}); return; }
-    if (lido.tipo === 'link sem posicao') { status(SEM_POSICAO, 10000); return; }
+  if (!files.length && e().paradas.some(p => !p.entregue) && !extrairEnderecos(semLink(texto)).length && posicaoColada(texto).tipo !== 'nada') {
+    irPara('rota');
+    const lido = await lerLinkDoMapa(texto);
+    if (lido.tipo === 'posicao') escolherEntregaDoLocal({lat: lido.lat, lng: lido.lng});
+    else if (lido.tipo === 'sem posicao') status(lido.aviso, 10000);
+    return;
   }
   try {
     const {planilhas, outros} = await separarPlanilhas(files);
