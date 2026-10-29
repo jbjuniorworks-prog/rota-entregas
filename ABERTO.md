@@ -314,6 +314,11 @@ Fora da lista:
     dia da primeira entrega, e mostra a mesma lista do Admin, com os textos falando com ele. A
     chave é a da parada (a separada vai pelo complemento). Sem sinal, diz isso e deixa tentar de
     novo. O toque é contado ("portas-ver"). Testes: 2 ponta a ponta; 7 sabotagens.
+    **Publicado em 29/10 (`1b27e0a`, versão `mvu70sae`, 20:47)**, enviado às 20:46 com o
+    `40e7b97`, pela autorização do dono ("pode subir"); as rotas do dia paradas (Pedro 89 de 92
+    desde 19:02). "testar" e "publicar" passaram, e os 3 testes do porquê (2 no celular, 1 no
+    Admin) passaram contra o endereço publicado. **Falta:** um motorista tocar no botão com uma
+    rota de verdade, e ver o "portas-ver" no uso dos botões.
 
 ## Comandos do sistema na tela de Admin (29/10, pedido do dono): para revisar juntos
 
