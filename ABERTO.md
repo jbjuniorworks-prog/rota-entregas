@@ -302,6 +302,10 @@ Fora da lista:
     "Esperando você aprovar" só quando aprovar verifica (a entrega no pino, ou duas marcas a até
     30 m); senão vale o motivo de verdade, aqui a distância. E um motivo novo para as marcas que
     bastariam e a nuvem não conta (motorista desativado). 10 testes de unidade; 18 sabotagens.
+    **Publicado em 29/10 (`2e749d0`, versão `mvu5pe5l`, 20:10)**, enviado às 20:09 com o
+    `01636c4`, pela autorização do dono ("pode"); o Pedro parado desde 19:02 (89 de 92), os
+    outros terminados. "testar" e "publicar" passaram, e o teste do porquê no Admin passou contra
+    o endereço publicado.
   - **Pedido seguinte do dono:** "normalmente o Luan sempre me pergunta: esses dois pinos não
     verificaram por quê?". Os dois dele em 28/10 foram "Entreguei" a 34 e 43 m do pino. A mesma
     resposta pode ir para o celular, na entrega feita sem porta verificada; não feito.
