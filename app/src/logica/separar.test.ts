@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {describe, expect, it} from 'vitest';
 import XLSX from 'xlsx';
 import {estadoVazio} from './guarda';
-import {adicionarDaPlanilha, juntarDeNovo, separarParada} from './importar';
+import {adicionarDaPlanilha, juntarDeNovo, juntarEntregas, separarEntregas, separarParada} from './importar';
 import {itensDaPlanilha} from './planilha';
 import {chaveDaParada, chaveLugar} from './texto';
 import type {Estado} from './tipos';
@@ -88,5 +88,76 @@ describe('separar os pacotes de uma parada', () => {
     // "Na mercearia" é a mesma mercearia
     expect(chaveDaParada(naMercearia, e.cidade)).toBe(chaveDaParada(mercearia, e.cidade));
     expect(chaveDaParada(casa, e.cidade)).toBe(base);
+  });
+});
+
+// A avenida de 29/10 (Pedro), com nomes de teste: complementos de blocos e ruas projetadas
+// diferentes no mesmo número. A planilha já faz uma entrega por complemento, mas todas dividiam a
+// porta do número.
+const carregarF = () => {
+  const wb = XLSX.read(readFileSync('testes/planilhas/rota-f.xlsx'), {type: 'buffer'});
+  const e = estadoVazio();
+  adicionarDaPlanilha(e, itensDaPlanilha(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: '', raw: true}), 'rota-f.xlsx'), () => false);
+  return e;
+};
+
+describe('separar as entregas de um mesmo número', () => {
+  it('cada complemento vira entrega, mas todas dividem a porta do número até ele separar', () => {
+    const e = carregarF();
+    const doNumero = e.paradas.filter(p => p.texto.includes('Teste Costa, 101'));
+    expect(doNumero.map(p => [p.unidades, p.itens?.length])).toEqual([[null, undefined], [2, 2], [null, undefined]]);
+    const base = chaveLugar(doNumero[0].texto, doNumero[0].bairro, e.cidade)!;
+    expect(base).toBe('49098232|101');
+    expect(doNumero.map(p => chaveDaParada(p, e.cidade))).toEqual([base, base, base]);
+  });
+
+  it('separadas, cada uma guarda a porta do seu complemento; os pacotes da mesma pessoa continuam juntos', () => {
+    const e = carregarF();
+    const doNumero = e.paradas.filter(p => p.texto.includes('Teste Costa, 101'));
+    const antes = e.paradas.map(p => p.id);
+    expect(separarEntregas(e, doNumero)).toEqual(doNumero);
+    expect(e.paradas.map(p => p.id), 'nenhuma entrega nova').toEqual(antes);
+    const [blocoC, semComplemento, blocoD] = doNumero;
+    expect(chaveDaParada(blocoC, e.cidade)).toBe('49098232|101|projetada 08 bloco c apt 101');
+    expect(chaveDaParada(blocoD, e.cidade)).toBe('49098232|101|rua projetada 06 bloco d');
+    expect(chaveDaParada(semComplemento, e.cidade)).toBe('49098232|101');
+    expect(semComplemento).toMatchObject({unidades: 2, separada: true});
+    expect(semComplemento.itens).toHaveLength(2);
+    // já separadas, não há o que separar
+    expect(separarEntregas(e, doNumero)).toEqual([]);
+  });
+
+  it('a entregue fica como está, e com uma só por entregar não há o que separar', () => {
+    const e = carregarF();
+    const [blocoC, semComplemento, blocoD] = e.paradas.filter(p => p.texto.includes('Teste Costa, 101'));
+    blocoC.entregue = true;
+    expect(separarEntregas(e, [blocoC, semComplemento, blocoD])).toEqual([semComplemento, blocoD]);
+    expect(blocoC.separada).toBeUndefined();
+    const e2 = carregarF();
+    const [c2, s2, d2] = e2.paradas.filter(p => p.texto.includes('Teste Costa, 101'));
+    c2.entregue = s2.entregue = true;
+    expect(separarEntregas(e2, [c2, s2, d2])).toEqual([]);
+  });
+
+  it('a porta verificada do número passa a "confira na porta" nas de complemento, não na sem complemento', () => {
+    const e = carregarF();
+    const doNumero = e.paradas.filter(p => p.texto.includes('Teste Costa, 101'));
+    for (const p of doNumero) Object.assign(p, {precisao: 'confirmado', exibido: 'Endereço verificado'});
+    separarEntregas(e, doNumero);
+    expect(doNumero.map(p => [p.precisao, p.precisaoAntes])).toEqual([['vizinha', 'confirmado'], ['confirmado', undefined], ['vizinha', 'confirmado']]);
+  });
+
+  it('o desfazer volta cada uma a como era, e não junta se uma já foi entregue', () => {
+    const e = carregarF();
+    const doNumero = e.paradas.filter(p => p.texto.includes('Teste Costa, 101'));
+    const antes = doNumero.map(p => structuredClone(p));
+    const mudadas = separarEntregas(e, doNumero);
+    expect(juntarEntregas(mudadas, antes)).toBe(true);
+    expect(doNumero).toEqual(antes);
+
+    const mudadas2 = separarEntregas(e, doNumero);
+    mudadas2[2].entregue = true;
+    expect(juntarEntregas(mudadas2, antes)).toBe(false);
+    expect(doNumero.map(p => p.separada)).toEqual([true, true, true]);
   });
 });

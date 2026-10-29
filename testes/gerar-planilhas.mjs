@@ -63,6 +63,17 @@ const rotaE = [
   [31, 10, 'Rua Outra Teste, 10', 'Bairro Areia Teste', '49099-001', -10.9530, -37.0530],
 ];
 
+// A avenida de 29/10 (Pedro), com nomes de teste: a Shopee pôs na mesma parada pacotes do mesmo
+// número para blocos e ruas projetadas diferentes. O app faz uma entrega por complemento, mas
+// todas dividiam a porta do número, e o cartão só entregava todas no mesmo lugar.
+const rotaF = [
+  [12, 6, 'Avenida Teste Costa, 101, Projetada 08 bloco C apt 101', 'Bairro Março Teste', '49098-232', -10.9600, -37.0600],
+  [14, 6, 'Avenida Teste Costa, 101', 'Bairro Março Teste', '49098-232', -10.9600, -37.0600],
+  [15, 6, 'Avenida Teste Costa, 101', 'Bairro Março Teste', '49098-232', -10.9600, -37.0600],
+  [20, 6, 'Avenida Teste Costa, 101, Rua projetada 06 bloco D', 'Bairro Março Teste', '49098-232', -10.9600, -37.0600],
+  [31, 7, 'Rua Outra Teste, 20', 'Bairro Março Teste', '49098-233', -10.9630, -37.0630],
+];
+
 function planilha(at, prefixo, linhas) {
   const realista = (v, crua) => crua ? v : +(v - 0.0000013).toFixed(7);
   const dados = linhas.map(([seq, stop, end, bairro, cep, lat, lng, crua], i) =>
@@ -79,4 +90,5 @@ writeFileSync(new URL('rota-b.xlsx', pasta), planilha('ATTESTE0002', 'BRTESTB', 
 writeFileSync(new URL('rota-c.xlsx', pasta), planilha('ATTESTE0003', 'BRTESTC', rotaC));
 writeFileSync(new URL('rota-d.xlsx', pasta), planilha('ATTESTE0004', 'BRTESTD', rotaD));
 writeFileSync(new URL('rota-e.xlsx', pasta), planilha('ATTESTE0005', 'BRTESTE', rotaE));
+writeFileSync(new URL('rota-f.xlsx', pasta), planilha('ATTESTE0006', 'BRTESTF', rotaF));
 console.log('planilhas geradas em testes/planilhas/');

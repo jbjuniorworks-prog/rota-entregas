@@ -194,7 +194,7 @@ test.describe('separar os pacotes de uma parada', () => {
     nuvem.rpc.posicoes = portaDoCondominio('confirmado');
     await abrir(page);
     await carregar(page, ROTA_E);
-    await expect(aviso(page)).toContainText('1 parada(s) de pacotes juntos separada(s)');
+    await expect(aviso(page)).toContainText('1 endereço(s) com as entregas separadas pelo complemento');
     const todas = await paradas(page);
     expect(todas).toHaveLength(5);
     expect(todas.find(p => p.texto.includes('condomínio'))).toMatchObject({separada: true, precisao: 'confirmado', lat: CONDOMINIO.latitude});
@@ -208,7 +208,7 @@ test.describe('separar os pacotes de uma parada', () => {
     nuvem.rpc.posicoes = portaDoCondominio('sugestao');
     await abrir(page);
     await carregar(page, ROTA_E);
-    await expect(aviso(page)).toContainText('1 parada(s) de pacotes juntos separada(s)');
+    await expect(aviso(page)).toContainText('1 endereço(s) com as entregas separadas pelo complemento');
     const todas = await paradas(page);
     expect(todas).toHaveLength(5);
     expect(todas.find(p => p.texto.includes('condomínio'))).toMatchObject({separada: true, lat: expect.closeTo(-10.95, 4)});
@@ -240,5 +240,77 @@ test.describe('separar os pacotes de uma parada', () => {
     const todas = await paradas(page);
     expect(todas.find(p => p.texto.includes('condomínio'))).toMatchObject({precisao: 'confirmado', lat: CONDOMINIO.latitude});
     for (const p of todas.filter(p => p.texto.includes('Rodovia') && !p.texto.includes('condomínio'))) expect(p.lat).toBeCloseTo(-10.95, 4);
+  });
+});
+
+// "São dois endereços que estão agrupando e ele não consegue separar; alguns são a mesma pessoa e
+// outros não" (dono, 29/10, com a rota do Pedro). A planilha já faz uma entrega por complemento,
+// mas todas dividiam a porta do número: o Entreguei aqui de uma levava as outras para lá. Nomes de
+// teste (rota-f): dois blocos e uma casa com dois pacotes no mesmo número.
+const ROTA_F = 'testes/planilhas/rota-f.xlsx';
+const BLOCO_D = {latitude: -10.9615, longitude: -37.0605};
+const CHAVE_DO_BLOCO_D = '49098232|101|rua projetada 06 bloco d';
+
+test.describe('separar as entregas de um mesmo número', () => {
+  test.use({viewport: {width: 412, height: 915}, permissions: ['geolocation'], geolocation: {latitude: -10.96, longitude: -37.06, accuracy: 8}});
+
+  test('separadas, cada uma tem o seu Entreguei aqui, e a porta de uma não leva as outras', async ({page, context, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_F);
+    await montar(page);
+    const proxima = page.locator('[data-folha="proxima"]');
+    await expect(proxima.getByText('As 3 entregas deste endereço')).toBeVisible();
+    await expect(porLinha(page)).toHaveCount(0);
+    await proxima.getByRole('button', {name: 'Separar as 3 entregas'}).click();
+    await expect(aviso(page)).toContainText('Separadas em 3 entregas, cada uma com o seu pino e a sua porta');
+    await expect(porLinha(page)).toHaveCount(3);
+    await expect(proxima.getByRole('button', {name: /^Separar as/})).toHaveCount(0);
+
+    await context.setGeolocation({...BLOCO_D, accuracy: 6});
+    await page.waitForTimeout(5500);
+    await proxima.locator('.sub-entrega', {hasText: 'bloco D'}).getByRole('button', {name: 'Entreguei aqui'}).click();
+    await expect(page.locator('.resumo')).toContainText('1 de 4 entregas');
+    await expect.poll(async () => (await paradas(page)).find(p => p.texto.includes('bloco D'))!.lat).toBeCloseTo(BLOCO_D.latitude, 4);
+    const outras = (await paradas(page)).filter(p => p.texto.includes('Teste Costa, 101') && !p.texto.includes('bloco D'));
+    for (const p of outras) expect(p).toMatchObject({entregue: false, separada: true, lat: expect.closeTo(-10.96, 4)});
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'correcoes' && p.metodo === 'POST').map(p => (p.corpo as {chave_lugar: string}).chave_lugar))
+      .toEqual([CHAVE_DO_BLOCO_D]);
+
+    // reaberto, continuam separadas
+    await page.reload();
+    await expect(page.locator('.resumo')).toContainText('1 de 4 entregas');
+    await expect(porLinha(page)).toHaveCount(2);
+  });
+
+  test('o Desfazer volta a dividir a porta, antes de entregar', async ({page}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_F);
+    await montar(page);
+    const proxima = page.locator('[data-folha="proxima"]');
+    await proxima.getByRole('button', {name: 'Separar as 3 entregas'}).click();
+    await expect(porLinha(page)).toHaveCount(3);
+    await aviso(page).getByRole('button', {name: 'Desfazer'}).click();
+    await expect(aviso(page)).toContainText('Voltaram a dividir a porta do endereço');
+    await expect(porLinha(page)).toHaveCount(0);
+    await expect(proxima.getByRole('button', {name: 'Separar as 3 entregas'})).toBeVisible();
+    expect((await paradas(page)).filter(p => p.separada)).toEqual([]);
+  });
+
+  // Separada uma vez e com a porta do complemento marcada, a próxima planilha chega separada:
+  // a porta de um complemento só existe porque alguém separou.
+  test('a de complemento com porta na nuvem chega separada e na porta dela; as outras, como sempre', async ({page, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    nuvem.rpc.posicoes = (corpo: {chaves: string[]}) => corpo.chaves.filter(k => k === CHAVE_DO_BLOCO_D).map(chave_lugar =>
+      ({chave_lugar, lat: BLOCO_D.latitude, lng: BLOCO_D.longitude, situacao: 'confirmado', motoristas: 1, entregas: 1, fonte: 'entrega', minha: false}));
+    await abrir(page);
+    await carregar(page, ROTA_F);
+    await expect(aviso(page)).toContainText('1 endereço(s) com as entregas separadas pelo complemento');
+    const doNumero = (await paradas(page)).filter(p => p.texto.includes('Teste Costa, 101'));
+    expect(doNumero.map(p => [p.texto.split(',')[2].trim(), !!p.separada])).toEqual([
+      ['Projetada 08 bloco C apt 101', false], ['Bairro Março Teste', false], ['Rua projetada 06 bloco D', true]]);
+    expect(doNumero[2]).toMatchObject({lat: BLOCO_D.latitude, lng: BLOCO_D.longitude, precisao: 'confirmado'});
+    for (const p of doNumero.slice(0, 2)) expect(p.lat).toBeCloseTo(-10.96, 4);
   });
 });

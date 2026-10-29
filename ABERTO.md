@@ -231,6 +231,47 @@ Fora da lista:
     estão a 0 m das do Luan nas mesmas chaves, o jeito de uma aprovação, e nenhuma depois das 13:41.
   - **Não sei ainda** o que o link curto de um ponto solto, sem lugar, devolve.
 
+## Entregas do mesmo número, lugares diferentes (29/10, Pedro): "Separar as entregas", feito local
+
+- **O que o dono mandou** (prints das 17:52 e 18:02): dois números da rota do Pedro, no 17 de
+  Março, em que o cartão juntava entregas de complementos diferentes ("#37+1", "#12+1") e ele não
+  conseguia separar. "Alguns são a mesma pessoa e outros não."
+- **O que o banco mostra:** a Shopee pôs na mesma parada 9 pacotes do "João Batista Costa, 101",
+  com cinco complementos (blocos e ruas projetadas). A planilha já fazia uma entrega por
+  complemento (e os 5 sem complemento numa só), mas todas dividiam a porta `49003232|101`. O
+  Pedro gravou 47 correções nessa chave hoje, das 16:48 às 18:45: cada pino que ele arrumava, ou
+  cada Entreguei aqui, levava as outras para lá, e o aviso "Endereços verificados na nuvem para 2
+  entregas: o pino vai para lá" era isso. A nuvem responde hoje a porta da chave verificada no
+  lugar onde ele entregou os 5 sem complemento (a 2 m), por uma passagem no pino: está certa para
+  quem vem sem complemento. No "José Rodrigues Sobrinho, 89" a porta verificada é a do bloco D.
+- **Por que não separava:** o "Separar" de 26/10 só existe para os pacotes que a planilha juntou
+  numa entrega (mesmo texto). Entregas de complementos diferentes eram só agrupadas pelo número no
+  cartão, com um Entreguei aqui para todas, e nada as separava.
+- **Feito local, não publicado:**
+  - No cartão (o da próxima e o do pino), as entregas do mesmo número têm "Separar as N
+    entregas". Cada uma fica com o seu pino e a porta do seu complemento, e com o seu Entreguei
+    aqui na linha, como as separadas de 26/10. Os pacotes da mesma pessoa continuam numa entrega.
+    O aviso tem Desfazer, que volta a dividir a porta se nenhuma foi entregue.
+  - Ao ler a planilha, a entrega cujo complemento já tem porta na nuvem chega separada, como as
+    de pacotes juntos: separada uma vez, a próxima planilha chega separada.
+  - Testes: 5 de unidade e 3 ponta a ponta, com a planilha nova `rota-f` (nomes inventados). Os
+    dois testes antigos da separação sozinha passaram a conferir a frase nova do resumo.
+
+## Porta que não fica verificada depois da rota inteira (29/10, pergunta do dono): medido, nada a mudar
+
+- **Medido** (`medir-verificados.mjs`, rascunho da sessão, só leitura), endereços entregues com
+  chave, rotas de motorista de 28 e 29/10: Luan 82 de 84 e 22 de 22; Pedro 64 de 67; César 8 de 17.
+- **César:** os 9 que faltam esperam a aprovação do dono, porque ele é motorista novo em
+  conferência. Aprovar no Admin os deixa verificados.
+- **Os do fim da rota:** a passagem de cada entrega espera os 10 minutos do Desfazer antes de
+  subir, guardada no celular. As duas últimas do Pedro (18:49 e 18:53) estavam só com a correção;
+  a das 18:49 subiu às 18:59 e ficou verificada, a outra sobe no prazo, ou quando ele abrir o app.
+- **Entreguei longe do pino** (3 casos: Luan a 34 e 43 m, Pedro a 488 m): o "Entreguei" sem o
+  "aqui" grava só a passagem, e uma passagem a mais de 30 m do pino não diz quem está certo, o
+  pino ou o GPS. A segunda entrega no mesmo lugar verifica. Com "Entreguei aqui", a correção e a
+  passagem caem no mesmo ponto e verificam. Não mexer na régua de 30 m: verificar um pino a 43 m
+  da porta esconderia o Arrumar dele.
+
 ## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" publicado em 26/10 (`f0bbc6b`, `mvpezugf`), falta a validação
 
 - **Decisão do dono (26/10):** "independente de vir junto da Shopee, ele tem que ter a liberdade de

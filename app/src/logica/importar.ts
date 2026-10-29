@@ -111,20 +111,50 @@ export function separarParada(e: Estado, p: Parada): Parada[] {
   });
   Object.assign(p, doItem(itens[0]));
   delete p.itens;
-  // A porta confirmada (ou arrumada) que a parada trazia é a do endereço geral: no "Chico Mendes,
-  // 67" de 26/10, a da mercearia, que o Pedro marcou para os cinco. Ela não é a porta do
-  // condomínio, e "verificado" escondia dele o Arrumar e o Entreguei aqui de cada uma. A sem
-  // complemento continua com a chave geral, e com ela.
-  for (const q of [p, ...novas]) {
-    if (!HERDADA.has(q.precisao) || chaveDaParada(q, e.cidade) === chaveLugar(q.texto, q.bairro, e.cidade)) continue;
-    Object.assign(q, {precisaoAntes: q.precisao, precisao: 'vizinha', exibido: 'Na porta geral deste endereço, marcada para outra entrega de mesmo número. Confira na porta'});
-  }
+  for (const q of [p, ...novas]) herdouDaGeral(q, e.cidade);
   e.paradas.splice(e.paradas.indexOf(p) + 1, 0, ...novas);
   for (const ra of e.rota?.areas || []) {
     const i = ra.ordem.indexOf(p.id);
     if (i >= 0) ra.ordem.splice(i + 1, 0, ...novas.map(q => q.id));
   }
   return novas;
+}
+
+// A porta confirmada (ou arrumada) que a entrega trazia é a do endereço geral: no "Chico Mendes,
+// 67" de 26/10, a da mercearia, que o Pedro marcou para os cinco. Ela não é a porta do condomínio,
+// e "verificado" escondia dele o Arrumar e o Entreguei aqui de cada uma. A sem complemento
+// continua com a chave geral, e com ela.
+function herdouDaGeral(q: Parada, cidade: string) {
+  if (!HERDADA.has(q.precisao) || chaveDaParada(q, cidade) === chaveLugar(q.texto, q.bairro, cidade)) return;
+  Object.assign(q, {precisaoAntes: q.precisao, precisao: 'vizinha', exibido: 'Na porta geral deste endereço, marcada para outra entrega de mesmo número. Confira na porta'});
+}
+
+export function marcarSeparada(q: Parada, cidade: string) {
+  q.separada = true;
+  herdouDaGeral(q, cidade);
+}
+
+// "Precisa ter como separar" (dono, 29/10, com a rota do Pedro): a planilha não junta pacotes de
+// complementos diferentes, mas as entregas do mesmo número dividiam a porta. Num número com cinco
+// lugares (blocos e ruas projetadas), cada Entreguei aqui levava as outras para lá, e o cartão só
+// entregava todas juntas. Separadas, cada uma fica com o seu pino e a porta do seu complemento.
+// Quem decide é ele, como no Separar dos pacotes: num prédio, os apartamentos dividem a porta.
+export function separarEntregas(e: Estado, ps: Parada[]): Parada[] {
+  const abertas = ps.filter(p => !p.entregue);
+  const mudam = abertas.filter(p => !p.separada);
+  if (abertas.length < 2 || !mudam.length) return [];
+  for (const q of mudam) marcarSeparada(q, e.cidade);
+  return mudam;
+}
+
+// O desfazer do "Separar as entregas", se nenhuma foi entregue: cada uma volta a ser como era.
+export function juntarEntregas(mudadas: Parada[], antes: Parada[]): boolean {
+  if (mudadas.some(q => q.entregue)) return false;
+  mudadas.forEach((q, i) => {
+    for (const k of Object.keys(q) as (keyof Parada)[]) delete q[k];
+    Object.assign(q, antes[i]);
+  });
+  return true;
 }
 
 // O desfazer do "Separar": volta a ser uma parada só, como estava, se nenhuma foi entregue.
@@ -143,7 +173,7 @@ export function resumoPlanilha(r: ResumoPlanilha): string {
     + (r.lembradas ? ` ${r.lembradas} com a posição que você já tinha corrigido.` : '')
     + (r.confirmadas ? ` ${r.confirmadas} com endereço verificado.` : '')
     + (r.sugestoes ? ` ${r.sugestoes} com sugestão de outro motorista: veja em Conferir.` : '')
-    + (r.separadas ? ` ${r.separadas} parada(s) de pacotes juntos separada(s), como já tinham sido separadas antes.` : '')
+    + (r.separadas ? ` ${r.separadas} endereço(s) com as entregas separadas pelo complemento, como já tinham sido separadas antes.` : '')
     + (r.xaropes ? ` ${r.xaropes} de cliente xarope: veja o pino antes de entregar.` : '')
     + (r.longe ? ` ${r.longe} com posição longe das outras entregas: ${r.noBairro === r.longe ? 'levada(s) para o bairro certo, confira no local.' : r.noBairro ? `${r.noBairro} levada(s) para o bairro certo, confira o pino das outras.` : 'confira o pino antes de sair.'}` : '')
     + (r.aproximadas ? ` ${r.aproximadas} com posição aproximada na planilha: confira o pino.` : '')

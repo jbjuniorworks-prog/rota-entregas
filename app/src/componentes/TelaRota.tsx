@@ -120,8 +120,9 @@ function BotoesDoEndereco({abertas, ids, quantas, noChao}: {abertas: Parada[]; i
 // pacotes. Fechado quando são muitas, para os botões do endereço continuarem à vista.
 function EntregasDoEndereco({ps}: {ps: Parada[]}) {
   const {proprio} = partesDoEndereco(ps);
+  const abertas = ps.filter(p => !p.entregue);
   // aberto também depois de separar: foi para marcar uma por uma que ele separou
-  return <details className="do-endereco" open={ps.length <= 3 || ps.some(p => p.separada)}>
+  return <><details className="do-endereco" open={ps.length <= 3 || ps.some(p => p.separada)}>
     <summary>As {ps.length} entregas deste endereço</summary>
     {ps.map((p, i) => <div className={`sub-entrega${p.entregue ? ' feito' : ''}`} key={p.id} data-item={p.id}>
       <span className="badge" style={{background: loja.area(p.area).cor}}>{rotuloDe(p)}</span>
@@ -137,7 +138,11 @@ function EntregasDoEndereco({ps}: {ps: Parada[]}) {
           <button className="quadrado ok" aria-label={`Entregue ${rotuloDe(p)}`} data-acao="entregue-uma" onClick={() => A.marcarEntregue(p, true)}><Icone nome="check" /></button>
         </>}
     </div>)}
-  </details>;
+  </details>
+  {/* "alguns são mesma pessoa e outros não" (dono, 29/10): os pacotes de uma pessoa já vêm numa
+      entrega só; separar dá a cada complemento o seu pino e a sua porta */}
+  {abertas.length > 1 && abertas.some(p => !p.separada) && <button className="btn contorno" data-acao="separar-entregas" onClick={() => { A.contar('separar-entregas'); A.separarAsEntregas(ps); }}>Separar as {abertas.length} entregas</button>}
+  </>;
 }
 
 // Os pacotes que a planilha juntou numa parada por terem o mesmo endereço escrito. Podem ser de

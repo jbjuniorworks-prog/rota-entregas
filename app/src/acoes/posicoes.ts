@@ -5,7 +5,7 @@ import type {Operacao} from '../logica/fila';
 import {avisoGuardou} from '../logica/memoria';
 import {medidor} from '../logica/telemetria';
 import {chaveCidade, chaveDaParada, chaveLugar, chaveRua, decompor, linkCurtoDoMapa, mesmoEndereco, nomeDoLugar, posicaoColada} from '../logica/texto';
-import {separarParada} from '../logica/importar';
+import {marcarSeparada, separarParada} from '../logica/importar';
 import type {Parada, PortaAntes, Ponto} from '../logica/tipos';
 import {loja, MINIMIZADO, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
@@ -42,21 +42,29 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
 // complemento na chave só existe porque alguém separou aquele endereço, então qualquer uma
 // (verificada, sugestão ou a dele mesmo) basta para a parada chegar separada. A porta de cada uma
 // segue a regra de sempre. Os condomínios não entram: ninguém separa apartamento por apartamento.
+// O mesmo para as entregas de complemento diferente do mesmo número, que a planilha não junta
+// (29/10): a que tem porta no seu complemento chega separada, e deixa a porta geral para as outras.
 export async function separarAsConhecidas(): Promise<number> {
   const c = clienteNuvem();
   if (!c) return 0;
   const cidade = e().cidade;
-  const juntadas = e().paradas.filter(p => !p.entregue && (p.itens?.length || 0) > 1);
+  const abertas = e().paradas.filter(p => !p.entregue);
+  const juntadas = abertas.filter(p => (p.itens?.length || 0) > 1);
+  const soltas = abertas.filter(p => !p.separada && (p.itens?.length || 0) < 2);
   const doItem = (p: Parada, texto: string) => chaveDaParada({texto, bairro: p.bairro, separada: true}, cidade);
-  const proprias = (p: Parada) => p.itens!.map(it => doItem(p, it.texto)).filter((k): k is string => !!k && k !== chaveLugar(p.texto, p.bairro, cidade));
-  const chaves = [...new Set(juntadas.flatMap(proprias))];
+  const geral = (p: Parada) => chaveLugar(p.texto, p.bairro, cidade);
+  const proprias = (p: Parada) => p.itens!.map(it => doItem(p, it.texto)).filter((k): k is string => !!k && k !== geral(p));
+  const daSolta = (p: Parada) => { const k = doItem(p, p.texto); return k && k !== geral(p) ? k : null; };
+  const chaves = [...new Set([...juntadas.flatMap(proprias), ...soltas.map(daSolta).filter((k): k is string => !!k)])];
   if (!chaves.length) return 0;
   let marcadas: Set<string>;
   try { marcadas = new Set((await c.posicoes(chaves)).map(r => r.chave_lugar)); } catch { return 0; }
   const separar = juntadas.filter(p => proprias(p).some(k => marcadas.has(k)));
   for (const p of separar) separarParada(e(), p);
-  if (separar.length) loja.mudou();
-  return separar.length;
+  const sozinhas = soltas.filter(p => marcadas.has(daSolta(p)!));
+  for (const p of sozinhas) marcarSeparada(p, cidade);
+  if (separar.length || sozinhas.length) loja.mudou();
+  return separar.length + new Set(sozinhas.map(geral)).size;
 }
 
 // As portas da nuvem só chegavam ao ler planilha, buscar ou entrar na conta. Em 13/10 o dono

@@ -1,7 +1,7 @@
 import {longeDaPorta, proximaAPe} from '../logica/geo';
 import {backupRecente, CHAVES, estadoVazio, resetarDia} from '../logica/guarda';
 import {aplicarGrupos, circular, gruposValidos, tirarGrupos as tirarOsGrupos} from '../logica/grupos';
-import {juntarDeNovo, novoId, separarParada} from '../logica/importar';
+import {juntarDeNovo, juntarEntregas, novoId, separarEntregas, separarParada} from '../logica/importar';
 import {montarRota as calcularRota} from '../logica/montagem';
 import {linkWaze} from '../logica/otimizacao';
 import {CORES} from '../logica/rotulos';
@@ -231,6 +231,27 @@ export async function separar(p: Parada) {
   await consultarCompartilhadas();
   const foram = todas.filter((q, i) => `${q.lat},${q.lng}` !== onde[i]).length;
   if (foram) status(`${separada} ${foram === 1 ? '1 já foi' : foram + ' já foram'} para a porta guardada do complemento.`, 10000, juntar);
+}
+
+// As entregas de complemento diferente do mesmo número, cada uma com o seu pino e a sua porta
+// (29/10), com o mesmo aviso e o mesmo desfazer do Separar dos pacotes.
+export async function separarAsEntregas(ps: Parada[]) {
+  const antes = ps.map(p => structuredClone(p));
+  const mudadas = separarEntregas(e(), ps);
+  if (!mudadas.length) return;
+  const abertas = ps.filter(p => !p.entregue);
+  const onde = abertas.map(q => `${q.lat},${q.lng}`);
+  const juntar = () => {
+    if (!juntarEntregas(mudadas, mudadas.map(q => antes[ps.indexOf(q)]))) { status('Não dá para juntar de novo: uma delas já foi entregue.', 4000); return; }
+    loja.mudou();
+    status('Voltaram a dividir a porta do endereço.', 3000);
+  };
+  loja.mudou();
+  const separadas = `Separadas em ${abertas.length} entregas, cada uma com o seu pino e a sua porta. Toque no pino de uma para arrumar só ela.`;
+  status(separadas, 10000, juntar);
+  await consultarCompartilhadas();
+  const foram = abertas.filter((q, i) => `${q.lat},${q.lng}` !== onde[i]).length;
+  if (foram) status(`${separadas} ${foram === 1 ? '1 já foi' : foram + ' já foram'} para a porta guardada do complemento.`, 10000, juntar);
 }
 
 // Do cartão da próxima vêm todas as do endereço: adiando só a primeira, o cartão voltava com o
