@@ -198,6 +198,47 @@ test.describe('administrador', () => {
     await expect(linhas.nth(2)).toContainText(/Teste Terminou.*2\/2.*1\/2.*Terminou/);
   });
 
+  // "Por que alguns pinos que eles finalizam a rota toda não ficam verificados" (dono, 29/10): o
+  // número de verificados abre o porquê de cada endereço entregue, nas rotas de hoje e nas de 14
+  // dias. Os casos medidos em 16 dias de rotas, inventados.
+  test('o número de verificados abre o porquê de cada endereço entregue sem a porta verificada', async ({page, nuvem}) => {
+    const hojeMaceio = new Date().toLocaleDateString('sv-SE', {timeZone: 'America/Maceio'});
+    const antes = (min: number) => new Date(Date.now() - min * 60000).toISOString();
+    const pacote = (chave_lugar: string | null, entregue_em: string | null, endereco = 'Rua Teste, ' + chave_lugar) =>
+      ({rota_id: 'r1', chave_lugar, endereco, entregue_em, spx_tn: null, sequencia: null, bairro: null, lat: -10.9, lng: -37.0});
+    const passagem = (chave_lugar: string, extra: Record<string, unknown>) =>
+      ({id: chave_lugar, motorista_id: 'Teste Rua', dia: hojeMaceio, chave_lugar, lat: -10.9, lng: -37.0, criado_em: antes(100), no_pino: false, pendente: false, recusada: false, ...extra});
+    nuvem.tabelas = {
+      rotas: [{id: 'r1', dia: hojeMaceio, arquivo: 'r1.xlsx', criado_em: antes(400), motorista_id: 'Teste Rua', perfis: {nome: 'Teste Rua'}}],
+      pacotes: [
+        pacote('49000100|10', antes(120)), pacote('49000100|20', antes(5)), pacote('49000100|30', antes(120)),
+        pacote('49000100|40', antes(120)), pacote(null, antes(120), 'Travessa Teste, Sem N'), pacote('49000100|50', null),
+      ],
+      // a 43 m do pino (0,0001 grau de latitude são uns 11 m), e uma do motorista em conferência
+      observacoes: [passagem('49000100|30', {lat: -10.9 + 43 / 111320}), passagem('49000100|40', {pendente: true, no_pino: true})],
+    };
+    nuvem.rpc = {posicoes: [{chave_lugar: '49000100|10', lat: -10.9, lng: -37.0, situacao: 'confirmado', motoristas: 2}]};
+    await abrir(page);
+    await menu(page, /^Admin/);
+    const hoje = page.locator('[data-secao="Rotas de hoje"]');
+    await hoje.locator('[data-porque-abrir="r1"]').click();
+    const porque = hoje.locator('[data-porque="r1"]');
+    await expect(porque).toContainText('1 de 5 endereço(s) entregue(s) com a porta verificada; 1 ainda por entregar.');
+    expect(await porque.locator('[data-motivo]').evaluateAll(es => es.map(e => e.getAttribute('data-motivo')))).toEqual(['aprovar', 'subindo', 'longe', 'sem-chave']);
+    await expect(porque.locator('[data-motivo="aprovar"]')).toContainText('Esperando você aprovar (1)');
+    await expect(porque.locator('[data-motivo="longe"]')).toContainText('Rua Teste, 49000100|30 · a 43 m do pino');
+    await expect(porque.locator('[data-motivo="sem-chave"]')).toContainText('Travessa Teste, Sem N');
+    // pedidas só as marcas do motorista da rota, no dia dela
+    expect(nuvem.pedidos.filter(p => p.caminho === 'observacoes').map(p => new URLSearchParams(p.busca).get('motorista_id'))).toEqual(['eq.Teste Rua']);
+    await hoje.locator('[data-porque-abrir="r1"]').click();
+    await expect(porque).toHaveCount(0);
+
+    // a mesma conta nas rotas dos últimos 14 dias
+    const naLista = page.locator('[data-rota="r1"]');
+    await naLista.getByRole('button', {name: 'Portas verificadas'}).click();
+    await expect(naLista.locator('[data-porque="r1"]')).toContainText('1 de 5 endereço(s) entregue(s) com a porta verificada');
+  });
+
   // Painel, parte 2 (19/10): o que tem conserto aparece com o botão que conserta. Inventados.
   test.describe('o que tem conserto no painel', () => {
     const hojeMaceio = () => new Date().toLocaleDateString('sv-SE', {timeZone: 'America/Maceio'});

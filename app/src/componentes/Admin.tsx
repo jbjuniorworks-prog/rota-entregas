@@ -1,9 +1,10 @@
-﻿import {useEffect, useRef, useState} from 'react';
+﻿import {Fragment, useEffect, useRef, useState} from 'react';
 import {haversine} from '../logica/geo';
 import {contarConferencia, type ItemEmConferencia, type MotoristaEmConferencia} from '../logica/conferencia';
 import {CHAVES} from '../logica/guarda';
 import {fmtKm} from '../logica/otimizacao';
-import type {Dia, LinhaDoDia, ParaConferir, SemLocal, Suspeita} from '../logica/painel';
+import {hojeEmMaceio, type Dia, type LinhaDoDia, type ParaConferir, type SemLocal, type Suspeita} from '../logica/painel';
+import {MOTIVOS, type PortasDaRota} from '../logica/verificacao';
 import {faltaNaChave} from '../logica/texto';
 import * as A from '../acoes';
 import {origemDaPorta, porQuePrecisaDeVoce, situacaoDoLugar, triar} from '../logica/triagem';
@@ -198,6 +199,7 @@ const textoDaSituacao = (l: LinhaDoDia) => l.situacao === 'parada' ? `Parada há
   : l.situacao === 'na rua' ? 'Na rua' : l.situacao === 'terminou' ? 'Terminou' : 'Não começou';
 
 function RotasDeHoje({dia, corDe}: {dia: Dia | {erro: string} | null; corDe: (id: string) => string}) {
+  const [aberta, setAberta] = useState<string | null>(null);
   return <section className="cartao-painel" data-secao="Rotas de hoje">
     <div className="cab-cartao"><h3>Rotas de hoje</h3>
       {dia && !('erro' in dia) && dia.pontos.length > 0 && <button className="link" data-dia-no-mapa onClick={() => verDiaNoMapa(dia, corDe)}>Ver o dia no mapa</button>}</div>
@@ -206,13 +208,19 @@ function RotasDeHoje({dia, corDe}: {dia: Dia | {erro: string} | null; corDe: (id
     {dia && !('erro' in dia) && !dia.linhas.length && <div className="info">Nenhuma rota enviada hoje.</div>}
     {dia && !('erro' in dia) && dia.linhas.length > 0 && <div className="tabela-rolar"><table className="tabela-dia">
       <thead><tr><th>Motorista</th><th>Entregues</th><th>Verificados</th><th>Última</th><th>Situação</th></tr></thead>
-      <tbody>{dia.linhas.map(l => <tr key={l.id} data-rota-hoje={l.id}>
-        <td><b>{l.motorista}</b><div className="achado">{l.arquivo || 'sem arquivo'}</div></td>
-        <td>{l.entregues}/{l.pacotes}{l.pacotes > 0 && <div className="barra"><i style={{width: `${Math.round(100 * l.entregues / l.pacotes)}%`}} /></div>}</td>
-        <td>{l.verificados}/{l.enderecos}</td>
-        <td>{l.ultima ? hora(l.ultima) : '—'}</td>
-        <td><span className="tag" style={{background: SITUACAO[l.situacao]}} data-situacao={l.situacao}>{textoDaSituacao(l)}</span></td>
-      </tr>)}</tbody>
+      <tbody>{dia.linhas.map(l => <Fragment key={l.id}>
+        <tr data-rota-hoje={l.id}>
+          <td><b>{l.motorista}</b><div className="achado">{l.arquivo || 'sem arquivo'}</div></td>
+          <td>{l.entregues}/{l.pacotes}{l.pacotes > 0 && <div className="barra"><i style={{width: `${Math.round(100 * l.entregues / l.pacotes)}%`}} /></div>}</td>
+          {/* o porquê dos que faltam, num toque (dono, 29/10) */}
+          <td>{l.entregues > 0
+            ? <button className="link" data-porque-abrir={l.id} aria-expanded={aberta === l.id} onClick={() => setAberta(aberta === l.id ? null : l.id)}>{l.verificados}/{l.enderecos}</button>
+            : `${l.verificados}/${l.enderecos}`}</td>
+          <td>{l.ultima ? hora(l.ultima) : '—'}</td>
+          <td><span className="tag" style={{background: SITUACAO[l.situacao]}} data-situacao={l.situacao}>{textoDaSituacao(l)}</span></td>
+        </tr>
+        {aberta === l.id && <tr><td colSpan={5}><PorQueNaoVerificou rota={{id: l.id, dia: hojeEmMaceio(), motorista_id: l.motorista_id}} /></td></tr>}
+      </Fragment>)}</tbody>
     </table></div>}
   </section>;
 }
@@ -488,8 +496,35 @@ function NovaConta({recarregar}: {recarregar: () => void}) {
   </div>;
 }
 
+// "Por que alguns pinos que eles finalizam a rota toda não ficam verificados" (dono, 29/10): o
+// porquê de cada endereço entregue sem a porta verificada, num toque, em vez de pedir a medição.
+function PorQueNaoVerificou({rota}: {rota: {id: string; dia: string; motorista_id?: string | null}}) {
+  const [r, setR] = useState<PortasDaRota | {erro: string} | null>(null);
+  const ver = () => {
+    setR(null);
+    Adm.portasDaRota(rota).then(setR, err => setR({erro: (err as Error).message}));
+  };
+  useEffect(ver, [rota.id]);
+  if (!r) return <div className="info" data-porque-buscando>Buscando as portas desta rota…</div>;
+  if ('erro' in r) return <div className="aviso">Não consegui ver as portas desta rota: {r.erro} <button className="link" onClick={ver}>Tentar de novo</button></div>;
+  const motivos = [...new Set(r.semVerificar.map(s => s.motivo))];
+  return <div data-porque={rota.id}>
+    <div className="info"><b>{r.verificados} de {r.entregues}</b> endereço(s) entregue(s) com a porta verificada{r.porEntregar ? `; ${r.porEntregar} ainda por entregar` : ''}.</div>
+    {r.entregues > 0 && !r.semVerificar.length && <div className="info">Todos os entregues estão verificados.</div>}
+    {motivos.map(m => {
+      const itens = r.semVerificar.filter(s => s.motivo === m);
+      return <div className="item" key={m} data-motivo={m}>
+        <div><b>{MOTIVOS[m].titulo} ({itens.length})</b></div>
+        <div className="achado">{MOTIVOS[m].porque}</div>
+        {itens.map((s, i) => <div key={i}>{s.endereco}{s.pacotes > 1 ? ` · ${s.pacotes} pacotes` : ''}{s.metros != null ? ` · a ${s.metros} m do pino` : ''}{m === 'sem-chave' ? ` · ${faltaNaChave(s.endereco)}` : ''}</div>)}
+      </div>;
+    })}
+  </div>;
+}
+
 function Rotas({lista}: {lista: Adm.RotaResumo[]}) {
   const [aberta, setAberta] = useState<string | null>(null);
+  const [portas, setPortas] = useState<string | null>(null);
   const [pacotes, setPacotes] = useState<Adm.PacoteAdmin[]>([]);
   const {ocupado, correr, fazendo} = useTrabalho();
   const abrir = async (r: Adm.RotaResumo) => {
@@ -516,7 +551,9 @@ function Rotas({lista}: {lista: Adm.RotaResumo[]}) {
         <div className="linha">
           <button className="btn peq" onClick={() => abrir(r)} disabled={!!ocupado}>{fazendo('abrir' + r.id) ? 'Buscando…' : aberta === r.id ? 'Fechar' : 'Ver entregas'}</button>
           <button className="btn peq" onClick={() => verNoMapa(r)} disabled={!!ocupado}>{fazendo('mapa' + r.id) ? 'Buscando…' : 'Ver no mapa'}</button>
+          {r.entregues > 0 && <button className="btn peq" data-porque-abrir={r.id} onClick={() => setPortas(portas === r.id ? null : r.id)}>{portas === r.id ? 'Fechar as portas' : 'Portas verificadas'}</button>}
         </div>
+        {portas === r.id && <PorQueNaoVerificou rota={r} />}
         {aberta === r.id && <div style={{marginTop: 8}}>{pacotes.map((p, i) => <div className={`parada ${p.entregue_em ? 'feito' : ''}`} key={i}>
           <div className="txt"><div>{p.endereco}</div><div className="achado">{[p.bairro, p.spx_tn, p.entregue_em && 'entregue ' + hora(p.entregue_em)].filter(Boolean).join(' · ')}</div></div>
         </div>)}</div>}

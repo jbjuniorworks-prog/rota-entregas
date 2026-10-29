@@ -271,6 +271,40 @@ Fora da lista:
   pino ou o GPS. A segunda entrega no mesmo lugar verifica. Com "Entreguei aqui", a correção e a
   passagem caem no mesmo ponto e verificam. Não mexer na régua de 30 m: verificar um pino a 43 m
   da porta esconderia o Arrumar dele.
+- **16 dias (15 a 29/10), a pedido do dono ("verifica as outras rotas também"):** Pedro e Luan
+  fecham quase todas as rotas com 100%; o que sobra é 1 a 3 endereços longe do pino. O resto está
+  em dois motoristas:
+  - **César** (em conferência desde 15/10): 14 correções e 117 passagens esperando aprovação, 4
+    recusadas. Em 16/10, 45 dos 59 endereços dele esperavam por isso.
+  - **Jefferson** (16, 18 e 23/10): em 16/10, só 5 de 26 verificados. 14 tinham a entrega longe
+    do pino, e 7 não deixaram marca nenhuma do lugar: ele marca as entregas longe da porta, ou
+    sem GPS bom.
+- **Feito local, não publicado: o porquê no Admin, num toque** (pedido do dono: "algo pra ver isso
+  de uma forma fácil, click, na minha tela de admin"). Nas "Rotas de hoje", o número de
+  Verificados abre a lista dos endereços entregues sem porta verificada, agrupados pelo motivo e
+  com o que fazer: esperando você aprovar, entregues há pouco, longe do pino (com a distância),
+  só o pino arrumado, sem marca, marcas que não batem, separadas pelo complemento, recusadas, sem
+  chave. Nas rotas dos últimos 14 dias, o botão "Portas verificadas" faz o mesmo. A regra fica em
+  `logica/verificacao.ts`, com 8 testes de unidade, e 1 ponta a ponta no Admin.
+
+## Comandos do sistema na tela de Admin (29/10, pedido do dono): para revisar juntos
+
+"Vamos rever depois todos os comandos possíveis do nosso sistema e ver formas de deixar eles na
+tela admin." Primeira separação, para a conversa:
+
+- **Já no Admin:** aprovar a conferência; apagar rota de teste; procurar endereço e marcar a
+  porta de admin (faz o que o `npm run portas` faz, um por vez); nomear ruas e criar rua que
+  falta; uso dos botões; criar a conta de motorista; e agora as portas verificadas de cada rota.
+- **Dá para levar (só leitura, e a conta de admin já lê esses dados):** as medições que faço por
+  script a cada pedido. São quem está na rua agora, as pendências de conferência por motorista,
+  os verificados por motorista em N dias e o teste do link curto do Maps.
+- **Precisa medir antes:** o `npm run backup` pelo navegador. Ele usa a chave de serviço; com a
+  conta de admin, as regras de acesso podem deixar linhas de fora sem erro.
+- **Fica no terminal:** as cargas de dados (`ruas`, `cnefe`, `prefeitura`, `bairros`,
+  `nomes-no-mapa`, `rechavear`). Elas gravam na produção com a chave de serviço e levam minutos.
+  O mesmo vale para o `restaurar`, os testes e o `build`.
+- **Os scripts de medição desta conversa se perderam:** o diretório de rascunho da sessão foi
+  limpo na troca do dia. O que for usado de novo deve ir para o Admin ou para `ferramentas/`.
 
 ## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" publicado em 26/10 (`f0bbc6b`, `mvpezugf`), falta a validação
 

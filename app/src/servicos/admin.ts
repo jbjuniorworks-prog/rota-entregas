@@ -3,6 +3,7 @@ import {lugaresDaBusca, peneiraDaNuvem, peneiraDeChave, textoDaChave, type Lugar
 import {agruparConferencia, marcadasDoMesmoPonto, type MarcaEmConferencia, type MotoristaEmConferencia, type PontoPendente} from '../logica/conferencia';
 import {hojeEmMaceio, resumirDia, type Dia, type MarcaDoAdmin, type PacoteDoDia} from '../logica/painel';
 import type {PortaDaNuvem} from '../logica/triagem';
+import {porQueNaoVerificou, type MarcaDoDia, type PacoteDaRota, type PortasDaRota} from '../logica/verificacao';
 import {nuvem} from './nuvem';
 
 export interface Motorista {
@@ -202,6 +203,31 @@ export async function resumoDeHoje(rotas: RotaBase[], motoristas: string[], agor
   }));
   return resumirDia(hoje.map(r => ({id: r.id, motorista: r.motorista, motorista_id: r.motorista_id, arquivo: r.arquivo, criado_em: r.criado_em, doAdmin: r.doAdmin})),
     pacotes, confirmadas, {agora, motoristas, marcasDoAdmin, comPosicao});
+}
+
+// O porquê de cada endereço entregue sem porta verificada numa rota (29/10): os pacotes dela, a
+// `posicoes` de agora e as marcas do motorista no dia da rota. `*` nas marcas: o `pendente` e o
+// `recusada` só existem depois da 022, e pedir uma coluna que falta derruba a consulta.
+export async function portasDaRota(r: {id: string; dia: string; motorista_id?: string | null}, agora = Date.now()): Promise<PortasDaRota> {
+  const s = cliente();
+  const pacotes = await paginado<PacoteDaRota>((de, ate) => s.from('pacotes')
+    .select('chave_lugar, endereco, lat, lng, entregue_em').eq('rota_id', r.id).order('id').range(de, ate));
+  const chaves = [...new Set(pacotes.filter(p => p.entregue_em).map(p => p.chave_lugar).filter((k): k is string => !!k))];
+  const confirmadas = new Set<string>();
+  await Promise.all(pedacos(chaves, 500).map(async parte => {
+    const {data, error} = await s.rpc('posicoes', {chaves: parte});
+    falhou(error);
+    for (const p of (data || []) as {chave_lugar: string; situacao: string}[]) if (p.situacao === 'confirmado') confirmadas.add(p.chave_lugar);
+  }));
+  const quem = r.motorista_id;
+  if (!quem) return porQueNaoVerificou(pacotes, confirmadas, [], [], agora);
+  // o dia da rota em Aracaju, que é UTC-3 o ano todo
+  const de = `${r.dia}T03:00:00.000Z`, ate = new Date(Date.parse(de) + 864e5).toISOString();
+  const [passagens, correcoes] = await Promise.all([
+    paginado<MarcaDoDia>((a, b) => s.from('observacoes').select('*').eq('motorista_id', quem).eq('dia', r.dia).order('id').range(a, b)),
+    paginado<MarcaDoDia>((a, b) => s.from('correcoes').select('*').eq('motorista_id', quem).gte('criado_em', de).lt('criado_em', ate).order('id').range(a, b)),
+  ]);
+  return porQueNaoVerificou(pacotes, confirmadas, passagens, correcoes, agora);
 }
 
 // Rota sem entrega, de planilha de outro dia, de outro motorista ou aberta de novo (painel do dia).
