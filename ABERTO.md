@@ -294,6 +294,14 @@ Fora da lista:
   o porquê no Admin, o link curto) passaram contra o endereço publicado, com a nuvem simulada.
   - **Falta:** o Pedro separar no celular um número com complementos diferentes; o dono abrir o
     porquê no Admin com uma rota de verdade.
+  - **O dono abriu o Admin às 19:58:** "104 de 109, quais faltaram?". Faltavam 3 do César,
+    entregues a 86 m, 176 m e 1 km do pino, e 2 do Pedro: um entregue a 488 m do pino e um
+    ainda por entregar. A versão publicada diria "Esperando você aprovar" nos 3 do César,
+    porque estão pendentes, enquanto o "Em conferência" dizia 0: ele só mostra o que aprovar
+    muda, e aprovar uma entrega longe do pino não verifica. **Consertado, não publicado:**
+    "Esperando você aprovar" só quando aprovar verifica (a entrega no pino, ou duas marcas a até
+    30 m); senão vale o motivo de verdade, aqui a distância. E um motivo novo para as marcas que
+    bastariam e a nuvem não conta (motorista desativado). 10 testes de unidade; 18 sabotagens.
   - **Pedido seguinte do dono:** "normalmente o Luan sempre me pergunta: esses dois pinos não
     verificaram por quê?". Os dois dele em 28/10 foram "Entreguei" a 34 e 43 m do pino. A mesma
     resposta pode ir para o celular, na entrega feita sem porta verificada; não feito.

@@ -5,9 +5,9 @@
 // ou a marcação de quem administra. Medido em 16 dias de rotas: Pedro e Luan fecham quase tudo; o
 // que falta é a conferência do motorista novo, a entrega longe do pino e as do fim da rota, que
 // ainda não subiram.
-import {haversine} from './geo';
+import {haversine, NO_PINO} from './geo';
 
-export type Motivo = 'aprovar' | 'subindo' | 'longe' | 'so-correcao' | 'sem-marca' | 'nao-batem' | 'separada' | 'recusada' | 'sem-chave';
+export type Motivo = 'aprovar' | 'subindo' | 'longe' | 'so-correcao' | 'sem-marca' | 'nao-batem' | 'nao-conta' | 'separada' | 'recusada' | 'sem-chave';
 
 export interface PacoteDaRota {
   chave_lugar: string | null;
@@ -54,6 +54,7 @@ export const MOTIVOS: Record<Motivo, {titulo: string; porque: string}> = {
   'so-correcao': {titulo: 'Só o pino arrumado, sem a marca da entrega', porque: 'O pino foi arrumado, mas a entrega não deixou a marca do lugar: o GPS estava impreciso na hora, ou o celular ainda não mandou (manda quando ele abrir o app).'},
   'sem-marca': {titulo: 'A entrega não deixou marca do lugar', porque: 'Sem GPS bom na hora, longe demais do pino, ou o celular ainda não mandou (manda quando ele abrir o app).'},
   'nao-batem': {titulo: 'Marcas em lugares diferentes', porque: 'As marcas do dia caem a mais de 30 m uma da outra, e a nuvem não decide qual vale.'},
+  'nao-conta': {titulo: 'Marcas que a nuvem não conta', porque: 'As marcas do dia bastariam, mas a nuvem não conta as de motorista desativado.'},
   'separada': {titulo: 'Separadas pelo complemento', porque: 'A porta de cada complemento é guardada à parte da do número, e não entra nesta conta.'},
   'recusada': {titulo: 'Recusadas por você', porque: 'Você recusou a entrega no lugar, em "Em conferência".'},
   'sem-chave': {titulo: 'Endereço sem como guardar a porta', porque: 'Sem número da porta, ou sem CEP nem bairro: não há chave para guardar a porta.'},
@@ -79,12 +80,19 @@ export function porQueNaoVerificou(pacotes: PacoteDaRota[], confirmadas: Readonl
     const daChave = (m: MarcaDoDia) => m.chave_lugar === k || m.chave_lugar.startsWith(k + '|');
     const pas = passagens.filter(daChave), cor = correcoes.filter(daChave);
     const ultima = Math.max(...feitos.map(p => Date.parse(p.entregue_em!)));
-    if ([...pas, ...cor].some(m => m.pendente)) saida.semVerificar.push(item('aprovar'));
-    else if (pas.some(m => m.recusada)) saida.semVerificar.push(item('recusada'));
-    else if (pas.length + cor.length && [...pas, ...cor].every(m => m.chave_lugar !== k)) saida.semVerificar.push(item('separada'));
+    const todas = [...pas, ...cor];
+    // O que a `posicoes` contaria com tudo aprovado: a entrega no pino, ou duas marcas a até 30 m.
+    // "Esperando você aprovar" só quando aprovar verifica: o César de 29/10 tinha três entregas
+    // pendentes a 86 m, 176 m e 1 km do pino, e o "Em conferência" (que só mostra o que muda a
+    // porta) estava vazio.
+    const verificaria = pas.some(m => m.no_pino) || todas.some((a, i) => todas.some((b, j) => j !== i && haversine(a, b) <= NO_PINO));
+    if (todas.length && todas.every(m => m.chave_lugar !== k)) saida.semVerificar.push(item('separada'));
     else if (!pas.length && agora - ultima < SUBINDO_MIN * 60000) saida.semVerificar.push(item('subindo'));
     else if (!pas.length) saida.semVerificar.push(item(cor.length ? 'so-correcao' : 'sem-marca'));
-    else if (!cor.length && !pas.some(m => m.no_pino)) {
+    else if (verificaria && todas.some(m => m.pendente)) saida.semVerificar.push(item('aprovar'));
+    else if (pas.some(m => m.recusada)) saida.semVerificar.push(item('recusada'));
+    else if (verificaria) saida.semVerificar.push(item('nao-conta'));
+    else if (!cor.length) {
       const pino = feitos.find(p => p.lat != null && p.lng != null);
       saida.semVerificar.push(item('longe', pino ? Math.round(haversine({lat: pino.lat!, lng: pino.lng!}, pas[pas.length - 1])) : undefined));
     } else saida.semVerificar.push(item('nao-batem'));

@@ -18,9 +18,24 @@ describe('por que a porta de um endereço entregue não ficou verificada', () =>
     expect(r).toEqual({entregues: 1, verificados: 1, semVerificar: [], porEntregar: 1});
   });
 
-  it('motorista em conferência: espera a aprovação, mesmo com a entrega no pino', () => {
+  it('motorista em conferência: espera a aprovação quando aprovar verifica', () => {
     const r = porQueNaoVerificou([pacote('1|10', 120)], new Set(), [marca('1|10', {pendente: true, no_pino: true})], [], AGORA);
     expect(motivos(r)).toEqual([['Rua Teste, 1|10', 'aprovar']]);
+    // o Entreguei aqui: correção e entrega no mesmo ponto
+    const aqui = porQueNaoVerificou([pacote('1|10', 120)], new Set(), [marca('1|10', {pendente: true}, aNorte(200))], [marca('1|10', {pendente: true}, aNorte(205))], AGORA);
+    expect(motivos(aqui)).toEqual([['Rua Teste, 1|10', 'aprovar']]);
+  });
+
+  // O César de 29/10: três entregas pendentes a 86 m, 176 m e 1 km do pino, e o "Em conferência"
+  // vazio, porque aprovar não mudava nada.
+  it('em conferência mas longe do pino: aprovar não verifica, e o motivo é a distância', () => {
+    const r = porQueNaoVerificou([pacote('1|10', 120)], new Set(), [marca('1|10', {pendente: true}, aNorte(176))], [], AGORA);
+    expect(r.semVerificar).toEqual([{endereco: 'Rua Teste, 1|10', pacotes: 1, motivo: 'longe', metros: 176}]);
+  });
+
+  it('marcas que bastariam e a nuvem não conta: motorista desativado', () => {
+    const r = porQueNaoVerificou([pacote('1|10', 120)], new Set(), [marca('1|10', {no_pino: true})], [], AGORA);
+    expect(motivos(r)).toEqual([['Rua Teste, 1|10', 'nao-conta']]);
   });
 
   it('as do fim da rota: sem a marca da entrega ainda, se faz menos de 15 minutos, está subindo', () => {
@@ -56,7 +71,7 @@ describe('por que a porta de um endereço entregue não ficou verificada', () =>
   it('na ordem do que ele resolve primeiro, com os pacotes de cada endereço', () => {
     const r = porQueNaoVerificou([
       pacote('1|30', 120), pacote('1|30', 110), pacote('1|40', 5), pacote('1|50', 120),
-    ], new Set(), [marca('1|30', {}, aNorte(488)), marca('1|50', {pendente: true})], [], AGORA);
+    ], new Set(), [marca('1|30', {}, aNorte(488)), marca('1|50', {pendente: true, no_pino: true})], [], AGORA);
     expect(r.semVerificar.map(s => [s.motivo, s.pacotes])).toEqual([['aprovar', 1], ['subindo', 1], ['longe', 2]]);
     expect(r.entregues).toBe(3);
   });
