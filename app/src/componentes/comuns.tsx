@@ -4,6 +4,8 @@ import {fmtKm} from '../logica/otimizacao';
 import {avisoXarope, MOTIVOS} from '../logica/reclamacoes';
 import {COR_PRECISAO, DUVIDA, ROTULO} from '../logica/rotulos';
 import type {MotivoReclamacao, Parada} from '../logica/tipos';
+import {faltaNaChave} from '../logica/texto';
+import type {Motivo, PortasDaRota} from '../logica/verificacao';
 import {loja} from '../loja';
 
 // Ícones de traço, desenhados aqui: um pacote de ícones pesaria mais que o app inteiro de telas.
@@ -85,3 +87,21 @@ export function MarcarXarope({p}: {p: Parada}) {
 }
 
 export const hhmm = (ms: number) => new Date(ms).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+
+// Os endereços entregues sem a porta verificada, agrupados pelo motivo (29/10): no Admin, de
+// qualquer rota; no celular, das entregas dele, com os textos falando com ele.
+export function PortasExplicadas({r, textos}: {r: PortasDaRota; textos: Record<Motivo, {titulo: string; porque: string}>}) {
+  const motivos = [...new Set(r.semVerificar.map(s => s.motivo))];
+  return <>
+    <div className="info"><b>{r.verificados} de {r.entregues}</b> endereço(s) entregue(s) com a porta verificada{r.porEntregar ? `; ${r.porEntregar} ainda por entregar` : ''}.</div>
+    {r.entregues > 0 && !r.semVerificar.length && <div className="info">Todos os entregues estão verificados.</div>}
+    {motivos.map(m => {
+      const itens = r.semVerificar.filter(s => s.motivo === m);
+      return <div className="item" key={m} data-motivo={m}>
+        <div><b>{textos[m].titulo} ({itens.length})</b></div>
+        <div className="achado">{textos[m].porque}</div>
+        {itens.map((s, i) => <div key={i}>{s.endereco}{s.pacotes > 1 ? ` · ${s.pacotes} pacotes` : ''}{s.metros != null ? ` · a ${s.metros} m do pino` : ''}{m === 'sem-chave' ? ` · ${faltaNaChave(s.endereco)}` : ''}</div>)}
+      </div>;
+    })}
+  </>;
+}

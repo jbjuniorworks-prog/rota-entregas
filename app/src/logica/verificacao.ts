@@ -61,6 +61,21 @@ export const MOTIVOS: Record<Motivo, {titulo: string; porque: string}> = {
 };
 const ORDEM = Object.keys(MOTIVOS) as Motivo[];
 
+// Os mesmos motivos, falando com o motorista: "Esses dois pinos não verificaram por quê?" (o Luan
+// sempre pergunta ao dono, 29/10).
+export const MOTIVOS_DO_MOTORISTA: Record<Motivo, {titulo: string; porque: string}> = {
+  'aprovar': {titulo: 'Esperando o dono aprovar', porque: 'Você está em conferência: o que você marca vale para os outros depois que o dono aprova.'},
+  'subindo': {titulo: 'Entregues há pouco', porque: 'A marca da entrega sobe 10 minutos depois, o tempo do Desfazer. Confira de novo daqui a pouco.'},
+  'longe': {titulo: 'Entregues longe do pino', porque: 'Você tocou em "Entreguei" a mais de 30 m do pino. Uma entrega longe do pino não diz quem está certo, o pino ou o GPS: a próxima entrega no mesmo lugar verifica. Na porta, "Entreguei aqui" verifica na primeira.'},
+  'so-correcao': {titulo: 'Só o pino arrumado, sem a marca da entrega', porque: 'O pino foi arrumado, mas a entrega não marcou o lugar: o GPS estava impreciso na hora, ou o celular ainda não mandou (veja se há algo "para enviar" no alto da tela).'},
+  'sem-marca': {titulo: 'A entrega não marcou o lugar', porque: 'O GPS estava impreciso ou desligado na hora, ou o celular ainda não mandou (veja se há algo "para enviar" no alto da tela).'},
+  'nao-batem': {titulo: 'Marcas em lugares diferentes', porque: 'O pino arrumado e a entrega ficaram a mais de 30 m um do outro, e a nuvem não decide qual vale.'},
+  'nao-conta': {titulo: 'Marcas que a nuvem não conta', porque: 'As marcas bastariam, mas a nuvem não contou. Fale com o dono.'},
+  'separada': {titulo: 'Separadas pelo complemento', porque: 'A porta de cada complemento é guardada à parte da do número.'},
+  'recusada': {titulo: 'Recusadas pelo dono', porque: 'O dono recusou a marca desta entrega.'},
+  'sem-chave': {titulo: 'Endereço sem como guardar a porta', porque: 'Sem número da porta, ou sem CEP nem bairro: não há como guardar a porta.'},
+};
+
 export function porQueNaoVerificou(pacotes: PacoteDaRota[], confirmadas: ReadonlySet<string>, passagens: MarcaDoDia[], correcoes: MarcaDoDia[], agora = Date.now()): PortasDaRota {
   const grupos = new Map<string, PacoteDaRota[]>();
   for (const p of pacotes) {

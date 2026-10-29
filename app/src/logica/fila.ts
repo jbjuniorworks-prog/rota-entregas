@@ -6,6 +6,7 @@ import type {EventoBusca} from './telemetria';
 import {chaveLugar} from './texto';
 import type {MotivoReclamacao} from './tipos';
 import type {LinhaDeUso} from './uso';
+import type {MarcaDoDia} from './verificacao';
 
 export interface PacoteNuvem {
   spx_tn: string | null;
@@ -71,6 +72,7 @@ export interface ClienteNuvem {
   reclamacoes(chaves: string[]): Promise<ReclamacaoDaNuvem[]>;
   registrarBusca(e: EventoBusca): Promise<void>;
   abrirLinkDoMapa(link: string): Promise<string | null>;
+  minhasMarcas(desde: string): Promise<{passagens: MarcaDoDia[]; correcoes: MarcaDoDia[]}>;
 }
 
 export const FILA_MAX = 3000;

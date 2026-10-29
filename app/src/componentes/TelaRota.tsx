@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import * as A from '../acoes';
 import {haversine, RAIO_BLOCO} from '../logica/geo';
 import {escolhidasValidas, LETRAS} from '../logica/escolha';
@@ -6,10 +7,11 @@ import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, lin
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
+import {MOTIVOS_DO_MOTORISTA, type PortasDaRota} from '../logica/verificacao';
 import type {Parada, Ponto, RotaArea} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
 import {rotuloDe} from '../logica/rotulo';
-import {AvisoXarope, BotaoMais, hhmm, Icone, MarcarXarope, Meta, Tag} from './comuns';
+import {AvisoXarope, BotaoMais, hhmm, Icone, MarcarXarope, Meta, PortasExplicadas, Tag} from './comuns';
 
 const daRota = () => {
   const R = loja.e.rota;
@@ -247,6 +249,7 @@ function CartaoProxima() {
   if (!agora) {
     return <div className="folha proxima" data-folha="fim">{puxar}<AvisosDaRota />
       <div className="grande">{adiadas ? `Sequência concluída. Falta(m) ${adiadas} deixada(s) para depois, na lista.` : 'Todas as entregas da rota foram feitas!'}</div>
+      <PortasDasEntregas />
     </div>;
   }
   const bp = agora.b.map(loja.parada).filter((p): p is Parada => !!p);
@@ -360,6 +363,21 @@ function Adiadas() {
 
 // A lista inteira, puxada para cima: só existe na tela quando está aberta, e a Rota de 95
 // entregas não desenha 95 cartões o tempo todo.
+// "Esses dois pinos não verificaram por quê?" (o Luan sempre pergunta ao dono, 29/10): a resposta
+// do Admin, aqui, para as entregas dele. Só ao tocar: pergunta à nuvem, e precisa de sinal.
+function PortasDasEntregas() {
+  const [r, setR] = useState<PortasDaRota | {erro: string} | 'buscando' | null>(null);
+  const ver = () => {
+    A.contar('portas-ver');
+    setR('buscando');
+    A.portasDasEntregas().then(setR, err => setR({erro: (err as Error).message}));
+  };
+  if (!r) return <button className="link" data-portas-ver onClick={ver}>Por que algum pino não verificou?</button>;
+  if (r === 'buscando') return <div className="info">Perguntando à nuvem pelas portas…</div>;
+  if ('erro' in r) return <div className="aviso">Não consegui ver as portas: {r.erro}. <button className="link" onClick={ver}>Tentar de novo</button></div>;
+  return <div data-portas><PortasExplicadas r={r} textos={MOTIVOS_DO_MOTORISTA} /></div>;
+}
+
 function Lista() {
   const {e} = useLoja();
   const R = e.rota!;
@@ -420,6 +438,7 @@ function Lista() {
     <Adiadas />
     {feitas.length > 0 && <details className="feitas">
       <summary>{feitas.length} entregue(s)</summary>
+      <PortasDasEntregas />
       {feitas.map(p => <LinhaParada key={p.id} p={p} />)}
     </details>}
     <div className="info rodape-lista">{fmtKm(R.dist)} · {fmtMin(R.dur)} dirigindo{R.porRuas ? '' : ' · aproximado'}.{' '}

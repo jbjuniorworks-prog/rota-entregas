@@ -11,6 +11,7 @@ import {origemDaPorta, porQuePrecisaDeVoce, situacaoDoLugar, triar} from '../log
 import {guarda, loja, status, useLoja, type Marca} from '../loja';
 import * as Adm from '../servicos/admin';
 import {nuvem} from '../servicos/nuvem';
+import {PortasExplicadas} from './comuns';
 
 const CORES_MOTORISTA = ['#1d4ed8', '#db2777', '#ea580c', '#0d9488', '#7c3aed', '#65a30d'];
 // a mesma cor para o mesmo motorista em todo o Admin: na lista, nas marcadas e no mapa do dia
@@ -358,7 +359,7 @@ function ProcurarLugar() {
 const NOME_DO_BOTAO: Record<string, string> = {ver: 'Ver no mapa', mapa: 'Marcar no mapa', aqui: 'Estou aqui', editar: 'Editar', remover: 'Remover',
   'balao-aqui': 'Entreguei aqui', 'balao-entreguei': 'Entreguei (cartão do pino)', busca: 'Busca em Todos os endereços', 'busca-antiga': 'Procurar nos dias anteriores',
   minimizar: 'Minimizar o cartão (mapa na tela toda)', 'escolher-maps': 'Escolher pinos para o Maps', circular: 'Circular grupos no mapa',
-  separar: 'Separar os pacotes da parada', 'separar-entregas': 'Separar as entregas do endereço', 'separada-aqui': 'Entreguei aqui (uma separada)', 'colar-link': 'Colar link do mapa', 'local-recebido': 'Local recebido pelo Compartilhar'};
+  separar: 'Separar os pacotes da parada', 'separar-entregas': 'Separar as entregas do endereço', 'separada-aqui': 'Entreguei aqui (uma separada)', 'colar-link': 'Colar link do mapa', 'local-recebido': 'Local recebido pelo Compartilhar', 'portas-ver': 'Por que algum pino não verificou'};
 
 // Para parar de decidir no chute quais botões ficam na frente do cartão. Mostra quanto cada um
 // é usado e qual costuma vir depois de qual — dois botões que andam sempre juntos são, na
@@ -507,19 +508,7 @@ function PorQueNaoVerificou({rota}: {rota: {id: string; dia: string; motorista_i
   useEffect(ver, [rota.id]);
   if (!r) return <div className="info" data-porque-buscando>Buscando as portas desta rota…</div>;
   if ('erro' in r) return <div className="aviso">Não consegui ver as portas desta rota: {r.erro} <button className="link" onClick={ver}>Tentar de novo</button></div>;
-  const motivos = [...new Set(r.semVerificar.map(s => s.motivo))];
-  return <div data-porque={rota.id}>
-    <div className="info"><b>{r.verificados} de {r.entregues}</b> endereço(s) entregue(s) com a porta verificada{r.porEntregar ? `; ${r.porEntregar} ainda por entregar` : ''}.</div>
-    {r.entregues > 0 && !r.semVerificar.length && <div className="info">Todos os entregues estão verificados.</div>}
-    {motivos.map(m => {
-      const itens = r.semVerificar.filter(s => s.motivo === m);
-      return <div className="item" key={m} data-motivo={m}>
-        <div><b>{MOTIVOS[m].titulo} ({itens.length})</b></div>
-        <div className="achado">{MOTIVOS[m].porque}</div>
-        {itens.map((s, i) => <div key={i}>{s.endereco}{s.pacotes > 1 ? ` · ${s.pacotes} pacotes` : ''}{s.metros != null ? ` · a ${s.metros} m do pino` : ''}{m === 'sem-chave' ? ` · ${faltaNaChave(s.endereco)}` : ''}</div>)}
-      </div>;
-    })}
-  </div>;
+  return <div data-porque={rota.id}><PortasExplicadas r={r} textos={MOTIVOS} /></div>;
 }
 
 function Rotas({lista}: {lista: Adm.RotaResumo[]}) {

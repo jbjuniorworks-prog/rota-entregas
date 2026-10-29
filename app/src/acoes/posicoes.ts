@@ -4,6 +4,8 @@ import {haversine, longeDaPorta, marcarIsoladas, noPino, passaDaPorta} from '../
 import type {Operacao} from '../logica/fila';
 import {avisoGuardou} from '../logica/memoria';
 import {medidor} from '../logica/telemetria';
+import {hojeEmMaceio} from '../logica/painel';
+import {porQueNaoVerificou, type PacoteDaRota, type PortasDaRota} from '../logica/verificacao';
 import {chaveCidade, chaveDaParada, chaveLugar, chaveRua, decompor, linkCurtoDoMapa, mesmoEndereco, nomeDoLugar, posicaoColada} from '../logica/texto';
 import {marcarSeparada, separarParada} from '../logica/importar';
 import type {Parada, PortaAntes, Ponto} from '../logica/tipos';
@@ -618,4 +620,25 @@ export function escolherCandidato(p: Parada, k: number) {
   desatualizarRota(longe);
   loja.mudou();
   focar(p.id);
+}
+
+// "Esses dois pinos não verificaram por quê?" (o Luan sempre pergunta ao dono, 29/10): a conta do
+// Admin, com as entregas deste celular, a resposta da nuvem para cada porta e as marcas dele desde
+// o dia da primeira entrega. A chave é a da parada: separada, a do complemento.
+export async function portasDasEntregas(): Promise<PortasDaRota> {
+  const c = clienteNuvem();
+  if (!c) throw new Error('sem sinal agora');
+  const cidade = e().cidade;
+  const pacotes: PacoteDaRota[] = e().paradas.flatMap(p => Array.from({length: p.unidades || 1}, () => ({
+    chave_lugar: chaveDaParada(p, cidade), endereco: p.texto, lat: p.lat, lng: p.lng,
+    entregue_em: p.entregue ? new Date(p.entregueEm || Date.now()).toISOString() : null,
+  })));
+  const feitos = pacotes.filter(x => x.entregue_em);
+  const chaves = [...new Set(feitos.map(x => x.chave_lugar).filter((k): k is string => !!k))];
+  const confirmadas = new Set(chaves.length ? (await c.posicoes(chaves)).filter(r => r.situacao === 'confirmado').map(r => r.chave_lugar) : []);
+  // o dia em Aracaju, que é UTC-3 o ano todo
+  const primeira = Math.min(...feitos.map(x => Date.parse(x.entregue_em!)));
+  const desde = feitos.length ? `${hojeEmMaceio(primeira)}T03:00:00.000Z` : new Date().toISOString();
+  const {passagens, correcoes} = await c.minhasMarcas(desde);
+  return porQueNaoVerificou(pacotes, confirmadas, passagens, correcoes);
 }

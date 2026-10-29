@@ -1,6 +1,7 @@
 import type {Session, SupabaseClient} from '@supabase/supabase-js';
 import {ErroNuvem, type ClienteNuvem} from '../logica/fila';
 import {CHAVES, donoDoAparelho} from '../logica/guarda';
+import type {MarcaDoDia} from '../logica/verificacao';
 
 // O projeto do Supabase que o app publicado usa. A chave é a pública (anon), e está no código de
 // propósito: quem protege os dados são as permissões do banco. Para usar outro projeto, troque os
@@ -172,6 +173,21 @@ export function clienteNuvem(): ClienteNuvem | null {
       const {data, error} = await s.rpc('abrir_link_do_mapa', {link});
       if (error) throw erro(error);
       return typeof data === 'string' ? data : null;
+    },
+    // `*`: o `pendente` e o `recusada` só existem depois da 022. Em partes, que a resposta para
+    // nas 1.000 linhas e cala.
+    async minhasMarcas(desde) {
+      const todas = async (tabela: string) => {
+        const saida: MarcaDoDia[] = [];
+        for (let de = 0; ; de += 1000) {
+          const {data, error} = await s.from(tabela).select('*').eq('motorista_id', uid).gte('criado_em', desde).order('id').range(de, de + 999);
+          if (error) throw erro(error);
+          saida.push(...(data || []));
+          if (!data || data.length < 1000) return saida;
+        }
+      };
+      const [passagens, correcoes] = await Promise.all([todas('observacoes'), todas('correcoes')]);
+      return {passagens, correcoes};
     },
   };
 }

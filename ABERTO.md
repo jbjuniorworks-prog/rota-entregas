@@ -307,8 +307,13 @@ Fora da lista:
     outros terminados. "testar" e "publicar" passaram, e o teste do porquê no Admin passou contra
     o endereço publicado.
   - **Pedido seguinte do dono:** "normalmente o Luan sempre me pergunta: esses dois pinos não
-    verificaram por quê?". Os dois dele em 28/10 foram "Entreguei" a 34 e 43 m do pino. A mesma
-    resposta pode ir para o celular, na entrega feita sem porta verificada; não feito.
+    verificaram por quê?". Os dois dele em 28/10 foram "Entreguei" a 34 e 43 m do pino.
+    **Feito local, não publicado ("pode colocar pra eles também"):** no celular, o cartão de fim
+    de rota e o "N entregue(s)" da lista têm "Por que algum pino não verificou?". O toque
+    pergunta à nuvem pelas portas das entregas feitas e pelas marcas do próprio motorista desde o
+    dia da primeira entrega, e mostra a mesma lista do Admin, com os textos falando com ele. A
+    chave é a da parada (a separada vai pelo complemento). Sem sinal, diz isso e deixa tentar de
+    novo. O toque é contado ("portas-ver"). Testes: 2 ponta a ponta; 7 sabotagens.
 
 ## Comandos do sistema na tela de Admin (29/10, pedido do dono): para revisar juntos
 
