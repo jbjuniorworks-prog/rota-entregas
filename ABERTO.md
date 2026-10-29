@@ -287,6 +287,17 @@ Fora da lista:
   chave. Nas rotas dos últimos 14 dias, o botão "Portas verificadas" faz o mesmo. A regra fica em
   `logica/verificacao.ts`, com 8 testes de unidade, e 1 ponta a ponta no Admin.
 
+- **Publicado em 29/10 (`5eecb78`, versão `mvu490ck`, 19:29), junto com o "Separar as entregas"
+  (`14cdcbc`) e o `1721728`.** Enviado às 19:28 de Aracaju, hora do node, com o Pedro na rua
+  (89 de 92, última às 19:02), pela autorização do dono: "pode publicar, ele atualiza e já testa
+  lá". "testar" e "publicar" passaram, e os 9 testes das três mudanças (separar do mesmo número,
+  o porquê no Admin, o link curto) passaram contra o endereço publicado, com a nuvem simulada.
+  - **Falta:** o Pedro separar no celular um número com complementos diferentes; o dono abrir o
+    porquê no Admin com uma rota de verdade.
+  - **Pedido seguinte do dono:** "normalmente o Luan sempre me pergunta: esses dois pinos não
+    verificaram por quê?". Os dois dele em 28/10 foram "Entreguei" a 34 e 43 m do pino. A mesma
+    resposta pode ir para o celular, na entrega feita sem porta verificada; não feito.
+
 ## Comandos do sistema na tela de Admin (29/10, pedido do dono): para revisar juntos
 
 "Vamos rever depois todos os comandos possíveis do nosso sistema e ver formas de deixar eles na
