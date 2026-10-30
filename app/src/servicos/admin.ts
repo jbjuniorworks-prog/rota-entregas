@@ -117,6 +117,23 @@ export async function mudarConferir(id: string, conferir: boolean) {
   falhou(error);
 }
 
+// Senha nova e papel pela aba Admin (29/10), como a criação de conta: no banco, sem a chave de
+// serviço (028_senha_e_papel.sql).
+const FALTA_028 = 'falta rodar o supabase/028_senha_e_papel.sql no SQL Editor';
+const semFuncao = (error: {code?: string; message?: string}, nome: string) => error.code === 'PGRST202' || (error.message || '').includes(nome);
+
+export async function novaSenha(id: string): Promise<string> {
+  const {data, error} = await cliente().rpc('nova_senha', {motorista: id});
+  if (error) throw new Error(semFuncao(error, 'nova_senha') ? FALTA_028 : error.message || 'erro no servidor');
+  if (typeof data !== 'string' || !data) throw new Error('o banco não devolveu a senha');
+  return data;
+}
+
+export async function mudarPapel(id: string, papel: 'motorista' | 'admin') {
+  const {error} = await cliente().rpc('mudar_papel', {pessoa: id, papel_: papel});
+  if (error) throw new Error(semFuncao(error, 'mudar_papel') ? FALTA_028 : error.message || 'erro no servidor');
+}
+
 export type RotaBase = Omit<RotaResumo, 'pacotes' | 'entregues'>;
 
 // A lista de rotas do período, sem contar os pacotes. O painel do dia só precisa dela, e a contagem

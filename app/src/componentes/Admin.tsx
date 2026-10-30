@@ -446,19 +446,48 @@ Daqui em diante, o que a pessoa marcar ou entregar só vale para os outros depoi
     await correr('c' + m.id, () => Adm.mudarConferir(m.id, !m.conferir), m.conferir ? `${m.nome}: conferência encerrada.` : `${m.nome} em conferência.`);
     recarregar();
   };
+  // O que era `npm run motoristas -- senha`, `-- admin` e `-- motorista` no computador (29/10).
+  const [senha, setSenha] = useState<{id: string; nome: string; senha: string} | null>(null);
+  const gerarSenha = async (m: Adm.Motorista) => {
+    if (!confirm(`Gerar senha nova para ${m.nome}?\n\nA senha de agora deixa de valer no próximo login. Quem já está dentro do app continua dentro.`)) return;
+    const s = await correr('s' + m.id, () => Adm.novaSenha(m.id));
+    if (s) setSenha({id: m.id, nome: m.nome, senha: s});
+  };
+  const copiarSenha = async () => {
+    if (!senha) return;
+    const texto = `Sua senha nova do app de rota:\n${location.origin}${location.pathname}\nSenha: ${senha.senha}`;
+    try { await navigator.clipboard.writeText(texto); status('Copiado. Cole no WhatsApp do motorista.', 3000); } catch { status('Não consegui copiar: anote a senha.', 4000); }
+  };
+  const papel = async (m: Adm.Motorista) => {
+    const novo = m.papel === 'admin' ? 'motorista' : 'admin';
+    if (!confirm(novo === 'admin'
+      ? `Tornar ${m.nome} administrador?\n\nA pessoa passa a ver e mudar tudo aqui no Admin: as portas de todos, as contas e as rotas.`
+      : `Voltar ${m.nome} a motorista?\n\nA pessoa perde o Admin.`)) return;
+    await correr('p' + m.id, () => Adm.mudarPapel(m.id, novo), novo === 'admin' ? `${m.nome} agora é administrador.` : `${m.nome} voltou a ser motorista.`);
+    recarregar();
+  };
   return <details>
     <summary>Motoristas ({lista.filter(m => m.papel === 'motorista').length})</summary>
-    {lista.map(m => <div className="item" key={m.id} data-motorista={m.nome} style={{display: 'flex', alignItems: 'center', gap: 8}}>
+    {lista.map(m => <div className="item" key={m.id} data-motorista={m.nome}>
       <div className="txt"><b>{m.nome}</b>{m.papel === 'admin' ? ' · administrador' : ''}
         <div className="achado">{m.ativo ? '🟢 ativo' : '⛔ desativado'}</div>
         {m.papel === 'motorista' && m.conferir && <span className="tag" style={{background: '#ea580c'}}>em conferência</span>}</div>
-      {/* sem a 022 rodada o perfil não traz o campo, e o botão não aparece */}
-      {m.papel === 'motorista' && m.conferir != null && <button className="btn peq" onClick={() => conferir(m)} disabled={!!ocupado}>
-        {fazendo('c' + m.id) ? 'Só um momento…' : m.conferir ? 'Encerrar conferência' : 'Pôr em conferência'}</button>}
-      {m.id !== nuvem.perfil?.id && <button className="btn peq" onClick={() => mudar(m)} disabled={!!ocupado}>{fazendo(m.id) ? 'Só um momento…' : m.ativo ? 'Desativar' : 'Ativar'}</button>}
+      <div className="linha">
+        {/* sem a 022 rodada o perfil não traz o campo, e o botão não aparece */}
+        {m.papel === 'motorista' && m.conferir != null && <button className="btn peq" onClick={() => conferir(m)} disabled={!!ocupado}>
+          {fazendo('c' + m.id) ? 'Só um momento…' : m.conferir ? 'Encerrar conferência' : 'Pôr em conferência'}</button>}
+        {m.id !== nuvem.perfil?.id && <button className="btn peq" onClick={() => mudar(m)} disabled={!!ocupado}>{fazendo(m.id) ? 'Só um momento…' : m.ativo ? 'Desativar' : 'Ativar'}</button>}
+        {m.papel === 'motorista' && <button className="btn peq" data-senha-nova onClick={() => gerarSenha(m)} disabled={!!ocupado}>{fazendo('s' + m.id) ? 'Gerando…' : 'Senha nova'}</button>}
+        {m.id !== nuvem.perfil?.id && <button className="btn peq" data-papel onClick={() => papel(m)} disabled={!!ocupado}>
+          {fazendo('p' + m.id) ? 'Só um momento…' : m.papel === 'admin' ? 'Voltar a motorista' : 'Tornar administrador'}</button>}
+      </div>
+      {senha?.id === m.id && <div className="aviso" data-senha-gerada>
+        Senha nova de <b>{senha.nome}</b>: <b data-senha>{senha.senha}</b>
+        <div className="info">Ela só aparece agora. Copie e mande para o motorista.</div>
+        <div className="linha"><button className="btn peq" onClick={copiarSenha}>Copiar para o WhatsApp</button></div>
+      </div>}
     </div>)}
     <NovaConta recarregar={recarregar} />
-    <div className="info">Para trocar a senha de alguém, no computador: <code>npm run motoristas -- senha email</code>.</div>
   </details>;
 }
 

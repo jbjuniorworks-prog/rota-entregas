@@ -338,6 +338,20 @@ tela admin." Primeira separação, para a conversa:
   O mesmo vale para o `restaurar`, os testes e o `build`.
 - **Os scripts de medição desta conversa se perderam:** o diretório de rascunho da sessão foi
   limpo na troca do dia. O que for usado de novo deve ir para o Admin ou para `ferramentas/`.
+- **Primeiro passo, feito local (29/10, "pode fazer"): senha nova e papel na lista de motoristas.**
+  - **O que muda:** "Senha nova" (só conta de motorista) e "Tornar administrador" / "Voltar a
+    motorista" (não na própria conta), cada um perguntando antes. A senha aparece uma vez, com
+    "Copiar para o WhatsApp", como a da conta nova. O aviso "no computador: `npm run motoristas
+    -- senha`" saiu da tela.
+  - **Banco (028):** como a criação de conta (019), funções que só quem administra chama, porque
+    a chave de serviço não pode ir para o app. Mesmas travas do terminal (o último admin ativo não
+    é rebaixado; virar admin ativa a conta) e mais uma: ninguém muda o próprio papel por aqui.
+    Como no terminal, quem já estava dentro do app continua dentro.
+  - **Testes:** 2 ponta a ponta com a nuvem simulada (8 sabotagens), e o `test:nuvem` estendido:
+    na conta criada pela tela, a senha velha deixa de entrar e a nova entra, o papel vai e volta,
+    motorista não chama as funções, e o admin não muda o próprio papel.
+  - **Falta, em ordem:** o dono rodar a 028; rodar o `test:nuvem` (cria e apaga contas de teste
+    na produção) com a autorização dele; publicar.
 
 ## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" publicado em 26/10 (`f0bbc6b`, `mvpezugf`), falta a validação
 

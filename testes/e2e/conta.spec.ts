@@ -661,6 +661,64 @@ test.describe('administrador', () => {
     expect(copiado).toMatch(/^Seu acesso ao app de rota:\nhttp\S+\nE-mail: motorista\.inventado@exemplo\.com\nSenha: Abc23defGhjkmn$/);
   });
 
+  // O que era `npm run motoristas -- senha`, `-- admin` e `-- motorista` no computador (29/10).
+  test('gera senha nova de motorista e muda o papel pela tela, perguntando antes', async ({page, context, nuvem}) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    nuvem.tabelas = {perfis: [
+      {id: 'm1', nome: 'Luan Teste', papel: 'motorista', ativo: true}, {id: 'm2', nome: 'Pedro Teste', papel: 'motorista', ativo: true},
+      {id: 'm3', nome: 'Ana Teste', papel: 'admin', ativo: true},
+    ]};
+    nuvem.rpc = {nova_senha: () => 'Xyz23defGhjkmn', mudar_papel: () => null};
+    const perguntas: string[] = [];
+    page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });
+    await abrir(page);
+    await menu(page, /^Admin/);
+    await page.locator('summary', {hasText: /^Motoristas/}).click();
+    const luan = page.locator('[data-motorista="Luan Teste"]');
+    await luan.getByRole('button', {name: 'Senha nova'}).click();
+    await expect(luan.locator('[data-senha]')).toHaveText('Xyz23defGhjkmn');
+    expect(perguntas.pop()).toContain('Gerar senha nova para Luan Teste?');
+    expect(nuvem.pedidos.filter(p => p.caminho === 'rpc/nova_senha').map(p => p.corpo)).toEqual([{motorista: 'm1'}]);
+    await luan.getByRole('button', {name: 'Copiar para o WhatsApp'}).click();
+    const copiado = (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n');
+    expect(copiado).toMatch(/^Sua senha nova do app de rota:\nhttp\S+\nSenha: Xyz23defGhjkmn$/);
+
+    await page.locator('[data-motorista="Pedro Teste"]').getByRole('button', {name: 'Tornar administrador'}).click();
+    await expect(aviso(page)).toContainText('Pedro Teste agora é administrador.');
+    expect(perguntas.pop()).toContain('Tornar Pedro Teste administrador?');
+    const ana = page.locator('[data-motorista="Ana Teste"]');
+    // de administrador não se gera senha por aqui
+    await expect(ana.getByRole('button', {name: 'Senha nova'})).toHaveCount(0);
+    await ana.getByRole('button', {name: 'Voltar a motorista'}).click();
+    await expect(aviso(page)).toContainText('Ana Teste voltou a ser motorista.');
+    expect(nuvem.pedidos.filter(p => p.caminho === 'rpc/mudar_papel').map(p => p.corpo)).toEqual([
+      {pessoa: 'm2', papel_: 'admin'}, {pessoa: 'm3', papel_: 'motorista'}]);
+    // o próprio papel não se muda por aqui
+    await expect(page.locator('[data-motorista="Você Teste"]').getByRole('button')).toHaveCount(0);
+
+    // "Cancelar" não manda nada
+    page.removeAllListeners('dialog');
+    page.on('dialog', d => d.dismiss());
+    await page.locator('[data-motorista="Pedro Teste"]').getByRole('button', {name: 'Senha nova'}).click();
+    await page.waitForTimeout(500);
+    expect(nuvem.pedidos.filter(p => p.caminho === 'rpc/nova_senha')).toHaveLength(1);
+  });
+
+  test('sem a 028 rodada, a senha nova diz o que falta', async ({page, context, nuvem}) => {
+    nuvem.tabelas = {perfis: [{id: 'm1', nome: 'Luan Teste', papel: 'motorista', ativo: true}]};
+    await context.route('**/rest/v1/rpc/nova_senha', r => r.fulfill({
+      status: 404, contentType: 'application/json', headers: {'access-control-allow-origin': '*'},
+      body: JSON.stringify({code: 'PGRST202', message: 'Could not find the function public.nova_senha(motorista) in the schema cache'}),
+    }));
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await menu(page, /^Admin/);
+    await page.locator('summary', {hasText: /^Motoristas/}).click();
+    await page.locator('[data-motorista="Luan Teste"]').getByRole('button', {name: 'Senha nova'}).click();
+    await expect(aviso(page)).toContainText('falta rodar o supabase/028_senha_e_papel.sql');
+    await expect(page.locator('[data-senha]')).toHaveCount(0);
+  });
+
   test('sem o SQL da conta rodado, diz o que falta em vez de uma senha', async ({page, context}) => {
     await context.route('**/rest/v1/rpc/criar_motorista', r => r.fulfill({
       status: 404, contentType: 'application/json', headers: {'access-control-allow-origin': '*'},

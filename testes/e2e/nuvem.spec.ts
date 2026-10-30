@@ -288,5 +288,33 @@ test.describe('nuvem @nuvem', () => {
     await page.getByLabel('E-mail do motorista').fill(CRIADO);
     await page.getByRole('button', {name: 'Criar conta'}).click();
     await expect(page.locator('#status')).toContainText('já existe conta');
+
+    // Senha nova e papel pela tela (028_senha_e_papel.sql), no banco de verdade: a senha velha deixa
+    // de entrar e a nova entra; o papel muda e volta; motorista não chama nada disso.
+    page.on('dialog', d => d.accept());
+    const entrar = (s: string) => fetch(URL + '/auth/v1/token?grant_type=password', {method: 'POST',
+      headers: {apikey: SERVICO, 'Content-Type': 'application/json'}, body: JSON.stringify({email: CRIADO, password: s})});
+    const criado = page.locator('[data-motorista="Criado Pela Tela"]');
+    await criado.getByRole('button', {name: 'Senha nova'}).click();
+    const nova = (await criado.locator('[data-senha]').innerText()).trim();
+    expect(nova).toMatch(/^[A-HJ-NP-Za-km-np-z2-9]{14}$/);
+    expect((await entrar(senha)).status).toBe(400);
+    const comoCriado = await entrar(nova);
+    expect(comoCriado.status).toBe(200);
+    const tokenDoCriado = (await comoCriado.json()).access_token;
+    const papelDoCriado = async () => (await api(`/rest/v1/perfis?id=eq.${sessao.user.id}&select=papel`)).corpo[0].papel;
+    await criado.getByRole('button', {name: 'Tornar administrador'}).click();
+    await expect(page.locator('#status')).toContainText('Criado Pela Tela agora é administrador.');
+    expect(await papelDoCriado()).toBe('admin');
+    await criado.getByRole('button', {name: 'Voltar a motorista'}).click();
+    await expect(page.locator('#status')).toContainText('Criado Pela Tela voltou a ser motorista.');
+    expect(await papelDoCriado()).toBe('motorista');
+    for (const [funcao, corpo] of [['nova_senha', {motorista: uid}], ['mudar_papel', {pessoa: sessao.user.id, papel_: 'admin'}]] as const) {
+      const r = await api(`/rest/v1/rpc/${funcao}`, {method: 'POST', body: JSON.stringify(corpo)}, tokenDoCriado);
+      expect(r.corpo.message, funcao).toContain('apenas quem administra');
+    }
+    // nem o admin muda o próprio papel por aqui
+    const proprio = await api('/rest/v1/rpc/mudar_papel', {method: 'POST', body: JSON.stringify({pessoa: uid, papel_: 'motorista'})}, token);
+    expect(proprio.corpo.message).toContain('o próprio papel');
   });
 });
