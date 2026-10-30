@@ -48,11 +48,11 @@ export const SUBINDO_MIN = 15;
 
 // Na ordem em que aparecem: primeiro o que ele resolve agora, depois o que se resolve sozinho.
 export const MOTIVOS: Record<Motivo, {titulo: string; porque: string}> = {
-  'aprovar': {titulo: 'Esperando você aprovar', porque: 'O motorista está em conferência: o que ele marca só vale depois que você aprova, em "Em conferência", aqui no Admin.'},
+  'aprovar': {titulo: 'Esperando você aprovar', porque: 'Motorista em conferência: o que o motorista marca só vale depois que você aprova, em "Em conferência", aqui no Admin.'},
   'subindo': {titulo: 'Entregues há pouco', porque: 'A marca da entrega sobe 10 minutos depois, o tempo do Desfazer. Confira de novo daqui a pouco.'},
   'longe': {titulo: 'Entregues longe do pino', porque: 'Tocou em "Entreguei" (sem o "aqui") a mais de 30 m do pino. Uma entrega longe do pino não diz quem está certo, o pino ou o GPS: a próxima entrega no mesmo lugar verifica. Com "Entreguei aqui", verifica na primeira.'},
-  'so-correcao': {titulo: 'Só o pino arrumado, sem a marca da entrega', porque: 'O pino foi arrumado, mas a entrega não deixou a marca do lugar: o GPS estava impreciso na hora, ou o celular ainda não mandou (manda quando ele abrir o app).'},
-  'sem-marca': {titulo: 'A entrega não deixou marca do lugar', porque: 'Sem GPS bom na hora, longe demais do pino, ou o celular ainda não mandou (manda quando ele abrir o app).'},
+  'so-correcao': {titulo: 'Só o pino arrumado, sem a marca da entrega', porque: 'O pino foi arrumado, mas a entrega não deixou a marca do lugar: o GPS estava impreciso na hora, ou o celular ainda não mandou (manda quando o app for aberto de novo).'},
+  'sem-marca': {titulo: 'A entrega não deixou marca do lugar', porque: 'Sem GPS bom na hora, longe demais do pino, ou o celular ainda não mandou (manda quando o app for aberto de novo).'},
   'nao-batem': {titulo: 'Marcas em lugares diferentes', porque: 'As marcas do dia caem a mais de 30 m uma da outra, e a nuvem não decide qual vale.'},
   'nao-conta': {titulo: 'Marcas que a nuvem não conta', porque: 'As marcas do dia bastariam, mas a nuvem não conta as de motorista desativado.'},
   'separada': {titulo: 'Separadas pelo complemento', porque: 'A porta de cada complemento é guardada à parte da do número, e não entra nesta conta.'},

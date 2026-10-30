@@ -261,7 +261,7 @@ Fora da lista:
 
 - **Medido** (`medir-verificados.mjs`, rascunho da sessão, só leitura), endereços entregues com
   chave, rotas de motorista de 28 e 29/10: Luan 82 de 84 e 22 de 22; Pedro 64 de 67; César 8 de 17.
-- **César:** os 9 que faltam esperam a aprovação do dono, porque ele é motorista novo em
+- **César:** os 9 que faltam esperam a aprovação do dono, porque o César é motorista novo em
   conferência. Aprovar no Admin os deixa verificados.
 - **Os do fim da rota:** a passagem de cada entrega espera os 10 minutos do Desfazer antes de
   subir, guardada no celular. As duas últimas do Pedro (18:49 e 18:53) estavam só com a correção;
@@ -275,9 +275,9 @@ Fora da lista:
   fecham quase todas as rotas com 100%; o que sobra é 1 a 3 endereços longe do pino. O resto está
   em dois motoristas:
   - **César** (em conferência desde 15/10): 14 correções e 117 passagens esperando aprovação, 4
-    recusadas. Em 16/10, 45 dos 59 endereços dele esperavam por isso.
+    recusadas. Em 16/10, 45 dos 59 endereços do César esperavam por isso.
   - **Jefferson** (16, 18 e 23/10): em 16/10, só 5 de 26 verificados. 14 tinham a entrega longe
-    do pino, e 7 não deixaram marca nenhuma do lugar: ele marca as entregas longe da porta, ou
+    do pino, e 7 não deixaram marca nenhuma do lugar: as entregas são marcadas longe da porta, ou
     sem GPS bom.
 - **Feito local, não publicado: o porquê no Admin, num toque** (pedido do dono: "algo pra ver isso
   de uma forma fácil, click, na minha tela de admin"). Nas "Rotas de hoje", o número de
@@ -311,7 +311,7 @@ Fora da lista:
     **Feito local, não publicado ("pode colocar pra eles também"):** no celular, o cartão de fim
     de rota e o "N entregue(s)" da lista têm "Por que algum pino não verificou?". O toque
     pergunta à nuvem pelas portas das entregas feitas e pelas marcas do próprio motorista desde o
-    dia da primeira entrega, e mostra a mesma lista do Admin, com os textos falando com ele. A
+    dia da primeira entrega, e mostra a mesma lista do Admin, com os textos falando com o motorista. A
     chave é a da parada (a separada vai pelo complemento). Sem sinal, diz isso e deixa tentar de
     novo. O toque é contado ("portas-ver"). Testes: 2 ponta a ponta; 7 sabotagens.
     **Publicado em 29/10 (`1b27e0a`, versão `mvu70sae`, 20:47)**, enviado às 20:46 com o
@@ -351,7 +351,7 @@ tela admin." Primeira separação, para a conversa:
     na conta criada pela tela, a senha velha deixa de entrar e a nova entra, o papel vai e volta,
     motorista não chama as funções, e o admin não muda o próprio papel.
   - **Falta, em ordem:** o dono rodar a 028; rodar o `test:nuvem` (cria e apaga contas de teste
-    na produção) com a autorização dele; publicar.
+    na produção) com a autorização do dono; publicar.
 
 ## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" publicado em 26/10 (`f0bbc6b`, `mvpezugf`), falta a validação
 
