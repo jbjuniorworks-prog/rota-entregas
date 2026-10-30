@@ -441,8 +441,18 @@ tela admin." Primeira separação, para a conversa:
   - **Testes:** 2 ponta a ponta com a nuvem simulada (8 sabotagens), e o `test:nuvem` estendido:
     na conta criada pela tela, a senha velha deixa de entrar e a nova entra, o papel vai e volta,
     motorista não chama as funções, e o admin não muda o próprio papel.
-  - **Falta, em ordem:** o dono rodar a 028; rodar o `test:nuvem` (cria e apaga contas de teste
-    na produção) com a autorização do dono; publicar.
+  - **028 rodada pelo dono em 29/10** e conferida: com a chave de serviço, as duas funções
+    respondem "apenas quem administra"; sem login, "permission denied".
+  - **`test:nuvem`, autorizado pelo dono ("pode"): 8 de 8 às 21:5x**, sem conta de teste
+    sobrando. Na primeira rodada, 7 de 8: o teste antigo do Admin (`compartilhadas.spec.ts`)
+    contava o endereço marcado por dois motoristas uma vez só, e desde 19/10 a lista vem uma linha
+    por motorista. Estava quebrado desde então (a última rodada inteira tinha sido em 15/10). O
+    teste agora segue o endereço pelo grupo do motorista e pelo "Precisa de você".
+  - **Publicado em 29/10 (`52ccc58`, versão `mvuam2fe`, 22:27).** O primeiro envio foi barrado
+    pela trava de permissões do Claude Code (publicar em produção); o dono liberou ("pode fazer
+    revisar e subir"), e foi enviado às 22:26, hora do node, só até o `52ccc58`, com o `6be5cd9`
+    e o `2c6ded9`; nenhuma rota na rua. "testar" e "publicar" passaram, e os 3 testes do Admin
+    (senha nova, papel, o porquê) passaram contra o endereço publicado.
 
 ## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" publicado em 26/10 (`f0bbc6b`, `mvpezugf`), falta a validação
 
