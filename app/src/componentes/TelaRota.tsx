@@ -18,6 +18,19 @@ const daRota = () => {
   return R ? R.areas.flatMap(ra => ra.ordem.map(loja.parada).filter((p): p is Parada => !!p)) : [];
 };
 
+// Por entregar, sem local e fora da rota: a rota só leva quem tem posição. Deixada para depois já
+// tem o bloco dela.
+const semLocal = () => {
+  const naRota = new Set(daRota().map(p => p.id));
+  return loja.e.paradas.filter(p => p.lat == null && !p.entregue && !p.adiada && !naRota.has(p.id));
+};
+
+// O aviso leva até o bloco: na Lista ele fica embaixo, depois das áreas.
+const verSemLocal = () => {
+  A.abrir({folha: 'lista'});
+  setTimeout(() => document.querySelector('[data-sem-local]')?.scrollIntoView({block: 'start'}), 50);
+};
+
 export function TopoRota() {
   const {e} = useLoja();
   const R = e.rota;
@@ -220,7 +233,7 @@ function AvisosDaRota() {
   const R = e.rota!;
   const naRota = new Set(R.areas.flatMap(a => a.ordem));
   const foraDaRota = e.paradas.filter(p => !p.entregue && !p.adiada && p.lat != null && !naRota.has(p.id)).length;
-  const semLocal = e.paradas.filter(p => !p.entregue && p.lat == null).length;
+  const sem = semLocal().length;
   const prev = previsoes(e);
   const estouro = R.areas.map(ra => loja.area(ra.id)).find(a => prev && prev.porArea[a.id]?.estoura);
   return <>
@@ -230,7 +243,7 @@ function AvisosDaRota() {
       ? 'Uma posição mudou muito depois de montar a rota: a sequência pode não valer mais.'
       : 'As posições mudaram depois de montar a rota: a sequência continua valendo, o tempo é que é de antes.'} <button className="link" onClick={A.montarRota}>Refazer a rota</button></div>}
     {foraDaRota > 0 && <div className="aviso">{foraDaRota} parada(s) nova(s) ou corrigida(s) fora da rota. <button className="link" onClick={A.montarRota}>Refazer a rota</button></div>}
-    {semLocal > 0 && <div className="aviso">{semLocal} parada(s) sem local, fora da rota.</div>}
+    {sem > 0 && <div className="aviso">{sem} parada(s) sem local, fora da rota. <button className="link" data-ver-sem-local onClick={verSemLocal}>Ver</button></div>}
   </>;
 }
 
@@ -245,10 +258,13 @@ function CartaoProxima() {
   }
   const faltam = daRota().filter(p => !p.entregue).length;
   const adiadas = e.paradas.filter(p => p.adiada && !p.entregue).length;
-  const puxar = <button className="puxador" data-lista onClick={() => A.abrir({folha: 'lista'})}><i />Ver a lista · faltam {faltam + adiadas}</button>;
+  const sem = semLocal().length;
+  const puxar = <button className="puxador" data-lista onClick={() => A.abrir({folha: 'lista'})}><i />Ver a lista · faltam {faltam + adiadas + sem}</button>;
   if (!agora) {
+    // com uma sem local por entregar, "todas feitas" mentia
+    const falta = [adiadas && `${adiadas} deixada(s) para depois`, sem && `${sem} sem local`].filter(Boolean).join(' e ');
     return <div className="folha proxima" data-folha="fim">{puxar}<AvisosDaRota />
-      <div className="grande">{adiadas ? `Sequência concluída. Falta(m) ${adiadas} deixada(s) para depois, na lista.` : 'Todas as entregas da rota foram feitas!'}</div>
+      <div className="grande">{falta ? `Sequência concluída. Falta(m) ${falta}, na lista.` : 'Todas as entregas da rota foram feitas!'}</div>
       <PortasDasEntregas />
     </div>;
   }
@@ -328,12 +344,13 @@ function LinhaParada({p}: {p: Parada}) {
   return <>
     <div className={`parada ${p.entregue ? 'feito' : ''}`} data-item={p.id}>
       <div className="badge" style={{background: loja.area(p.area).cor}}>{rotuloDe(p)}</div>
-      <button className="txt" onClick={() => A.focar(p.id)}>
+      {/* sem local não tem pino para abrir */}
+      <button className="txt" onClick={() => p.lat != null && A.focar(p.id)}>
         <span className="end">{p.texto}</span><Meta p={p} />
         {(DUVIDA.has(p.precisao) || QUASE.has(p.precisao)) && <Tag p={p} />}
         {p.reclamacoes?.length ? <span className="etiqueta-xarope">Cliente xarope</span> : null}
       </button>
-      {!p.entregue && !p.adiada && loja.e.rota && <button className="quadrado" aria-label="Deixar para depois" onClick={() => A.deixarParaDepois(p)}><Icone nome="pausa" /></button>}
+      {!p.entregue && !p.adiada && p.lat != null && loja.e.rota && <button className="quadrado" aria-label="Deixar para depois" onClick={() => A.deixarParaDepois(p)}><Icone nome="pausa" /></button>}
       {/* a reclamação costuma chegar depois de entregue: é na entrega feita que se marca */}
       {p.entregue && <button className="quadrado" aria-label="Cliente xarope" onClick={() => A.abrirXarope(p)}><Icone nome="alerta" /></button>}
       {p.entregue
@@ -356,6 +373,24 @@ function Adiadas() {
         <button className="btn peq" onClick={() => A.posicionar(p.id)}>Marcar no mapa</button>
         <button className="btn peq" onClick={() => A.estouAqui(p)}>Estou aqui</button>
         <button className="btn peq pri" onClick={() => A.voltarParaARota(p)}>Voltar para a rota</button>
+      </div>
+    </div>)}
+  </div>;
+}
+
+// Parada sem pino com a rota andando (14/10): fora da rota, ela não estava em parte nenhuma da
+// Lista e não podia ser marcada como entregue. Aqui, com o que põe o local.
+function SemLocal() {
+  useLoja();
+  const sem = semLocal();
+  if (!sem.length) return null;
+  return <div className="bloco-lista" data-sem-local>
+    <div className="area-cab"><span className="txt">Sem local ({sem.length})</span></div>
+    {sem.map(p => <div key={p.id}>
+      <LinhaParada p={p} />
+      <div className="linha">
+        <button className="btn peq" onClick={() => A.posicionar(p.id)}>Marcar no mapa</button>
+        <button className="btn peq" onClick={() => A.estouAqui(p)}>Estou aqui</button>
       </div>
     </div>)}
   </div>;
@@ -385,7 +420,9 @@ function Lista() {
   const ultima = R.areas[R.areas.length - 1];
   const velho = R.desatualizada ? 'velho' : '';
   const trechosDe = (ra: RotaArea) => trechos(ra.ordem, loja.parada, e.tamTrecho, ra === ultima ? e.fim : null);
-  const feitas = daRota().filter(p => p.entregue);
+  const naRota = new Set(daRota().map(p => p.id));
+  // a sem local entregue também: é daqui que ela se desfaz
+  const feitas = [...daRota(), ...e.paradas.filter(p => p.lat == null && !naRota.has(p.id))].filter(p => p.entregue);
   const proximoTrecho = R.areas.map(trechosDe).flat().find(t => t.some(x => x.ids.some(id => !loja.parada(id)!.entregue)));
   return <div className="folha lista" data-folha="lista">
     <button className="puxador" onClick={A.voltar}><i />Voltar ao mapa</button>
@@ -436,6 +473,7 @@ function Lista() {
       </div>;
     })}
     <Adiadas />
+    <SemLocal />
     {feitas.length > 0 && <details className="feitas">
       <summary>{feitas.length} entregue(s)</summary>
       <PortasDasEntregas />
