@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {porQueNaoVerificou, SUBINDO_MIN, type MarcaDoDia, type PacoteDaRota} from './verificacao';
+import {porQueNaoVerificou, SUBINDO_MIN, verificadasPorMotorista, type MarcaDoDia, type PacoteDaRota} from './verificacao';
 
 // Os casos medidos nas rotas de 15 a 29/10, com endereços inventados.
 const AGORA = Date.parse('2026-10-29T22:00:00Z');
@@ -74,5 +74,28 @@ describe('por que a porta de um endereço entregue não ficou verificada', () =>
     ], new Set(), [marca('1|30', {}, aNorte(488)), marca('1|50', {pendente: true, no_pino: true})], [], AGORA);
     expect(r.semVerificar.map(s => [s.motivo, s.pacotes])).toEqual([['aprovar', 1], ['subindo', 1], ['longe', 2]]);
     expect(r.entregues).toBe(3);
+  });
+});
+
+describe('verificadas por motorista no período', () => {
+  const daRota = (rota_id: string, chave: string | null, entregue: number | null, endereco?: string) => ({...pacote(chave, entregue, endereco), rota_id});
+  const rotas = [
+    {id: 'a1', motorista: 'Teste A', motorista_id: 'ma'}, {id: 'a2', motorista: 'Teste A', motorista_id: 'ma'},
+    {id: 'b1', motorista: 'Teste B', motorista_id: 'mb'}, {id: 'c1', motorista: 'Teste C', motorista_id: 'mc'},
+  ];
+  it('soma as rotas de cada motorista com a conta de cada rota, o de menos verificadas primeiro', () => {
+    const r = verificadasPorMotorista(rotas, [
+      // A: três pacotes no mesmo número são um endereço; o sem chave conta e não verifica
+      daRota('a1', '1|10', 30), daRota('a1', '1|10', 30), daRota('a1', '1|10', 30), daRota('a1', null, 30, 'Travessa Teste, Sem N'),
+      daRota('a2', '1|20', 30), daRota('a2', '1|30', null),
+      // B: um de dois
+      daRota('b1', '1|10', 30), daRota('b1', '1|40', 30),
+      // C: nada entregue, fica de fora
+      daRota('c1', '1|50', null),
+    ], new Set(['1|10', '1|20']));
+    expect(r).toEqual([
+      {motorista_id: 'mb', motorista: 'Teste B', rotas: 1, entregues: 2, verificados: 1},
+      {motorista_id: 'ma', motorista: 'Teste A', rotas: 2, entregues: 3, verificados: 2},
+    ]);
   });
 });
