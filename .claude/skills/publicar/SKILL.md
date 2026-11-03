@@ -46,9 +46,8 @@ final é aprovar esse conjunto inteiro, por isso o dono tem de ver o conjunto.
 
 - A hora de Aracaju pelo node, na hora:
   `node -e "console.log(new Date().toLocaleString('pt-BR',{timeZone:'America/Maceio'}))"`.
-- Quem está em rota: as rotas de hoje dos motoristas (não as de quem administra), com entregues,
-  total e a última entrega. Só leitura, com `ferramentas/banco.mjs`, e paginando (o PostgREST
-  devolve 1.000 linhas e cala). Não imprima chave, e-mail nem endereço de cliente.
+- Quem está em rota: `npm run na-rua` (as rotas de hoje dos motoristas, não as de quem administra,
+  com entregues, total e a última entrega). Só lê, pagina, e imprime o primeiro nome e números.
 - A preferência é ninguém na rua. A versão nova não interrompe a rota (avisa e espera
   "Atualizar"), mas a decisão de subir com alguém na rua é do dono.
 
