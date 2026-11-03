@@ -25,7 +25,14 @@ commit e o destino mostrados no passo 4. Sem ela, pare no passo 4.
 
 ## 2. O que sobe
 
-- `git log --oneline origin/main..<commit>`: é exatamente isso que vai. Liste para o dono.
+`git push origin <commit>:main` leva a `main` remota até o `<commit>`. Isso inclui **todos os
+commits que ainda faltam no remoto entre a `main` de lá e ele**, não só o do topo. Aprovar o hash
+final é aprovar esse conjunto inteiro, por isso o dono tem de ver o conjunto.
+
+- O estado da `main` remota: `git log -1 --oneline origin/main` (depois do `git fetch`).
+- Todos os commits que entram: `git log --oneline origin/main..<commit>`. Liste todos para o dono.
+- O diff acumulado do que entra: `git diff --stat origin/main <commit>`, e o diff completo dos
+  arquivos de `app/`, `supabase/` e `.github/` (`git diff origin/main <commit> -- <pastas>`).
 - Commits locais depois do autorizado não vão. Envie com `git push origin <commit>:main`, nunca
   `git push` puro, que levaria o que estiver em cima.
 - O commit do topo com `[skip ci]` não publica (o GitHub não roda o workflow). Se a intenção é
@@ -49,14 +56,15 @@ commit e o destino mostrados no passo 4. Sem ela, pare no passo 4.
 
 Mostre, nesta ordem, e pergunte:
 
-- branch atual e commit (hash curto e título);
-- a lista do passo 2 (o que sobe);
-- destino: `origin`, `main`, e se dispara a publicação no GitHub Pages;
+- branch atual e onde está a `main` remota agora;
+- todos os commits que entram (passo 2), não só o do topo;
+- o diff acumulado deles;
+- o hash final e o destino: `origin`, `main`, e se dispara a publicação no GitHub Pages;
 - se troca o app ou é só documentação;
 - quem está na rua, com a hora.
 
-"Posso enviar o `<hash>` para `main`?" e espere. Se depois do sim o commit mudar (amend, commit
-novo, rebase), o sim não vale mais: volte ao passo 1.
+"Posso enviar estes commits para `origin/main`, deixando a branch em `<hash>`?" e espere. Se
+depois do sim o commit mudar (amend, commit novo, rebase), o sim não vale mais: volte ao passo 1.
 
 ## 5. Enviar e conferir
 

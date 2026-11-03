@@ -24,9 +24,18 @@ separadas, pedidas depois.
 
 ## 2. Revisão de segurança (obrigatória, item por item)
 
-Função `security definer` roda com os privilégios do dono do banco: as regras de acesso (RLS) não
-valem dentro dela. Restringir quem chama não diz o que cada um pode ler ou mudar. Para cada função:
+Função `security definer` roda com os privilégios do proprietário dela, não de quem chama. O que
+ela pode ler e mudar é o que o proprietário pode, e ela contorna as regras de acesso (RLS) quando
+o proprietário consegue contorná-las: superusuário, papel com `BYPASSRLS`, ou o dono da tabela,
+quando a tabela não tem `force row level security`. Restringir quem chama não diz o que cada um
+pode ler ou mudar. Para cada função:
 
+- [ ] O proprietário. O esperado, pelo jeito como as migrações são rodadas (SQL Editor do
+      Supabase), é o papel `postgres`, normalmente dono das tabelas do esquema `public` e, nesse
+      caso, por cima das regras de acesso delas. Isso é expectativa, não constatação: sem
+      consultar o banco, escreva "proprietário esperado", nunca "o proprietário é". Confirmar
+      (`pg_proc.proowner`, e `force row level security` nas tabelas que a função toca) é leitura
+      no banco de produção e pede autorização. Não troque o proprietário sem pedir.
 - [ ] `set search_path = public` (mais `extensions` só se usar algo de lá). Sem isso, um objeto
       com o mesmo nome em outro esquema pode ser chamado no lugar.
 - [ ] A primeira coisa é a verificação de quem chama: `public.eh_admin()`, `public.eh_ativo()` ou
