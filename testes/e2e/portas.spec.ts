@@ -14,6 +14,10 @@ test.describe('por que o pino não verificou, no celular', () => {
 
   test('no fim da rota e na lista de entregues, com o motivo de cada endereço', async ({page, nuvem}) => {
     page.on('dialog', d => d.accept());
+    // 00:12 em Aracaju: logo depois da meia-noite, o caso em que o dia da entrega e o da marca
+    // podem não ser o mesmo. Falhou assim no GitHub em 06/11, às 03:12 UTC.
+    const AGORA = Date.parse('2026-11-06T03:12:00Z');
+    await page.clock.install({time: AGORA});
     await abrir(page);
     await carregar(page, ROTA_F);
     await montar(page);
@@ -32,8 +36,11 @@ test.describe('por que o pino não verificou, no celular', () => {
       // a sugestão não é porta verificada
       return corpo.chaves.map(chave_lugar => ({chave_lugar, lat: -10.96, lng: -37.06, situacao: chave_lugar.endsWith('|101') ? 'confirmado' : 'sugestao', motoristas: 1, minha: false}));
     };
+    // A passagem é gravada depois da entrega (no app, 10 minutos depois, o prazo do Desfazer). Era
+    // "uma hora atrás": antes da entrega, o que o app nunca faz, e logo depois da meia-noite ela
+    // caía no dia anterior, fora da consulta do dia.
     nuvem.tabelas.observacoes = [{id: 1, motorista_id: EU, chave_lugar: '49098233|20', lat: outra.lat + 200 / 111320, lng: outra.lng,
-      criado_em: new Date(Date.now() - 3600_000).toISOString(), no_pino: false, pendente: false, recusada: false}];
+      criado_em: new Date(AGORA + 60_000).toISOString(), no_pino: false, pendente: false, recusada: false}];
     await fim.getByRole('button', {name: 'Por que algum pino não verificou?'}).click();
     const portas = fim.locator('[data-portas]');
     await expect(portas).toContainText('1 de 2 endereço(s) entregue(s) com a porta verificada.');
