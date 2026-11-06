@@ -191,6 +191,58 @@ Fora da lista:
   incomodar, ou houver tremor parado) só depois desse retorno, e começa na pasta de trabalho
   `rota-entregas-mapa-seguir`, que fica até lá.
 
+## O nome das ruas que cruzam o caminho (06/11, dono, print do Google: "Tv. Edson Cardoso", "R. I", "R. J"): medido, em investigação, nada construído
+
+- **O pedido:** reconhecer as ruas por onde ele vai passando, não só as viradas, "sem atrapalhar
+  as paradas". Regra combinada: o pino e o rótulo dele têm prioridade; se o nome bater neles, o
+  nome não aparece.
+- **Amostra** (30/10 a 05/11; sem rota em 02/11 e 05/11): Pedro 04/11 (cidade, 108 entregas),
+  Luan 03/11 (cidade, 130) e Pedro 03/11 (zona de expansão, 47). A do Luan de 04/11 ficou de
+  fora por ocupar 19,8 km.
+- **Como:** banco só lido. Quatro chamadas ao Overpass, cada uma só com o retângulo da área da
+  rota; uma delas deu 502 (servidor lotado) e foi repetida uma vez. É o que aconteceu nessa
+  coleta, não uma taxa de falha do serviço. Sem OSRM, para nenhum ponto de entrega sair do
+  computador.
+- **Tudo abaixo é estimativa exploratória:** o trajeto foi reconstruído (o caminho mais curto
+  pelas ruas do OSM entre as entregas, na ordem em que foram feitas, sem mão única nem conversão
+  proibida), não é o percurso real, que o app não guarda. Os cruzamentos e as colisões foram
+  calculados sobre esse trajeto.
+- **Ruas que cruzam ou se ligam ao trajeto, sem acessos e vias de serviço (148).** "Preenchido" é
+  nome que não é genérico; "genérico" é "Rua B", "Rua 10", "Travessa C"; "vazio" é sem nome no
+  mapa. Cada linha soma o total.
+  - Cidade, 105: 91 preenchidos (87%), 3 genéricos, 11 vazios.
+  - Expansão, 43: 14 preenchidos (33%), 20 genéricos, 9 vazios. Nenhuma cruza: 39 saem de um lado
+    só da via, em T (é o que o mapa tem ali, conferido no grau de cada cruzamento).
+  - Preenchido não quer dizer certo: numa amostra, o OSM e a prefeitura divergem na grafia
+    (Sales e Salles, Resende e Rezende).
+- **Rua da entrega, por lugar (177):**
+  - a rua do mapa mais perto do pino tem o nome da planilha: 119 (67%);
+  - o nome existe a até 60 m, mas outra rua está mais perto, que é o risco de pôr o nome na rua
+    errada: 17 (10%);
+  - nenhuma rua com esse nome a até 60 m: 34 (19%);
+  - só a prefeitura tem o nome, e é a mais perto: 5 (3%);
+  - endereço sem nome de rua legível: 2 (1%).
+- **Colisão com os pinos, dos 128 nomes não vazios.** Caixas de 12 px a 30 px do cruzamento, de
+  um lado ou do outro, sem rotação; pino 30×30 com o rótulo acima. Vale para esses tamanhos e
+  posições, não garante que nunca haja sobreposição, e não conta o cartão nem a mira.
+  - Com todos os pinos (o app desenha os entregues, apagados): aparecem 23% no zoom 16 e 45% no 17.
+  - Só com os que ainda faltam quando ele passa: 33% no zoom 16 e 56% no 17.
+  - Na rota densa do Luan (90 lugares em 1,1 km), no zoom 16, aparecem 2 ou 3 de 53.
+- **Tamanho:** o Overpass devolveu de 26 a 67 KB comprimidos por rota; o que o app precisaria
+  (nome e ponto de cada cruzamento) dá menos de 1 KB comprimido por rota. Não é o obstáculo.
+- **Excluído das conclusões:** a concordância com a prefeitura. A nossa base só guarda as ruas
+  da prefeitura que o OSM não tem (`ferramentas/prefeitura.mjs`, linhas 1 a 5), então "mesmo nome"
+  dá 0 por construção. Medir de verdade pediria o cadastro inteiro da prefeitura, que não foi
+  buscado.
+- **Conclusão:**
+  - Os obstáculos são a utilidade dos nomes disponíveis e o espaço para mostrá-los sem esconder
+    as paradas, não o tamanho dos dados.
+  - Na cidade há mais nome, mas as rotas densas deixam pouco espaço.
+  - Na expansão há espaço em alguns trechos, mas pouco nome bom, justamente onde a orientação
+    faz mais falta (como no Robalo, em 17/10).
+- **Aguardando** o Pedro e o Luan: em qual trecho concreto o nome de uma rua que cruza ou se liga
+  ao caminho ajudaria? Sem novas consultas externas nem implementação até lá.
+
 ## Porta pelo link do cliente (28/10, Luan): Curva do Rio, 96
 
 - **O que houve:** o dono mandou, às 10:08, o link do Maps de uma entrega do Luan do dia
