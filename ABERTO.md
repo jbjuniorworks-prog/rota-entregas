@@ -152,6 +152,26 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## O mapa seguindo o motorista (05/11, dono: "o mapa não está sempre seguindo o ponto"): publicado em 06/11, falta o celular
+
+- **O que mudou** (`9188d17`, `app/src/logica/seguir.ts`): o mapa ia atrás só depois de 30 m, e
+  entre um salto e outro o ponto saía do meio. Agora segue a cada leitura boa do GPS, a partir de
+  5 m, com margem de até 50 m (era 300 m), sem animação. Uma leitura que exigiria mais de
+  180 km/h desde a anterior é tratada como salto do GPS e espera a seguinte confirmar. São números
+  de partida, para ajustar no celular.
+- **Teste de meia-noite** (`e4a7d13`): no GitHub, o primeiro envio falhou às 00:12 de Aracaju num
+  teste que não tinha mudado (`portas.spec.ts`), e nada foi publicado. A passagem falsa era de uma
+  hora antes da entrega, o que o app nunca faz, e caía no dia anterior. Reproduzido às 00:12 e
+  conferido às 12:12; o teste agora roda sempre às 00:12, com a passagem depois da entrega.
+- **Publicado em 06/11 às 00:26, versão `mw4ex9qx`.** No GitHub, "testar" e "publicar" passaram.
+  Ninguém na rua às 00:24 (`npm run na-rua`). Contra o site publicado, com a nuvem simulada: 12 de
+  12, entre eles os três novos (poucos metros, salto do GPS, margem de 50 m), que falham com o
+  código de antes.
+- **Falta:** o teste no celular, com o carro andando: o ponto no meio, sem os saltos de 30 m, e
+  sem tremer parado. Perguntar ao Pedro ou ao Luan depois da próxima rota.
+- **Próximo, só depois desse retorno:** o seguir voltar sozinho depois de um arrasto (uns 10 s
+  sem tocar, e só andando). Nenhuma outra mudança no mapa antes disso.
+
 ## Porta pelo link do cliente (28/10, Luan): Curva do Rio, 96
 
 - **O que houve:** o dono mandou, às 10:08, o link do Maps de uma entrega do Luan do dia
