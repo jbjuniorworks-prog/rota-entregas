@@ -167,10 +167,25 @@ Fora da lista:
   Ninguém na rua às 00:24 (`npm run na-rua`). Contra o site publicado, com a nuvem simulada: 12 de
   12, entre eles os três novos (poucos metros, salto do GPS, margem de 50 m), que falham com o
   código de antes.
-- **Falta:** o teste no celular, com o carro andando: o ponto no meio, sem os saltos de 30 m, e
-  sem tremer parado. Perguntar ao Pedro ou ao Luan depois da próxima rota.
-- **Próximo, só depois desse retorno:** o seguir voltar sozinho depois de um arrasto (uns 10 s
-  sem tocar, e só andando). Nenhuma outra mudança no mapa antes disso.
+- **Arrastar e pinçar não desligam mais** (`7695112`, dono, 06/11: "qualquer mexida ainda para de
+  seguir"). Reproduzido com toques de verdade: o arrasto com um dedo, e a pinça cujo primeiro dedo
+  anda uns 40 px antes de o segundo chegar (com uns 14 px, não desligava). Com o seguir ligado, o
+  mapa obedece à mão enquanto houver dedo na tela, sem o GPS puxar, e volta para ele ao soltar o
+  último, na distância da pinça; sem o deslize depois de soltar. A mira liga e desliga (decisão do
+  dono); desligado, o mapa fica onde ficou. Com o cartão do pino aberto, tocar na mira acesa agora
+  desliga, em vez de centralizar. Substitui o "voltar sozinho depois de 10 s" que estava previsto:
+  o dono preferiu voltar na hora.
+- **Publicado em 06/11 às 01:11, versão `mw4gjz6h`**, junto do registro anterior (`3bb1253`).
+  "Testar" e "publicar" passaram; ninguém na rua às 01:10. Contra o site, 13 de 13 do seguir,
+  com os de dedo.
+- **Limitação:** para não brigar com a animação de zoom do fim da pinça, a volta ao soltar
+  consulta `_animatingZoom`, campo interno do Leaflet. Se uma versão nova do Leaflet mudar esse
+  campo, a volta pode disputar com essa animação, sem erro nenhum. Sem teste para isso, nem para
+  o deslize desligado.
+- **Falta:** o teste no celular, com o carro andando: o ponto no meio, sem os saltos de 30 m, sem
+  tremer parado; arrastar e pinçar com o seguir ligado e ver o mapa voltar ao soltar; tocar na
+  mira acesa e ver desligar. Perguntar ao Pedro ou ao Luan depois da próxima rota. Ajuste fino
+  (se a volta imediata incomodar em algum caso) só depois desse retorno.
 
 ## Porta pelo link do cliente (28/10, Luan): Curva do Rio, 96
 
