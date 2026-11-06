@@ -4,11 +4,11 @@ import 'leaflet/dist/leaflet.css';
 import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
-import {haversine} from '../logica/geo';
 import {emendar, rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
 import {emLeque, empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
+import {passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
 import {loja, useLoja} from '../loja';
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]!));
@@ -28,10 +28,6 @@ const BALAO = {permanent: true as const, direction: 'top' as const, offset: [0, 
 const ZOOM_DO_FOCO = 17;
 // a distância de quando o mapa começa a segui-lo: a do "onde estou" de antes, que o Pedro usava
 const ZOOM_DE_MIM = 17;
-// seguindo: o mapa vai atrás quando ele anda isto, e não a cada tremida do GPS
-const REENQUADRAR_M = 30;
-// GPS de computador erra quilômetros: com margem maior, o mapa não vai atrás
-const SEGUIR_ATE_M = 300;
 
 // O número do grupo, no meio do círculo que ele desenhou: é a ordem em que a rota vai passar.
 const numeroDoGrupo = (n: number, cor: string) => L.divIcon({
@@ -111,7 +107,8 @@ export default function Mapa() {
   const enquadrado = useRef(0);
   const focado = useRef(0);
   const marcado = useRef(0);
-  const seguido = useRef<{lat: number; lng: number} | null>(null);
+  const seguido = useRef<Leitura | null>(null);
+  const suspeita = useRef<Leitura | null>(null);
   const seguia = useRef(false);
   const irMim = useRef(0);
   const [, setZoom] = useState(0);
@@ -343,10 +340,19 @@ export default function Mapa() {
     if (pediuEu || querEnquadrar) seguido.current = null;
     irMim.current = ui.irParaMim;
     const ancora = seguido.current;
-    const querSeguir = seguir && (!ancora || voltou || haversine(ancora, eu!) > REENQUADRAR_M);
+    // depois de começar, a cada leitura boa (seguir.ts); um salto do GPS espera a próxima confirmar
+    let passo = null as ReturnType<typeof passoDoSeguir> | null;
+    if (seguir && ancora && !voltou) {
+      passo = passoDoSeguir(ancora, eu!, suspeita.current);
+      suspeita.current = passo.suspeita;
+    }
+    const querSeguir = seguir && (!ancora || voltou || passo?.passo === 'mover');
     const querFocar = !!ui.focar && ui.focar.vez !== focado.current;
     const querAdmin = !!marcasAdmin && marcasAdmin.vez !== marcado.current;
-    if (querAdmin || querEnquadrar || querFocar || querSeguir || pediuEu) m.invalidateSize({pan: false});
+    // O passo de cada leitura não confere o tamanho: o cartão que muda de altura já avisa o mapa
+    // (o ResizeObserver lá em cima), e conferir a cada leitura seria trabalho repetido.
+    const comecando = querSeguir && (!ancora || voltou);
+    if (querAdmin || querEnquadrar || querFocar || comecando || pediuEu) m.invalidateSize({pan: false});
     if (querAdmin) {
       marcado.current = marcasAdmin!.vez;
       if (marcasAdmin!.pontos.length) m.fitBounds(marcasAdmin!.pontos.map(x => [x.lat, x.lng] as [number, number]), {padding: [40, 40], maxZoom: 17});
@@ -364,10 +370,13 @@ export default function Mapa() {
     if (querSeguir) {
       // Ao começar, chega perto, de uma vez: o cartão costuma mudar de altura logo em seguida (a
       // rota acabou de montar), e no meio da animação o ajuste de tamanho se perdia e ele ficava
-      // fora do meio. Depois, anda junto na distância que ele escolheu pinçando.
-      seguido.current = {lat: eu!.lat, lng: eu!.lng};
-      if (ancora) m.setView([eu!.lat, eu!.lng], m.getZoom());
-      else m.setView([eu!.lat, eu!.lng], Math.max(m.getZoom(), ZOOM_DE_MIM), {animate: false});
+      // fora do meio. Depois, anda junto na distância que ele escolheu pinçando, sem animação, que
+      // é o mais previsível; se os passinhos ficarem feios no celular, testar uma animação curta.
+      seguido.current = {lat: eu!.lat, lng: eu!.lng, quando: eu!.quando};
+      suspeita.current = null;
+      if (!ancora) m.setView([eu!.lat, eu!.lng], Math.max(m.getZoom(), ZOOM_DE_MIM), {animate: false});
+      else if (voltou) m.setView([eu!.lat, eu!.lng], m.getZoom());
+      else m.panTo([eu!.lat, eu!.lng], {animate: false});
     } else if (pediuEu && eu) m.setView([eu.lat, eu.lng], Math.max(m.getZoom(), ZOOM_DE_MIM));
   });
 

@@ -92,6 +92,15 @@ test.describe('o mapa anda junto com ele', () => {
     return Math.round(Math.hypot(r.left + r.width / 2 - (m.left + m.width / 2), r.top + r.height / 2 - (m.top + m.height / 2)));
   });
   const zoomAgora = (page) => page.evaluate(() => (window as any).rotaTeste.zoomAtual());
+  // 0,0001 grau de latitude são uns 11 m
+  const aNorte = (p: typeof NA_ROTA, metros: number) => ({...p, latitude: p.latitude + metros / 111320});
+  // Como o GPS de quem roda: chega lá e, um pouco depois, mais uma leitura adiante. Um salto de
+  // 4 km sozinho, em menos de um segundo, o mapa trata como erro do GPS (seguir.ts) e espera.
+  const andarAte = async (context, p: typeof NA_ROTA) => {
+    await context.setGeolocation(p);
+    await new Promise(r => setTimeout(r, 300));
+    await context.setGeolocation(aNorte(p, 15));
+  };
 
   test('sem tocar em nada, ele fica no meio do mapa, de perto, e o mapa vai atrás quando ele anda', async ({page, context}) => {
     await abrir(page);
@@ -101,9 +110,49 @@ test.describe('o mapa anda junto com ele', () => {
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
     expect(await zoomAgora(page), 'de perto, como no "onde estou" de antes').toBeGreaterThanOrEqual(17);
 
-    await context.setGeolocation(LONGE);
+    await andarAte(context, LONGE);
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
     expect(await zoomAgora(page)).toBeGreaterThanOrEqual(17);
+  });
+
+  // "O mapa não está sempre seguindo o ponto, isso é bem chato enquanto roda" (dono, 05/11): ele
+  // só ia atrás depois de 30 m, e entre um salto e outro o ponto escorregava para fora do meio.
+  test('andando poucos metros, ele continua no meio: o mapa vai a cada leitura', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    // 12 m: no zoom 17, uns 10 px fora do meio se o mapa esperasse os 30 m
+    await context.setGeolocation(aNorte(NA_ROTA, 12));
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('um salto do GPS sozinho não leva o mapa; a leitura seguinte, perto dele, confirma', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    await context.setGeolocation(LONGE);
+    await page.waitForTimeout(1500);
+    expect(await foraDoMapa(page, '.eu'), 'o mapa foi atrás de um salto de 4 km em menos de um segundo').toBe(1);
+    await expect(page.locator('#btnEu'), 'o salto não desliga o seguir').toHaveAttribute('aria-pressed', 'true');
+    await context.setGeolocation(aNorte(LONGE, 15));
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+  });
+
+  // A margem era 300 m; com o mapa indo a cada leitura, um ponto tão incerto o levava junto.
+  test('GPS com margem acima de 50 m não move o mapa; voltando para 49 m, move', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    // 40 m: uns 34 px no zoom 17, e devagar o bastante para não ser salto
+    await context.setGeolocation({...aNorte(NA_ROTA, 40), accuracy: 51});
+    await page.waitForTimeout(1500);
+    expect(await doMeio(page), 'o mapa foi atrás de um ponto com 51 m de margem').toBeGreaterThan(20);
+    await context.setGeolocation({...aNorte(NA_ROTA, 45), accuracy: 49});
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
   });
 
   test('pinçar muda a distância e o mapa continua indo junto, nela', async ({page, context}) => {
@@ -114,14 +163,14 @@ test.describe('o mapa anda junto com ele', () => {
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
 
     await zoom(page, 15);
-    await context.setGeolocation(LONGE);
+    await andarAte(context, LONGE);
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
     await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
     expect(await zoomAgora(page), 'voltou para a distância de antes de ele pinçar').toBe(15);
   });
 
-  // O dedo fica onde der, longe do meio: seguindo, o zoom é em volta dele, senão ele sai da tela
-  // até andar 30 m.
+  // O dedo fica onde der, longe do meio: seguindo, o zoom é em volta dele, senão ele sai do meio
+  // até a próxima leitura do GPS.
   test('aproximar com o dedo longe do meio não tira ele do meio', async ({page}) => {
     await abrir(page);
     await carregar(page, ROTA_A);
@@ -152,7 +201,7 @@ test.describe('o mapa anda junto com ele', () => {
     await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'false');
 
     // andou, e o mapa ficou onde ele deixou
-    await context.setGeolocation(LONGE);
+    await andarAte(context, LONGE);
     await page.waitForTimeout(1500);
     expect(await foraDoMapa(page, '.eu'), 'o mapa foi atrás mesmo parado pelo dedo').toBe(1);
 
@@ -179,7 +228,7 @@ test.describe('o mapa anda junto com ele', () => {
     await page.getByRole('button', {name: 'Voltar ao mapa'}).click();
     await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
 
-    await context.setGeolocation(LONGE);
+    await andarAte(context, LONGE);
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
     await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
   });
@@ -206,7 +255,7 @@ test.describe('o mapa anda junto com ele', () => {
     await page.getByRole('button', {name: 'Voltar ao mapa'}).click();
     await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
 
-    await context.setGeolocation(LONGE);
+    await andarAte(context, LONGE);
     await page.waitForTimeout(1500);
     expect(await foraDoMapa(page, '.eu'), 'fechar o cartão religou o seguir por cima do arrasto').toBe(1);
     await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'false');
@@ -239,7 +288,7 @@ test.describe('o mapa anda junto com ele', () => {
     await aba(page, '3. Rota');
     await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
 
-    await context.setGeolocation(LONGE);
+    await andarAte(context, LONGE);
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
     await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
   });
