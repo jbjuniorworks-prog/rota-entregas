@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 19/10/2026.
+Atualizado em 06/11/2026.
 
 ## O que vem agora
 
@@ -34,11 +34,11 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
    teto e o censo para desempatar a porta (2611). Suspensas. Próximo: só com medição nova.
 10. **Trava de marcação em lote** (04/10). Pendente, sem pressa, a pedido do dono: portas de
     endereços diferentes gravadas no mesmo ponto em poucos minutos.
-11. **Falso positivo da trava de segredos** (15/10). Pendente. A linha da chave de serviço sem
-    valor (o nome, o sinal de igual e nada mais), seguida de qualquer outra, conta como chave com
-    valor: o `\s*` de `guarda-segredos.mjs` atravessa a quebra de linha. Até escrever o nome colado
-    ao igual num texto dispara. Próximo: comparar só na mesma linha, com teste nas duas direções: a
-    vazia passa e a chave com valor continua barrada.
+11. **Falso positivo da trava de segredos** (15/10). **Consertado em 03/11**, na branch
+    `ferramentas-e-protecao` (`d68ad0d`). Era: a linha da chave de serviço sem valor (o nome, o
+    sinal de igual e nada mais), seguida de qualquer outra, contava como chave com valor: o `\s*` de
+    `guarda-segredos.mjs` atravessava a quebra de linha. Agora compara só na mesma linha, com teste
+    nas duas direções: a vazia passa e a chave com valor continua barrada.
 12. **Parágrafo repetido em "Falha viva"** (15/10). Feito em 19/10: saiu só a repetição.
 13. **Porta verificada no lugar errado, sem conserto fácil** (15/10, pedido do Pedro, Avenida
     Canal de Santa Maria 28). Lido no código, não reproduzido. Hoje só a marcação do admin conserta,
@@ -243,6 +243,40 @@ Fora da lista:
 - **Aguardando** o Pedro e o Luan: em qual trecho concreto o nome de uma rua que cruza ou se liga
   ao caminho ajudaria? Sem novas consultas externas nem implementação até lá.
 
+## Ferramentas e proteção (03/11, pedido do dono: "vamos fazer todos"): na branch `ferramentas-e-protecao`, nada enviado
+
+Feito em 03/11 (e o teste de produção do Admin em 29/10) na `organizacao-roteiros`; copiado em 06/11
+para esta branch, a partir da `main` (`b7367b6`), para revisar e publicar por assunto. Cada cópia tem
+as mesmas linhas acrescentadas e removidas que o original (conferido par a par). Nada aqui muda o
+app dos motoristas nem depende de migração.
+
+- **Teste de produção do Admin** (`23342bd`): a lista de lugares do Admin vem uma linha por
+  motorista desde 19/10, e o `compartilhadas.spec.ts` agora segue o endereço pelo grupo do motorista
+  e pelo "Precisa de você". Rodado contra a produção em 29/10: 8 de 8.
+- **As rotinas de publicar e de migração** (`460c7b2`, `96c524e`): `/publicar` e `/migracao`, que só
+  quem usa chama, com o alcance do envio e o dono esperado da função escritos.
+- **Trava de segredos** (`d68ad0d`): a linha da chave de serviço sem valor, seguida de outra, não
+  é mais lida como chave; a com valor continua barrada (na mesma linha, qualquer coisa depois do
+  sinal de igual ainda conta como valor).
+- **Proteção do arquivo de chaves no Claude Code** (`8dbf662`): as regras de `.claude/settings.json`
+  bloqueiam as ferramentas de ler e editar do Claude Code nesse arquivo e nas variantes dele, e o
+  hook `ferramentas/sem-env.mjs` recusa os comandos de terminal (Bash e PowerShell) que o citam pelo
+  nome. Cobre só essas ferramentas e esses formatos de comando: não pega o que chega nele por
+  variável, glob ou script, nem um programa que o leia por dentro (as ferramentas do `npm run` leem).
+  Texto que cite o nome (mensagem de commit, este arquivo) vai por arquivo ou pelo editor.
+- **Ferramentas** (`044e84d`): `npm run na-rua` (o passo 3 do `/publicar`) e
+  `npm run verificados -- <dias>`. Só leem; endereço de cliente só com `--exemplos`. Os outros 60
+  scripts do rascunho eram de uma vez só e ficaram fora.
+- **Backup pelo navegador** (item 3 dos comandos): **medido, não construir.** O do computador roda
+  sozinho todo dia (15 guardados, só faltou 23/10; o de 03/11 às 00:00 UTC, 4 MB) e leva as 11
+  contas com e-mail, que o navegador não lê. Pelas regras, o admin leria todas as linhas das 10
+  tabelas; a contagem pelo navegador não foi feita, porque pede uma sessão de admin na produção.
+  Voltar a isso se o computador deixar de ligar.
+- **César e Jefferson:** quase não usam o app agora (dono, 03/11). Conferir se voltarem a usar.
+- **Testes:** cada conserto foi sabotado em 03/11, na `organizacao-roteiros`, e cada sabotagem
+  quebrou um teste; não foram refeitas aqui. Nesta branch, sozinha em cima da `main`, em 06/11, no
+  `044e84d`: tipos; 536 de unidade; build; 251 de ponta a ponta com a nuvem simulada.
+
 ## Porta pelo link do cliente (28/10, Luan): Curva do Rio, 96
 
 - **O que houve:** o dono mandou, às 10:08, o link do Maps de uma entrega do Luan do dia
@@ -441,8 +475,18 @@ tela admin." Primeira separação, para a conversa:
   - **Testes:** 2 ponta a ponta com a nuvem simulada (8 sabotagens), e o `test:nuvem` estendido:
     na conta criada pela tela, a senha velha deixa de entrar e a nova entra, o papel vai e volta,
     motorista não chama as funções, e o admin não muda o próprio papel.
-  - **Falta, em ordem:** o dono rodar a 028; rodar o `test:nuvem` (cria e apaga contas de teste
-    na produção) com a autorização do dono; publicar.
+  - **028 rodada pelo dono em 29/10** e conferida: com a chave de serviço, as duas funções
+    respondem "apenas quem administra"; sem login, "permission denied".
+  - **`test:nuvem`, autorizado pelo dono ("pode"): 8 de 8 às 21:5x**, sem conta de teste
+    sobrando. Na primeira rodada, 7 de 8: o teste antigo do Admin (`compartilhadas.spec.ts`)
+    contava o endereço marcado por dois motoristas uma vez só, e desde 19/10 a lista vem uma linha
+    por motorista. Estava quebrado desde então (a última rodada inteira tinha sido em 15/10). O
+    teste agora segue o endereço pelo grupo do motorista e pelo "Precisa de você".
+  - **Publicado em 29/10 (`52ccc58`, versão `mvuam2fe`, 22:27).** O primeiro envio foi barrado
+    pela trava de permissões do Claude Code (publicar em produção); o dono liberou ("pode fazer
+    revisar e subir"), e foi enviado às 22:26, hora do node, só até o `52ccc58`, com o `6be5cd9`
+    e o `2c6ded9`; nenhuma rota na rua. "testar" e "publicar" passaram, e os 3 testes do Admin
+    (senha nova, papel, o porquê) passaram contra o endereço publicado.
 
 ## Mesmo endereço, lugares diferentes (26/10, Pedro e Luan): "Separar" publicado em 26/10 (`f0bbc6b`, `mvpezugf`), falta a validação
 

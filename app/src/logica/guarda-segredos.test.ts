@@ -33,6 +33,7 @@ describe('trava contra subir dado real para o repositório público', () => {
   it('barra chave de serviço, token e e-mail de pessoa real', () => {
     expect(olharConteudo('{"role":"service_role","iss":"supabase"}')).toMatch(/service_role/);
     expect(olharConteudo('SUPABASE_SERVICE_ROLE_KEY=abc123')).toMatch(/chave/);
+    expect(olharConteudo('SUPABASE_SERVICE_ROLE_KEY = abc123')).toMatch(/chave/);
     expect(olharConteudo('const t = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdefghijk"')).toMatch(/chave|token/);
     expect(olharConteudo('mandar para motorista.inventado.000@hotmail.com')).toMatch(/pessoa real/);
   });
@@ -45,6 +46,9 @@ describe('trava contra subir dado real para o repositório público', () => {
     expect(olharConteudo('const SUPA_CHAVE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrY2x6bWxjZmlrc2FxcXNwcXN5Iiwicm9sZSI6ImFub24i…"')).toBeNull();
     expect(olharConteudo('juniorpiks+motorista-teste@hotmail.com')).toBeNull();
     expect(olharConteudo('spx_tn: BRTESTA0003')).toBeNull();
+    // a linha vazia do exemplo de .env, seguida de outra, não é chave com valor
+    expect(olharConteudo('SUPABASE_SERVICE_ROLE_KEY=\nSUPABASE_URL=https://exemplo.supabase.co')).toBeNull();
+    expect(olharConteudo('o nome SUPABASE_SERVICE_ROLE_KEY=\r\ne mais nada')).toBeNull();
   });
   it('a revisão aponta o arquivo e o motivo', () => {
     const achados = revisar(['README.md', 'segredo.env', 'app/src/x.ts'], c => c === 'app/src/x.ts' ? 'const k = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhIn0.zzzzzzzzzzz"' : '');

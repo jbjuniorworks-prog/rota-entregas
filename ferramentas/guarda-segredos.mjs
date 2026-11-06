@@ -24,7 +24,8 @@ export function olharNome(caminho) {
 export function olharConteudo(texto) {
   const semAnon = texto.split(/\r?\n/).filter(l => !l.includes('guarda:exemplo')).join('\n').split(ANON).join('');
   if (/"?role"?\s*:\s*"?service_role/.test(semAnon)) return 'chave service_role do Supabase';
-  if (/SUPABASE_SERVICE_ROLE_KEY\s*=\s*\S/.test(semAnon)) return 'chave de serviço com valor';
+  // só na mesma linha: o \s atravessava a quebra e a linha vazia do exemplo virava chave
+  if (/SUPABASE_SERVICE_ROLE_KEY[ \t]*=[ \t]*\S/.test(semAnon)) return 'chave de serviço com valor';
   const jwt = semAnon.match(/eyJ[A-Za-z0-9_-]{12,}\.eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{8,}/);
   if (jwt) return 'parece uma chave/token (' + jwt[0].slice(0, 18) + '…)';
   const email = semAnon.match(/[\w.+-]+@(gmail|hotmail|outlook|yahoo|icloud|live|uol|bol)\.com(\.br)?/i);

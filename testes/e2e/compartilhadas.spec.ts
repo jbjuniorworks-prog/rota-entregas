@@ -1,5 +1,5 @@
 import {readFileSync, existsSync} from 'node:fs';
-import type {Browser, Page} from '@playwright/test';
+import type {Browser, Locator, Page} from '@playwright/test';
 import {test, expect, carregar, aviso, aba, linhaDe, clicarMapa, menu, paraABase, ROTA_A} from './apoio';
 
 const env = existsSync('.env')
@@ -113,7 +113,12 @@ test.describe('correções compartilhadas @nuvem', () => {
     expect(await correcoesDe(B.id)).toHaveLength(1);
     const adm = await comoMotorista(browser, ADM);
     await menu(adm, /^Admin/);
-    const lugar = adm.locator('[data-lugar]').filter({has: adm.locator('[data-marcacao="Teste A"]')});
+    // Desde 19/10 a lista vem uma linha por motorista: o endereço marcado pelos dois aparece no grupo
+    // de cada um, e o que pede decisão vai para "Precisa de você". O teste segue o endereço por lá.
+    const doTesteA = (onde: Locator) => onde.locator('[data-lugar]').filter({has: adm.locator('[data-marcacao="Teste A"]')});
+    const deA = adm.locator('[data-marcadas-de="Teste A"]');
+    await deA.locator('summary', {hasText: /^Ver a lista/}).click();
+    const lugar = doTesteA(deA);
     await expect(lugar).toHaveCount(1);
     await expect(lugar).toContainText('Rua D');
     await expect(lugar).toContainText('Confirmada');
@@ -121,13 +126,16 @@ test.describe('correções compartilhadas @nuvem', () => {
     await lugar.locator('[data-marcacao="Teste B"]').getByRole('button', {name: 'Apagar'}).click();
     await expect(aviso(adm)).toContainText('Marcação apagada.');
     expect(await correcoesDe(B.id)).toHaveLength(0);
-    await expect(lugar).toContainText('Sugestão');
+    // só a do Teste A, e ninguém entregou ali: sugestão, que pede decisão
+    const precisa = doTesteA(adm.locator('[data-secao="📌 Precisa de você"]'));
+    await expect(precisa).toContainText('Sugestão');
 
-    await lugar.locator('[data-marcacao="Teste A"]').getByRole('button', {name: 'Confirmar'}).click();
+    await precisa.locator('[data-marcacao="Teste A"]').getByRole('button', {name: 'Confirmar'}).click();
     await expect(aviso(adm)).toContainText('Posição confirmada');
     const [marcadaPorA] = await correcoesDe(A.id);
     expect(await correcoesDe(ADM.id)).toEqual([{...marcadaPorA}]);
-    await expect(lugar).toContainText('Confirmada');
+    // confirmada por quem administra, volta para o grupo do Teste A
+    await expect(doTesteA(deA)).toContainText('Confirmada');
 
     await adm.getByText(/^Motoristas \(\d+\)$/).click();
     await adm.locator(`[data-motorista="${C.nome}"]`).getByRole('button', {name: 'Desativar'}).click();
