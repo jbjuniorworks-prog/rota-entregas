@@ -152,7 +152,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## O mapa seguindo o motorista (05/11, dono: "o mapa não está sempre seguindo o ponto"): publicado em 06/11, falta o celular
+## O mapa seguindo o motorista (05/11, dono: "o mapa não está sempre seguindo o ponto"): publicado em 06/11, falta o teste com o carro andando
 
 - **O que mudou** (`9188d17`, `app/src/logica/seguir.ts`): o mapa ia atrás só depois de 30 m, e
   entre um salto e outro o ponto saía do meio. Agora segue a cada leitura boa do GPS, a partir de
@@ -182,10 +182,14 @@ Fora da lista:
   consulta `_animatingZoom`, campo interno do Leaflet. Se uma versão nova do Leaflet mudar esse
   campo, a volta pode disputar com essa animação, sem erro nenhum. Sem teste para isso, nem para
   o deslize desligado.
-- **Falta:** o teste no celular, com o carro andando: o ponto no meio, sem os saltos de 30 m, sem
-  tremer parado; arrastar e pinçar com o seguir ligado e ver o mapa voltar ao soltar; tocar na
-  mira acesa e ver desligar. Perguntar ao Pedro ou ao Luan depois da próxima rota. Ajuste fino
-  (se a volta imediata incomodar em algum caso) só depois desse retorno.
+- **Validado em parte pelo dono no celular (06/11), na versão `mw4gjz6h`:** arrastar, pinçar e
+  tocar na mira. Com o seguir ligado, arrastar e pinçar não desligam mais, e ao soltar o mapa
+  volta para ele; a mira liga e desliga o seguir; desligado, o mapa fica onde ficou. Não foi
+  testado com o carro andando.
+- **Falta:** o seguir contínuo com o carro andando: o ponto no meio, sem saltos, sem tremer
+  parado. Perguntar ao Pedro ou ao Luan depois da próxima rota. Ajuste fino (se a volta imediata
+  incomodar, ou houver tremor parado) só depois desse retorno, e começa na pasta de trabalho
+  `rota-entregas-mapa-seguir`, que fica até lá.
 
 ## Porta pelo link do cliente (28/10, Luan): Curva do Rio, 96
 
