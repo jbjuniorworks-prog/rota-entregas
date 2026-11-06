@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 19/10/2026.
+Atualizado em 06/11/2026.
 
 ## O que vem agora
 
@@ -21,8 +21,9 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
    consertada e publicada em 20/10 (`918d045`); depois o "ok, 0 linhas" e os outros três, um por vez.
 4. **Desfazer retira a passagem** (12/10, em "Desfazer a entrega"). Decidida, não feita. Próximo:
    na auditoria, conferir o caminho e escrever a migração para o dono rodar.
-5. **Parada sem pino** (14/10). Pendente. Próximo: reproduzir. Hoje ela não pode ser marcada como
-   entregue, e o aviso "N parada(s) sem local" não leva até ela.
+5. **Parada sem pino** (14/10). **Reproduzida e consertada em 03/11**, na branch `app-sem-banco`
+   (`2c35f3a`). Era: ela não podia ser marcada como entregue, e o aviso "N parada(s) sem local" não
+   levava até ela.
 6. **Resumo da leitura com o total do Meli** (12/10). Pendente. Próximo: mostrar a diferença entre
    as linhas lidas e o total do topo da lista, nunca como "faltam N".
 7. **Achados da leitura, não mexidos** (14/10): o cartão aberto com CEP engole os fechados da mesma
@@ -242,6 +243,28 @@ Fora da lista:
     faz mais falta (como no Robalo, em 17/10).
 - **Aguardando** o Pedro e o Luan: em qual trecho concreto o nome de uma rua que cruza ou se liga
   ao caminho ajudaria? Sem novas consultas externas nem implementação até lá.
+
+## Bibliotecas, verificadas por motorista e parada sem local (03/11, pedido do dono: "vamos fazer todos"): na branch `app-sem-banco`, nada enviado
+
+Feito em 03/11 na `organizacao-roteiros`; copiado em 06/11 para esta branch, a partir da `main`
+(`b7367b6`), para revisar e publicar por assunto. Cada cópia tem as mesmas linhas acrescentadas e
+removidas que o original (conferido par a par). Nada aqui depende de migração.
+
+- **Bibliotecas** (`5dacb6f`): só dentro da faixa (supabase-js, react, react-dom, vite,
+  @types/node) e o `source-map-js` por `npm audit fix`. O que vai para o celular: 0 alertas. Ficam
+  três alertas, só nas ferramentas de teste: `@vitest/mocker`, `tinypool` e o `vitest` que depende
+  deles. A solução proposta é atualizar para o vitest 5, em rodada separada. Nenhuma versão grande
+  mudou.
+- **Verificadas por motorista no Admin** (`509f558`, item 2 dos comandos): "Portas verificadas por
+  motorista", acima das rotas de 14 dias, com a mesma conta do "Portas verificadas" de cada rota.
+  "Quem está na rua" já estava em "Rotas de hoje".
+- **Parada sem local** (`2c35f3a`): bloco "Sem local" na Lista, com Entregue, Marcar no mapa e
+  Estou aqui; o aviso ganhou "Ver"; a entregue vai para "N entregue(s)" e se desfaz de lá. O cartão
+  do fim dizia "Todas as entregas da rota foram feitas!" com uma sem local por entregar.
+- **Testes:** cada conserto foi sabotado em 03/11, na `organizacao-roteiros`, e cada sabotagem
+  quebrou um teste; não foram refeitas aqui. Nesta branch, sozinha em cima da `main`, em 06/11, no
+  `2c35f3a`, com o `package-lock.json` dela instalado: tipos; 535 de unidade; build; 255 de ponta a
+  ponta com a nuvem simulada.
 
 ## Porta pelo link do cliente (28/10, Luan): Curva do Rio, 96
 
