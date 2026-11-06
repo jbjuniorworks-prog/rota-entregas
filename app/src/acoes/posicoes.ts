@@ -571,15 +571,17 @@ export function seguirMinhaPosicao(): () => void {
   return () => navigator.geolocation.clearWatch(vigia);
 }
 
-// A mira: volta a seguir, e leva o mapa até ele já.
+// A mira liga e desliga o seguir (dono, 06/11): arrastar e pinçar não desligam mais, então é aqui
+// que ele solta o mapa para olhar outro lugar. Ligando, leva o mapa até ele já.
 export function centralizarEmMim() {
+  if (ui.seguindo) { pararDeSeguir(); return; }
   ui.seguindo = true;
   if (!ui.euAqui) { status('Ainda não sei onde você está. Deixe o GPS pegar uns segundos.', 4000); loja.mudou(false); return; }
   ui.irParaMim++;
   loja.mudou(false);
 }
 
-// Ele arrastou o mapa: o mapa para de andar sozinho, senão briga com o dedo.
+// O mapa para de andar sozinho. Chamado pela mira acesa, e pelo `irPara` dos testes.
 export function pararDeSeguir() {
   if (!ui.seguindo) return;
   ui.seguindo = false;

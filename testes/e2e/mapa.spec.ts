@@ -186,27 +186,53 @@ test.describe('o mapa anda junto com ele', () => {
     await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  test('arrastar o mapa para de seguir, e a mira liga de novo', async ({page, context}) => {
+  // Desde 06/11 o arrasto não desliga o seguir: é a mira que liga e desliga. Desligado, o mapa fica
+  // onde ele deixou, como era antes depois de arrastar.
+  test('a mira desliga o seguir: arrastar deixa o mapa onde ficou; a mira liga de novo e volta para ele', async ({page, context}) => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
 
+    await page.locator('#btnEu').click();
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'false');
     // arrastar com o dedo (aqui, o mouse)
     const caixa = (await page.locator('#map').boundingBox())!;
     await page.mouse.move(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2);
     await page.mouse.down();
     await page.mouse.move(caixa.x + caixa.width / 2 + 80, caixa.y + caixa.height / 2 + 40, {steps: 8});
     await page.mouse.up();
-    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'false');
+    await page.waitForTimeout(500);
+    expect(await doMeio(page), 'desligado, o mapa voltou para ele ao soltar').toBeGreaterThan(40);
 
     // andou, e o mapa ficou onde ele deixou
     await andarAte(context, LONGE);
     await page.waitForTimeout(1500);
-    expect(await foraDoMapa(page, '.eu'), 'o mapa foi atrás mesmo parado pelo dedo').toBe(1);
+    expect(await foraDoMapa(page, '.eu'), 'o mapa foi atrás com o seguir desligado').toBe(1);
 
     await page.locator('#btnEu').click();
     await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+  });
+
+  test('arrastar com o mouse e o seguir ligado: ao soltar, volta para ele, e o seguir continua', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+
+    const caixa = (await page.locator('#map').boundingBox())!;
+    await page.mouse.move(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(caixa.x + caixa.width / 2 + 80, caixa.y + caixa.height / 2 + 40, {steps: 8});
+    // segurando: a leitura do GPS que chega agora não puxa o mapa da mão
+    await context.setGeolocation(aNorte(NA_ROTA, 12));
+    await page.waitForTimeout(800);
+    expect(await doMeio(page), 'com o botão apertado, o mapa voltou para ele').toBeGreaterThan(40);
+    await page.mouse.up();
+    await expect.poll(() => doMeio(page), {timeout: 5_000}).toBeLessThan(4);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    await andarAte(context, LONGE);
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
   });
 
@@ -233,9 +259,9 @@ test.describe('o mapa anda junto com ele', () => {
     await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  // Arrastar é ir olhar outro lugar, com o cartão aberto também: fechar o cartão não religa o
-  // seguir por cima do dedo, só a mira.
-  test('arrastar com o cartão aberto desliga o seguir, e fechar o cartão não religa', async ({page, context}) => {
+  // Com o cartão aberto o seguir pausa, e arrastar não o desliga mais (06/11): fechou o cartão, o
+  // mapa volta para ele. Era o contrário: desligava, e só a mira religava.
+  test('arrastar com o cartão aberto não desliga o seguir: fechou, o mapa volta para ele', async ({page, context}) => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
@@ -250,17 +276,13 @@ test.describe('o mapa anda junto com ele', () => {
     await page.mouse.down();
     await page.mouse.move(caixa.x + caixa.width / 2 + 80, caixa.y + 190, {steps: 8});
     await page.mouse.up();
-    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
     await page.locator(PINO).getByRole('button', {name: 'Fechar'}).click();
     await page.getByRole('button', {name: 'Voltar ao mapa'}).click();
     await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
 
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
     await andarAte(context, LONGE);
-    await page.waitForTimeout(1500);
-    expect(await foraDoMapa(page, '.eu'), 'fechar o cartão religou o seguir por cima do arrasto').toBe(1);
-    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'false');
-
-    await page.locator('#btnEu').click();
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
   });
 
@@ -291,6 +313,55 @@ test.describe('o mapa anda junto com ele', () => {
     await andarAte(context, LONGE);
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
     await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+  });
+});
+
+// "Qualquer mexida ainda para de seguir": arrastar e pinçar desligavam o seguir, e só a mira
+// religava (dono, 06/11). Com dedos de verdade, como no celular: o primeiro dedo encosta e anda um
+// pouco antes de o segundo chegar.
+test.describe('o seguir com os dedos', () => {
+  const NA_ROTA = {latitude: -10.9605, longitude: -37.0455, accuracy: 10};
+  test.use({viewport: {width: 412, height: 915}, hasTouch: true, isMobile: true, permissions: ['geolocation'], geolocation: NA_ROTA});
+  const doMeio = (page) => page.evaluate(() => {
+    const m = document.querySelector('#map')!.getBoundingClientRect(), eu = document.querySelector('.leaflet-marker-icon:has(.eu)');
+    if (!eu) return Infinity;
+    const r = eu.getBoundingClientRect();
+    return Math.round(Math.hypot(r.left + r.width / 2 - (m.left + m.width / 2), r.top + r.height / 2 - (m.top + m.height / 2)));
+  });
+  const zoomAgora = (page) => page.evaluate(() => (window as any).rotaTeste.zoomAtual() as number);
+  async function comRotaMontada(page) {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    const caixa = (await page.locator('#map').boundingBox())!;
+    const cdp = await page.context().newCDPSession(page);
+    const toque = (type: string, touchPoints: {x: number; y: number}[]) => cdp.send('Input.dispatchTouchEvent', {type, touchPoints});
+    // o meio do mapa, acima do cartão de baixo
+    return {toque, cx: caixa.x + caixa.width / 2, cy: caixa.y + 260};
+  }
+
+  test('pinçar não desliga o seguir: fica na distância nova, e ele no meio', async ({page}) => {
+    const {toque, cx, cy} = await comRotaMontada(page);
+    const antes = await zoomAgora(page);
+    // o primeiro dedo anda uns 40 px sozinho, como quando a mão ainda está chegando
+    await toque('touchStart', [{x: cx - 30, y: cy}]);
+    for (let k = 1; k <= 8; k++) await toque('touchMove', [{x: cx - 30 - k * 4, y: cy + k * 3}]);
+    for (let k = 0; k <= 10; k++) await toque(k ? 'touchMove' : 'touchStart', [{x: cx - 62 - k * 8, y: cy + 24}, {x: cx + 30 + k * 8, y: cy - 8}]);
+    await toque('touchEnd', []);
+    await expect.poll(() => zoomAgora(page), {message: 'a pinça aproximou'}).toBeGreaterThan(antes);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+  });
+
+  test('arrastar com o seguir ligado: o mapa obedece ao dedo e, ao soltar, volta para ele', async ({page}) => {
+    const {toque, cx, cy} = await comRotaMontada(page);
+    await toque('touchStart', [{x: cx, y: cy}]);
+    for (let k = 1; k <= 10; k++) await toque('touchMove', [{x: cx + k * 12, y: cy + k * 6}]);
+    expect(await doMeio(page), 'com o dedo na tela, o mapa foi com ele').toBeGreaterThan(60);
+    await toque('touchEnd', []);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => doMeio(page), {timeout: 5_000}).toBeLessThan(4);
   });
 });
 

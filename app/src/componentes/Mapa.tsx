@@ -29,6 +29,16 @@ const ZOOM_DO_FOCO = 17;
 // a distância de quando o mapa começa a segui-lo: a do "onde estou" de antes, que o Pedro usava
 const ZOOM_DE_MIM = 17;
 
+// Seguindo (pedidos de 02/10 e 03/10): ele fica no meio do mapa, de perto, e o mapa vai junto
+// quando ele anda. Mostrar ele e a próxima juntos afastava o mapa a cidade inteira enquanto a
+// entrega estava longe. Não com o cartão de um pino aberto, a lista puxada ou o toque no mapa
+// armado: ali ele está olhando outra coisa, e ao fechar o mapa volta para ele.
+function seguirAgora(): boolean {
+  const ui = loja.ui, eu = ui.euAqui;
+  return !!eu && ui.seguindo && ui.tela === 'rota' && ui.folha === 'proxima' && !ui.pino && !ui.posicionando
+    && eu.precisao <= SEGUIR_ATE_M;
+}
+
 // O número do grupo, no meio do círculo que ele desenhou: é a ordem em que a rota vai passar.
 const numeroDoGrupo = (n: number, cor: string) => L.divIcon({
   className: '', iconSize: [28, 28], iconAnchor: [14, 14],
@@ -110,6 +120,8 @@ export default function Mapa() {
   const seguido = useRef<Leitura | null>(null);
   const suspeita = useRef<Leitura | null>(null);
   const seguia = useRef(false);
+  // os dedos (ou o mouse) na tela agora: enquanto houver um, nada puxa o mapa
+  const dedos = useRef(new Set<number>());
   const irMim = useRef(0);
   const [, setZoom] = useState(0);
   const circulando = ui.tela === 'rota' && ui.folha === 'circular';
@@ -133,11 +145,27 @@ export default function Mapa() {
       if (loja.ui.pino) voltar();
     });
     m.on('zoomend', () => setZoom(m.getZoom()));
-    // Arrastar é ir olhar outro lugar: o mapa para de segui-lo, senão puxa de volta o que ele foi
-    // ver. Pinçar, rolar e o + e − só mudam a distância, e o mapa continua indo junto: parar ali
-    // era o "o mapa não fica no zoom indo à entrega" do Pedro (03/10). Os movimentos do próprio
-    // app não disparam o arrastar.
-    m.on('dragstart', pararDeSeguir);
+    // "Qualquer mexida ainda para de seguir" (dono, 06/11): arrastar desligava o seguir, e a pinça
+    // também, porque no celular o primeiro dedo anda antes de o segundo chegar e isso já conta como
+    // arrastar. Agora, com o seguir ligado, arrastar e pinçar são só para olhar: o mapa obedece à
+    // mão enquanto houver dedo na tela e, quando o último sai, volta para ele, na distância que a
+    // pinça deixou. Desligar o seguir é na mira.
+    const voltarParaEle = () => {
+      const eu = loja.ui.euAqui;
+      // no meio da animação de zoom do fim da pinça, o `moveend` dela é que volta
+      if (dedos.current.size || !eu || !seguirAgora() || (m as any)._animatingZoom) return;
+      if (m.latLngToContainerPoint([eu.lat, eu.lng]).distanceTo(m.getSize().divideBy(2)) < 2) return;
+      seguido.current = {lat: eu.lat, lng: eu.lng, quando: eu.quando};
+      m.setView([eu.lat, eu.lng], m.getZoom(), {animate: false});
+    };
+    const el = m.getContainer();
+    const desce = (ev: PointerEvent) => { dedos.current.add(ev.pointerId); };
+    // na página toda: o dedo pode sair da tela por cima do cartão, fora do mapa
+    const sobe = (ev: PointerEvent) => { if (dedos.current.delete(ev.pointerId) && !dedos.current.size) voltarParaEle(); };
+    el.addEventListener('pointerdown', desce, true);
+    document.addEventListener('pointerup', sobe, true);
+    document.addEventListener('pointercancel', sobe, true);
+    m.on('moveend', voltarParaEle);
     mapa.current = m;
     const daqui = {
       clicarMapa: (lat: number, lng: number) => m.fire('click', {latlng: L.latLng(lat, lng)}),
@@ -162,7 +190,14 @@ export default function Mapa() {
     tamanho.observe(div.current!);
     // Fechar e reabrir o mapa monta outro: sem tirar este daqui, o teste continuava mandando
     // ordem para um mapa já morto e elas sumiam sem erro nenhum.
-    return () => { tamanho.disconnect(); m.remove(); if ((window as any).rotaTeste === daqui) delete (window as any).rotaTeste; };
+    return () => {
+      tamanho.disconnect();
+      el.removeEventListener('pointerdown', desce, true);
+      document.removeEventListener('pointerup', sobe, true);
+      document.removeEventListener('pointercancel', sobe, true);
+      m.remove();
+      if ((window as any).rotaTeste === daqui) delete (window as any).rotaTeste;
+    };
   }, []);
 
   useEffect(() => {
@@ -321,17 +356,14 @@ export default function Mapa() {
     // Escondido (outra tela aberta), o mapa não tem tamanho, e enquadrar agora mostrava o mundo
     // inteiro: o pedido espera ele aparecer. Aparecendo, o tamanho de antes já não vale.
     if (!div.current!.offsetWidth) return;
-    // Seguindo (pedidos de 02/10 e 03/10): ele fica no meio do mapa, de perto, e o mapa vai junto
-    // quando ele anda. Mostrar ele e a próxima juntos afastava o mapa a cidade inteira enquanto a
-    // entrega estava longe. Não com o cartão de um pino aberto, a lista puxada ou o toque no mapa
-    // armado: ali ele está olhando outra coisa, e ao fechar o mapa volta para ele.
     const eu = ui.euAqui;
-    const seguir = !!eu && ui.seguindo && ui.tela === 'rota' && ui.folha === 'proxima' && !ui.pino && !ui.posicionando
-      && eu.precisao <= SEGUIR_ATE_M;
+    const seguir = seguirAgora();
     // seguindo, pinçar e o + e − aproximam em volta dele, não dos dedos: ele continua no meio. Com
     // o cartão de um pino aberto, é em volta dos dedos, que estão no que ele foi olhar.
     const emVolta = seguir ? 'center' : true;
     m.options.touchZoom = m.options.scrollWheelZoom = m.options.doubleClickZoom = emVolta;
+    // seguindo, o arrasto não continua deslizando depois do dedo sair: o mapa volta para ele
+    m.options.inertia = !seguir;
     const voltou = seguir && !seguia.current;
     seguia.current = seguir;
     const pediuEu = ui.irParaMim !== irMim.current;
@@ -346,7 +378,8 @@ export default function Mapa() {
       passo = passoDoSeguir(ancora, eu!, suspeita.current);
       suspeita.current = passo.suspeita;
     }
-    const querSeguir = seguir && (!ancora || voltou || passo?.passo === 'mover');
+    // com dedo na tela, o mapa é da mão: a leitura do GPS espera, e o soltar é que volta para ele
+    const querSeguir = seguir && !dedos.current.size && (!ancora || voltou || passo?.passo === 'mover');
     const querFocar = !!ui.focar && ui.focar.vez !== focado.current;
     const querAdmin = !!marcasAdmin && marcasAdmin.vez !== marcado.current;
     // O passo de cada leitura não confere o tamanho: o cartão que muda de altura já avisa o mapa
