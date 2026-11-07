@@ -11,7 +11,7 @@ import {MOTIVOS_DO_MOTORISTA, type PortasDaRota} from '../logica/verificacao';
 import type {Parada, Ponto, RotaArea} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
 import {rotuloDe} from '../logica/rotulo';
-import {AvisoXarope, BotaoMais, hhmm, Icone, MarcarXarope, Meta, PortasExplicadas, Tag} from './comuns';
+import {AvisoXarope, BotaoMais, hhmm, Icone, LinhaComercial, MarcarXarope, Meta, PortasExplicadas, Tag} from './comuns';
 
 const daRota = () => {
   const R = loja.e.rota;
@@ -84,6 +84,7 @@ function EntregasDoPonto({ps}: {ps: Parada[]}) {
           <div className="end">{varias ? partesDoEndereco(g.ps).comum : g.ps[0].texto}</div>
           {varias ? <div className="achado">{g.ps.length} entregas · {g.pacotes} pacotes</div> : <Meta p={g.ps[0]} />}
           {(DUVIDA.has(g.ps[0].precisao) || QUASE.has(g.ps[0].precisao)) && <Tag p={g.ps[0]} />}
+          <LinhaComercial ps={g.ps} />
           <AvisoXarope p={g.ps.find(p => p.reclamacoes?.length) || g.ps[0]} />
         </div>
       </div>

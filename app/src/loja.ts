@@ -76,6 +76,9 @@ const lerMinimizado = () => { try { return localStorage.getItem(MINIMIZADO) === 
 
 export const guarda = guardaEm(localStorage);
 let estado = carregarEstado(guarda);
+// Muda a cada troca do estado inteiro (outra conta, "Resetar a rota", desfazer o reset): a resposta
+// de uma consulta feita antes não é deste dia e é descartada (revisão de 07/11).
+let geracao = 0;
 const ui: Ui = {
   tela: estado.paradas.length ? 'rota' : 'inicio', folha: 'proxima', escolhidas: [], grupos: [], pino: null, menu: false,
   // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
@@ -92,6 +95,7 @@ let indice: {lista: Parada[]; quantas: number; onde: Map<string, Parada>} | null
 
 export const loja = {
   get e(): Estado { return estado; },
+  get geracao() { return geracao; },
   ui,
   mudou(salvar = true) {
     if (salvar) salvarEstado(guarda, estado);
@@ -99,6 +103,7 @@ export const loja = {
   },
   trocarEstado(novo: Estado) {
     estado = novo;
+    geracao++;
     salvarEstado(guarda, estado);
     avisar();
   },

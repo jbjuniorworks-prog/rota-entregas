@@ -2,11 +2,13 @@ import type {ReactNode} from 'react';
 import * as A from '../acoes';
 import {fmtKm} from '../logica/otimizacao';
 import {avisoXarope, MOTIVOS} from '../logica/reclamacoes';
+import {ehComercial, quemMarcou} from '../logica/comerciais';
 import {COR_PRECISAO, DUVIDA, ROTULO} from '../logica/rotulos';
 import type {MotivoReclamacao, Parada} from '../logica/tipos';
 import {faltaNaChave} from '../logica/texto';
 import type {Motivo, PortasDaRota} from '../logica/verificacao';
 import {loja} from '../loja';
+import {nuvem} from '../servicos/nuvem';
 
 // Ícones de traço, desenhados aqui: um pacote de ícones pesaria mais que o app inteiro de telas.
 const DESENHOS: Record<string, ReactNode> = {
@@ -55,6 +57,7 @@ export function Meta({p}: {p: Parada}) {
   if (p.ml) partes.push(`no app: #${p.ml}`);
   if (p.unidades) partes.push(`${p.unidades} unid.`);
   if (p.comercial) partes.push('horário comercial');
+  else if (p.comercialMeu || p.comercialOutros) partes.push('comercial');
   return partes.length ? <span className="achado">{partes.join(' · ')}</span> : null;
 }
 
@@ -83,6 +86,22 @@ export function MarcarXarope({p}: {p: Parada}) {
         ? <button key={m} className="btn peq" onClick={() => A.tirarXarope(p, m)}>{MOTIVOS[m].marcar} · tirar</button>
         : <button key={m} className="btn peq" onClick={() => A.marcarXarope(p, m)}>{MOTIVOS[m].marcar}</button>;
     })}</div>
+  </div>;
+}
+
+// Pino comercial (pedido do Luan, 07/11). No alto de cada endereço do cartão, logo abaixo dele: num
+// pino com vários endereços, um é comércio e o outro não. Embaixo, e não ao lado, para o endereço
+// continuar com a largura toda. O botão liga e desliga só a marca dele; a de outro motorista fica,
+// e o admin tem o "Tirar de todos". `data-marcar`, não `data-acao`: não é ação da entrega, e aparece
+// também na entregue, onde marcar ainda serve ao próximo motorista.
+export function LinhaComercial({ps}: {ps: Parada[]}) {
+  const p = ps.find(ehComercial), meu = ps.some(x => x.comercialMeu);
+  const admin = nuvem.perfil?.papel === 'admin';
+  return <div className="comercial-linha">
+    <button className={`pilula ${meu ? 'ligado' : ''}`} aria-pressed={meu} data-marcar="comercial"
+      onClick={() => A.alternarComercial(ps)}>Comercial</button>
+    {p && <span className="achado" data-comercial={p.comercialMeu ? 'meu' : p.comercialOutros ? 'outros' : 'meli'}>{quemMarcou(p)}</span>}
+    {admin && ps.some(x => x.comercialOutros) && <button className="link" data-marcar="comercial-todos" onClick={() => A.tirarComercialDeTodos(ps)}>Tirar de todos</button>}
   </div>;
 }
 

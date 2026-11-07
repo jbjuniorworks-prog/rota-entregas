@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import XLSX from 'xlsx';
 import {BUSCAS_MAX, ErroNuvem, FILA_MAX, criarFila, operacoesDaPlanilha, type ClienteNuvem} from './fila';
-import {CHAVES, backupRecente, carregarEstado, estadoVazio, guardaEm, guardaNaMemoria, resetarDia, salvarEstado} from './guarda';
+import {CHAVES, backupRecente, carregarEstado, estadoVazio, guardaEm, guardadaDe, guardaNaMemoria, resetarDia, salvarEstado, trocarDeConta} from './guarda';
 import {adicionarDaPlanilha, adicionarLinhas, resumoPlanilha} from './importar';
 import {criarMemoria} from './memoria';
 import {montarRota} from './montagem';
@@ -267,10 +267,25 @@ describe('guardar estado e reset do dia', () => {
 });
 
 describe('fila da nuvem', () => {
-  function servidor(falhas: {rede?: number; recusar?: string; buscaRede?: number; buscaRecusada?: boolean; aoRegistrarBusca?: () => void} = {}) {
+  function servidor(falhas: {rede?: number; recusar?: string; buscaRede?: number; buscaRecusada?: boolean; aoRegistrarBusca?: () => void;
+    comercial?: {como: 'rede' | 'ausente' | 'recusar'; vezes: number}; aoComercial?: () => void;
+    // a conta da sessão em que o cliente nasceu, e se ela ainda é a da sessão e a dona do aparelho
+    conta?: string; vale?: () => boolean; esperarComercial?: (o: string) => Promise<void>} = {}) {
     const chamadas: string[] = [];
     let rede = falhas.rede || 0, buscaRede = falhas.buscaRede || 0;
+    // o pino comercial (031): sem sinal, sem a tabela (PGRST205) ou recusado, as primeiras `vezes`
+    const comercial = async (o: string) => {
+      falhas.aoComercial?.();
+      await falhas.esperarComercial?.(o);
+      const f = falhas.comercial;
+      if (f && f.vezes-- > 0) throw f.como === 'rede' ? new ErroNuvem('offline', true)
+        : f.como === 'ausente' ? new ErroNuvem("Could not find the table 'public.comerciais'", false, true)
+          : new ErroNuvem('new row violates row-level security policy', false);
+      chamadas.push(o);
+    };
     const c: ClienteNuvem = {
+      conta: falhas.conta || 'A',
+      vale: () => falhas.vale ? falhas.vale() : true,
       async rotaExistente(at) { chamadas.push('existe ' + at); return null; },
       async criarRota(id, at) { if (rede-- > 0) throw new ErroNuvem('offline', true); chamadas.push('rota ' + at); },
       async inserirPacotes(id, ps) { chamadas.push('pacotes ' + ps.length); },
@@ -286,6 +301,9 @@ describe('fila da nuvem', () => {
       async inserirReclamacao(k, m) { if (falhas.recusar) throw new ErroNuvem(falhas.recusar, false); chamadas.push(`xarope ${k} ${m}`); },
       async tirarReclamacao(k, m) { chamadas.push(`tirar xarope ${k} ${m}`); },
       async reclamacoes() { return []; },
+      async marcarComercial(k) { await comercial('comercial ' + k); },
+      async tirarComercial(k, todas) { await comercial(`tirar comercial ${k}${todas ? ' de todos' : ''}`); },
+      async comerciais() { return []; },
       async abrirLinkDoMapa() { return null; },
       async minhasMarcas() { return {passagens: [], correcoes: []}; },
       async registrarBusca(ev) {
@@ -393,6 +411,113 @@ describe('fila da nuvem', () => {
     expect(f.erro()).toContain('reclamacoes');
   });
 
+  // Pino comercial (031). A fila guarda o último desejo por endereço: marcar e tirar sem sinal viram
+  // um envio só, e o reenvio depois de falha de rede não manda duas vezes.
+  it('comercial marcado e tirado sem sinal sai uma vez, com o último desejo', async () => {
+    const f = criarFila(guardaNaMemoria()), {c, chamadas} = servidor();
+    f.querComercial('x|1', 'marcar');
+    f.querComercial('x|1', 'tirar');
+    f.querComercial('y|2', 'marcar');
+    expect(f.pendentes()).toBe(2);
+    await f.enviar(c);
+    expect(chamadas).toEqual(['tirar comercial x|1', 'comercial y|2']);
+    expect(f.pendentes()).toBe(0);
+  });
+
+  it('comercial que falhou na rede sai de novo uma vez, e não mais', async () => {
+    const f = criarFila(guardaNaMemoria()), {c, chamadas} = servidor({comercial: {como: 'rede', vezes: 1}});
+    f.querComercial('x|1', 'marcar');
+    await f.enviar(c);
+    expect(chamadas).toEqual([]);
+    expect(f.pendentes()).toBe(1);
+    await f.enviar(c);
+    await f.enviar(c);
+    expect(chamadas).toEqual(['comercial x|1']);
+    expect(f.pendentes()).toBe(0);
+  });
+
+  // A migração pode chegar depois do app. Sem a tabela, a marca espera — não é recusa para jogar
+  // fora — e a entrega e a passagem de depois dela saem do mesmo jeito.
+  it('sem a tabela no servidor, o comercial espera e o resto da fila sai', async () => {
+    const f = criarFila(guardaNaMemoria()), {c, chamadas} = servidor({comercial: {como: 'ausente', vezes: 2}});
+    f.querComercial('x|1', 'marcar');
+    f.enfileirar({tipo: 'correcao', chave: 'k|1', lat: 1, lng: 1});
+    await f.enviar(c);
+    f.enfileirar({tipo: 'correcao', chave: 'k|2', lat: 2, lng: 2});
+    await f.enviar(c);
+    expect(chamadas).toEqual(['correcao k|1', 'correcao k|2']);
+    expect(f.comerciais()).toEqual({'x|1': 'marcar'});
+    expect(f.erro()).toBe('');
+    // a migração rodou
+    await f.enviar(c);
+    expect(chamadas).toEqual(['correcao k|1', 'correcao k|2', 'comercial x|1']);
+    expect(f.comerciais()).toEqual({});
+  });
+
+  it('comercial recusado pelo servidor sai da fila e fica registrado', async () => {
+    const f = criarFila(guardaNaMemoria()), {c} = servidor({comercial: {como: 'recusar', vezes: 1}});
+    f.querComercial('x|1', 'marcar');
+    await f.enviar(c);
+    expect(f.comerciais()).toEqual({});
+    expect(f.erro()).toContain('row-level security');
+  });
+
+  // Ele tocou de novo enquanto o envio ia: o desejo novo não pode sair da fila junto com o velho.
+  it('comercial mudado durante o envio fica para o próximo', async () => {
+    let f: ReturnType<typeof criarFila>;
+    const {c, chamadas} = servidor({aoComercial: () => { if (!chamadas.length) f.querComercial('x|1', 'tirar'); }});
+    f = criarFila(guardaNaMemoria());
+    f.querComercial('x|1', 'marcar');
+    await f.enviar(c);
+    expect(f.comerciais()).toEqual({'x|1': 'tirar'});
+    await f.enviar(c);
+    expect(chamadas).toEqual(['comercial x|1', 'tirar comercial x|1']);
+    expect(f.comerciais()).toEqual({});
+  });
+
+  // A sai e B entra no meio de um envio do comercial (revisão de 07/11). O pedido que já tinha saído
+  // termina, mas a resposta dele não mexe na fila de B — nem quando B tem o mesmo endereço com o
+  // mesmo desejo —, e os endereços de A que ainda não tinham saído não saem na sessão de B.
+  it('troca de conta no meio do envio do comercial: o que já saiu não mexe na fila de B, e o resto de A não sai', async () => {
+    const dados = new Map<string, string>();
+    const armazem = {getItem: (k: string) => dados.get(k) ?? null, setItem: (k: string, v: string) => { dados.set(k, v); }, removeItem: (k: string) => { dados.delete(k); }};
+    trocarDeConta(armazem, 'A');
+    dados.set(guardadaDe(CHAVES.comerciais, 'B'), JSON.stringify({'x|1': 'marcar', 'z|9': 'tirar'}));
+    const f = criarFila(guardaEm(armazem));
+    f.querComercial('x|1', 'marcar');
+    f.querComercial('y|2', 'marcar');
+    f.querComercial('w|3', 'tirar');
+    let soltar!: () => void;
+    const preso = new Promise<void>(r => { soltar = r; });
+    const {c, chamadas} = servidor({conta: 'A', vale: () => dados.get(CHAVES.dono) === 'A',
+      esperarComercial: o => o === 'comercial x|1' ? preso : Promise.resolve()});
+    const envio = f.enviar(c);
+    await Promise.resolve();
+    trocarDeConta(armazem, 'B');
+    soltar();
+    await envio;
+    expect(chamadas, 'só o pedido que já tinha saído').toEqual(['comercial x|1']);
+    expect(JSON.parse(dados.get(CHAVES.comerciais)!), 'a fila de B fica como estava').toEqual({'x|1': 'marcar', 'z|9': 'tirar'});
+    expect(JSON.parse(dados.get(guardadaDe(CHAVES.comerciais, 'A'))!), 'os de A ficam com A, para sair quando A voltar')
+      .toEqual({'x|1': 'marcar', 'y|2': 'marcar', 'w|3': 'tirar'});
+  });
+
+  // A conta já tinha trocado antes de a volta começar: nada sai.
+  it('cliente de uma conta que já não é a do aparelho não manda comercial nenhum', async () => {
+    const f = criarFila(guardaNaMemoria()), {c, chamadas} = servidor({vale: () => false});
+    f.querComercial('x|1', 'marcar');
+    await f.enviar(c);
+    expect(chamadas).toEqual([]);
+    expect(f.comerciais()).toEqual({'x|1': 'marcar'});
+  });
+
+  it('o admin tirando de todos manda o pedido de todos', async () => {
+    const f = criarFila(guardaNaMemoria()), {c, chamadas} = servidor();
+    f.querComercial('x|1', 'tirarTodas');
+    await f.enviar(c);
+    expect(chamadas).toEqual(['tirar comercial x|1 de todos']);
+  });
+
   // A telemetria da busca de lista (026) nunca passa na frente do trabalho do motorista.
   it('o registro da busca só sai depois do trabalho do motorista', async () => {
     const f = criarFila(guardaNaMemoria()), {c, chamadas} = servidor();
@@ -490,6 +615,7 @@ describe('desfazer correção já enviada', () => {
   it('se a correção já saiu da fila, o desfazer vira um pedido para apagar na nuvem', async () => {
     const g = guardaNaMemoria(), f = criarFila(g), chamadas: string[] = [];
     const c = {
+      conta: 'A', vale: () => true,
       rotaExistente: async () => null, criarRota: async () => {}, inserirPacotes: async () => {}, marcarEntregue: async () => {},
       inserirCorrecao: async (k: string) => { chamadas.push('correcao ' + k); },
       apagarCorrecao: async (k: string, lat: number) => { chamadas.push(`apagar ${k} ${lat}`); },
@@ -502,6 +628,9 @@ describe('desfazer correção já enviada', () => {
       inserirReclamacao: async () => {},
       tirarReclamacao: async () => {},
       reclamacoes: async () => [],
+      marcarComercial: async () => {},
+      tirarComercial: async () => {},
+      comerciais: async () => [],
       registrarBusca: async () => {},
       abrirLinkDoMapa: async () => null,
       minhasMarcas: async () => ({passagens: [], correcoes: []}),

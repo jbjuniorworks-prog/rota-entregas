@@ -1,5 +1,6 @@
 ﻿import {aplicarCompartilhadas, separarAsQueMovem} from '../logica/compartilhadas';
 import {aplicarReclamacoes, chaveCliente} from '../logica/reclamacoes';
+import {aplicarComerciais} from '../logica/comerciais';
 import {haversine, longeDaPorta, marcarIsoladas, noPino, passaDaPorta} from '../logica/geo';
 import type {Operacao} from '../logica/fila';
 import {avisoGuardou} from '../logica/memoria';
@@ -15,27 +16,55 @@ import {clienteNuvem} from '../servicos/nuvem';
 import {contar, desatualizarRota, e, enviarFila, ESPERA_DA_PORTA, fila, memoria, ui} from './base';
 import {abrir, alturaAgora, irPara, voltar} from './navegacao';
 import {cartaoAoAndar} from '../logica/seguir';
+import {revisaoComercial} from './comerciais';
 
 export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number; lembradasVerificadas: number; xaropes: number}> {
-  const saida = {confirmadas: 0, sugestoes: 0, minhas: 0, lembradasVerificadas: 0, xaropes: 0};
+  const vazia = () => ({confirmadas: 0, sugestoes: 0, minhas: 0, lembradasVerificadas: 0, xaropes: 0});
+  const saida = vazia();
   const c = clienteNuvem();
   if (!c) return saida;
+  // A resposta só vale para o dia de quem perguntou (revisão de 07/11): se a conta trocou, ou o
+  // estado inteiro (resetar a rota, desfazer o reset), ela é descartada sem tocar na tela.
+  const geracao = loja.geracao;
+  const valeAinda = () => loja.geracao === geracao && c.vale();
   const chaveDe = (p: Parada) => chaveDaParada(p, e().cidade);
   const chaves = [...new Set(e().paradas.filter(p => !p.entregue).map(chaveDe).filter((k): k is string => !!k))];
   if (!chaves.length) return saida;
   try {
-    Object.assign(saida, aplicarCompartilhadas(e().paradas, await medidor.medir('banco', () => c.posicoes(chaves)), chaveDe));
+    const r = await medidor.medir('banco', () => c.posicoes(chaves));
+    if (!valeAinda()) return vazia();
+    Object.assign(saida, aplicarCompartilhadas(e().paradas, r, chaveDe));
     if (saida.confirmadas || saida.minhas) desatualizarRota();
     // o que a barra oferecia acabou de entrar
     ui.pinosNovos = null;
   } catch {}
+  if (!valeAinda()) return vazia();
   // Separada da de cima: sem a 018 rodada ela falha, e as posições têm de chegar mesmo assim.
   // Chave própria: num condomínio a reclamação é do apartamento, não do prédio.
+  const clienteDe = (p: Parada) => chaveCliente(p.texto, p.bairro, e().cidade);
   try {
-    const clienteDe = (p: Parada) => chaveCliente(p.texto, p.bairro, e().cidade);
     const clientes = [...new Set(e().paradas.filter(p => !p.entregue).map(clienteDe).filter((k): k is string => !!k))];
-    if (clientes.length) saida.xaropes = aplicarReclamacoes(e().paradas, await medidor.medir('banco', () => c.reclamacoes(clientes)), clienteDe);
+    if (clientes.length) {
+      const r = await medidor.medir('banco', () => c.reclamacoes(clientes));
+      if (!valeAinda()) return vazia();
+      saida.xaropes = aplicarReclamacoes(e().paradas, r, clienteDe);
+    }
   } catch {}
+  if (!valeAinda()) return vazia();
+  // Separada também: sem a 031 rodada ela falha, e o resto chega mesmo assim. As entregues entram:
+  // o pino delas continua no mapa e tem de continuar quadrado. O endereço que ele tocar enquanto a
+  // consulta vai fica como ele deixou: a resposta é de antes do toque.
+  try {
+    const todas = [...new Set(e().paradas.map(clienteDe).filter((k): k is string => !!k))];
+    if (todas.length) {
+      const antes = new Map(todas.map(k => [k, revisaoComercial(k)]));
+      const r = await medidor.medir('banco', () => c.comerciais(todas));
+      if (!valeAinda()) return vazia();
+      const tocadas = new Set(todas.filter(k => revisaoComercial(k) !== antes.get(k)));
+      aplicarComerciais(e().paradas, r, clienteDe, fila.comerciais(), new Set(todas), tocadas);
+    }
+  } catch {}
+  if (!valeAinda()) return vazia();
   loja.mudou();
   return saida;
 }

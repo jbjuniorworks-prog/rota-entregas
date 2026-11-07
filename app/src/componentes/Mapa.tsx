@@ -8,6 +8,7 @@ import {emendar, rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
 import {emLeque, empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
+import {ehComercial} from '../logica/comerciais';
 import {passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
 import {loja, useLoja} from '../loja';
 
@@ -221,7 +222,7 @@ export default function Mapa() {
     const pilhas = emLeque(empilhar(comLocal, q => m.project([q.lat, q.lng], z), q => ondeNaRota(q.id) ?? 1e6));
     const desenho = [
       pilhas.map(g => g.ps.map(p => [p.id, p.lat, p.lng, p.entregue, p.adiada, p.precisao, p.area, p.stop, p.adicional, p.unidades, rotuloDe(p),
-        (p.reclamacoes || []).map(r => r.motivo).join('+')].join(',')).join(';')).join('/'),
+        (p.reclamacoes || []).map(r => r.motivo).join('+'), ehComercial(p)].join(',')).join(';')).join('/'),
       e.inicio && [e.inicio.lat, e.inicio.lng, e.inicio.exibido].join(','),
       e.fim && [e.fim.lat, e.fim.lng, e.fim.exibido].join(','),
       e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0)).join('|'),
@@ -266,7 +267,9 @@ export default function Mapa() {
         // Escolhendo para o Maps ou circulando, a cor é a resposta da tela e fica cheia. Entregue não
         // tem mais porta a achar.
         const vazio = !escolhendo && !circulando && g.ps.some(x => !x.entregue && x.precisao !== 'confirmado');
-        const borda = [duvidosa, vazio ? 'nao-verificado' : '', proxima && g.ps.some(x => x.id === proxima) ? 'alvo' : '', xarope ? 'xarope' : ''].filter(Boolean).join(' ');
+        // Comercial (pedido do Luan, 07/11): o formato, não a cor, que já diz a área
+        const comercial = g.ps.some(ehComercial);
+        const borda = [duvidosa, vazio ? 'nao-verificado' : '', proxima && g.ps.some(x => x.id === proxima) ? 'alvo' : '', xarope ? 'xarope' : '', comercial ? 'comercial' : ''].filter(Boolean).join(' ');
         const pendentes = g.ps.filter(x => !x.entregue);
         // O Leaflet põe o texto do balão como HTML. O número da parada só entra com dígitos
         // (numeroDaParada), mas essa trava mora longe daqui: escapar aqui não depende dela.

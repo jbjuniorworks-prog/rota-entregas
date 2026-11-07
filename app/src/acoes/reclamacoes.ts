@@ -5,7 +5,7 @@ import {e, enviarFila, fila, ui} from './base';
 
 // Marca pelo endereço (com o apartamento, num condomínio), não pela entrega: as outras entregas
 // para a mesma porta na rota de hoje têm de mostrar o mesmo aviso.
-function doMesmoEndereco(p: Parada): {chave: string; ps: Parada[]} | null {
+export function doMesmoEndereco(p: Parada): {chave: string; ps: Parada[]} | null {
   const chave = chaveCliente(p.texto, p.bairro, e().cidade);
   if (!chave) return null;
   return {chave, ps: e().paradas.filter(q => chaveCliente(q.texto, q.bairro, e().cidade) === chave)};
