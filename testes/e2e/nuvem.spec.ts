@@ -225,8 +225,14 @@ test.describe('nuvem @nuvem', () => {
       const posicoes = async () => (await api('/rest/v1/rpc/posicoes', {method: 'POST', body: JSON.stringify({chaves: [CHAVE]})}, token)).corpo;
       const decidir = (aprovar: boolean) => api('/rest/v1/rpc/decidir_marcas', {method: 'POST', body: JSON.stringify({motorista: uid, chaves: [CHAVE], aprovar})}, token);
 
-      // o celular mandando pendente=false não muda nada: quem decide é o banco, pelo perfil
-      expect((await api('/rest/v1/correcoes', {method: 'POST', body: JSON.stringify({chave_lugar: CHAVE, ...ponto, pendente: false})}, token)).status).toBe(201);
+      // quem decide se nasce pendente é o banco, pelo perfil. Desde a 030 o celular nem manda o
+      // campo: a gravação inteira é recusada (42501), e nada fica gravado
+      const comPendente = await api('/rest/v1/correcoes', {method: 'POST', body: JSON.stringify({chave_lugar: CHAVE, ...ponto, pendente: false})}, token);
+      expect(comPendente.status, 'pendente mandado pelo celular').toBe(403);
+      expect(comPendente.corpo?.code).toBe('42501');
+      expect((await api(`/rest/v1/correcoes?motorista_id=eq.${uid}&chave_lugar=eq.${encodeURIComponent(CHAVE)}&select=id`)).corpo, 'nada gravado').toEqual([]);
+      // como o app manda
+      expect((await api('/rest/v1/correcoes', {method: 'POST', body: JSON.stringify({chave_lugar: CHAVE, ...ponto})}, token)).status).toBe(201);
       expect((await api('/rest/v1/observacoes', {method: 'POST', body: JSON.stringify({chave_lugar: CHAVE, ...ponto, precisao_m: 5})}, token)).status).toBe(201);
       expect(await posicoes(), 'o par dele não verifica a porta para ninguém').toEqual([]);
       expect((await decidir(true)).status, 'ele não aprova a si mesmo').toBe(400);
