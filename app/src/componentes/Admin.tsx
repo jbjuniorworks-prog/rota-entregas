@@ -281,7 +281,7 @@ Ela passa a valer para todos os motoristas, como marcação sua.`)) return;
       <input type="checkbox" checked={escolhidas.has(chaveDe(g, i))} onChange={ev => escolher([chaveDe(g, i)], ev.target.checked)} />
       {i.endereco}
     </label>
-    {i.disputa && <span className="tag" data-disputa>em disputa</span>}
+    {i.disputa && <span className="tag" style={{background: '#dc2626'}} data-disputa>em disputa</span>}
     <div className="achado">{dataHora(i.criado_em)} · {i.texto}</div>
     {i.mesmoPonto && <div className="aviso" data-mesmo-ponto>Marcada do mesmo ponto que outros {i.mesmoPonto.enderecos - 1} endereços, de {i.mesmoPonto.ruas} ruas diferentes. Confira antes de aprovar.</div>}
     <div className="linha">

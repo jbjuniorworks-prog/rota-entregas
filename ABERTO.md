@@ -176,6 +176,12 @@ A partir da `main` (`2fa2f71`). Independente da 029: não mexe em `observacoes_d
   dela. O banco inteiro novo, a 030 rodada duas vezes e a `main` com o `000_rodar_tudo.sql` novo
   dão o mesmo resultado. Tipos; 540 de unidade; build; 252 de ponta a ponta com a nuvem simulada.
   O Admin, sabotado, quebra o teste dele.
+- **Selo "em disputa" invisível (07/11), consertado:** o `.tag` tem letra branca e o fundo vem de
+  quem usa; o da disputa saiu sem fundo e sumia na tela. Visto no Admin com o Supabase local e dados
+  fictícios, em 412×915; o teste conferia só o texto. Agora o fundo é vermelho (`#dc2626`), e o
+  teste confere a cor do fundo e da letra: falhou antes do conserto (fundo transparente) e passa
+  depois. Repetido no Supabase local: o selo aparece, vermelho com letra branca, nos dois itens em
+  disputa. Tipos; 540 de unidade; build; 252 de ponta a ponta.
 - **Falta:** medir na produção, com autorização, quantas passagens por dia cairiam em disputa
   (passagem pendente também sai da âncora do CEP e do nome das ruas). O dono roda a 030 no SQL
   Editor. Conferir as permissões por coluna no catálogo da produção e repetir pela API, com contas

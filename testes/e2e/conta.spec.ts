@@ -980,6 +980,10 @@ test.describe('administrador', () => {
       await expect(secao.locator('summary').first()).toHaveText('Em conferência (2)');
       const briga = secao.locator(`[data-conferir="${BRIGA}"]`), comum = secao.locator(`[data-conferir="${COMUM}"]`);
       await expect(briga.locator('[data-disputa]')).toHaveText('em disputa');
+      // o .tag tem letra branca e o fundo vem de quem usa: sem ele, o selo sumia na tela (07/11,
+      // visto no Supabase local), e só o texto era conferido
+      await expect(briga.locator('[data-disputa]')).toHaveCSS('background-color', 'rgb(220, 38, 38)');
+      await expect(briga.locator('[data-disputa]')).toHaveCSS('color', 'rgb(255, 255, 255)');
       await expect(briga).toContainText('A porta verificada hoje fica a 3,5 km. Só muda a porta se você definir esta posição como porta.');
       await expect(briga.getByRole('button', {name: 'Aprovar'}), 'na disputa não se aprova').toHaveCount(0);
       await expect(comum.locator('[data-disputa]')).toHaveCount(0);
