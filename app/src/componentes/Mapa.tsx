@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
+import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, pausaDoSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
 import {emendar, rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
@@ -32,11 +32,10 @@ const ZOOM_DE_MIM = 17;
 // Seguindo (pedidos de 02/10 e 03/10): ele fica no meio do mapa, de perto, e o mapa vai junto
 // quando ele anda. Mostrar ele e a próxima juntos afastava o mapa a cidade inteira enquanto a
 // entrega estava longe. Não com o cartão de um pino aberto, a lista puxada ou o toque no mapa
-// armado: ali ele está olhando outra coisa, e ao fechar o mapa volta para ele.
+// armado: ali ele está olhando outra coisa, e ao fechar o mapa volta para ele (pausaDoSeguir).
 function seguirAgora(): boolean {
   const ui = loja.ui, eu = ui.euAqui;
-  return !!eu && ui.seguindo && ui.tela === 'rota' && ui.folha === 'proxima' && !ui.pino && !ui.posicionando
-    && eu.precisao <= SEGUIR_ATE_M;
+  return !!eu && ui.seguindo && ui.tela === 'rota' && !pausaDoSeguir() && eu.precisao <= SEGUIR_ATE_M;
 }
 
 // O número do grupo, no meio do círculo que ele desenhou: é a ordem em que a rota vai passar.

@@ -50,6 +50,8 @@ export interface Ui {
   // o mapa da Rota anda junto com ele, com ele no meio (pedidos de 02/10 e 03/10: "todas as
   // respostas são onde você está"). Arrastar o mapa desliga; a mira liga de novo.
   seguindo: boolean;
+  // onde ele estava ao abrir o cartão de um pino (seguir.ts): longe daqui, o cartão fecha
+  cartaoDesde: {lat: number; lng: number} | null;
   // quantas marcações esperam decisão de quem administra: o número no botão Mais e no Admin
   esperandoAdmin: number;
   // a entrega com a escolha de "cliente xarope" aberta
@@ -78,7 +80,7 @@ const ui: Ui = {
   tela: estado.paradas.length ? 'rota' : 'inicio', folha: 'proxima', escolhidas: [], grupos: [], pino: null, menu: false,
   // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
   posicionando: null, marcandoLugar: null, localRecebido: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
-  euAqui: null, irParaMim: 0, seguindo: true, esperandoAdmin: 0, xarope: null, versaoNova: null, pinosNovos: null, nomesNoMapa: [], podeInstalar: false,
+  euAqui: null, irParaMim: 0, seguindo: true, cartaoDesde: null, esperandoAdmin: 0, xarope: null, versaoNova: null, pinosNovos: null, nomesNoMapa: [], podeInstalar: false,
   minimizado: lerMinimizado(),
 };
 

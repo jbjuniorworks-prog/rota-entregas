@@ -276,13 +276,106 @@ test.describe('o mapa anda junto com ele', () => {
     await page.mouse.down();
     await page.mouse.move(caixa.x + caixa.width / 2 + 80, caixa.y + 190, {steps: 8});
     await page.mouse.up();
-    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    // com o cartão aberto a mira fica apagada (07/11); que o arrasto não desligou, mostra o fechar
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'false');
     await page.locator(PINO).getByRole('button', {name: 'Fechar'}).click();
     await page.getByRole('button', {name: 'Voltar ao mapa'}).click();
     await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
 
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
     await andarAte(context, LONGE);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+  });
+
+  // Pedro, 07/11: "não está seguindo a localização dele". Entregou a 51 pelo cartão do pino, o
+  // cartão ficou aberto, e o mapa ficou no pino enquanto ele rodava, com a mira acesa. O cartão
+  // aberto pausa o seguir, para ele olhar o lugar; afastando 50 m de onde abriu, ele já foi embora.
+  test('com o cartão do pino aberto a mira apaga; parado na porta o cartão fica; afastando 50 m, fecha e o mapa volta a segui-lo', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+
+    await page.locator('.pino.alvo').click({force: true});
+    await page.locator(`${PINO} [data-acao=entregue]`).first().click();
+    await expect(page.locator(PINO), 'depois de entregar, o cartão continua aberto').toBeVisible();
+    await expect(page.locator('#btnEu'), 'com o cartão aberto o mapa não segue: a mira não pode dizer que segue').toHaveAttribute('aria-pressed', 'false');
+
+    // na porta, o GPS anda uns metros sem ele sair dali
+    await context.setGeolocation(aNorte(NA_ROTA, 20));
+    await page.waitForTimeout(1500);
+    await expect(page.locator(PINO), 'parado na porta, o cartão fica').toBeVisible();
+
+    await context.setGeolocation(aNorte(NA_ROTA, 60));
+    await expect(page.locator(PINO), 'a 60 m de onde abriu, o cartão fecha').toHaveCount(0);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    // e continua indo junto (20 m: 60 m num segundo seria salto do GPS, que espera confirmar)
+    await context.setGeolocation(aNorte(NA_ROTA, 80));
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+  });
+
+  // Era uma armadilha: com o cartão aberto, a mira acesa desligava o seguir no primeiro toque, e o
+  // segundo centrava uma vez só.
+  test('com o cartão do pino aberto, um toque na mira fecha o cartão, vai até ele e volta a seguir', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+
+    await page.locator('.pino.alvo').click({force: true});
+    await expect(page.locator(PINO)).toBeVisible();
+    // 30 m: menos que os 50 m que fecham o cartão, e o mapa fica para trás
+    await context.setGeolocation(aNorte(NA_ROTA, 30));
+    await page.waitForTimeout(1500);
+    expect(await doMeio(page), 'com o cartão aberto, o mapa foi atrás').toBeGreaterThan(10);
+
+    await page.locator('#btnEu').click();
+    await expect(page.locator(PINO), 'um toque fecha o cartão').toHaveCount(0);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    await context.setGeolocation(aNorte(NA_ROTA, 45));
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+  });
+
+  // A mesma armadilha do cartão (07/11), com a lista puxada: o mapa não segue, a mira dizia que
+  // seguia, e o toque nela desligava o seguir sem nada mudar na tela.
+  test('com a lista puxada a mira apaga, e um toque volta ao mapa seguindo', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+
+    await lista(page);
+    await expect(page.locator('#btnEu'), 'com a lista o mapa não segue: a mira não pode dizer que segue').toHaveAttribute('aria-pressed', 'false');
+    await page.locator('#btnEu').click();
+    await expect(page.locator('[data-folha="proxima"]'), 'um toque volta ao mapa').toBeVisible();
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    await context.setGeolocation(aNorte(NA_ROTA, 20));
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+  });
+
+  // Escolhendo pinos (ou circulando grupos, ou com o toque no mapa armado), o mapa também não segue.
+  // Aqui o toque na mira não larga o que ele está fazendo: só traz o mapa até ele, e o seguir volta
+  // quando ele sai do modo. Antes, o toque desligava o seguir, e saindo do modo o mapa ficava parado.
+  test('escolhendo pinos para o Maps a mira apaga; o toque não larga a escolha, e saindo o mapa segue', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+
+    await page.locator('[data-folha="proxima"] [data-escolher-maps]').click();
+    const cartao = page.locator('[data-folha="escolher"]');
+    await expect(cartao).toBeVisible();
+    await expect(page.locator('#btnEu'), 'escolhendo, o mapa não segue: a mira não pode dizer que segue').toHaveAttribute('aria-pressed', 'false');
+    await page.locator('#btnEu').click();
+    await expect(cartao, 'a mira não larga a escolha').toBeVisible();
+
+    await page.goBack();
+    await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    await context.setGeolocation(aNorte(NA_ROTA, 20));
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
   });
 

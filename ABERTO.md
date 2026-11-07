@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 06/11/2026.
+Atualizado em 07/11/2026.
 
 ## O que vem agora
 
@@ -190,6 +190,23 @@ Fora da lista:
   parado. Perguntar ao Pedro ou ao Luan depois da próxima rota. Ajuste fino (se a volta imediata
   incomodar, ou houver tremor parado) só depois desse retorno, e começa na pasta de trabalho
   `rota-entregas-mapa-seguir`, que fica até lá.
+
+- **O mapa parado com o cartão do pino aberto (07/11, Pedro: "não está seguindo a localização
+  dele"):** na branch `seguir-com-cartao`, a partir da `main` (`2fa2f71`), nada enviado. O print
+  tinha o cartão "Neste pino" aberto, a 51 entregue e a mira acesa; reproduzido em 412×915: o
+  cartão aberto pausa o seguir, e depois de "Entregue" ele continua aberto. A mira dizia que
+  seguia, e o toque nela desligava o seguir. Aprovado pelo dono e feito: com o cartão aberto a
+  mira apaga; afastando 50 m de onde abriu, o cartão fecha e o mapa volta a segui-lo (só com o
+  seguir ligado, e não com o toque no mapa armado); parado na porta, fica; um toque na mira fecha
+  e volta a seguir. O mesmo na lista puxada (a mira apaga, o toque volta ao mapa seguindo) e nos
+  modos de tocar no mapa (escolher pinos, circular, o lugar da entrega: a mira apaga, o toque leva
+  o mapa até ele sem largar o modo, e saindo o mapa segue). Mapa e mira leem a mesma pausa
+  (`pausaDoSeguir`). Os 50 m são de partida, e leitura com margem acima de 50 m não conta.
+- **Achados sem conserto (07/11):** com o GPS com margem acima de 50 m o mapa espera e a mira fica
+  acesa (o círculo da margem aparece acima de 25 m); um dedo cujo soltar e cancelar se percam
+  deixaria o mapa parado até recarregar (mecanismo possível, nunca visto); com o toque no mapa
+  armado, saindo dali, o mapa espera e o aviso continua na tela. Sem dado de que aconteçam na rua.
+- **Falta:** validar na rua o cartão que fecha sozinho e a mira, com o Pedro.
 
 ## O nome das ruas que cruzam o caminho (06/11, dono, print do Google: "Tv. Edson Cardoso", "R. I", "R. J"): medido, em investigação, nada construído
 
