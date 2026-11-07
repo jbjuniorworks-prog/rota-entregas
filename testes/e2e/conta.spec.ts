@@ -239,6 +239,42 @@ test.describe('administrador', () => {
     await expect(naLista.locator('[data-porque="r1"]')).toContainText('1 de 5 endereço(s) entregue(s) com a porta verificada');
   });
 
+  // Os verificados por motorista em 14 dias (comandos do Admin, 29/10): a mesma conta de cada rota,
+  // somada; a rota de quem administra fica fora. Inventados.
+  test('as portas verificadas de cada motorista nos 14 dias, somando as rotas', async ({page, nuvem}) => {
+    const dia = (n: number) => new Date(Date.now() - n * 864e5).toLocaleDateString('sv-SE', {timeZone: 'America/Maceio'});
+    const antes = (min: number) => new Date(Date.now() - min * 60000).toISOString();
+    const rota = (id: string, nome: string, d: string, papel = 'motorista') =>
+      ({id, dia: d, arquivo: id + '.xlsx', criado_em: antes(600), motorista_id: 'id ' + nome, perfis: {nome, papel}});
+    const pacote = (rota_id: string, chave_lugar: string | null, entregue_em: string | null) =>
+      ({rota_id, chave_lugar, endereco: 'Rua Teste, ' + chave_lugar, entregue_em, spx_tn: null, sequencia: null, bairro: null, lat: -10.9, lng: -37.0});
+    nuvem.tabelas = {
+      rotas: [rota('a1', 'Teste A', dia(1)), rota('a2', 'Teste A', dia(3)), rota('b1', 'Teste B', dia(2)), rota('z1', 'Teste Admin', dia(1), 'admin')],
+      pacotes: [
+        pacote('a1', '49000100|10', antes(900)), pacote('a1', '49000100|10', antes(900)), pacote('a1', '49000100|20', antes(900)),
+        pacote('a2', '49000100|30', antes(900)), pacote('a2', '49000100|40', null),
+        pacote('b1', '49000100|50', antes(900)), pacote('b1', '49000100|60', antes(900)), pacote('b1', '49000100|70', antes(900)),
+        pacote('z1', '49000100|80', antes(900)),
+      ],
+    };
+    let perguntou: string[] = [];
+    nuvem.rpc = {posicoes: (corpo: {chaves: string[]}) => {
+      perguntou.push(...corpo.chaves);
+      return corpo.chaves.map(chave_lugar => ({chave_lugar, lat: -10.9, lng: -37.0, situacao: ['49000100|10', '49000100|30', '49000100|50'].includes(chave_lugar) ? 'confirmado' : 'sugestao', motoristas: 1}));
+    }};
+    await abrir(page);
+    await menu(page, /^Admin/);
+    perguntou = [];
+    await page.locator('[data-verificadas-abrir]').click();
+    const linhas = page.locator('[data-verificadas] [data-verificadas-de]');
+    // o de menos verificadas primeiro
+    await expect(linhas).toHaveCount(2);
+    await expect(linhas.nth(0)).toContainText('Teste B · 1 de 3 endereço(s) entregue(s) com a porta verificada (33%), em 1 rota(s)');
+    await expect(linhas.nth(1)).toContainText('Teste A · 2 de 3 endereço(s) entregue(s) com a porta verificada (66%), em 2 rota(s)');
+    // só as portas entregues, e nenhuma da rota de quem administra
+    expect([...new Set(perguntou)].sort()).toEqual(['49000100|10', '49000100|20', '49000100|30', '49000100|50', '49000100|60', '49000100|70']);
+  });
+
   // Painel, parte 2 (19/10): o que tem conserto aparece com o botão que conserta. Inventados.
   test.describe('o que tem conserto no painel', () => {
     const hojeMaceio = () => new Date().toLocaleDateString('sv-SE', {timeZone: 'America/Maceio'});

@@ -3,7 +3,7 @@ import {lugaresDaBusca, peneiraDaNuvem, peneiraDeChave, textoDaChave, type Lugar
 import {agruparConferencia, marcadasDoMesmoPonto, type MarcaEmConferencia, type MotoristaEmConferencia, type PontoPendente} from '../logica/conferencia';
 import {hojeEmMaceio, resumirDia, type Dia, type MarcaDoAdmin, type PacoteDoDia} from '../logica/painel';
 import type {PortaDaNuvem} from '../logica/triagem';
-import {porQueNaoVerificou, type MarcaDoDia, type PacoteDaRota, type PortasDaRota} from '../logica/verificacao';
+import {porQueNaoVerificou, verificadasPorMotorista, type MarcaDoDia, type PacoteDaRota, type PortasDaRota, type VerificadasDoMotorista} from '../logica/verificacao';
 import {nuvem} from './nuvem';
 
 export interface Motorista {
@@ -245,6 +245,26 @@ export async function portasDaRota(r: {id: string; dia: string; motorista_id?: s
     paginado<MarcaDoDia>((a, b) => s.from('correcoes').select('*').eq('motorista_id', quem).gte('criado_em', de).lt('criado_em', ate).order('id').range(a, b)),
   ]);
   return porQueNaoVerificou(pacotes, confirmadas, passagens, correcoes, agora);
+}
+
+// As verificadas de cada motorista nas rotas da lista (as de quem administra ficam fora), com a
+// `posicoes` de agora, como o "Portas verificadas" de cada rota.
+export async function verificadasDoPeriodo(rotas: RotaResumo[]): Promise<VerificadasDoMotorista[]> {
+  const s = cliente();
+  const dosMotoristas = rotas.filter(r => !r.doAdmin && r.entregues > 0);
+  const pacotes: (PacoteDaRota & {rota_id: string})[] = [];
+  await Promise.all(pedacos(dosMotoristas.map(r => r.id), 50).map(async parte => {
+    pacotes.push(...await paginado<PacoteDaRota & {rota_id: string}>((de, ate) => s.from('pacotes')
+      .select('rota_id, chave_lugar, endereco, lat, lng, entregue_em').in('rota_id', parte).order('id').range(de, ate)));
+  }));
+  const chaves = [...new Set(pacotes.filter(p => p.entregue_em).map(p => p.chave_lugar).filter((k): k is string => !!k))];
+  const confirmadas = new Set<string>();
+  await Promise.all(pedacos(chaves, 500).map(async parte => {
+    const {data, error} = await s.rpc('posicoes', {chaves: parte});
+    falhou(error);
+    for (const p of (data || []) as {chave_lugar: string; situacao: string}[]) if (p.situacao === 'confirmado') confirmadas.add(p.chave_lugar);
+  }));
+  return verificadasPorMotorista(dosMotoristas, pacotes, confirmadas);
 }
 
 // Rota sem entrega, de planilha de outro dia, de outro motorista ou aberta de novo (painel do dia).

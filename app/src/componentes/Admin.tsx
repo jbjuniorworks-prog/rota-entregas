@@ -4,7 +4,7 @@ import {contarConferencia, type ItemEmConferencia, type MotoristaEmConferencia} 
 import {CHAVES} from '../logica/guarda';
 import {fmtKm} from '../logica/otimizacao';
 import {hojeEmMaceio, type Dia, type LinhaDoDia, type ParaConferir, type SemLocal, type Suspeita} from '../logica/painel';
-import {MOTIVOS, type PortasDaRota} from '../logica/verificacao';
+import {MOTIVOS, type PortasDaRota, type VerificadasDoMotorista} from '../logica/verificacao';
 import {faltaNaChave} from '../logica/texto';
 import * as A from '../acoes';
 import {origemDaPorta, porQuePrecisaDeVoce, situacaoDoLugar, triar} from '../logica/triagem';
@@ -540,9 +540,30 @@ function PorQueNaoVerificou({rota}: {rota: {id: string; dia: string; motorista_i
   return <div data-porque={rota.id}><PortasExplicadas r={r} textos={MOTIVOS} /></div>;
 }
 
+// Os verificados de cada motorista nos 14 dias (comandos do Admin, 29/10), medidos antes por
+// script a cada pedido. O porquê de cada endereço continua em "Portas verificadas", rota por rota.
+function VerificadasPorMotorista({lista}: {lista: Adm.RotaResumo[]}) {
+  const [r, setR] = useState<VerificadasDoMotorista[] | {erro: string} | null>(null);
+  const ver = () => {
+    setR(null);
+    Adm.verificadasDoPeriodo(lista).then(setR, err => setR({erro: (err as Error).message}));
+  };
+  useEffect(ver, [lista]);
+  if (!r) return <div className="info" data-verificadas-buscando>Contando as portas de cada motorista…</div>;
+  if ('erro' in r) return <div className="aviso">Não consegui contar as portas: {r.erro} <button className="link" onClick={ver}>Tentar de novo</button></div>;
+  if (!r.length) return <div className="info">Nenhuma entrega de motorista nestes 14 dias.</div>;
+  return <div data-verificadas>
+    {r.map(m => <div className="item" key={m.motorista_id} data-verificadas-de={m.motorista}>
+      <b>{m.motorista}</b> · {m.verificados} de {m.entregues} endereço(s) entregue(s) com a porta verificada ({Math.floor(m.verificados / m.entregues * 100)}%), em {m.rotas} rota(s)
+    </div>)}
+    <div className="achado">O porquê de cada endereço está em "Portas verificadas", em cada rota abaixo.</div>
+  </div>;
+}
+
 function Rotas({lista}: {lista: Adm.RotaResumo[]}) {
   const [aberta, setAberta] = useState<string | null>(null);
   const [portas, setPortas] = useState<string | null>(null);
+  const [porMotorista, setPorMotorista] = useState(false);
   const [pacotes, setPacotes] = useState<Adm.PacoteAdmin[]>([]);
   const {ocupado, correr, fazendo} = useTrabalho();
   const abrir = async (r: Adm.RotaResumo) => {
@@ -561,6 +582,10 @@ function Rotas({lista}: {lista: Adm.RotaResumo[]}) {
   return <details open>
     <summary>Rotas dos últimos 14 dias ({lista.length})</summary>
     {!lista.length && <div className="info">Nenhuma rota enviada ainda.</div>}
+    {lista.length > 0 && <div className="linha">
+      <button className="btn peq" data-verificadas-abrir onClick={() => setPorMotorista(!porMotorista)}>{porMotorista ? 'Fechar' : 'Portas verificadas por motorista'}</button>
+    </div>}
+    {porMotorista && <VerificadasPorMotorista lista={lista} />}
     {dias.map(d => <div key={d}>
       <div className="area-cab"><span className="txt">{diaExtenso(d)}</span></div>
       {lista.filter(r => r.dia === d).map(r => <div className="item" key={r.id} data-rota={r.id}>

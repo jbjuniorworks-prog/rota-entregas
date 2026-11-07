@@ -115,3 +115,36 @@ export function porQueNaoVerificou(pacotes: PacoteDaRota[], confirmadas: Readonl
   saida.semVerificar.sort((a, b) => ORDEM.indexOf(a.motivo) - ORDEM.indexOf(b.motivo));
   return saida;
 }
+
+export interface VerificadasDoMotorista {
+  motorista_id: string;
+  motorista: string;
+  rotas: number;
+  entregues: number;
+  verificados: number;
+}
+
+// "Os verificados por motorista em N dias" (comandos do Admin, 29/10): a mesma conta do "Portas
+// verificadas" de cada rota, somada por motorista, para não ter dois números que não batem. O de
+// menos verificadas primeiro: é quem precisa de conversa.
+export function verificadasPorMotorista(rotas: {id: string; motorista: string; motorista_id?: string}[], pacotes: (PacoteDaRota & {rota_id: string})[], confirmadas: ReadonlySet<string>): VerificadasDoMotorista[] {
+  const daRota = new Map<string, PacoteDaRota[]>();
+  for (const p of pacotes) {
+    const ps = daRota.get(p.rota_id);
+    if (ps) ps.push(p); else daRota.set(p.rota_id, [p]);
+  }
+  const saida = new Map<string, VerificadasDoMotorista>();
+  for (const r of rotas) {
+    const ps = daRota.get(r.id);
+    if (!ps) continue;
+    const {entregues, verificados} = porQueNaoVerificou(ps, confirmadas, [], []);
+    if (!entregues) continue;
+    const quem = r.motorista_id || r.motorista;
+    const m = saida.get(quem) || {motorista_id: quem, motorista: r.motorista, rotas: 0, entregues: 0, verificados: 0};
+    m.rotas++;
+    m.entregues += entregues;
+    m.verificados += verificados;
+    saida.set(quem, m);
+  }
+  return [...saida.values()].sort((a, b) => a.verificados / a.entregues - b.verificados / b.entregues || a.motorista.localeCompare(b.motorista));
+}
