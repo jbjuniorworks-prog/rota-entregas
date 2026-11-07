@@ -1,5 +1,6 @@
 import {loja, status, type Tela} from '../loja';
 import {alternarEscolha} from '../logica/escolha';
+import {cartaoAoAndar} from '../logica/seguir';
 import {contar, e, ui} from './base';
 
 // O botão voltar do celular. Até 02/10 as abas não entravam no histórico, e voltar saía do app
@@ -35,6 +36,9 @@ function aplicar(p: Passo) {
   if (p.tela !== 'rota' || p.folha !== 'escolher') ui.escolhidas = [];
   // e dos grupos circulados: sair sem montar a rota é desistir deles
   if (p.tela !== 'rota' || p.folha !== 'circular') ui.grupos = [];
+  // abrindo um cartão de pino, guarda onde ele está; trocar de pino com um aberto não muda o ponto
+  if (!p.pino) ui.cartaoDesde = null;
+  else if (!ui.pino) ui.cartaoDesde = ui.euAqui ? cartaoAoAndar(null, ui.euAqui).desde : null;
   ui.tela = p.tela;
   ui.folha = p.folha;
   ui.pino = p.pino;

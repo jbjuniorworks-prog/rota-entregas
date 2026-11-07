@@ -58,8 +58,9 @@ export function TopoRota() {
 // Por cima do mapa, só a mira: o "para conferir" foi para o botão Mais (03/10).
 export function SobreOMapa() {
   const {ui} = useLoja();
-  // azul enquanto o mapa anda junto com ele; apagada, ele arrastou o mapa e o toque liga de novo
-  return <button className="redondo" id="btnEu" aria-label="Seguir onde estou" aria-pressed={ui.seguindo} onClick={A.centralizarEmMim}><Icone nome="mira" /></button>;
+  // azul enquanto o mapa anda junto com ele; apagada, ele desligou ou algo aberto pausa o seguir,
+  // e o toque traz o mapa até ele
+  return <button className="redondo" id="btnEu" aria-label="Seguir onde estou" aria-pressed={ui.seguindo && !A.pausaDoSeguir()} onClick={A.centralizarEmMim}><Icone nome="mira" /></button>;
 }
 
 // As entregas de um ponto, cada endereço com os seus botões. Na porta, "Entreguei aqui" entrega e

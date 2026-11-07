@@ -30,3 +30,17 @@ export function passoDoSeguir(ancora: Leitura, eu: Leitura, suspeita: Leitura | 
   if (suspeita && eu.quando > suspeita.quando && !rapidoDemais(suspeita, eu)) return {passo: 'mover', suspeita: null};
   return {passo: 'esperar', suspeita: suspeita && suspeita.quando === eu.quando ? suspeita : eu};
 }
+
+// Pedro, 07/11: entregou pelo cartão do pino, o cartão ficou aberto e o mapa ficou no pino
+// enquanto ele rodava. O cartão aberto pausa o seguir, para ele olhar o lugar; afastando isto de
+// onde abriu, ele já foi embora, e o cartão fecha. Número de partida, para validar na rua.
+export const SAIR_DO_CARTAO_M = 50;
+
+// `desde` é onde ele estava ao abrir o cartão; nulo enquanto não houve leitura boa, e a primeira
+// boa vira o ponto de partida. Leitura com margem acima da do seguir não conta: parado na porta,
+// um GPS ruim "anda" dezenas de metros.
+export function cartaoAoAndar(desde: Ponto | null, eu: Ponto & {precisao: number}): {desde: Ponto | null; fechar: boolean} {
+  if (eu.precisao > SEGUIR_ATE_M) return {desde, fechar: false};
+  if (!desde) return {desde: {lat: eu.lat, lng: eu.lng}, fechar: false};
+  return {desde, fechar: haversine(desde, eu) >= SAIR_DO_CARTAO_M};
+}

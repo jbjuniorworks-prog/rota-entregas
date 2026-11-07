@@ -21,7 +21,9 @@
     "nomes-no-mapa": "node ferramentas/nomes-no-mapa.mjs",
     "test:leitor": "playwright test --grep @leitor --workers 1",
     "test:ui": "playwright test --grep @ui --workers 1",
-    "portas": "node ferramentas/portas.mjs"
+    "portas": "node ferramentas/portas.mjs",
+    "na-rua": "node ferramentas/na-rua.mjs",
+    "verificados": "node ferramentas/verificados.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",

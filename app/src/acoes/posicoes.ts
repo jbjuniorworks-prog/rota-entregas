@@ -13,7 +13,8 @@ import {loja, MINIMIZADO, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
 import {clienteNuvem} from '../servicos/nuvem';
 import {contar, desatualizarRota, e, enviarFila, ESPERA_DA_PORTA, fila, memoria, ui} from './base';
-import {abrir, alturaAgora, voltar} from './navegacao';
+import {abrir, alturaAgora, irPara, voltar} from './navegacao';
+import {cartaoAoAndar} from '../logica/seguir';
 
 export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number; lembradasVerificadas: number; xaropes: number}> {
   const saida = {confirmadas: 0, sugestoes: 0, minhas: 0, lembradasVerificadas: 0, xaropes: 0};
@@ -566,16 +567,41 @@ export function seguirMinhaPosicao(): () => void {
       lat: latitude, lng: longitude, precisao: accuracy, quando: Date.now(),
       rumo: heading != null && Number.isFinite(heading) && (speed || 0) > ANDANDO ? heading : (ui.euAqui?.rumo ?? null),
     };
+    // Com o cartão de um pino aberto o seguir pausa; longe de onde abriu, ele já foi embora: fecha
+    // e o mapa volta para ele. Não com o seguir desligado por ele, nem com o toque no mapa armado.
+    if (ui.pino && ui.tela === 'rota' && ui.seguindo && !ui.posicionando) {
+      const r = cartaoAoAndar(ui.cartaoDesde, ui.euAqui);
+      ui.cartaoDesde = r.desde;
+      if (r.fechar) { irPara('rota'); return; }
+    }
     loja.mudou(false);
   }, () => {}, {enableHighAccuracy: true, maximumAge: 5000, timeout: 20000});
   return () => navigator.geolocation.clearWatch(vigia);
 }
 
+// O que pausa o seguir na Rota, com ele ligado: ali ele está olhando ou fazendo outra coisa, e ao
+// sair o mapa volta para ele. O mapa (seguirAgora) e a mira leem daqui, para não discordarem: a
+// mira acesa com o mapa parado foi o que o Pedro viu em 07/11.
+export function pausaDoSeguir(): 'cartao' | 'lista' | 'modo' | null {
+  if (ui.tela !== 'rota') return null;
+  // tocar no mapa é o próprio modo: escolher pinos, circular grupos, o lugar da entrega
+  if (ui.posicionando || ui.folha === 'escolher' || ui.folha === 'circular') return 'modo';
+  if (ui.pino) return 'cartao';
+  if (ui.folha === 'lista') return 'lista';
+  return null;
+}
+
 // A mira liga e desliga o seguir (dono, 06/11): arrastar e pinçar não desligam mais, então é aqui
-// que ele solta o mapa para olhar outro lugar. Ligando, leva o mapa até ele já.
+// que ele solta o mapa para olhar outro lugar. Ligando, leva o mapa até ele já. Com o seguir
+// pausado ela fica apagada, porque o mapa não segue, e o toque não desliga nada (07/11: desligava,
+// sem mudar a tela, e o segundo toque centrava uma vez só). O cartão e a lista são só para olhar:
+// fecham, e o mapa volta a segui-lo num toque. Num modo de tocar no mapa, largar seria perder o que
+// ele fez: o mapa vai até ele, e segue quando ele sair do modo.
 export function centralizarEmMim() {
-  if (ui.seguindo) { pararDeSeguir(); return; }
+  const pausa = pausaDoSeguir();
+  if (ui.seguindo && !pausa) { pararDeSeguir(); return; }
   ui.seguindo = true;
+  if (pausa === 'cartao' || pausa === 'lista') irPara('rota');
   if (!ui.euAqui) { status('Ainda não sei onde você está. Deixe o GPS pegar uns segundos.', 4000); loja.mudou(false); return; }
   ui.irParaMim++;
   loja.mudou(false);
