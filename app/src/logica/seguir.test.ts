@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {MOVER_M, passoDoSeguir, type Leitura} from './seguir';
+import {cartaoAoAndar, MOVER_M, passoDoSeguir, SAIR_DO_CARTAO_M, SEGUIR_ATE_M, type Leitura} from './seguir';
 
 // 0,0001 grau de latitude são uns 11 m
 const A: Leitura = {lat: -10.96, lng: -37.05, quando: 0};
@@ -40,5 +40,27 @@ describe('o mapa seguindo o motorista', () => {
 
   it('longe, mas com tempo para ter chegado (o app reaberto depois de rodar), move', () => {
     expect(passoDoSeguir(A, aNorte(4000, 5 * 60), null).passo).toBe('mover');
+  });
+});
+
+// Pedro, 07/11: o cartão do pino aberto pausava o seguir, e ele rodou com o mapa parado no pino.
+describe('o cartão do pino aberto, com ele andando', () => {
+  const em = (metros: number, precisao = 10) => ({lat: A.lat + metros / 111320, lng: A.lng, precisao});
+
+  it('a primeira leitura boa é o ponto de onde ele abriu', () => {
+    expect(cartaoAoAndar(null, em(0))).toEqual({desde: {lat: A.lat, lng: A.lng}, fechar: false});
+  });
+
+  it('parado na porta, a tremida do GPS não fecha', () => {
+    expect(cartaoAoAndar(A, em(SAIR_DO_CARTAO_M - 5)).fechar).toBe(false);
+  });
+
+  it('afastando 50 m de onde abriu, fecha', () => {
+    expect(cartaoAoAndar(A, em(SAIR_DO_CARTAO_M + 1)).fechar).toBe(true);
+  });
+
+  it('leitura com margem maior que a do seguir não fecha, nem vira o ponto de partida', () => {
+    expect(cartaoAoAndar(A, em(300, SEGUIR_ATE_M + 1))).toEqual({desde: A, fechar: false});
+    expect(cartaoAoAndar(null, em(0, SEGUIR_ATE_M + 1))).toEqual({desde: null, fechar: false});
   });
 });
