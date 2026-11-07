@@ -182,11 +182,31 @@ A partir da `main` (`2fa2f71`). Independente da 029: não mexe em `observacoes_d
   teste confere a cor do fundo e da letra: falhou antes do conserto (fundo transparente) e passa
   depois. Repetido no Supabase local: o selo aparece, vermelho com letra branca, nos dois itens em
   disputa. Tipos; 540 de unidade; build; 252 de ponta a ponta.
-- **Falta:** medir na produção, com autorização, quantas passagens por dia cairiam em disputa
-  (passagem pendente também sai da âncora do CEP e do nome das ruas). O dono roda a 030 no SQL
-  Editor. Conferir as permissões por coluna no catálogo da produção e repetir pela API, com contas
-  de teste, os casos 1, 2, 3, 6 e 9. Publicar o Admin. Qualquer ordem entre banco e Admin funciona:
-  o Admin de hoje mostra a disputa que mudaria a porta com "Aprovar", e o banco recusa.
+- **Medição pelo backup (07/11), concluída, estimativa retrospectiva:** o backup diário de 07/11
+  (00:00 UTC) num Postgres descartável local, sem ler a produção; janela de 10/10 a 06/11 (4
+  semanas antes do backup, 25 dias com marcas). Para cada marca de quem não administra, a porta
+  daquele momento foi refeita com as linhas gravadas antes dela, pela regra da `posicoes_com`.
+  Das 5.133 marcas (2.417 correções e 2.716 passagens), 120 teriam nascido em disputa (40
+  correções e 80 passagens), e só 10 mudariam a porta pela regra de antes: é o que a 030 barra.
+  Na fila do Admin, 27 itens novos no período; 57 passagens deixariam de contar para a âncora do
+  CEP e o nome das ruas. Das 40 correções em disputa, 28 terminaram com a porta definida pelo
+  admin no ponto delas, e 4 confirmadas só pela própria conta. **Limites:** linhas apagadas não
+  estão no backup; pendente, recusada, ativo, papel e conferência são os de hoje, não os da época;
+  a disputa não se propaga às portas seguintes. Não é contagem exata. Os dados copiados e o banco
+  descartável foram apagados; os agregados ficaram fora do repositório.
+- **Admin no Supabase local (07/11):** banco do `6cd0a16` com a 030, contas e dados fictícios, o
+  build desta branch no navegador em 412×915, com os pedidos desviados para o local e nenhum para
+  a produção. A disputa aparece sem "Aprovar"; a entregue no pino em disputa fica fora do "Aprovar
+  as N entregues no pino" (as outras duas aprovadas, ela continua pendente); aprovar pela função é
+  recusado (P0001) e a porta não se move; "Definir esta posição como porta" grava a marcação de
+  quem administra e leva a porta até lá, e depois disso aprovar passa; "Apagar" tira a marcação,
+  guarda a passagem como recusada e a porta fica. Foi aí que se viu o selo invisível, consertado
+  acima (`f7ee372`) e conferido de novo no mesmo ambiente.
+- **Falta:** aplicar a 030 na produção e verificar lá (as permissões por coluna no catálogo e os
+  casos 1, 2, 3, 6 e 9 pela API, com contas de teste), e publicar o Admin, na ordem que o dono
+  decidir. Cada passo pede autorização própria. Qualquer ordem entre banco e Admin funciona para o
+  app: o Admin de hoje mostra a disputa que mudaria a porta com "Aprovar", e o banco recusa. A
+  validação do mapa no celular, com o Pedro rodando, é do trabalho do mapa (`seguir-com-cartao`).
 - **Fora desta branch:** o lugar com nome da mesma conta em dias de verdade ainda confirma sozinho
   (`lugares_conhecidos` conta motorista e dia) e não tem disputa. Contar contas diferentes em vez de
   passagens muda portas já gravadas e pede medição. O horário declarado da entrega offline, se um
