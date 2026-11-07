@@ -958,6 +958,50 @@ test.describe('administrador', () => {
       await expect(lote).toHaveCount(0);
       await expect(doCesar.getByRole('checkbox', {checked: true})).toHaveCount(0);
     });
+
+    // 030: marca longe de uma porta verificada, de quem não está em conferência. Aprovar trocaria a
+    // porta ou não conforme a contagem; aqui só se define o ponto dela como porta, ou se apaga.
+    test('em disputa com a porta verificada: sem aprovar, define a posição dela como porta ou apaga', async ({page, nuvem}) => {
+      const [BRIGA, COMUM] = ['49000300|1', '49000300|2'];
+      const porta = {lat: -10.95, lng: -37.05}, marca = {lat: -10.9185, lng: -37.05};
+      const linha = (chave: string, extra: Record<string, unknown>) => ({
+        motorista_id: 'm1', nome: 'Luan', chave_lugar: chave, endereco: `Rua G, ${chave.split('|')[1]}, Centro`, criado_em: new Date().toISOString(),
+        situacao: 'confirmado', pino_lat: null, pino_lng: null, no_pino: false, ...extra,
+      });
+      nuvem.tabelas = {perfis: [{id: 'm1', nome: 'Luan', papel: 'motorista', ativo: true, conferir: false}], rotas: [], pacotes: [], correcoes: []};
+      nuvem.rpc = {marcas_em_conferencia: [
+        // na disputa a porta com o pendente dele é a mesma de hoje; o ponto dele vem em marca_*
+        linha(BRIGA, {...porta, lat_antes: porta.lat, lng_antes: porta.lng, situacao_antes: 'confirmado', disputa: true, marca_lat: marca.lat, marca_lng: marca.lng}),
+        linha(COMUM, {lat: -10.96, lng: -37.05, lat_antes: null, lng_antes: null, situacao_antes: null, disputa: false, marca_lat: null, marca_lng: null}),
+      ]};
+      await abrir(page);
+      await menu(page, /^Admin/);
+      const secao = page.locator('[data-secao="Em conferência"]');
+      await expect(secao.locator('summary').first()).toHaveText('Em conferência (2)');
+      const briga = secao.locator(`[data-conferir="${BRIGA}"]`), comum = secao.locator(`[data-conferir="${COMUM}"]`);
+      await expect(briga.locator('[data-disputa]')).toHaveText('em disputa');
+      await expect(briga).toContainText('A porta verificada hoje fica a 3,5 km. Só muda a porta se você definir esta posição como porta.');
+      await expect(briga.getByRole('button', {name: 'Aprovar'}), 'na disputa não se aprova').toHaveCount(0);
+      await expect(comum.locator('[data-disputa]')).toHaveCount(0);
+      await expect(comum.getByRole('button', {name: 'Aprovar'})).toBeVisible();
+
+      const definidas = () => nuvem.pedidos.filter(p => p.metodo === 'POST' && p.caminho === 'correcoes');
+      page.once('dialog', d => d.dismiss());
+      await briga.getByRole('button', {name: 'Definir esta posição como porta'}).click();
+      await expect(briga.getByRole('button', {name: 'Definir esta posição como porta'})).toBeEnabled();
+      expect(definidas(), 'cancelar não grava').toEqual([]);
+
+      page.once('dialog', d => { expect(d.message()).toContain('Definir a posição que Luan marcou como a porta de Rua G, 1, Centro?'); d.accept(); });
+      await briga.getByRole('button', {name: 'Definir esta posição como porta'}).click();
+      await expect(aviso(page)).toContainText('Porta definida: vale para todos os motoristas.');
+      // o ponto da marca dele, não a porta de hoje
+      expect(definidas().map(p => p.corpo)).toEqual([{chave_lugar: BRIGA, lat: marca.lat, lng: marca.lng}]);
+
+      page.once('dialog', d => d.accept());
+      await briga.getByRole('button', {name: 'Apagar'}).click();
+      await expect(aviso(page)).toContainText('Apagada: não vale para ninguém.');
+      expect(nuvem.pedidos.filter(p => p.caminho === 'rpc/decidir_marcas').map(p => p.corpo)).toEqual([{motorista: 'm1', chaves: [BRIGA], aprovar: false}]);
+    });
   });
 });
 

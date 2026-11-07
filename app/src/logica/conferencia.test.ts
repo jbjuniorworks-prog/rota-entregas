@@ -53,6 +53,38 @@ describe('o que o motorista em conferência espera do admin', () => {
   });
 });
 
+// 030: marca a mais de 30 m de uma porta verificada. Aprovada, ela trocaria a porta ou não conforme
+// a contagem; o admin define o ponto dela como porta, ou apaga. Inventados.
+describe('a marca em disputa com uma porta verificada', () => {
+  // a porta de hoje no pino; a marca dele em casa. `lat` é a porta com o pendente dele: a mesma.
+  const disputa = (chave: string, extra: Partial<MarcaEmConferencia> = {}) => linha(chave, {
+    ...PINO, lat_antes: PINO.lat, lng_antes: PINO.lng, situacao_antes: 'confirmado',
+    disputa: true, marca_lat: CASA.lat, marca_lng: CASA.lng, ...extra,
+  });
+
+  it('fica num grupo dela, com o ponto da marca, não o da porta', () => {
+    const [g] = agruparConferencia([disputa('d'), linha('m')]);
+    expect(g.disputas.map(i => [i.chave_lugar, i.lat, i.lng, i.disputa])).toEqual([['d', CASA.lat, CASA.lng, true]]);
+    expect(g.mexem.map(i => [i.chave_lugar, i.disputa])).toEqual([['m', false]]);
+  });
+
+  it('diz onde fica a porta de hoje e que só muda se o admin definir', () => {
+    const [g] = agruparConferencia([disputa('d')]);
+    expect(g.disputas[0].texto).toBe('A 3,5 km do pino da rota. A porta verificada hoje fica a 3,5 km. Só muda a porta se você definir esta posição como porta.');
+  });
+
+  // a entrega no pino da planilha em disputa não pode ir junto no "Aprovar as N entregues no pino"
+  it('entregue no pino, mas em disputa, não vai para o grupo que se aprova junto', () => {
+    const [g] = agruparConferencia([disputa('d', {no_pino: true})]);
+    expect(g.noPino).toEqual([]);
+    expect(g.disputas.map(i => i.chave_lugar)).toEqual(['d']);
+  });
+
+  it('entra na conta do que espera o admin', () => {
+    expect(contarConferencia(agruparConferencia([disputa('d'), linha('m'), linha('p', {no_pino: true})]))).toBe(3);
+  });
+});
+
 // O César de 19/10: cinco endereços de duas ruas marcados parado num lugar só. Inventados.
 describe('marcadas do mesmo ponto', () => {
   const ponto = (chave: string, metros = 0, minutos = 0, motorista = 'n1'): PontoPendente => ({

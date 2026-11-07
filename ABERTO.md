@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 06/11/2026.
+Atualizado em 07/11/2026.
 
 ## O que vem agora
 
@@ -151,6 +151,42 @@ Fora da lista:
 - "Falha viva" guarda os defeitos conhecidos sem conserto decidido;
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
+
+## Dia e hora do servidor, e porta verificada em disputa (07/11, pedido do dono): na branch `integridade-portas`, migração 030 escrita e não rodada, nada enviado
+
+A partir da `main` (`2fa2f71`). Independente da 029: não mexe em `observacoes_desfazer` nem em
+`retirar_passagens`.
+
+- **Gravar (030):** o motorista escreve só as colunas que o app manda nas correções, passagens,
+  lugares e reclamações. `criado_em`, `dia`, `motorista_id`, `pendente`, `recusada` e `disputa`
+  ficam com o padrão do banco e o gatilho; quem manda uma delas recebe 42501. O app de hoje não
+  manda nenhuma. Depois de gravado, o motorista já não alterava nada (sem UPDATE), como antes.
+- **Disputa (030):** marcação ou passagem nova de quem não administra, a mais de 30 m da porta
+  verificada daquele endereço, nasce pendente e em disputa, de qualquer conta. A até 30 m, apoia
+  como antes (pode mexer a porta dentro desses 30 m: limite conhecido). Porta nova sem nada
+  verificado continua como era.
+- **Admin:** a disputa aparece em "Em conferência" com o selo "em disputa", sem "Aprovar"; tem
+  "Definir esta posição como porta" (grava a marcação de quem administra no ponto dela) e "Apagar".
+  `decidir_marcas` recusa aprovar enquanto a marca estiver a mais de 30 m da porta verificada.
+  A disputa com marcação aparece sempre; a só de passagem, só quando mudaria a porta, como antes.
+- **Verificado local (07/11):** Postgres descartável com o banco inteiro e contas fictícias, os 14
+  casos da proposta antes e depois; as mesmas chamadas do app por um PostgREST v12.2.12 local,
+  antes e depois (inclusive o upsert que ignora repetida); três sabotagens (permissão da tabela
+  devolvida, disputa tirada do gatilho, recusa tirada da `decidir_marcas`), cada uma volta o caso
+  dela. O banco inteiro novo, a 030 rodada duas vezes e a `main` com o `000_rodar_tudo.sql` novo
+  dão o mesmo resultado. Tipos; 540 de unidade; build; 252 de ponta a ponta com a nuvem simulada.
+  O Admin, sabotado, quebra o teste dele.
+- **Falta:** medir na produção, com autorização, quantas passagens por dia cairiam em disputa
+  (passagem pendente também sai da âncora do CEP e do nome das ruas). O dono roda a 030 no SQL
+  Editor. Conferir as permissões por coluna no catálogo da produção e repetir pela API, com contas
+  de teste, os casos 1, 2, 3, 6 e 9. Publicar o Admin. Qualquer ordem entre banco e Admin funciona:
+  o Admin de hoje mostra a disputa que mudaria a porta com "Aprovar", e o banco recusa.
+- **Fora desta branch:** o lugar com nome da mesma conta em dias de verdade ainda confirma sozinho
+  (`lugares_conhecidos` conta motorista e dia) e não tem disputa. Contar contas diferentes em vez de
+  passagens muda portas já gravadas e pede medição. O horário declarado da entrega offline, se um
+  dia precisar, vai numa coluna só informativa. A leitura da produção das linhas com `dia`
+  diferente do dia do `criado_em` pede autorização própria. A 029, quando entrar, vai depois da 030
+  no fim dos dois arquivos de rodar tudo; as duas não dependem da ordem.
 
 ## O mapa seguindo o motorista (05/11, dono: "o mapa não está sempre seguindo o ponto"): publicado em 06/11, falta o teste com o carro andando
 
