@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 07/11/2026.
+Atualizado em 08/11/2026.
 
 ## O que vem agora
 
@@ -23,7 +23,7 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
    na auditoria, conferir o caminho e escrever a migração para o dono rodar.
 5. **Parada sem pino** (14/10). **Reproduzida e consertada em 03/11**, na branch `app-sem-banco`
    (`2c35f3a`). Era: ela não podia ser marcada como entregue, e o aviso "N parada(s) sem local" não
-   levava até ela.
+   levava até ela. Publicado em 07/11 (PR #3).
 6. **Resumo da leitura com o total do Meli** (12/10). Pendente. Próximo: mostrar a diferença entre
    as linhas lidas e o total do topo da lista, nunca como "faltam N".
 7. **Achados da leitura, não mexidos** (14/10): o cartão aberto com CEP engole os fechados da mesma
@@ -39,7 +39,8 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     `ferramentas-e-protecao` (`d68ad0d`). Era: a linha da chave de serviço sem valor (o nome, o
     sinal de igual e nada mais), seguida de qualquer outra, contava como chave com valor: o `\s*` de
     `guarda-segredos.mjs` atravessava a quebra de linha. Agora compara só na mesma linha, com teste
-    nas duas direções: a vazia passa e a chave com valor continua barrada.
+    nas duas direções: a vazia passa e a chave com valor continua barrada. Publicado em 06/11
+    (PR #1).
 12. **Parágrafo repetido em "Falha viva"** (15/10). Feito em 19/10: saiu só a repetição.
 13. **Porta verificada no lugar errado, sem conserto fácil** (15/10, pedido do Pedro, Avenida
     Canal de Santa Maria 28). Lido no código, não reproduzido. Hoje só a marcação do admin conserta,
@@ -153,7 +154,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Pino comercial (07/11, Luan; dono: "tem que ser compartilhado"): feito local na branch `pino-comercial`, nada enviado
+## Pino comercial (07/11, Luan; dono: "tem que ser compartilhado"): publicado em 08/11, falta ver a marca de um motorista no celular de outro
 
 - **Medido antes:** as 91 planilhas de 18/09 a 07/11 têm as mesmas 10 colunas da Shopee e nenhuma
   diz comércio ou horário. Pista no texto do endereço (loja, sala, mercado...) em 5,7% dos endereços,
@@ -202,9 +203,13 @@ Fora da lista:
     conta teria de cair entre a conferência e a saída do pedido.
 - **Limite:** as marcas dos outros chegam quando a rota é carregada, como o "cliente xarope"; não
   atualizam sozinhas durante o dia.
-- **Pendente:**
-  - revisão, atualização da branch com a `main` e a bateria de novo, commit, push e PR;
-  - a 031 rodar no SQL Editor antes de o app ser publicado.
+- **Publicado em 08/11 (PR #4).** A 031 foi aplicada no SQL Editor em 08/11 e conferida: a tabela e
+  a função existem, e nada ficou no esquema `desligado`.
+- **Conferido no ar (08/11), com a conta do admin:** marcar no app grava a marca no servidor, a
+  consulta das marcas responde "marcada por mim, por nenhum outro", e desmarcar a apaga. Logo
+  depois, chegou a primeira marca de um motorista.
+- **Falta:** ver a marca de um motorista aparecer no celular de outro, quando ele carregar a rota.
+  Perguntar com o carro parado se apareceu um pino quadrado ou "Marcado por outro motorista".
 - **Fora:** reordenar a rota pelos comerciais.
 
 ## O mapa seguindo o motorista (05/11, dono: "o mapa não está sempre seguindo o ponto"): publicado em 06/11, falta o teste com o carro andando
@@ -247,7 +252,7 @@ Fora da lista:
   `rota-entregas-mapa-seguir`, que fica até lá.
 
 - **O mapa parado com o cartão do pino aberto (07/11, Pedro: "não está seguindo a localização
-  dele"):** na branch `seguir-com-cartao`, a partir da `main` (`2fa2f71`), nada enviado. O print
+  dele"):** publicado em 07/11 (PR #2). O print
   tinha o cartão "Neste pino" aberto, a 51 entregue e a mira acesa; reproduzido em 412×915: o
   cartão aberto pausa o seguir, e depois de "Entregue" ele continua aberto. A mira dizia que
   seguia, e o toque nela desligava o seguir. Aprovado pelo dono e feito: com o cartão aberto a
@@ -315,7 +320,7 @@ Fora da lista:
 - **Aguardando** o Pedro e o Luan: em qual trecho concreto o nome de uma rua que cruza ou se liga
   ao caminho ajudaria? Sem novas consultas externas nem implementação até lá.
 
-## Bibliotecas, verificadas por motorista e parada sem local (03/11, pedido do dono: "vamos fazer todos"): na branch `app-sem-banco`, nada enviado
+## Bibliotecas, verificadas por motorista e parada sem local (03/11, pedido do dono: "vamos fazer todos"): publicado em 07/11 (PR #3)
 
 Feito em 03/11 na `organizacao-roteiros`; copiado em 06/11 para esta branch, a partir da `main`
 (`b7367b6`), para revisar e publicar por assunto. Cada cópia tem as mesmas linhas acrescentadas e
@@ -337,7 +342,7 @@ removidas que o original (conferido par a par). Nada aqui depende de migração.
   `2c35f3a`, com o `package-lock.json` dela instalado: tipos; 535 de unidade; build; 255 de ponta a
   ponta com a nuvem simulada.
 
-## Ferramentas e proteção (03/11, pedido do dono: "vamos fazer todos"): na branch `ferramentas-e-protecao`, nada enviado
+## Ferramentas e proteção (03/11, pedido do dono: "vamos fazer todos"): publicado em 06/11 (PR #1)
 
 Feito em 03/11 (e o teste de produção do Admin em 29/10) na `organizacao-roteiros`; copiado em 06/11
 para esta branch, a partir da `main` (`b7367b6`), para revisar e publicar por assunto. Cada cópia tem
