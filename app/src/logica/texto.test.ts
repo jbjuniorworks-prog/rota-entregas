@@ -845,6 +845,10 @@ describe('a chave da rua', () => {
       .toEqual([chaveLugar('Avenida Deputado Sílvio Teixeira 184', 'Jardins', 'Aracaju, SE')]);
     expect(ferramenta.chavesDoLugar({...caso, numero: 'sn'}))
       .toEqual([chaveLugar('Avenida Deputado Sílvio Teixeira SN', 'Jardins', 'Aracaju, SE')]);
+    // "Nr 0" (08/11): o celular lê o "Nr" do texto; a ferramenta recebe o número já separado, e as
+    // duas chaves têm de bater, com CEP e pela rua
+    expect(ferramenta.chavesDoLugar({...caso, rua: 'Rua Teste Inventada', numero: '0', cep: '49000123'}))
+      .toEqual([chaveLugar('Rua Teste Inventada, Nr 0, CEP 49000-123', 'Jardins', 'Aracaju, SE'), chaveLugar('Rua Teste Inventada, Nr 0', 'Jardins', 'Aracaju, SE')]);
 
     // O Google escreve "Ver." e o Meli escreve "Vereador". A chave do lugar guarda o nome inteiro
     // e não normaliza abreviação, então a ferramenta grava as duas grafias — senão a porta
@@ -1139,6 +1143,61 @@ describe('endereço sem número também precisa de chave', () => {
     expect(faltaNaChave('Travessa Teste Inventada, Casa Azul, CEP 49000-413')).toBe('Sem número da porta');
     expect(faltaNaChave('Rua Teste Inventada, 100')).toBe('Sem CEP nem bairro');
     expect(faltaNaChave('Rua Teste Inventada S/N')).toBe('Sem CEP nem bairro');
+  });
+});
+
+// 08/11: a planilha escreveu "Nr 0" no lugar do número, o "Nr" não era lido, e o endereço ficou sem
+// chave: a porta marcada valia só para o dia. Inventados.
+describe('"Nr" antes do número da porta', () => {
+  const chave = (numero: string) => chaveLugar(`Rua Teste Inventada, ${numero}, Casa no Galpão, Bairro Teste, CEP 49000-123`, 'Bairro Teste', 'Aracaju, SE');
+
+  it('"Nr 0" vira a porta 0, como "0" e "nº 0" já viravam', () => {
+    expect(chave('Nr 0')).toBe('49000123|0');
+    expect(chave('Nr 0')).toBe(chave('0'));
+    expect(chave('Nr 0')).toBe(chave('nº 0'));
+  });
+
+  it('"Nr" com outro número, com ponto, em maiúsculas ou colado', () => {
+    for (const jeito of ['Nr 15', 'Nr. 15', 'NR 15', 'nr15']) expect(chave(jeito), jeito).toBe('49000123|15');
+  });
+
+  it('sem CEP, a chave pela rua sai igual à do número sem prefixo', () => {
+    const sem = chaveLugar('Rua Teste Inventada, 15', 'Bairro Teste', 'Aracaju, SE');
+    expect(sem).toBe('r|rua teste inventada|15|bairro teste|aracaju, se');
+    expect(chaveLugar('Rua Teste Inventada, Nr 15', 'Bairro Teste', 'Aracaju, SE')).toBe(sem);
+  });
+
+  it('os jeitos que já valiam continuam iguais', () => {
+    for (const jeito of ['15', 'nº 15', 'n 15', 'n. 15']) expect(chave(jeito), jeito).toBe('49000123|15');
+    expect(chave('S/N')).toBe('49000123|sn');
+  });
+
+  it('o "Nr" do complemento não vira o número da porta', () => {
+    const lugar = (texto: string) => chaveLugar(texto, 'Bairro Teste', 'Aracaju, SE');
+    expect(lugar('Rua Teste Inventada, 15, Bloco Nr 3, Bairro Teste, CEP 49000-123')).toBe('49000123|15');
+    expect(lugar('Rua Teste Inventada, Casa Azul Nr 3, Bairro Teste, CEP 49000-123')).toBeNull();
+    expect(lugar('Rua Teste Inventada, Casa Azul, Nr 3, Bairro Teste, CEP 49000-123')).toBeNull();
+  });
+
+  // Revisão de 08/11: com número no fim da rua, o "Nr" do pedaço seguinte não troca a porta. A
+  // chave antiga (a porta 120) pode estar gravada; o "Nr" só entra quando nada achou número.
+  it('número no fim da rua e "Nr" depois: continua a porta da rua, como era', () => {
+    const lugar = (texto: string) => chaveLugar(texto, 'Bairro Teste', 'Aracaju, SE');
+    expect(decompor('Rua Q7 120, Nr 5')).toEqual({rua: 'Rua Q7', numero: '120', cep: null, resto: ['Nr 5']});
+    expect(lugar('Rua Q7 120, Nr 5, CEP 49000-123')).toBe('49000123|120');
+    expect(lugar('Rua Q7 120, Nr 5')).toBe('r|rua q7|120|bairro teste|aracaju, se');
+  });
+
+  // o "nº" do pedaço seguinte já ganhava da rua antes do "Nr" existir; fica como era, sem exigir
+  // que os dois façam o mesmo
+  it('número no fim da rua e "nº" depois: fica como já era', () => {
+    expect(chaveLugar('Rua Q7 120, nº 5, CEP 49000-123', 'Bairro Teste', 'Aracaju, SE')).toBe('49000123|5');
+  });
+
+  it('"Nr 15A" vira a mesma porta que "15A" já virava', () => {
+    expect(chave('Nr 15A')).toBe(chave('15A'));
+    // a letra cai em todas as formas que já existiam: "15A" é a porta 15
+    expect(chave('15A')).toBe('49000123|15');
   });
 });
 
