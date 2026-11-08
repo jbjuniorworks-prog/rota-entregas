@@ -138,6 +138,12 @@ export interface Decomposto {
 }
 
 const NUMERO_SOLTO = /^(?:n[º°o.]*\s*)?\d{1,5}[a-z]?\b/i;
+// "Nr 0" (planilha de 08/11): o "Nr" não era lido, e o endereço ficava sem chave. Ele entra só como
+// último recurso, quando nada antes achou número: "Rua Q7 120, Nr 5" continua a porta 120, como era,
+// porque essa chave pode estar gravada e trocá-la deixaria a porta guardada sem ser achada.
+const NR_SOLTO = /^nr[º°o.]*\s*\d{1,5}[a-z]?\b/i;
+// o número do pedaço entre vírgulas, igual para os dois: "15A" é a porta 15, como sempre foi
+const numeroDoPedaco = (s: string) => s.match(/\d{1,5}/)![0];
 const UNIDADE = 'casas?|cs|ap|apt|apto|apartamento|bl|blc|bloco|lote|lt|quadra|qd';
 // "…- Casa 03", "… Bloco D Apto 303": numeração de dentro do condomínio grudada no nome da rua.
 // Só casa como unidade o que vem colado no fim: "Rua Casa Forte 100" continua sendo a casa 100 da rua.
@@ -161,7 +167,7 @@ export function decompor(txt: string): Decomposto {
   const unidadeNaRua = !!cauda && /[a-zà-ÿ]{2}/i.test(semCauda);
   const tirarCauda = () => { resto = [rua.slice(semCauda.length).replace(/^[\s\-–]+/, '').trim(), ...resto]; rua = semCauda; };
   if (resto.length && NUMERO_SOLTO.test(resto[0])) {
-    numero = resto[0].match(/\d{1,5}/)![0];
+    numero = numeroDoPedaco(resto[0]);
     resto = resto.slice(1);
     if (unidadeNaRua) tirarCauda();
   }
@@ -172,6 +178,13 @@ export function decompor(txt: string): Decomposto {
   else {
     const meio = rua.match(/^((?:\S+\s+){1,7}?\S*[a-zà-ÿ])\s+(?:n[º°o.]*\s*)?(\d{1,5})[a-z]?(?:\s+(.*))?$/i);
     if (meio) { rua = meio[1].trim(); numero = meio[2]; if (meio[3]) resto = [meio[3].trim(), ...resto]; }
+  }
+  // o último recurso: só o pedaço logo depois da rua, onde o "nº" também seria lido, e só sem número
+  const depoisDaRua = seg[1];
+  if (numero === null && depoisDaRua !== undefined && NR_SOLTO.test(depoisDaRua)) {
+    numero = numeroDoPedaco(depoisDaRua);
+    const i = resto.indexOf(depoisDaRua);
+    if (i >= 0) resto.splice(i, 1);
   }
   rua = rua.replace(/\s+n[º°o.]*$/i, '').trim();
   return {rua, numero: numero && semZeroAEsquerda(numero), cep, resto};

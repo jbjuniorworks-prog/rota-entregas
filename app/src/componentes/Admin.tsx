@@ -90,7 +90,8 @@ export function TelaAdmin() {
         // sem posição nenhuma não abre: o "Nada com posição para mostrar" a cada carga apagava o aviso
         // de quem tinha acabado de agir (o encerrar a conferência, no teste do GitHub de 19/10).
         if (!('erro' in d) && d.pontos.length && (!loja.ui.marcas || loja.ui.marcas.vez === vezDoDia)) verDiaNoMapa(d, coresDe(ms));
-      }, falha),
+        // sem as rotas, o dia também é erro: antes ficava vazio, e o "Esperando você" contava para sempre
+      }, err => { falha(err); if (atual()) setDia({erro: (err as Error).message}); }),
       pRotas.then(Adm.contarRotas).then(r => { if (atual()) setRotas(r); }, falha),
       Adm.listarCorrecoes().then(l => {
         if (!atual()) return;
@@ -124,28 +125,55 @@ export function TelaAdmin() {
   // mexeram vem antes de 14 dias de rotas; o que é de vez em quando (motoristas, base de ruas,
   // medição dos botões) fica fechado, a um toque.
   const doDia = dia && !('erro' in dia) ? dia : null;
-  const decisoes = t ? t.decidir.length + nConferir : null;
-  const esperando = decisoes == null ? null : decisoes + (doDia ? doDia.semLocal.length + doDia.paraConferir.length : 0);
+  // Revisão de 08/11 (print do dono: o cartão dizia 1 e a linha embaixo "Nada esperando você"): o
+  // cartão e a linha contam o mesmo, e só quando as três partes chegaram, para não dizer "nada"
+  // antes de saber. Cada parte sabe a seção onde se resolve. Uma fonte que falhou (o painel do dia,
+  // "Em conferência") não vira zero: as partes dela ficam de fora, e o total é dito incompleto.
+  const diaFalhou = !!dia && 'erro' in dia;
+  const confFalhou = !!conferencia && !Array.isArray(conferencia);
+  const falhas = [
+    ...(diaFalhou ? [{curto: 'o painel do dia', aviso: 'O painel do dia não carregou: paradas sem local e rotas para conferir não foram contadas.'}] : []),
+    ...(confFalhou ? [{curto: '"Em conferência"', aviso: '"Em conferência" não carregou: as marcações em conferência não foram contadas.'}] : []),
+  ];
+  const pendencias: Pendencia[] | null = t && conferencia && dia ? [
+    {secao: SECAO_DECIDIR, n: t.decidir.length, um: 'decisão', varios: 'decisões'},
+    ...(confFalhou ? [] : [{secao: 'Em conferência', n: nConferir, um: 'marcação em conferência', varios: 'marcações em conferência'}]),
+    ...(doDia ? [
+      {secao: 'Paradas de hoje sem local', n: doDia.semLocal.length, um: 'parada sem local', varios: 'paradas sem local'},
+      {secao: 'Rotas para conferir', n: doDia.paraConferir.length, um: 'rota para conferir', varios: 'rotas para conferir'},
+    ] : []),
+  ].filter(p => p.n > 0) : null;
+  const esperando = pendencias ? pendencias.reduce((n, p) => n + p.n, 0) : null;
+  const incompleto = falhas.length > 0;
+  const decidir = t && <Lugares key="decidir" titulo={`${SECAO_DECIDIR} (${t.decidir.length})`} lista={t.decidir} aberta={t.decidir.length > 0} decidir {...doLugar}
+    vazio="Nenhuma marcação esperando decisão." />;
   return <div className="corpo">
     <h2>Administração</h2>
     <div className="linha" style={{marginTop: 0}}><button className="btn" onClick={carregar} disabled={lendo}>{lendo ? 'Buscando…' : '↻ Atualizar'}</button></div>
     {erro && <div className="aviso">Não consegui carregar: {erro}</div>}
     {(!motoristas || !rotas || !lugares) && !erro && <div className="info">Carregando…</div>}
-    <NumerosDoDia dia={dia} esperando={esperando} partes={[
-      [decisoes || 0, 'decisão', 'decisões'], [doDia?.semLocal.length || 0, 'parada sem local', 'paradas sem local'], [doDia?.paraConferir.length || 0, 'rota para conferir', 'rotas para conferir']]} />
+    <NumerosDoDia dia={dia} esperando={esperando} faltam={falhas.map(f => f.curto)} pendencias={pendencias || []} />
     <div className="painel-colunas">
       <div>
-        {t && <div className={decisoes ? 'aviso laranja' : 'info'} data-resumo>
-          {decisoes ? <b>{decisoes} esperando você.</b> : 'Nada esperando você.'}
+        {t && <div className={esperando || (esperando != null && incompleto) ? 'aviso laranja' : 'info'} data-resumo>
+          {esperando == null ? 'Contando o que espera você…'
+            // "Nada nas marcações" só com as fontes de marcação inteiras: decisões e "Em conferência"
+            : incompleto ? <>{esperando ? <><b>Pelo menos {esperando} esperando você:</b> {pendencias!.map(contar).join(', ')}. </> : confFalhou ? '' : 'Nada nas marcações. '}
+              {falhas.map(f => f.aviso).join(' ')}</>
+              : esperando ? <><b>{esperando} esperando você:</b> {pendencias!.map(contar).join(', ')}.</>
+                : 'Nada esperando você.'}
           {visto != null && (t.novas
             ? ` 🆕 ${t.novas} marcação(ões) nova(s) desde ${dataHora(new Date(visto).toISOString())}.`
             : ` Nada novo desde ${dataHora(new Date(visto).toISOString())}.`)}
         </div>}
-        {t && <Lugares titulo={`📌 Precisa de você (${t.decidir.length})`} lista={t.decidir} aberta decidir {...doLugar}
-          vazio="Nenhuma marcação esperando decisão." />}
-        {conferencia && <EmConferencia estado={conferencia} corDe={corDe} recarregar={carregar} />}
-        {doDia && <ParadasSemLocal lista={doDia.semLocal} recarregar={carregar} />}
-        {doDia && <RotasParaConferir lista={doDia.paraConferir} recarregar={carregar} />}
+        {/* o que pede ação primeiro: o "Precisa de você" vazio vai para depois das que têm o que fazer */}
+        <div data-pendencias>
+          {t && t.decidir.length > 0 && decidir}
+          {conferencia && <EmConferencia estado={conferencia} corDe={corDe} recarregar={carregar} />}
+          {doDia && <ParadasSemLocal lista={doDia.semLocal} recarregar={carregar} />}
+          {doDia && <RotasParaConferir lista={doDia.paraConferir} recarregar={carregar} />}
+          {t && !t.decidir.length && decidir}
+        </div>
         {t && <MarcadasPorMotorista lista={t.recentes} visto={visto} {...doLugar} />}
       </div>
       <div>
@@ -164,8 +192,31 @@ export function TelaAdmin() {
 
 const de = (a: number, b: number) => <>{a}<small> de {b}</small></>;
 
-function NumerosDoDia({dia, esperando, partes}: {dia: Dia | {erro: string} | null; esperando: number | null; partes: [number, string, string][]}) {
+const SECAO_DECIDIR = '📌 Precisa de você';
+interface Pendencia {secao: string; n: number; um: string; varios: string}
+const contar = (p: Pendencia) => `${p.n} ${p.n === 1 ? p.um : p.varios}`;
+
+// Abre antes de rolar: rolar até uma seção fechada mostrava só o título dela.
+function irPara(secao: string) {
+  const el = document.querySelector<HTMLDetailsElement>(`details[data-secao="${CSS.escape(secao)}"]`);
+  if (!el) return;
+  el.open = true;
+  el.scrollIntoView({block: 'start'});
+}
+
+// O toque no número: o bloco das pendências, com as que têm o que fazer abertas. As que têm vêm
+// primeiro, então com uma parte só o bloco começa nela.
+function irParaPendencias(pendencias: Pendencia[]) {
+  for (const p of pendencias) {
+    const el = document.querySelector<HTMLDetailsElement>(`details[data-secao="${CSS.escape(p.secao)}"]`);
+    if (el) el.open = true;
+  }
+  document.querySelector('[data-pendencias]')?.scrollIntoView({block: 'start'});
+}
+
+function NumerosDoDia({dia, esperando, faltam, pendencias}: {dia: Dia | {erro: string} | null; esperando: number | null; faltam: string[]; pendencias: Pendencia[]}) {
   const d = dia && !('erro' in dia) ? dia : null;
+  const incompleto = faltam.length > 0;
   return <>
     {dia && 'erro' in dia && <div className="aviso">Não consegui montar o painel do dia: {dia.erro}</div>}
     <div className="kpis" data-painel>
@@ -184,10 +235,20 @@ function NumerosDoDia({dia, esperando, partes}: {dia: Dia | {erro: string} | nul
         <div className="kpi-nome">Endereços verificados</div>
         <div className="kpi-sub">nas rotas de hoje</div>
       </div>
-      <div className={`kpi${esperando ? ' atencao' : ''}`} data-kpi="esperando">
-        <div className="kpi-num">{esperando ?? '…'}</div>
-        <div className="kpi-nome">Esperando você</div>
-        <div className="kpi-sub">{esperando ? partes.filter(([n]) => n).map(([n, um, varios]) => `${n} ${n === 1 ? um : varios}`).join(', ') : esperando == null ? '' : 'nada para resolver'}</div>
+      {/* botões lado a lado, nenhum dentro do outro: o número leva às pendências, cada parte à sua seção */}
+      {/* com uma fonte em erro, o número é "pelo menos" (N+) ou "?", nunca um 0 que pareça completo */}
+      <div className={`kpi${esperando || (esperando != null && incompleto) ? ' atencao' : ''}`} data-kpi="esperando">
+        {esperando
+          ? <button className="kpi-botao" data-ir="pendencias" onClick={() => irParaPendencias(pendencias)}>
+            <div className="kpi-num">{esperando}{incompleto ? '+' : ''}</div>
+            <div className="kpi-nome">Esperando você</div>
+          </button>
+          : <><div className="kpi-num">{esperando == null ? '…' : incompleto ? '?' : 0}</div><div className="kpi-nome">Esperando você</div></>}
+        <div className="kpi-sub">
+          {pendencias.map((p, i) => <Fragment key={p.secao}>{i > 0 && ', '}<button className="link" data-ir={p.secao} onClick={() => irPara(p.secao)}>{contar(p)}</button></Fragment>)}
+          {esperando != null && incompleto && <span data-incompleto>{esperando ? '; ' : ''}sem {entre(faltam)}, o total está incompleto</span>}
+          {esperando === 0 && !incompleto && 'nada para resolver'}
+        </div>
       </div>
     </div>
   </>;
@@ -679,7 +740,9 @@ function MarcadasPorMotorista({lista, visto, ...doLugar}: {lista: Adm.LugarCorri
     g.ultima = Math.max(g.ultima, Date.parse(m.criado_em));
   }
   const grupos = [...por.values()].sort((a, b) => b.lugares.length - a.lugares.length || a.nome.localeCompare(b.nome));
-  return <details open data-secao="🆕 Marcadas pelos motoristas nos últimos 7 dias">
+  // fechada ao abrir (revisão de 08/11): é para conferir quando ele quiser, e aberta empurrava as
+  // pendências para fora da tela
+  return <details data-secao="🆕 Marcadas pelos motoristas nos últimos 7 dias">
     <summary>🆕 Marcadas pelos motoristas nos últimos 7 dias ({lista.length})</summary>
     {!lista.length && <div className="info">Nenhuma porta marcada nos últimos 7 dias.</div>}
     {lista.length > 0 && <div className="info">Cada marcação já vale ou vira sugestão sozinha; o que pede decisão está em Precisa de você.</div>}
@@ -733,15 +796,54 @@ function ParadasSemLocal({lista, recarregar}: {lista: SemLocal[]; recarregar: ()
   </details>;
 }
 
-const POR_QUE: Record<Suspeita['tipo'], (s: any) => string> = {
-  'outro dia': s => `Planilha de ${s.dia}`,
-  'outro motorista': s => `Planilha de ${s.nome}`,
-  'repetida': () => 'A mesma planilha, aberta de novo',
-};
+const entre = (xs: string[]) => xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' e ' + xs[xs.length - 1];
+const aspas = (xs: string[]) => entre(xs.map(x => `"${x}"`));
+
+// O título diz o que o nome do arquivo tem, não de quem a planilha é: o nome é a única pista.
+function tituloDaSuspeita(s: Suspeita): string {
+  if (s.tipo === 'outro dia') return `Data ${s.dia} no nome do arquivo`;
+  if (s.tipo === 'repetida') return 'Mesmo nome de arquivo de outra rota de hoje';
+  return s.nomes.length === 1 ? `${aspas(s.palavras)} no nome do arquivo` : 'Nome de outro motorista no nome do arquivo';
+}
+
+// O que se sabe e o que não se achou, separados. A comparação é só pelo nome do arquivo: não diz que
+// a lista é a mesma, nem quem a abriu, nem que as contas se misturaram.
+function explicacaoDaRota(r: ParaConferir): string[] {
+  const s = r.suspeita;
+  const quando = (p: {criado_em: string | null; entregues: number}) =>
+    `${p.criado_em ? `, aberta às ${hora(p.criado_em)}` : ''}, com ${p.entregues ? `${p.entregues} entrega(s)` : 'nenhuma entrega'}`;
+  if (s.tipo === 'outro dia') return [`O nome do arquivo tem a data ${s.dia}, e não a de hoje.`];
+  if (s.tipo === 'repetida') return [r.parecida
+    ? `Outra rota de hoje tem o mesmo nome de arquivo: a da conta de ${r.parecida.motorista}${quando(r.parecida)}.`
+    : 'Outra rota de hoje tem o mesmo nome de arquivo.', 'A comparação é só pelo nome do arquivo.'];
+  if (s.nomes.length > 1) return [s.palavras.length > 1
+    ? `O nome do arquivo tem ${aspas(s.palavras)}, de motoristas diferentes: não dá para dizer de qual é.`
+    : `O nome do arquivo tem ${aspas(s.palavras)}, primeiro nome de mais de um motorista (${entre(s.nomes)}): não dá para dizer de qual é.`,
+  'Por isso não procurei a mesma planilha na conta de nenhum deles.'];
+  const dono = s.nomes[0];
+  return [`O nome do arquivo tem ${aspas(s.palavras)}, e a conta é de ${r.motorista}.`,
+    r.parecida ? `Na conta de ${dono}, hoje, há uma rota com o mesmo nome de arquivo${quando(r.parecida)}.`
+      : `Na conta de ${dono}, não encontrei hoje uma rota com o mesmo nome de arquivo.`,
+    'A comparação é só pelo nome do arquivo.'];
+}
+
+const COR_PARA_CONFERIR = '#ea580c';
 
 function RotasParaConferir({lista, recarregar}: {lista: ParaConferir[]; recarregar: () => void}) {
   const {ocupado, correr, fazendo} = useTrabalho();
+  // qual rota está no mapa, pela vez do desenho: outro desenho (o dia, outra rota) apaga o "Mostrando"
+  const [noMapa, setNoMapa] = useState<{id: string; vez: number} | null>(null);
   if (!lista.length) return null;
+  const verNoMapa = (r: ParaConferir) => {
+    // um pino por endereço, com a conta e o endereço; só olhar, nada é gravado
+    const um = new Map<string, Marca>();
+    for (const p of r.pontos) um.set(p.chave_lugar ?? p.endereco, {lat: p.lat!, lng: p.lng!, rotulo: r.motorista.slice(0, 1).toUpperCase(),
+      texto: `Conta de ${r.motorista} · ${p.endereco}`, cor: COR_PARA_CONFERIR});
+    mostrarNoMapa([...um.values()]);
+    if (!um.size) return;
+    setNoMapa({id: r.id, vez: loja.ui.marcas?.vez ?? -1});
+    status(`Mostrando no mapa: planilha ${r.arquivo} na conta de ${r.motorista}.`, 4000);
+  };
   const apagar = async (r: ParaConferir) => {
     if (!confirm(`Apagar a rota "${r.arquivo}" da conta de ${r.motorista}?
 
@@ -754,9 +856,15 @@ Ela não tem nenhuma entrega. As portas marcadas e as entregas de outras rotas f
     <summary>Rotas para conferir ({lista.length})</summary>
     <div className="info">Abertas hoje sem nenhuma entrega, com planilha de outro dia, de outro motorista ou repetida. Não entram nos números do dia.</div>
     {lista.map(r => <div className="item" key={r.id} data-para-conferir={r.id}>
-      <div><b>{POR_QUE[r.suspeita.tipo](r.suspeita)}</b> na conta de {r.motorista}</div>
-      <div className="achado">{r.arquivo} · {r.pacotes} pacote(s){r.criado_em ? ` · enviada ${hora(r.criado_em)}` : ''}</div>
-      <div className="linha"><button className="btn peq" onClick={() => apagar(r)} disabled={!!ocupado}>{fazendo('apagar' + r.id) ? 'Apagando…' : 'Apagar rota'}</button></div>
+      <div><b>{tituloDaSuspeita(r.suspeita)}</b>, na conta de {r.motorista}</div>
+      <div className="achado">{r.arquivo} · {r.pacotes} pacote(s){r.criado_em ? ` · aberta às ${hora(r.criado_em)}` : ''} · nenhuma entrega</div>
+      {explicacaoDaRota(r).map((t, i) => <div className="achado" key={i} data-explicacao>{t}</div>)}
+      {noMapa?.id === r.id && loja.ui.marcas?.vez === noMapa.vez &&
+        <div className="info" data-mostrando>Mostrando no mapa: planilha {r.arquivo} na conta de {r.motorista}.</div>}
+      <div className="linha">
+        <button className="btn peq" onClick={() => verNoMapa(r)}>Ver no mapa</button>
+        <button className="btn peq" onClick={() => apagar(r)} disabled={!!ocupado}>{fazendo('apagar' + r.id) ? 'Apagando…' : 'Apagar rota'}</button>
+      </div>
     </div>)}
   </details>;
 }

@@ -262,6 +262,9 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
 .kpi-num small{font-size:15px;font-weight:600;color:var(--mut)}
 .kpi-nome{font-size:14px;font-weight:700;margin-top:4px}
 .kpi-sub{font-size:13px;color:var(--mut)}
+/* o "Esperando você" leva às pendências: o número e cada parte são botões, sem um dentro do outro */
+.kpi-botao{display:block;width:100%;border:0;background:none;padding:0;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.kpi-sub .link{font-size:13px;text-align:left}
 .painel-colunas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(400px,100%),1fr));gap:0 20px;align-items:start}
 .cartao-painel{border:1px solid var(--bd);border-radius:14px;padding:10px 12px;margin:8px 0;background:#fff}
 .cartao-painel h3{font-size:16px;margin:2px 0 8px}

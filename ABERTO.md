@@ -154,6 +154,16 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## O "Esperando você" do Admin (08/11, print do dono: "tem 1 pra conferir, mas não consigo clicar pra ver"): na branch `admin-organizado`, nada enviado
+
+- **Era:** o cartão "Esperando você" somava decisões, paradas sem local e rotas para conferir, e a linha embaixo contava só as decisões: "1" no cartão e "Nada esperando você" na linha. O cartão não levava a lugar nenhum, e a rota para conferir só tinha "Apagar rota".
+- **Agora:** o cartão e a linha contam o mesmo e dizem as partes. O número leva ao bloco das pendências, e cada parte abre e rola até a sua seção. A rota para conferir ganhou "Ver no mapa" (pinos laranja, com a conta e o endereço) e diz o que o nome do arquivo tem, se há hoje uma rota com o mesmo nome de arquivo na conta correspondente, e que a comparação é só pelo nome. Com o primeiro nome de dois motoristas, diz que não dá para saber de qual é e não procura. "Precisa de você" vazio e "Marcadas pelos motoristas" começam fechados.
+- **Fonte em erro:** o painel do dia ou "Em conferência" que não carregou não vira zero. O cartão mostra "N+" ou "?", e o resumo diz o que não foi contado. A leitura das rotas em erro deixava a tela em "Contando…" para sempre; consertado.
+- **Testes:** 18 de ponta a ponta novos, em 412×915 e 1280×900, e 5 de unidade, com cada parte sabotada. Bateria: 566 de unidade e 312 de ponta a ponta. Revisão visual pelas capturas, com fundo de mapa cinza; não testado num celular de verdade.
+- **Fora, para outra rodada:**
+  - o selo do "Mais" conta só decisões e marcações em conferência (no print, 0 com o cartão em 1);
+  - com o painel do dia em erro, os outros três números do dia ficam em "…".
+
 ## Pino comercial (07/11, Luan; dono: "tem que ser compartilhado"): publicado em 08/11, falta ver a marca de um motorista no celular de outro
 
 - **Medido antes:** as 91 planilhas de 18/09 a 07/11 têm as mesmas 10 colunas da Shopee e nenhuma
@@ -211,6 +221,19 @@ Fora da lista:
 - **Falta:** ver a marca de um motorista aparecer no celular de outro, quando ele carregar a rota.
   Perguntar com o carro parado se apareceu um pino quadrado ou "Marcado por outro motorista".
 - **Fora:** reordenar a rota pelos comerciais.
+
+## "Nr" antes do número da porta (08/11): na branch `chave-nr`, nada enviado
+
+- **Era:** um endereço escrito com "Nr" antes do número ("…, Nr 0, …") ficava sem o número lido e sem chave do lugar, e a porta marcada valia só para o dia. Pela leitura do código, sem chave nada vai para a nuvem (correção, passagem) nem para a memória do celular. O que aconteceu com a marcação do dia anterior não foi conferido no banco.
+- **Agora:** o "Nr" é lido só como último recurso, no pedaço logo depois da rua, quando nada antes achou número. Onde a regra antiga já achava um número, nada muda ("Rua Q7 120, Nr 5" continua a porta 120), porque essa chave pode estar gravada. O 0 continua número; "nº", "n" e S/N não mudaram; a letra depois do número cai como sempre caiu ("Nr 15A" é a porta 15, igual a "15A"). `ferramentas/chave-rua.mjs` não muda, porque recebe o número já separado.
+- **Medido nas planilhas guardadas fora do repositório** (79 planilhas, 7.251 entregas, regra antiga × nova): 2 chaves vazias passaram a existir; nenhuma chave preenchida mudou ou sumiu; 19 entregas continuam sem chave, todas sem número da porta.
+- **Testes:** 8 de unidade novos e o de equivalência com `chave-rua.mjs` estendido, com dados inventados; cada parte sabotada. Bateria: 569 de unidade e 276 de ponta a ponta.
+- **Limites:**
+  - pacotes já salvos continuam sem chave; só as rotas carregadas depois da publicação ganham a chave nova;
+  - `npm run rechavear` não se aplica: ele refaz a chave da rua, não a do lugar;
+  - com unidade no nome da rua ("Rua X Casa 3, Nr 5"), continua sem número, como era;
+  - não testado num celular de verdade.
+- **Falta:** revisão, commit, push, PR e publicação, cada um com autorização. Depois de publicado, marcar a porta uma vez para ela ficar guardada.
 
 ## O mapa seguindo o motorista (05/11, dono: "o mapa não está sempre seguindo o ponto"): publicado em 06/11, falta o teste com o carro andando
 
