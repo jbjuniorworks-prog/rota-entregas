@@ -63,10 +63,25 @@ export interface LinhaDoDia extends RotaDoDia {
   parada: number;
 }
 
-export type Suspeita = {tipo: 'outro dia'; dia: string} | {tipo: 'outro motorista'; nome: string} | {tipo: 'repetida'};
+// "outro motorista" diz só o que o nome do arquivo tem: as palavras que batem com o primeiro nome
+// de algum motorista e quem tem esse primeiro nome. Mais de uma pessoa possível é ambíguo, e a tela
+// diz isso em vez de escolher uma (antes ficava a primeira da lista).
+export type Suspeita = {tipo: 'outro dia'; dia: string} | {tipo: 'outro motorista'; palavras: string[]; nomes: string[]} | {tipo: 'repetida'};
+
+// Outra rota de hoje com o mesmo nome de arquivo. É só o nome: não prova que a lista é a mesma.
+export interface Parecida {
+  motorista: string;
+  criado_em: string | null;
+  entregues: number;
+}
 
 export interface ParaConferir extends LinhaDoDia {
   suspeita: Suspeita;
+  // "outro motorista" com uma pessoa só: a rota de mesmo nome na conta dela, ou null se não há.
+  // "repetida": a outra, a que fica. Nos outros casos, ausente.
+  parecida?: Parecida | null;
+  // para ver a rota no mapa; não entram em `pontos`, que são os do dia
+  pontos: PacoteDoDia[];
 }
 
 export interface Dia {
@@ -106,8 +121,11 @@ export function suspeitaDaRota(arquivo: string | null, dia: string, dono: string
   if (doAdmin) return null;
   const palavras = new Set(semAcento(arquivo).split(/[^a-z]+/));
   if (palavras.has(primeiro(dono))) return null;
-  const outro = motoristas.find(n => primeiro(n) !== primeiro(dono) && primeiro(n).length > 2 && palavras.has(primeiro(n)));
-  return outro ? {tipo: 'outro motorista', nome: outro} : null;
+  const nomes = [...new Set(motoristas.filter(n => primeiro(n) !== primeiro(dono) && primeiro(n).length > 2 && palavras.has(primeiro(n))))];
+  if (!nomes.length) return null;
+  // a palavra como está escrita no nome do motorista ("Luan"), uma vez cada
+  const achadas = [...new Map(nomes.map(n => [primeiro(n), n.trim().split(/\s+/)[0]])).values()];
+  return {tipo: 'outro motorista', palavras: achadas, nomes};
 }
 
 // "(1)19-10-2026 JEFFERSON….xlsx" é a mesma planilha baixada de novo
@@ -137,12 +155,29 @@ export function resumirDia(rotas: RotaDoDia[], pacotes: PacoteDoDia[], confirmad
   // a que fica é a que tem entrega; sem entrega nas duas, a primeira enviada
   const repetida = (l: LinhaDoDia) => !!l.arquivo && !l.entregues && todas.some(o => o.id !== l.id && !!o.arquivo
     && nomeDaPlanilha(o.arquivo) === nomeDaPlanilha(l.arquivo!) && (o.entregues > 0 || (o.criado_em || '') < (l.criado_em || '')));
+  const mesmoNome = (l: LinhaDoDia, o: LinhaDoDia) => o.id !== l.id && !!o.arquivo && !!l.arquivo && nomeDaPlanilha(o.arquivo) === nomeDaPlanilha(l.arquivo);
+  const resumo = (o: LinhaDoDia): Parecida => ({motorista: o.motorista, criado_em: o.criado_em ?? null, entregues: o.entregues});
+  const parecidaCom = (l: LinhaDoDia, s: Suspeita): Parecida | null | undefined => {
+    // só com uma pessoa possível: com duas, procurar na conta de uma seria escolher por ele
+    if (s.tipo === 'outro motorista') {
+      if (s.nomes.length !== 1) return undefined;
+      const o = todas.find(o => o.motorista === s.nomes[0] && mesmoNome(l, o));
+      return o ? resumo(o) : null;
+    }
+    if (s.tipo === 'repetida') {
+      const o = todas.filter(o => mesmoNome(l, o)).sort((a, b) => b.entregues - a.entregues || (a.criado_em || '').localeCompare(b.criado_em || ''))[0];
+      return o ? resumo(o) : null;
+    }
+    return undefined;
+  };
   const paraConferir: ParaConferir[] = [];
   const linhas: LinhaDoDia[] = [];
   for (const l of todas) {
     const s = suspeitaDaRota(l.arquivo, hoje, l.motorista, motoristas, !!l.doAdmin, l.entregues) ?? (repetida(l) ? {tipo: 'repetida' as const} : null);
-    if (s) paraConferir.push({...l, suspeita: s});
-    else linhas.push(l);
+    if (!s) { linhas.push(l); continue; }
+    const parecida = parecidaCom(l, s);
+    paraConferir.push({...l, suspeita: s, ...(parecida !== undefined ? {parecida} : {}),
+      pontos: pacotes.filter(p => p.rota_id === l.id && p.lat != null && p.lng != null)});
   }
   // o que precisa de olho primeiro: parada, na rua, não começou, terminou
   const ordem: Record<Situacao, number> = {'parada': 0, 'na rua': 1, 'não começou': 2, 'terminou': 3};

@@ -154,6 +154,16 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## O "Esperando você" do Admin (08/11, print do dono: "tem 1 pra conferir, mas não consigo clicar pra ver"): na branch `admin-organizado`, nada enviado
+
+- **Era:** o cartão "Esperando você" somava decisões, paradas sem local e rotas para conferir, e a linha embaixo contava só as decisões: "1" no cartão e "Nada esperando você" na linha. O cartão não levava a lugar nenhum, e a rota para conferir só tinha "Apagar rota".
+- **Agora:** o cartão e a linha contam o mesmo e dizem as partes. O número leva ao bloco das pendências, e cada parte abre e rola até a sua seção. A rota para conferir ganhou "Ver no mapa" (pinos laranja, com a conta e o endereço) e diz o que o nome do arquivo tem, se há hoje uma rota com o mesmo nome de arquivo na conta correspondente, e que a comparação é só pelo nome. Com o primeiro nome de dois motoristas, diz que não dá para saber de qual é e não procura. "Precisa de você" vazio e "Marcadas pelos motoristas" começam fechados.
+- **Fonte em erro:** o painel do dia ou "Em conferência" que não carregou não vira zero. O cartão mostra "N+" ou "?", e o resumo diz o que não foi contado. A leitura das rotas em erro deixava a tela em "Contando…" para sempre; consertado.
+- **Testes:** 18 de ponta a ponta novos, em 412×915 e 1280×900, e 5 de unidade, com cada parte sabotada. Bateria: 566 de unidade e 312 de ponta a ponta. Revisão visual pelas capturas, com fundo de mapa cinza; não testado num celular de verdade.
+- **Fora, para outra rodada:**
+  - o selo do "Mais" conta só decisões e marcações em conferência (no print, 0 com o cartão em 1);
+  - com o painel do dia em erro, os outros três números do dia ficam em "…".
+
 ## Pino comercial (07/11, Luan; dono: "tem que ser compartilhado"): publicado em 08/11, falta ver a marca de um motorista no celular de outro
 
 - **Medido antes:** as 91 planilhas de 18/09 a 07/11 têm as mesmas 10 colunas da Shopee e nenhuma
