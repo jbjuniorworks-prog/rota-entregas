@@ -212,6 +212,19 @@ Fora da lista:
   Perguntar com o carro parado se apareceu um pino quadrado ou "Marcado por outro motorista".
 - **Fora:** reordenar a rota pelos comerciais.
 
+## "Nr" antes do número da porta (08/11): na branch `chave-nr`, nada enviado
+
+- **Era:** um endereço escrito com "Nr" antes do número ("…, Nr 0, …") ficava sem o número lido e sem chave do lugar, e a porta marcada valia só para o dia. Pela leitura do código, sem chave nada vai para a nuvem (correção, passagem) nem para a memória do celular. O que aconteceu com a marcação do dia anterior não foi conferido no banco.
+- **Agora:** o "Nr" é lido só como último recurso, no pedaço logo depois da rua, quando nada antes achou número. Onde a regra antiga já achava um número, nada muda ("Rua Q7 120, Nr 5" continua a porta 120), porque essa chave pode estar gravada. O 0 continua número; "nº", "n" e S/N não mudaram; a letra depois do número cai como sempre caiu ("Nr 15A" é a porta 15, igual a "15A"). `ferramentas/chave-rua.mjs` não muda, porque recebe o número já separado.
+- **Medido nas planilhas guardadas fora do repositório** (79 planilhas, 7.251 entregas, regra antiga × nova): 2 chaves vazias passaram a existir; nenhuma chave preenchida mudou ou sumiu; 19 entregas continuam sem chave, todas sem número da porta.
+- **Testes:** 8 de unidade novos e o de equivalência com `chave-rua.mjs` estendido, com dados inventados; cada parte sabotada. Bateria: 569 de unidade e 276 de ponta a ponta.
+- **Limites:**
+  - pacotes já salvos continuam sem chave; só as rotas carregadas depois da publicação ganham a chave nova;
+  - `npm run rechavear` não se aplica: ele refaz a chave da rua, não a do lugar;
+  - com unidade no nome da rua ("Rua X Casa 3, Nr 5"), continua sem número, como era;
+  - não testado num celular de verdade.
+- **Falta:** revisão, commit, push, PR e publicação, cada um com autorização. Depois de publicado, marcar a porta uma vez para ela ficar guardada.
+
 ## O mapa seguindo o motorista (05/11, dono: "o mapa não está sempre seguindo o ponto"): publicado em 06/11, falta o teste com o carro andando
 
 - **O que mudou** (`9188d17`, `app/src/logica/seguir.ts`): o mapa ia atrás só depois de 30 m, e
