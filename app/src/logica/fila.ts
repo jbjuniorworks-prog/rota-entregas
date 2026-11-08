@@ -1,6 +1,7 @@
 ﻿import {CHAVES, type Guarda} from './guarda';
 import type {ItemPlanilha} from './planilha';
 import type {PosicaoCompartilhada} from './compartilhadas';
+import type {ComercialDaNuvem, DesejoComercial} from './comerciais';
 import type {ReclamacaoDaNuvem} from './reclamacoes';
 import type {EventoBusca} from './telemetria';
 import {chaveLugar} from './texto';
@@ -50,11 +51,17 @@ export interface LugarConhecido {
   vistas: number;
 }
 
+// `ausente`: o servidor não tem a tabela ou a função (migração ainda não rodada). Não é recusa: o
+// envio espera a migração em vez de ser jogado fora.
 export class ErroNuvem extends Error {
-  constructor(mensagem: string, readonly deRede: boolean) { super(mensagem); }
+  constructor(mensagem: string, readonly deRede: boolean, readonly ausente = false) { super(mensagem); }
 }
 
 export interface ClienteNuvem {
+  // A conta da sessão em que o cliente nasceu, e se ela ainda é a da sessão e a dona do aparelho.
+  // O envio do comercial confere antes de cada pedido e depois de cada espera (revisão de 07/11).
+  conta: string;
+  vale(): boolean;
   rotaExistente(atId: string): Promise<string | null>;
   criarRota(id: string, atId: string | null, arquivo: string): Promise<void>;
   inserirPacotes(rotaId: string, pacotes: PacoteNuvem[]): Promise<void>;
@@ -70,6 +77,10 @@ export interface ClienteNuvem {
   inserirReclamacao(chave: string, motivo: MotivoReclamacao): Promise<void>;
   tirarReclamacao(chave: string, motivo: MotivoReclamacao): Promise<void>;
   reclamacoes(chaves: string[]): Promise<ReclamacaoDaNuvem[]>;
+  marcarComercial(chave: string): Promise<void>;
+  // `todas`: o admin tirando a marca de todos; senão, só a de quem manda
+  tirarComercial(chave: string, todas: boolean): Promise<void>;
+  comerciais(chaves: string[]): Promise<ComercialDaNuvem[]>;
   registrarBusca(e: EventoBusca): Promise<void>;
   abrirLinkDoMapa(link: string): Promise<string | null>;
   minhasMarcas(desde: string): Promise<{passagens: MarcaDoDia[]; correcoes: MarcaDoDia[]}>;
@@ -108,6 +119,7 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
   const ler = () => g.ler<Operacao[]>(CHAVES.fila, []);
   const lerSeguradas = () => g.ler<Segurada[]>(CHAVES.seguradas, []);
   const lerBuscas = () => g.ler<EventoBusca[]>(CHAVES.buscas, []);
+  const lerComerciais = () => g.ler<Record<string, DesejoComercial>>(CHAVES.comerciais, {});
   let enviando = false;
   let erro = '';
 
@@ -154,6 +166,30 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
     }
   }
 
+  // Pino comercial (031), à parte da fila do motorista: sem a tabela no servidor, a marca espera a
+  // migração sem segurar entrega e passagem atrás dela, e sem ser jogada fora como recusa. Cada
+  // endereço guarda só o último desejo; ele pode mudar enquanto o envio vai, e aí fica para a próxima.
+  // A conta pode trocar no meio da volta: o pedido que já saiu termina, mas a resposta dele não mexe
+  // no que está guardado, que a esta altura é o dia da outra conta; e o próximo não sai.
+  async function enviarComerciais(c: ClienteNuvem): Promise<'ok' | 'rede' | 'parar'> {
+    for (const [chave, desejo] of Object.entries(lerComerciais())) {
+      if (!c.vale()) return 'parar';
+      try {
+        if (desejo === 'marcar') await c.marcarComercial(chave);
+        else await c.tirarComercial(chave, desejo === 'tirarTodas');
+      } catch (e) {
+        if (!c.vale()) return 'parar';
+        if (!(e instanceof ErroNuvem) || e.deRede) return 'rede';
+        if (e.ausente) continue;
+        erro = 'o servidor recusou um envio (' + e.message + ')';
+      }
+      if (!c.vale()) return 'parar';
+      const agora = lerComerciais();
+      if (agora[chave] === desejo) { delete agora[chave]; g.gravar(CHAVES.comerciais, agora); }
+    }
+    return 'ok';
+  }
+
   // Recusada (motorista desativado, outra conta no aparelho, a 026 sem rodar) sai calada, como o
   // contador de botões: não é trabalho dele, e repetir não muda a resposta.
   async function enviarBusca(c: ClienteNuvem, e: EventoBusca): Promise<'ok' | 'rede'> {
@@ -167,7 +203,7 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
 
   return {
     // o contador de botões não é trabalho do motorista: não entra no "⏳ N para enviar"
-    pendentes: () => ler().filter(op => op.tipo !== 'uso').length,
+    pendentes: () => ler().filter(op => op.tipo !== 'uso').length + Object.keys(lerComerciais()).length,
     // as portas esperando o prazo de desfazer: também saem só com ele, quando vencem
     aguardando: () => lerSeguradas().reduce((n, s) => n + s.ops.length, 0),
     desde: () => g.ler<number>(CHAVES.filaDesde, 0),
@@ -216,6 +252,10 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
       }
       return resto.length ? Math.min(...resto.map(x => x.ate)) : null;
     },
+    querComercial(chave: string, desejo: DesejoComercial) {
+      g.gravar(CHAVES.comerciais, {...lerComerciais(), [chave]: desejo});
+    },
+    comerciais: lerComerciais,
     // O id é do registro desde que ele nasce, e vai igual em todo reenvio: o banco ignora o repetido.
     guardarBusca(e: EventoBusca) {
       g.gravar(CHAVES.buscas, [...lerBuscas().filter(x => x.id !== e.id), e].slice(-BUSCAS_MAX));
@@ -224,6 +264,7 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
     async enviar(c: ClienteNuvem | null): Promise<void> {
       if (!c || enviando) return;
       enviando = true;
+      let comerciaisFeitos = false;
       try {
         for (;;) {
           if (ler().length) {
@@ -233,6 +274,12 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
             f.shift();
             g.gravar(CHAVES.fila, f);
             if (!f.length) g.gravar(CHAVES.filaDesde, 0);
+            continue;
+          }
+          // Uma volta por envio: a que espera a migração continua lá, e a volta seguinte não acaba.
+          if (!comerciaisFeitos) {
+            comerciaisFeitos = true;
+            if (await enviarComerciais(c) !== 'ok') break;
             continue;
           }
           // Só com a fila do motorista vazia, e uma de cada vez: o que ele fizer enquanto uma vai

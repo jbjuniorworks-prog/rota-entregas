@@ -45,6 +45,9 @@ export interface Parada {
   sugestao?: {lat: number; lng: number; distancia: number | null};
   // "cliente xarope": já reclamou de pacote jogado ou deixado com vizinho (018)
   reclamacoes?: Reclamacao[];
+  // pino comercial (031): ele marcou / outro motorista marcou. O `comercial` de cima é o do Meli.
+  comercialMeu?: boolean;
+  comercialOutros?: boolean;
   // como ela estava antes do "Entreguei aqui" levar o pino para a porta
   portaAntes?: PortaAntes;
   // A cidade da linha da planilha. O censo e a busca são da cidade de cada entrega: com a de

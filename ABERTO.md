@@ -153,6 +153,60 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Pino comercial (07/11, Luan; dono: "tem que ser compartilhado"): feito local na branch `pino-comercial`, nada enviado
+
+- **Medido antes:** as 91 planilhas de 18/09 a 07/11 têm as mesmas 10 colunas da Shopee e nenhuma
+  diz comércio ou horário. Pista no texto do endereço (loja, sala, mercado...) em 5,7% dos endereços,
+  sem conferir quantas são comércio de verdade: não serve para marcar sozinho.
+- **O que entra:**
+  - botão "Comercial" no alto de cada endereço do cartão do pino, com a marca guardada no celular;
+  - pino quadrado, mantendo a cor da área e os outros estados;
+  - a marca vai para a nuvem, que a 031 guarda por endereço e motorista: cada um tira a sua e o
+    admin tira todas;
+  - o "comercial" que o leitor do Meli acha só muda o pino naquele celular.
+- **Fila:** guarda o último desejo por endereço, à parte da fila do motorista. Sem a tabela no
+  servidor (031 não rodada, ou desligada), a marca espera, e a entrega e a passagem saem.
+- **Troca de conta e respostas atrasadas** (revisão de 07/11):
+  - o envio do comercial confere a sessão antes de cada pedido e depois de cada espera. Com a sessão
+    trocada, o pedido que já saiu termina, mas a resposta não mexe na fila, e o resto não sai por
+    aquele cliente;
+  - a sessão é a entrada, não só a conta: o `session_id` do token (muda a cada entrada, não muda
+    quando o token é renovado; conferido no Supabase local) e uma contagem de entradas e saídas do
+    app. Assim o cliente de A não volta a valer em A → B → A nem quando A sai e entra de novo;
+  - o pedido leva o token da sessão que o criou;
+  - a consulta das marcas descarta a resposta se a conta trocou ou o estado inteiro foi trocado
+    (outra conta, "Resetar a rota", desfazer o reset);
+  - o endereço tocado durante a consulta fica como ele deixou, por uma revisão por endereço.
+- **Desligar sem apagar:** bloco no fim da 031, que leva a tabela e a função para o esquema
+  `desligado`, fora da API. O app vê "tabela ausente" e guarda os toques. Rodar a 031 de novo religa,
+  com as marcas. Só um `revoke` não serve: o servidor responde "permissão negada", e o app descarta o
+  toque como recusado (medido no Supabase local). A remoção definitiva é outro bloco, destrutivo,
+  sem execução autorizada. Que a API não mostra o esquema `desligado` foi conferido só no Supabase
+  local; no projeto de verdade, conferir as "Exposed schemas" antes de desligar.
+- **As duas tabelas ao mesmo tempo** (`public.comerciais` e `desligado.comerciais`): a 031 para com
+  erro antes de mudar qualquer coisa, sem juntar nem escolher. Testado no Supabase local pelo SQL
+  Editor (uma consulta só) e pelo psql com `ON_ERROR_STOP`: tabelas, dados, regras, permissões e
+  função iguais depois. Sem `ON_ERROR_STOP` o psql segue depois do erro e roda o resto, que recria as
+  mesmas regras e a mesma função.
+- **Horário:** segundo o Luan (07/11), a Shopee não mostra horário de funcionamento, e eles não
+  precisam desse detalhe. A marca é só ligada ou desligada: sem campo de horário e sem ordenar a rota
+  por horário.
+- **Testes:**
+  - 20 de unidade e 13 de ponta a ponta;
+  - permissões da 031 no Supabase local com contas fictícias (22 casos);
+  - desligar e religar no Supabase local (18 passos);
+  - as duas tabelas ao mesmo tempo, em três formas de rodar a 031;
+  - o app de verdade contra o Supabase local, com duas contas, passando pelo desligar e religar
+    (13 passos);
+  - sabotagens no código e no banco. O token fixo da sessão não tem teste que o distinga: a troca de
+    conta teria de cair entre a conferência e a saída do pedido.
+- **Limite:** as marcas dos outros chegam quando a rota é carregada, como o "cliente xarope"; não
+  atualizam sozinhas durante o dia.
+- **Pendente:**
+  - revisão, atualização da branch com a `main` e a bateria de novo, commit, push e PR;
+  - a 031 rodar no SQL Editor antes de o app ser publicado.
+- **Fora:** reordenar a rota pelos comerciais.
+
 ## O mapa seguindo o motorista (05/11, dono: "o mapa não está sempre seguindo o ponto"): publicado em 06/11, falta o teste com o carro andando
 
 - **O que mudou** (`9188d17`, `app/src/logica/seguir.ts`): o mapa ia atrás só depois de 30 m, e

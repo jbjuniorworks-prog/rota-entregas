@@ -1,6 +1,7 @@
 import type {Session, SupabaseClient} from '@supabase/supabase-js';
 import {ErroNuvem, type ClienteNuvem} from '../logica/fila';
 import {CHAVES, donoDoAparelho} from '../logica/guarda';
+import {chaveDaSessao} from '../logica/sessao';
 import type {MarcaDoDia} from '../logica/verificacao';
 
 // O projeto do Supabase que o app publicado usa. A chave é a pública (anon), e está no código de
@@ -18,6 +19,10 @@ export interface Perfil {
 
 let supa: SupabaseClient | null = null;
 let sessao: Session | null = null;
+// Sobe a cada entrada e saída feitas por aqui; com o session_id do token, diz em qual sessão um
+// cliente nasceu (logica/sessao.ts). Renovar o token não mexe em nenhum dos dois.
+let vezDaEntrada = 0;
+const sessaoAtual = () => chaveDaSessao(sessao, vezDaEntrada);
 let perfil: Perfil | null = null;
 let semServidor = false;
 
@@ -53,6 +58,7 @@ export async function entrar(email: string, senha: string): Promise<string> {
   if (!email || !senha) return 'Preencha o e-mail e a senha.';
   const {data, error} = await supa.auth.signInWithPassword({email, password: senha});
   if (error) return /invalid/i.test(error.message) ? 'E-mail ou senha errados.' : 'Não consegui entrar: ' + error.message;
+  vezDaEntrada++;
   sessao = data.session;
   await carregarPerfil();
   return perfil && !perfil.ativo ? 'Sua conta está desativada. Fale com o responsável.' : `Olá, ${perfil ? perfil.nome : email}! Suas rotas vão ser salvas.`;
@@ -61,14 +67,19 @@ export async function entrar(email: string, senha: string): Promise<string> {
 export async function sair() {
   // só este aparelho (decisão de 20/10): trocar de celular ou emprestar não derruba o outro; em caso
   // de roubo, quem administra desativa a conta, e as regras de acesso já não deixam ler nem gravar
+  vezDaEntrada++;
   if (supa) await supa.auth.signOut({scope: 'local'});
   sessao = null;
   perfil = null;
 }
 
+// Tabela ou função que o servidor não conhece: a migração ainda não rodou (PGRST205 e PGRST202 do
+// PostgREST; 42P01 e 42883 do Postgres).
+const AUSENTE = new Set(['PGRST205', 'PGRST202', '42P01', '42883']);
+
 function erro(e: {code?: string; message?: string}): ErroNuvem {
   const deRede = !e.code || e.code === 'PGRST301' || /fetch|network|timeout/i.test(e.message || '');
-  return new ErroNuvem(e.message || e.code || 'erro', deRede);
+  return new ErroNuvem(e.message || e.code || 'erro', deRede, !!e.code && AUSENTE.has(e.code));
 }
 
 export function clienteNuvem(): ClienteNuvem | null {
@@ -77,7 +88,15 @@ export function clienteNuvem(): ClienteNuvem | null {
   // A fila e o dia guardados são de quem é dono do aparelho. Entre a sessão nova ficar pronta e o
   // dia trocar de dono, o envio de minuto em minuto mandaria o de quem saiu no nome de quem entrou.
   if (donoDoAparelho(localStorage) !== uid) return null;
+  // O pedido do comercial leva o token desta sessão, e não o que a biblioteca tiver quando ele sair:
+  // o cliente da biblioteca é um só no aparelho e passa a ser de B assim que B entra.
+  const token = sessao.access_token;
+  // Vale enquanto a sessão for a mesma em que ele nasceu: sair, ou outra entrada (mesmo da mesma
+  // conta), invalida de vez; a renovação do token, não.
+  const nasceuEm = sessaoAtual();
   return {
+    conta: uid,
+    vale: () => sessaoAtual() === nasceuEm && donoDoAparelho(localStorage) === uid,
     async rotaExistente(atId) {
       const {data, error} = await s.from('rotas').select('id').eq('at_id', atId).eq('motorista_id', uid).maybeSingle();
       if (error) throw erro(error);
@@ -158,6 +177,27 @@ export function clienteNuvem(): ClienteNuvem | null {
       const saida = [];
       for (let i = 0; i < chaves.length; i += 400) {
         const {data, error} = await s.rpc('reclamacoes_dos_lugares', {chaves: chaves.slice(i, i + 400)});
+        if (error) throw erro(error);
+        saida.push(...(data || []));
+      }
+      return saida;
+    },
+    async marcarComercial(chave) {
+      const {error} = await s.from('comerciais').upsert({chave_lugar: chave}, {onConflict: 'chave_lugar,motorista_id', ignoreDuplicates: true})
+        .setHeader('Authorization', 'Bearer ' + token);
+      if (error) throw erro(error);
+    },
+    async tirarComercial(chave, todas) {
+      // Sem `todas`, só a dele, mesmo para quem administra: tirar a sua não leva a dos outros. Com
+      // `todas`, o banco só deixa apagar a dos outros para o admin (031).
+      const q = s.from('comerciais').delete().eq('chave_lugar', chave).setHeader('Authorization', 'Bearer ' + token);
+      const {error} = await (todas ? q : q.eq('motorista_id', uid));
+      if (error) throw erro(error);
+    },
+    async comerciais(chaves) {
+      const saida = [];
+      for (let i = 0; i < chaves.length; i += 400) {
+        const {data, error} = await s.rpc('comerciais_dos_lugares', {chaves: chaves.slice(i, i + 400)}).setHeader('Authorization', 'Bearer ' + token);
         if (error) throw erro(error);
         saida.push(...(data || []));
       }
