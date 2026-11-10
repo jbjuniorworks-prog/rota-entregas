@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 07/11/2026.
+Atualizado em 09/11/2026.
 
 ## O que vem agora
 
@@ -21,8 +21,9 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
    consertada e publicada em 20/10 (`918d045`); depois o "ok, 0 linhas" e os outros três, um por vez.
 4. **Desfazer retira a passagem** (12/10, em "Desfazer a entrega"). Decidida, não feita. Próximo:
    na auditoria, conferir o caminho e escrever a migração para o dono rodar.
-5. **Parada sem pino** (14/10). Pendente. Próximo: reproduzir. Hoje ela não pode ser marcada como
-   entregue, e o aviso "N parada(s) sem local" não leva até ela.
+5. **Parada sem pino** (14/10). **Reproduzida e consertada em 03/11**, na branch `app-sem-banco`
+   (`2c35f3a`). Era: ela não podia ser marcada como entregue, e o aviso "N parada(s) sem local" não
+   levava até ela. Publicado em 07/11 (PR #3).
 6. **Resumo da leitura com o total do Meli** (12/10). Pendente. Próximo: mostrar a diferença entre
    as linhas lidas e o total do topo da lista, nunca como "faltam N".
 7. **Achados da leitura, não mexidos** (14/10): o cartão aberto com CEP engole os fechados da mesma
@@ -38,7 +39,8 @@ abaixo, que fica como registro. O detalhe de cada frente está na seção da dat
     `ferramentas-e-protecao` (`d68ad0d`). Era: a linha da chave de serviço sem valor (o nome, o
     sinal de igual e nada mais), seguida de qualquer outra, contava como chave com valor: o `\s*` de
     `guarda-segredos.mjs` atravessava a quebra de linha. Agora compara só na mesma linha, com teste
-    nas duas direções: a vazia passa e a chave com valor continua barrada.
+    nas duas direções: a vazia passa e a chave com valor continua barrada. Publicado em 06/11
+    (PR #1).
 12. **Parágrafo repetido em "Falha viva"** (15/10). Feito em 19/10: saiu só a repetição.
 13. **Porta verificada no lugar errado, sem conserto fácil** (15/10, pedido do Pedro, Avenida
     Canal de Santa Maria 28). Lido no código, não reproduzido. Hoje só a marcação do admin conserta,
@@ -152,7 +154,88 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Dia e hora do servidor, e porta verificada em disputa (07/11, pedido do dono): na branch `integridade-portas`, migração 030 escrita e não rodada, nada enviado
+## O "Esperando você" do Admin (08/11, print do dono: "tem 1 pra conferir, mas não consigo clicar pra ver"): na branch `admin-organizado`, nada enviado
+
+- **Era:** o cartão "Esperando você" somava decisões, paradas sem local e rotas para conferir, e a linha embaixo contava só as decisões: "1" no cartão e "Nada esperando você" na linha. O cartão não levava a lugar nenhum, e a rota para conferir só tinha "Apagar rota".
+- **Agora:** o cartão e a linha contam o mesmo e dizem as partes. O número leva ao bloco das pendências, e cada parte abre e rola até a sua seção. A rota para conferir ganhou "Ver no mapa" (pinos laranja, com a conta e o endereço) e diz o que o nome do arquivo tem, se há hoje uma rota com o mesmo nome de arquivo na conta correspondente, e que a comparação é só pelo nome. Com o primeiro nome de dois motoristas, diz que não dá para saber de qual é e não procura. "Precisa de você" vazio e "Marcadas pelos motoristas" começam fechados.
+- **Fonte em erro:** o painel do dia ou "Em conferência" que não carregou não vira zero. O cartão mostra "N+" ou "?", e o resumo diz o que não foi contado. A leitura das rotas em erro deixava a tela em "Contando…" para sempre; consertado.
+- **Testes:** 18 de ponta a ponta novos, em 412×915 e 1280×900, e 5 de unidade, com cada parte sabotada. Bateria: 566 de unidade e 312 de ponta a ponta. Revisão visual pelas capturas, com fundo de mapa cinza; não testado num celular de verdade.
+- **Fora, para outra rodada:**
+  - o selo do "Mais" conta só decisões e marcações em conferência (no print, 0 com o cartão em 1);
+  - com o painel do dia em erro, os outros três números do dia ficam em "…".
+
+## Pino comercial (07/11, Luan; dono: "tem que ser compartilhado"): publicado em 08/11, falta ver a marca de um motorista no celular de outro
+
+- **Medido antes:** as 91 planilhas de 18/09 a 07/11 têm as mesmas 10 colunas da Shopee e nenhuma
+  diz comércio ou horário. Pista no texto do endereço (loja, sala, mercado...) em 5,7% dos endereços,
+  sem conferir quantas são comércio de verdade: não serve para marcar sozinho.
+- **O que entra:**
+  - botão "Comercial" no alto de cada endereço do cartão do pino, com a marca guardada no celular;
+  - pino quadrado, mantendo a cor da área e os outros estados;
+  - a marca vai para a nuvem, que a 031 guarda por endereço e motorista: cada um tira a sua e o
+    admin tira todas;
+  - o "comercial" que o leitor do Meli acha só muda o pino naquele celular.
+- **Fila:** guarda o último desejo por endereço, à parte da fila do motorista. Sem a tabela no
+  servidor (031 não rodada, ou desligada), a marca espera, e a entrega e a passagem saem.
+- **Troca de conta e respostas atrasadas** (revisão de 07/11):
+  - o envio do comercial confere a sessão antes de cada pedido e depois de cada espera. Com a sessão
+    trocada, o pedido que já saiu termina, mas a resposta não mexe na fila, e o resto não sai por
+    aquele cliente;
+  - a sessão é a entrada, não só a conta: o `session_id` do token (muda a cada entrada, não muda
+    quando o token é renovado; conferido no Supabase local) e uma contagem de entradas e saídas do
+    app. Assim o cliente de A não volta a valer em A → B → A nem quando A sai e entra de novo;
+  - o pedido leva o token da sessão que o criou;
+  - a consulta das marcas descarta a resposta se a conta trocou ou o estado inteiro foi trocado
+    (outra conta, "Resetar a rota", desfazer o reset);
+  - o endereço tocado durante a consulta fica como ele deixou, por uma revisão por endereço.
+- **Desligar sem apagar:** bloco no fim da 031, que leva a tabela e a função para o esquema
+  `desligado`, fora da API. O app vê "tabela ausente" e guarda os toques. Rodar a 031 de novo religa,
+  com as marcas. Só um `revoke` não serve: o servidor responde "permissão negada", e o app descarta o
+  toque como recusado (medido no Supabase local). A remoção definitiva é outro bloco, destrutivo,
+  sem execução autorizada. Que a API não mostra o esquema `desligado` foi conferido só no Supabase
+  local; no projeto de verdade, conferir as "Exposed schemas" antes de desligar.
+- **As duas tabelas ao mesmo tempo** (`public.comerciais` e `desligado.comerciais`): a 031 para com
+  erro antes de mudar qualquer coisa, sem juntar nem escolher. Testado no Supabase local pelo SQL
+  Editor (uma consulta só) e pelo psql com `ON_ERROR_STOP`: tabelas, dados, regras, permissões e
+  função iguais depois. Sem `ON_ERROR_STOP` o psql segue depois do erro e roda o resto, que recria as
+  mesmas regras e a mesma função.
+- **Horário:** segundo o Luan (07/11), a Shopee não mostra horário de funcionamento, e eles não
+  precisam desse detalhe. A marca é só ligada ou desligada: sem campo de horário e sem ordenar a rota
+  por horário.
+- **Testes:**
+  - 20 de unidade e 13 de ponta a ponta;
+  - permissões da 031 no Supabase local com contas fictícias (22 casos);
+  - desligar e religar no Supabase local (18 passos);
+  - as duas tabelas ao mesmo tempo, em três formas de rodar a 031;
+  - o app de verdade contra o Supabase local, com duas contas, passando pelo desligar e religar
+    (13 passos);
+  - sabotagens no código e no banco. O token fixo da sessão não tem teste que o distinga: a troca de
+    conta teria de cair entre a conferência e a saída do pedido.
+- **Limite:** as marcas dos outros chegam quando a rota é carregada, como o "cliente xarope"; não
+  atualizam sozinhas durante o dia.
+- **Publicado em 08/11 (PR #4).** A 031 foi aplicada no SQL Editor em 08/11 e conferida: a tabela e
+  a função existem, e nada ficou no esquema `desligado`.
+- **Conferido no ar (08/11), com a conta do admin:** marcar no app grava a marca no servidor, a
+  consulta das marcas responde "marcada por mim, por nenhum outro", e desmarcar a apaga. Logo
+  depois, chegou a primeira marca de um motorista.
+- **Falta:** ver a marca de um motorista aparecer no celular de outro, quando ele carregar a rota.
+  Perguntar com o carro parado se apareceu um pino quadrado ou "Marcado por outro motorista".
+- **Fora:** reordenar a rota pelos comerciais.
+
+## "Nr" antes do número da porta (08/11): na branch `chave-nr`, nada enviado
+
+- **Era:** um endereço escrito com "Nr" antes do número ("…, Nr 0, …") ficava sem o número lido e sem chave do lugar, e a porta marcada valia só para o dia. Pela leitura do código, sem chave nada vai para a nuvem (correção, passagem) nem para a memória do celular. O que aconteceu com a marcação do dia anterior não foi conferido no banco.
+- **Agora:** o "Nr" é lido só como último recurso, no pedaço logo depois da rua, quando nada antes achou número. Onde a regra antiga já achava um número, nada muda ("Rua Q7 120, Nr 5" continua a porta 120), porque essa chave pode estar gravada. O 0 continua número; "nº", "n" e S/N não mudaram; a letra depois do número cai como sempre caiu ("Nr 15A" é a porta 15, igual a "15A"). `ferramentas/chave-rua.mjs` não muda, porque recebe o número já separado.
+- **Medido nas planilhas guardadas fora do repositório** (79 planilhas, 7.251 entregas, regra antiga × nova): 2 chaves vazias passaram a existir; nenhuma chave preenchida mudou ou sumiu; 19 entregas continuam sem chave, todas sem número da porta.
+- **Testes:** 8 de unidade novos e o de equivalência com `chave-rua.mjs` estendido, com dados inventados; cada parte sabotada. Bateria: 569 de unidade e 276 de ponta a ponta.
+- **Limites:**
+  - pacotes já salvos continuam sem chave; só as rotas carregadas depois da publicação ganham a chave nova;
+  - `npm run rechavear` não se aplica: ele refaz a chave da rua, não a do lugar;
+  - com unidade no nome da rua ("Rua X Casa 3, Nr 5"), continua sem número, como era;
+  - não testado num celular de verdade.
+- **Falta:** revisão, commit, push, PR e publicação, cada um com autorização. Depois de publicado, marcar a porta uma vez para ela ficar guardada.
+
+## Dia e hora do servidor, e porta verificada em disputa (07/11, pedido do dono): 030 aplicada na produção em 09/11; o Admin, na branch `integridade-portas`, não enviado
 
 A partir da `main` (`2fa2f71`). Independente da 029: não mexe em `observacoes_desfazer` nem em
 `retirar_passagens`.
@@ -202,11 +285,25 @@ A partir da `main` (`2fa2f71`). Independente da 029: não mexe em `observacoes_d
   quem administra e leva a porta até lá, e depois disso aprovar passa; "Apagar" tira a marcação,
   guarda a passagem como recusada e a porta fica. Foi aí que se viu o selo invisível, consertado
   acima (`f7ee372`) e conferido de novo no mesmo ambiente.
-- **Falta:** aplicar a 030 na produção e verificar lá (as permissões por coluna no catálogo e os
-  casos 1, 2, 3, 6 e 9 pela API, com contas de teste), e publicar o Admin, na ordem que o dono
-  decidir. Cada passo pede autorização própria. Qualquer ordem entre banco e Admin funciona para o
-  app: o Admin de hoje mostra a disputa que mudaria a porta com "Aprovar", e o banco recusa. A
-  validação do mapa no celular, com o Pedro rodando, é do trabalho do mapa (`seguir-com-cartao`).
+- **Produção (09/11):** o dono rodou a 030 no SQL Editor. Conferido no catálogo
+  (`information_schema.column_privileges`, `authenticated`, INSERT): 19 colunas nas quatro tabelas,
+  exatamente as que o app manda; nenhuma de `dia`, `criado_em`, `motorista_id`, `pendente`,
+  `recusada` ou `disputa`.
+- **Não validado na produção, por decisão do dono (09/11):** a recusa pela API (42501) e a disputa
+  (nascer pendente e em disputa, recusar a aprovação). As duas foram provadas só no Supabase local
+  (07/11). O `test:nuvem` não rodou: ele cria e apaga contas na produção, e um caso dele tenta gravar
+  numa rota real esperando a recusa. Trabalho à parte: isolar esse caso entre duas contas de teste,
+  pôr `uso_dos_botoes`, `reclamacoes` e `comerciais` na limpeza do `nuvem.spec`, e o caso da disputa
+  contra a produção.
+- **Admin publicado, até sair esta branch (lido no código, não visto na tela):** aprovar uma disputa
+  sozinha mostra o erro do banco; "Aprovar as N entregues no pino", com uma disputa no meio, é
+  recusado inteiro e nenhuma é aprovada (o lote das escolhidas só apaga). Saída: apagar, ou "Procurar um endereço" e
+  "Marcar como admin". No Admin desta branch a disputa fica numa lista à parte, que nenhum lote
+  aprova (`Admin.tsx`, `g.disputas`).
+- **Fusão com a `main` (09/11, `b035a88`):** 031 antes da 030 nos dois arquivos de rodar tudo, a
+  ordem em que rodaram na produção. Tipos; 578 de unidade; build; 309 de ponta a ponta com a nuvem
+  simulada.
+- **Falta:** push e PR, e depois publicar, cada um com autorização.
 - **Fora desta branch:** o lugar com nome da mesma conta em dias de verdade ainda confirma sozinho
   (`lugares_conhecidos` conta motorista e dia) e não tem disputa. Contar contas diferentes em vez de
   passagens muda portas já gravadas e pede medição. O horário declarado da entrega offline, se um
@@ -252,6 +349,23 @@ A partir da `main` (`2fa2f71`). Independente da 029: não mexe em `observacoes_d
   parado. Perguntar ao Pedro ou ao Luan depois da próxima rota. Ajuste fino (se a volta imediata
   incomodar, ou houver tremor parado) só depois desse retorno, e começa na pasta de trabalho
   `rota-entregas-mapa-seguir`, que fica até lá.
+
+- **O mapa parado com o cartão do pino aberto (07/11, Pedro: "não está seguindo a localização
+  dele"):** publicado em 07/11 (PR #2). O print
+  tinha o cartão "Neste pino" aberto, a 51 entregue e a mira acesa; reproduzido em 412×915: o
+  cartão aberto pausa o seguir, e depois de "Entregue" ele continua aberto. A mira dizia que
+  seguia, e o toque nela desligava o seguir. Aprovado pelo dono e feito: com o cartão aberto a
+  mira apaga; afastando 50 m de onde abriu, o cartão fecha e o mapa volta a segui-lo (só com o
+  seguir ligado, e não com o toque no mapa armado); parado na porta, fica; um toque na mira fecha
+  e volta a seguir. O mesmo na lista puxada (a mira apaga, o toque volta ao mapa seguindo) e nos
+  modos de tocar no mapa (escolher pinos, circular, o lugar da entrega: a mira apaga, o toque leva
+  o mapa até ele sem largar o modo, e saindo o mapa segue). Mapa e mira leem a mesma pausa
+  (`pausaDoSeguir`). Os 50 m são de partida, e leitura com margem acima de 50 m não conta.
+- **Achados sem conserto (07/11):** com o GPS com margem acima de 50 m o mapa espera e a mira fica
+  acesa (o círculo da margem aparece acima de 25 m); um dedo cujo soltar e cancelar se percam
+  deixaria o mapa parado até recarregar (mecanismo possível, nunca visto); com o toque no mapa
+  armado, saindo dali, o mapa espera e o aviso continua na tela. Sem dado de que aconteçam na rua.
+- **Falta:** validar na rua o cartão que fecha sozinho e a mira, com o Pedro.
 
 ## O nome das ruas que cruzam o caminho (06/11, dono, print do Google: "Tv. Edson Cardoso", "R. I", "R. J"): medido, em investigação, nada construído
 
@@ -305,7 +419,29 @@ A partir da `main` (`2fa2f71`). Independente da 029: não mexe em `observacoes_d
 - **Aguardando** o Pedro e o Luan: em qual trecho concreto o nome de uma rua que cruza ou se liga
   ao caminho ajudaria? Sem novas consultas externas nem implementação até lá.
 
-## Ferramentas e proteção (03/11, pedido do dono: "vamos fazer todos"): na branch `ferramentas-e-protecao`, nada enviado
+## Bibliotecas, verificadas por motorista e parada sem local (03/11, pedido do dono: "vamos fazer todos"): publicado em 07/11 (PR #3)
+
+Feito em 03/11 na `organizacao-roteiros`; copiado em 06/11 para esta branch, a partir da `main`
+(`b7367b6`), para revisar e publicar por assunto. Cada cópia tem as mesmas linhas acrescentadas e
+removidas que o original (conferido par a par). Nada aqui depende de migração.
+
+- **Bibliotecas** (`5dacb6f`): só dentro da faixa (supabase-js, react, react-dom, vite,
+  @types/node) e o `source-map-js` por `npm audit fix`. O que vai para o celular: 0 alertas. Ficam
+  três alertas, só nas ferramentas de teste: `@vitest/mocker`, `tinypool` e o `vitest` que depende
+  deles. A solução proposta é atualizar para o vitest 5, em rodada separada. Nenhuma versão grande
+  mudou.
+- **Verificadas por motorista no Admin** (`509f558`, item 2 dos comandos): "Portas verificadas por
+  motorista", acima das rotas de 14 dias, com a mesma conta do "Portas verificadas" de cada rota.
+  "Quem está na rua" já estava em "Rotas de hoje".
+- **Parada sem local** (`2c35f3a`): bloco "Sem local" na Lista, com Entregue, Marcar no mapa e
+  Estou aqui; o aviso ganhou "Ver"; a entregue vai para "N entregue(s)" e se desfaz de lá. O cartão
+  do fim dizia "Todas as entregas da rota foram feitas!" com uma sem local por entregar.
+- **Testes:** cada conserto foi sabotado em 03/11, na `organizacao-roteiros`, e cada sabotagem
+  quebrou um teste; não foram refeitas aqui. Nesta branch, sozinha em cima da `main`, em 06/11, no
+  `2c35f3a`, com o `package-lock.json` dela instalado: tipos; 535 de unidade; build; 255 de ponta a
+  ponta com a nuvem simulada.
+
+## Ferramentas e proteção (03/11, pedido do dono: "vamos fazer todos"): publicado em 06/11 (PR #1)
 
 Feito em 03/11 (e o teste de produção do Admin em 29/10) na `organizacao-roteiros`; copiado em 06/11
 para esta branch, a partir da `main` (`b7367b6`), para revisar e publicar por assunto. Cada cópia tem

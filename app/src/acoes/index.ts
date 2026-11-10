@@ -4,6 +4,7 @@ export * from './conta';
 export * from './enderecos';
 export * from './posicoes';
 export * from './reclamacoes';
+export * from './comerciais';
 export * from './rota';
 export * from './versao';
 export * from './instalar';

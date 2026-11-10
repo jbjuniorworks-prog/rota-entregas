@@ -33,6 +33,7 @@ export const CHAVES = {
   uso: 'rota-entregas-uso',
   buscas: 'rota-entregas-buscas',
   adminVisto: 'rota-entregas-admin-visto',
+  comerciais: 'rota-entregas-comerciais',
   dono: 'rota-entregas-dono',
 } as const;
 

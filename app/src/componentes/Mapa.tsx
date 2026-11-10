@@ -1,13 +1,14 @@
 import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
+import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, pausaDoSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
 import {emendar, rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
 import {emLeque, empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
+import {ehComercial} from '../logica/comerciais';
 import {passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
 import {loja, useLoja} from '../loja';
 
@@ -32,11 +33,10 @@ const ZOOM_DE_MIM = 17;
 // Seguindo (pedidos de 02/10 e 03/10): ele fica no meio do mapa, de perto, e o mapa vai junto
 // quando ele anda. Mostrar ele e a próxima juntos afastava o mapa a cidade inteira enquanto a
 // entrega estava longe. Não com o cartão de um pino aberto, a lista puxada ou o toque no mapa
-// armado: ali ele está olhando outra coisa, e ao fechar o mapa volta para ele.
+// armado: ali ele está olhando outra coisa, e ao fechar o mapa volta para ele (pausaDoSeguir).
 function seguirAgora(): boolean {
   const ui = loja.ui, eu = ui.euAqui;
-  return !!eu && ui.seguindo && ui.tela === 'rota' && ui.folha === 'proxima' && !ui.pino && !ui.posicionando
-    && eu.precisao <= SEGUIR_ATE_M;
+  return !!eu && ui.seguindo && ui.tela === 'rota' && !pausaDoSeguir() && eu.precisao <= SEGUIR_ATE_M;
 }
 
 // O número do grupo, no meio do círculo que ele desenhou: é a ordem em que a rota vai passar.
@@ -222,7 +222,7 @@ export default function Mapa() {
     const pilhas = emLeque(empilhar(comLocal, q => m.project([q.lat, q.lng], z), q => ondeNaRota(q.id) ?? 1e6));
     const desenho = [
       pilhas.map(g => g.ps.map(p => [p.id, p.lat, p.lng, p.entregue, p.adiada, p.precisao, p.area, p.stop, p.adicional, p.unidades, rotuloDe(p),
-        (p.reclamacoes || []).map(r => r.motivo).join('+')].join(',')).join(';')).join('/'),
+        (p.reclamacoes || []).map(r => r.motivo).join('+'), ehComercial(p)].join(',')).join(';')).join('/'),
       e.inicio && [e.inicio.lat, e.inicio.lng, e.inicio.exibido].join(','),
       e.fim && [e.fim.lat, e.fim.lng, e.fim.exibido].join(','),
       e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0)).join('|'),
@@ -267,7 +267,9 @@ export default function Mapa() {
         // Escolhendo para o Maps ou circulando, a cor é a resposta da tela e fica cheia. Entregue não
         // tem mais porta a achar.
         const vazio = !escolhendo && !circulando && g.ps.some(x => !x.entregue && x.precisao !== 'confirmado');
-        const borda = [duvidosa, vazio ? 'nao-verificado' : '', proxima && g.ps.some(x => x.id === proxima) ? 'alvo' : '', xarope ? 'xarope' : ''].filter(Boolean).join(' ');
+        // Comercial (pedido do Luan, 07/11): o formato, não a cor, que já diz a área
+        const comercial = g.ps.some(ehComercial);
+        const borda = [duvidosa, vazio ? 'nao-verificado' : '', proxima && g.ps.some(x => x.id === proxima) ? 'alvo' : '', xarope ? 'xarope' : '', comercial ? 'comercial' : ''].filter(Boolean).join(' ');
         const pendentes = g.ps.filter(x => !x.entregue);
         // O Leaflet põe o texto do balão como HTML. O número da parada só entra com dígitos
         // (numeroDaParada), mas essa trava mora longe daqui: escapar aqui não depende dela.

@@ -62,8 +62,55 @@ describe('rota para conferir', () => {
     expect(suspeitaDaRota('19-09-2026 Fulano Silva De Souza.xlsx', '2026-10-19', 'Admin', MOTORISTAS, true, 0)).toEqual({tipo: 'outro dia', dia: '19/09/2026'});
   });
   it('planilha de outro motorista na conta de um motorista, e não na de quem administra', () => {
-    expect(suspeitaDaRota('19-10-2026 Fulano Silva De Souza.xlsx', '2026-10-19', 'Teste', MOTORISTAS, false, 0)).toEqual({tipo: 'outro motorista', nome: 'Fulano Silva'});
+    expect(suspeitaDaRota('19-10-2026 Fulano Silva De Souza.xlsx', '2026-10-19', 'Teste', MOTORISTAS, false, 0)).toEqual({tipo: 'outro motorista', palavras: ['Fulano'], nomes: ['Fulano Silva']});
     expect(suspeitaDaRota('19-10-2026 Fulano Silva De Souza.xlsx', '2026-10-19', 'Admin', MOTORISTAS, true, 0)).toBeNull();
+  });
+  // A revisão de 08/11: o primeiro nome não identifica uma pessoa quando dois motoristas o têm, nem
+  // quando o arquivo tem o nome de dois. Antes ficava o primeiro da lista, como se fosse certo.
+  it('o primeiro nome de dois motoristas, ou dois nomes no arquivo, ficam todos, sem escolher um', () => {
+    expect(suspeitaDaRota('19-10-2026 Fulano Inventado.xlsx', '2026-10-19', 'Teste', ['Fulano Silva', 'Fulano Souza', 'Teste'], false, 0))
+      .toEqual({tipo: 'outro motorista', palavras: ['Fulano'], nomes: ['Fulano Silva', 'Fulano Souza']});
+    expect(suspeitaDaRota('19-10-2026 Fulano Beltrano.xlsx', '2026-10-19', 'Teste', MOTORISTAS, false, 0))
+      .toEqual({tipo: 'outro motorista', palavras: ['Fulano', 'Beltrano'], nomes: ['Fulano Silva', 'Beltrano']});
+  });
+
+  // O print do dono de 08/11: a planilha com o nome de um motorista, aberta na conta de outro.
+  describe('a mesma planilha na conta de quem tem o nome no arquivo', () => {
+    const ARQ = '19-10-2026 Fulano Inventado.xlsx';
+    const rota = (id: string, motorista: string, arquivo: string, criado_em: string) => ({id, motorista, arquivo, criado_em});
+    const pacote = (rota_id: string, entregue_em: string | null = null) => ({rota_id, chave_lugar: '49000100|1', endereco: 'Rua Teste, 1', entregue_em, lat: -10.9, lng: -37.0});
+
+    it('encontrada: diz em que conta, a que horas e com quantas entregas', () => {
+      const d = resumirDia([rota('dele', 'Fulano Silva', ARQ, '2026-10-19T09:40:00Z'), rota('outra', 'Teste', ARQ, '2026-10-19T09:51:00Z')],
+        [pacote('dele'), pacote('outra')], new Set(), {agora: AGORA, motoristas: MOTORISTAS});
+      expect(d.paraConferir.map(l => [l.id, l.parecida])).toEqual([['outra', {motorista: 'Fulano Silva', criado_em: '2026-10-19T09:40:00Z', entregues: 0}]]);
+    });
+
+    it('não encontrada: fica null, para a tela dizer que não achou, e não ausente', () => {
+      const d = resumirDia([rota('outra', 'Teste', ARQ, '2026-10-19T09:51:00Z'), rota('dele', 'Fulano Silva', '19-10-2026 Outro Nome.xlsx', '2026-10-19T09:40:00Z')],
+        [pacote('outra'), pacote('dele')], new Set(), {agora: AGORA, motoristas: MOTORISTAS});
+      expect(d.paraConferir.map(l => [l.id, l.parecida])).toEqual([['outra', null]]);
+    });
+
+    it('com duas pessoas possíveis, não procura na conta de nenhuma', () => {
+      const d = resumirDia([rota('outra', 'Teste', ARQ, '2026-10-19T09:51:00Z'), rota('dele', 'Fulano Silva', ARQ, '2026-10-19T09:40:00Z')],
+        [pacote('outra'), pacote('dele')], new Set(), {agora: AGORA, motoristas: ['Fulano Silva', 'Fulano Souza', 'Teste']});
+      const outra = d.paraConferir.find(l => l.id === 'outra')!;
+      expect(outra.suspeita).toEqual({tipo: 'outro motorista', palavras: ['Fulano'], nomes: ['Fulano Silva', 'Fulano Souza']});
+      expect('parecida' in outra).toBe(false);
+    });
+  });
+
+  it('a rota para conferir leva os pontos dela, que não entram nos do dia', () => {
+    const rotas = [
+      {id: 'boa', motorista: 'Teste', arquivo: '19-10-2026 Teste Da Silva.xlsx', criado_em: '2026-10-19T09:00:00Z'},
+      {id: 'velha', motorista: 'Teste', arquivo: '19-09-2026 Teste Da Silva.xlsx', criado_em: '2026-10-19T10:00:00Z'},
+    ];
+    const p = (rota_id: string, chave: string, lat: number | null) => ({rota_id, chave_lugar: chave, endereco: 'Rua Teste, ' + chave, entregue_em: null, lat, lng: lat == null ? null : -37});
+    const d = resumirDia(rotas, [p('boa', '49000100|1', -10.9), p('velha', '49000100|2', -10.91), p('velha', '49000100|3', null)], new Set(), {agora: AGORA});
+    expect(d.paraConferir[0].pontos.map(x => x.chave_lugar)).toEqual(['49000100|2']);
+    expect(d.pontos.map(x => x.chave_lugar)).toEqual(['49000100|1']);
+    expect([d.pacotes, d.enderecos]).toEqual([1, 1]);
   });
   it('a própria planilha, a sem nome conhecido e a que já tem entrega não são suspeitas', () => {
     expect(suspeitaDaRota('19-10-2026 FULANO SILVA DE SOUZA.xlsx', '2026-10-19', 'Fulano Silva', MOTORISTAS, false, 0)).toBeNull();
@@ -82,6 +129,8 @@ describe('rota para conferir', () => {
     const d = resumirDia(rotas, pacotes, new Set(), {agora: AGORA, motoristas: ['Teste', 'Beltrano']});
     expect(d.linhas.map(l => l.id)).toEqual(['boa']);
     expect(d.paraConferir.map(l => [l.id, l.suspeita.tipo])).toEqual([['velha', 'outro dia'], ['dele', 'outro motorista'], ['de-novo', 'repetida']]);
+    // a repetida aponta a que fica: a que tem entrega
+    expect(d.paraConferir.find(l => l.id === 'de-novo')!.parecida).toEqual({motorista: 'Teste', criado_em: '2026-10-19T09:00:00Z', entregues: 1});
     expect([d.pacotes, d.entregues, d.pontos.length]).toEqual([1, 1, 1]);
   });
 

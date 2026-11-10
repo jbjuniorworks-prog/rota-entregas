@@ -179,6 +179,10 @@ textarea{min-height:140px;resize:vertical}
 .velho{opacity:.45}
 .etiqueta{font-size:13px;font-weight:600;background:#e5e7eb;color:#374151;border-radius:99px;padding:3px 10px}
 .marcar-xarope{padding:8px;border-radius:10px;background:#f3f4f6}
+/* o "Comercial" do cartão do pino (07/11): pequeno, logo abaixo do endereço; ligado, cheio */
+.comercial-linha{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:4px}
+.pilula{flex-shrink:0;border:0;border-radius:99px;padding:6px 12px;min-height:40px;font:inherit;font-size:13px;font-weight:700;background:#fff;color:var(--tx);box-shadow:inset 0 0 0 2px #d1d5db;cursor:pointer}
+.pilula.ligado{background:#111827;color:#fff;box-shadow:none}
 details summary{font-weight:600;cursor:pointer;padding:8px 0}
 
 /* o menu Mais */
@@ -229,6 +233,9 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
 /* "cliente xarope": um círculo escuro em volta do pino, que não é cor de área nem de dúvida */
 .pino.xarope{box-shadow:0 0 0 3px #fff,0 0 0 7px #111827,0 1px 4px rgba(0,0,0,.4)}
 .pino.alvo.xarope{box-shadow:0 0 0 3px #fff,0 0 0 7px #111827,0 0 0 12px rgba(29,78,216,.5)}
+/* comercial (07/11): quadrado em vez da gota, com a cor da área e as bordas de sempre */
+.pino.comercial{border-radius:4px;transform:none}
+.pino.comercial span{transform:none}
 .leaflet-tooltip.balao{background:#111827;color:#fff;border:0;border-radius:6px;padding:1px 5px;font-size:11px;font-weight:700;box-shadow:none}
 .leaflet-tooltip.balao::before{border-top-color:#111827}
 /* "você está aqui": bolinha com anel branco, e a seta do rumo só quando ele está andando */
@@ -255,6 +262,9 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
 .kpi-num small{font-size:15px;font-weight:600;color:var(--mut)}
 .kpi-nome{font-size:14px;font-weight:700;margin-top:4px}
 .kpi-sub{font-size:13px;color:var(--mut)}
+/* o "Esperando você" leva às pendências: o número e cada parte são botões, sem um dentro do outro */
+.kpi-botao{display:block;width:100%;border:0;background:none;padding:0;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.kpi-sub .link{font-size:13px;text-align:left}
 .painel-colunas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(400px,100%),1fr));gap:0 20px;align-items:start}
 .cartao-painel{border:1px solid var(--bd);border-radius:14px;padding:10px 12px;margin:8px 0;background:#fff}
 .cartao-painel h3{font-size:16px;margin:2px 0 8px}
