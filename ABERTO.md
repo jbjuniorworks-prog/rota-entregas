@@ -154,7 +154,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Pino entregue por cima das que faltam (10/11, vídeo do Luan): na branch `pino-pendente-por-cima`, nada enviado
+## Pino entregue por cima das que faltam (10/11, vídeo do Luan): branch `pino-pendente-por-cima` enviada, PR esperando merge
 
 - **Era:** num condomínio (11 pacotes no mesmo ponto), ele deu baixa numa entrega fora de ordem (a
   #5, com a #1 por fazer). O pino dela, entregue, saía por último na ordem da rota e ficava em cima
@@ -167,7 +167,14 @@ Fora da lista:
   de unidade; build; 310 de ponta a ponta. A troca da camada num pino que já existe e muda de estado
   (`setZIndexOffset`) não tem teste próprio: não achei um caminho em que a mesma pilha mude de
   estado em cima de outra. Não testado num celular de verdade.
-- **Falta:** push, PR e publicar, cada um com autorização.
+- **Passada no navegador (fora da suíte):** 412×915, toque de dedo, `rota-d.xlsx` mais 6 aptos
+  fictícios no mesmo ponto, sem GPS e com GPS no condomínio e o seguir ligado. Nas duas: o toque no
+  ponto abre só as que faltam; entregue sozinha ainda abre com Desfazer; a entregue escondida embaixo
+  se alcança pela Lista, em "N entregue(s)"; Desfazer devolve ela ao pino; "Escolher pinos para o
+  Maps" escolhe o das que faltam.
+- **Efeito colateral conhecido:** o "S" e o "F" (camada 0) agora ficam por cima de uma entregue no
+  mesmo ponto. Só importa se a saída ou a chegada cair exatamente numa entrega; não testado.
+- **Falta:** merge e publicar, com o dono.
 
 ## O "Esperando você" do Admin (08/11, print do dono: "tem 1 pra conferir, mas não consigo clicar pra ver"): na branch `admin-organizado`, nada enviado
 
