@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 09/11/2026.
+Atualizado em 10/11/2026.
 
 ## O que vem agora
 
@@ -153,6 +153,21 @@ Fora da lista:
 - "Falha viva" guarda os defeitos conhecidos sem conserto decidido;
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
+
+## Pino entregue por cima das que faltam (10/11, vídeo do Luan): na branch `pino-pendente-por-cima`, nada enviado
+
+- **Era:** num condomínio (11 pacotes no mesmo ponto), ele deu baixa numa entrega fora de ordem (a
+  #5, com a #1 por fazer). O pino dela, entregue, saía por último na ordem da rota e ficava em cima
+  do pino das que faltavam. Todo toque abria a entregue, com ou sem o seguir; aproximar não separa
+  dois pinos no mesmo lugar. Áudio: "dar prioridade a quem não deu baixa na hora de apertar em cima".
+- **Agora:** entregue e adiada são desenhadas por baixo das que faltam (`Mapa.tsx`, `POR_BAIXO`).
+  Continuam tocáveis onde não há outro pino em cima.
+- **Teste:** condomínio de 4 entregas, rota montada, baixa na última da ordem, toque no ponto com o
+  mouse (quem está por cima recebe): falhou antes (abria o Apto entregue), passa depois. Tipos; 578
+  de unidade; build; 310 de ponta a ponta. A troca da camada num pino que já existe e muda de estado
+  (`setZIndexOffset`) não tem teste próprio: não achei um caminho em que a mesma pilha mude de
+  estado em cima de outra. Não testado num celular de verdade.
+- **Falta:** push, PR e publicar, cada um com autorização.
 
 ## O "Esperando você" do Admin (08/11, print do dono: "tem 1 pra conferir, mas não consigo clicar pra ver"): na branch `admin-organizado`, nada enviado
 
