@@ -1,6 +1,6 @@
 ﻿import {Fragment, useEffect, useRef, useState} from 'react';
 import {haversine} from '../logica/geo';
-import {contarConferencia, type ItemEmConferencia, type MotoristaEmConferencia} from '../logica/conferencia';
+import {contarConferencia, totalDe, type ItemEmConferencia, type MotoristaEmConferencia} from '../logica/conferencia';
 import {CHAVES} from '../logica/guarda';
 import {fmtKm} from '../logica/otimizacao';
 import {hojeEmMaceio, type Dia, type LinhaDoDia, type ParaConferir, type SemLocal, type Suspeita} from '../logica/painel';
@@ -289,7 +289,9 @@ function RotasDeHoje({dia, corDe}: {dia: Dia | {erro: string} | null; corDe: (id
 
 // O motorista novo em conferência (022): o que ele marcou ou entregou e mudaria a porta para os
 // outros espera aqui. Um por um o que leva a porta para onde ele marcou; as entregas no pino da
-// rota, que só confirmam o pino que ele seguia, num toque só.
+// rota, que só confirmam o pino que ele seguia, num toque só. E, de qualquer motorista, a marca
+// longe de uma porta verificada (030): sem "Aprovar", porque aprovada ela pode trocar a porta ou
+// não, conforme a contagem. Quem decide define a posição dela como porta, ou apaga.
 function EmConferencia({estado, corDe, recarregar}: {estado: MotoristaEmConferencia[] | {erro: string}; corDe: (id: string) => string; recarregar: () => void}) {
   const {ocupado, correr, fazendo} = useTrabalho();
   // Apagar de um em um era um saco com as 33 do César de 16/10 (pedido do dono): escolhe várias
@@ -306,7 +308,7 @@ function EmConferencia({estado, corDe, recarregar}: {estado: MotoristaEmConferen
     return s;
   });
   // só as que ainda estão na lista: a decidida some quando a lista volta
-  const escolhidasDe = (g: MotoristaEmConferencia) => [...g.mexem, ...g.noPino].filter(i => escolhidas.has(chaveDe(g, i)));
+  const escolhidasDe = (g: MotoristaEmConferencia) => [...g.disputas, ...g.mexem, ...g.noPino].filter(i => escolhidas.has(chaveDe(g, i)));
   const decidir = async (g: MotoristaEmConferencia, itens: ItemEmConferencia[], aprovar: boolean, nome = (aprovar ? 'ok' : 'x') + g.id + itens[0].chave_lugar) => {
     const onde = itens.length === 1 ? itens[0].endereco : `${itens.length} endereços`;
     if (!aprovar && !confirm(`Apagar o que ${g.nome} marcou em ${onde}?
@@ -321,6 +323,15 @@ A entrega continua registrada, mas a posição dela não vale para ninguém.`)) 
       : (varias ? `Apagadas as ${varias}: não valem para ninguém.` : 'Apagada: não vale para ninguém.'), 4000);
     recarregar();
   };
+  // grava a marcação de quem administra no ponto dele, como o "Marcar como admin": vence a contagem
+  const definir = async (g: MotoristaEmConferencia, i: ItemEmConferencia) => {
+    if (!confirm(`Definir a posição que ${g.nome} marcou como a porta de ${i.endereco}?
+
+Ela passa a valer para todos os motoristas, como marcação sua.`)) return;
+    const feito = await correr('def' + g.id + i.chave_lugar, async () => { await Adm.confirmarPosicao(i.chave_lugar, i.lat, i.lng); return true; },
+      'Porta definida: vale para todos os motoristas.');
+    if (feito) recarregar();
+  };
   const verNoMapa = (g: MotoristaEmConferencia, i: ItemEmConferencia) => mostrarNoMapa([
     {lat: i.lat, lng: i.lng, rotulo: g.nome.slice(0, 2), texto: `${g.nome} · ${i.endereco}`, cor: corDe(g.id)},
     ...(i.pino_lat != null && i.pino_lng != null ? [{lat: i.pino_lat, lng: i.pino_lng, rotulo: 'R', texto: `Pino da rota de ${g.nome} · ${i.endereco}`, cor: '#6b7280'}] : []),
@@ -331,11 +342,14 @@ A entrega continua registrada, mas a posição dela não vale para ninguém.`)) 
       <input type="checkbox" checked={escolhidas.has(chaveDe(g, i))} onChange={ev => escolher([chaveDe(g, i)], ev.target.checked)} />
       {i.endereco}
     </label>
+    {i.disputa && <span className="tag" style={{background: '#dc2626'}} data-disputa>em disputa</span>}
     <div className="achado">{dataHora(i.criado_em)} · {i.texto}</div>
     {i.mesmoPonto && <div className="aviso" data-mesmo-ponto>Marcada do mesmo ponto que outros {i.mesmoPonto.enderecos - 1} endereços, de {i.mesmoPonto.ruas} ruas diferentes. Confira antes de aprovar.</div>}
     <div className="linha">
       <button className="btn peq" onClick={() => verNoMapa(g, i)}>Ver no mapa</button>
-      {!i.no_pino && <button className="btn peq pri" onClick={() => decidir(g, [i], true)} disabled={!!ocupado}>{fazendo('ok' + g.id + i.chave_lugar) ? 'Aprovando…' : 'Aprovar'}</button>}
+      {i.disputa
+        ? <button className="btn peq pri" onClick={() => definir(g, i)} disabled={!!ocupado}>{fazendo('def' + g.id + i.chave_lugar) ? 'Definindo…' : 'Definir esta posição como porta'}</button>
+        : !i.no_pino && <button className="btn peq pri" onClick={() => decidir(g, [i], true)} disabled={!!ocupado}>{fazendo('ok' + g.id + i.chave_lugar) ? 'Aprovando…' : 'Aprovar'}</button>}
       <button className="btn peq" onClick={() => decidir(g, [i], false)} disabled={!!ocupado}>{fazendo('x' + g.id + i.chave_lugar) ? 'Apagando…' : 'Apagar'}</button>
     </div>
   </div>;
@@ -344,9 +358,10 @@ A entrega continua registrada, mas a posição dela não vale para ninguém.`)) 
   if (!total) return null;
   return <details open data-secao="Em conferência">
     <summary>Em conferência ({total})</summary>
-    <div className="info">O que os motoristas em conferência marcaram ou entregaram e mudaria a porta para os outros. Só vale depois que você aprovar.</div>
+    <div className="info">O que os motoristas em conferência marcaram ou entregaram e mudaria a porta para os outros. Só vale depois que você aprovar. A marca longe de uma porta verificada fica em disputa, de qualquer motorista: você define a posição dela como porta ou apaga.</div>
     {estado.map(g => <div key={g.id} data-conferencia={g.nome}>
-      <div className="area-cab"><span className="txt">{g.nome} · {g.mexem.length + g.noPino.length} endereço(s)</span></div>
+      <div className="area-cab"><span className="txt">{g.nome} · {totalDe(g)} endereço(s)</span></div>
+      {g.disputas.map(i => item(g, i))}
       {g.mexem.length > 1 && <div className="linha"><button className="btn peq" data-escolher-todas onClick={() => escolher(g.mexem.map(i => chaveDe(g, i)), true)}>Escolher as {g.mexem.length}</button></div>}
       {g.mexem.map(i => item(g, i))}
       {g.noPino.length > 0 && <>

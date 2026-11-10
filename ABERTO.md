@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 08/11/2026.
+Atualizado em 09/11/2026.
 
 ## O que vem agora
 
@@ -234,6 +234,82 @@ Fora da lista:
   - com unidade no nome da rua ("Rua X Casa 3, Nr 5"), continua sem número, como era;
   - não testado num celular de verdade.
 - **Falta:** revisão, commit, push, PR e publicação, cada um com autorização. Depois de publicado, marcar a porta uma vez para ela ficar guardada.
+
+## Dia e hora do servidor, e porta verificada em disputa (07/11, pedido do dono): 030 aplicada na produção em 09/11; o Admin, na branch `integridade-portas`, não enviado
+
+A partir da `main` (`2fa2f71`). Independente da 029: não mexe em `observacoes_desfazer` nem em
+`retirar_passagens`.
+
+- **Gravar (030):** o motorista escreve só as colunas que o app manda nas correções, passagens,
+  lugares e reclamações. `criado_em`, `dia`, `motorista_id`, `pendente`, `recusada` e `disputa`
+  ficam com o padrão do banco e o gatilho; quem manda uma delas recebe 42501. O app de hoje não
+  manda nenhuma. Depois de gravado, o motorista já não alterava nada (sem UPDATE), como antes.
+- **Disputa (030):** marcação ou passagem nova de quem não administra, a mais de 30 m da porta
+  verificada daquele endereço, nasce pendente e em disputa, de qualquer conta. A até 30 m, apoia
+  como antes (pode mexer a porta dentro desses 30 m: limite conhecido). Porta nova sem nada
+  verificado continua como era.
+- **Admin:** a disputa aparece em "Em conferência" com o selo "em disputa", sem "Aprovar"; tem
+  "Definir esta posição como porta" (grava a marcação de quem administra no ponto dela) e "Apagar".
+  `decidir_marcas` recusa aprovar enquanto a marca estiver a mais de 30 m da porta verificada.
+  A disputa com marcação aparece sempre; a só de passagem, só quando mudaria a porta, como antes.
+- **Verificado local (07/11):** Postgres descartável com o banco inteiro e contas fictícias, os 14
+  casos da proposta antes e depois; as mesmas chamadas do app por um PostgREST v12.2.12 local,
+  antes e depois (inclusive o upsert que ignora repetida); três sabotagens (permissão da tabela
+  devolvida, disputa tirada do gatilho, recusa tirada da `decidir_marcas`), cada uma volta o caso
+  dela. O banco inteiro novo, a 030 rodada duas vezes e a `main` com o `000_rodar_tudo.sql` novo
+  dão o mesmo resultado. Tipos; 540 de unidade; build; 252 de ponta a ponta com a nuvem simulada.
+  O Admin, sabotado, quebra o teste dele.
+- **Selo "em disputa" invisível (07/11), consertado:** o `.tag` tem letra branca e o fundo vem de
+  quem usa; o da disputa saiu sem fundo e sumia na tela. Visto no Admin com o Supabase local e dados
+  fictícios, em 412×915; o teste conferia só o texto. Agora o fundo é vermelho (`#dc2626`), e o
+  teste confere a cor do fundo e da letra: falhou antes do conserto (fundo transparente) e passa
+  depois. Repetido no Supabase local: o selo aparece, vermelho com letra branca, nos dois itens em
+  disputa. Tipos; 540 de unidade; build; 252 de ponta a ponta.
+- **Medição pelo backup (07/11), concluída, estimativa retrospectiva:** o backup diário de 07/11
+  (00:00 UTC) num Postgres descartável local, sem ler a produção; janela de 10/10 a 06/11 (4
+  semanas antes do backup, 25 dias com marcas). Para cada marca de quem não administra, a porta
+  daquele momento foi refeita com as linhas gravadas antes dela, pela regra da `posicoes_com`.
+  Das 5.133 marcas (2.417 correções e 2.716 passagens), 120 teriam nascido em disputa (40
+  correções e 80 passagens), e só 10 mudariam a porta pela regra de antes: é o que a 030 barra.
+  Na fila do Admin, 27 itens novos no período; 57 passagens deixariam de contar para a âncora do
+  CEP e o nome das ruas. Das 40 correções em disputa, 28 terminaram com a porta definida pelo
+  admin no ponto delas, e 4 confirmadas só pela própria conta. **Limites:** linhas apagadas não
+  estão no backup; pendente, recusada, ativo, papel e conferência são os de hoje, não os da época;
+  a disputa não se propaga às portas seguintes. Não é contagem exata. Os dados copiados e o banco
+  descartável foram apagados; os agregados ficaram fora do repositório.
+- **Admin no Supabase local (07/11):** banco do `6cd0a16` com a 030, contas e dados fictícios, o
+  build desta branch no navegador em 412×915, com os pedidos desviados para o local e nenhum para
+  a produção. A disputa aparece sem "Aprovar"; a entregue no pino em disputa fica fora do "Aprovar
+  as N entregues no pino" (as outras duas aprovadas, ela continua pendente); aprovar pela função é
+  recusado (P0001) e a porta não se move; "Definir esta posição como porta" grava a marcação de
+  quem administra e leva a porta até lá, e depois disso aprovar passa; "Apagar" tira a marcação,
+  guarda a passagem como recusada e a porta fica. Foi aí que se viu o selo invisível, consertado
+  acima (`f7ee372`) e conferido de novo no mesmo ambiente.
+- **Produção (09/11):** o dono rodou a 030 no SQL Editor. Conferido no catálogo
+  (`information_schema.column_privileges`, `authenticated`, INSERT): 19 colunas nas quatro tabelas,
+  exatamente as que o app manda; nenhuma de `dia`, `criado_em`, `motorista_id`, `pendente`,
+  `recusada` ou `disputa`.
+- **Não validado na produção, por decisão do dono (09/11):** a recusa pela API (42501) e a disputa
+  (nascer pendente e em disputa, recusar a aprovação). As duas foram provadas só no Supabase local
+  (07/11). O `test:nuvem` não rodou: ele cria e apaga contas na produção, e um caso dele tenta gravar
+  numa rota real esperando a recusa. Trabalho à parte: isolar esse caso entre duas contas de teste,
+  pôr `uso_dos_botoes`, `reclamacoes` e `comerciais` na limpeza do `nuvem.spec`, e o caso da disputa
+  contra a produção.
+- **Admin publicado, até sair esta branch (lido no código, não visto na tela):** aprovar uma disputa
+  sozinha mostra o erro do banco; "Aprovar as N entregues no pino", com uma disputa no meio, é
+  recusado inteiro e nenhuma é aprovada (o lote das escolhidas só apaga). Saída: apagar, ou "Procurar um endereço" e
+  "Marcar como admin". No Admin desta branch a disputa fica numa lista à parte, que nenhum lote
+  aprova (`Admin.tsx`, `g.disputas`).
+- **Fusão com a `main` (09/11, `b035a88`):** 031 antes da 030 nos dois arquivos de rodar tudo, a
+  ordem em que rodaram na produção. Tipos; 578 de unidade; build; 309 de ponta a ponta com a nuvem
+  simulada.
+- **Falta:** push e PR, e depois publicar, cada um com autorização.
+- **Fora desta branch:** o lugar com nome da mesma conta em dias de verdade ainda confirma sozinho
+  (`lugares_conhecidos` conta motorista e dia) e não tem disputa. Contar contas diferentes em vez de
+  passagens muda portas já gravadas e pede medição. O horário declarado da entrega offline, se um
+  dia precisar, vai numa coluna só informativa. A leitura da produção das linhas com `dia`
+  diferente do dia do `criado_em` pede autorização própria. A 029, quando entrar, vai depois da 030
+  no fim dos dois arquivos de rodar tudo; as duas não dependem da ordem.
 
 ## O mapa seguindo o motorista (05/11, dono: "o mapa não está sempre seguindo o ponto"): publicado em 06/11, falta o teste com o carro andando
 
