@@ -26,6 +26,8 @@ function icone(texto: string, cor: string, apagado = false, borda = '', ids = ''
 }
 
 const BALAO = {permanent: true as const, direction: 'top' as const, offset: [0, -28] as [number, number], className: 'balao'};
+// os nomes das ruas ficam em -1000; as que faltam, em 0
+const POR_BAIXO = -500;
 const ZOOM_DO_FOCO = 17;
 // a distância de quando o mapa começa a segui-lo: a do "onde estou" de antes, que o Pedro usava
 const ZOOM_DE_MIM = 17;
@@ -281,8 +283,12 @@ export default function Mapa() {
         const sig = [onde.lat, onde.lng, rotulo, cor, apagado, borda, balao].join('|');
         const antes = pinos.current[chave];
         if (antes && antes.sig === sig) continue;
+        // Entregue ou adiada vai por baixo (Luan, 10/11): no mesmo ponto das que faltam, o pino que
+        // saía por último na ordem da rota ficava em cima e levava todo toque, e aproximar não
+        // separa dois pinos no mesmo lugar. Acima dos nomes das ruas, que não se tocam.
+        const camada = apagado ? POR_BAIXO : 0;
         if (!antes) {
-          const mk = L.marker([onde.lat, onde.lng], {icon: icone(rotulo, cor, apagado, borda, chave)});
+          const mk = L.marker([onde.lat, onde.lng], {icon: icone(rotulo, cor, apagado, borda, chave), zIndexOffset: camada});
           // O pino abre o cartão de baixo com as entregas dele, os mesmos botões do cartão da
           // próxima. O balão do Leaflet era pequeno para o dedo e montado em texto, à parte.
           mk.on('click', () => {
@@ -303,6 +309,8 @@ export default function Mapa() {
           antes.lng = onde.lng;
         }
         antes.mk.setIcon(icone(rotulo, cor, apagado, borda, chave));
+        // a mesma pilha pode virar entregue (uma parada só) ou voltar, com o desfazer
+        antes.mk.setZIndexOffset(camada);
         if (antes.balao !== balao) {
           antes.mk.unbindTooltip();
           if (balao) antes.mk.bindTooltip(balao, BALAO);

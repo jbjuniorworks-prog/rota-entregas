@@ -1363,6 +1363,56 @@ test.describe('um condomínio com muitas entregas no mesmo pino', () => {
     await montar(page);
     await expect(page.locator('.proxima .do-endereco summary')).toHaveText('As 22 entregas deste endereço');
   });
+
+  // Luan, vídeo de 10/11: deu baixa numa entrega do condomínio, e o pino dela, entregue, ficou em
+  // cima do pino das 11 que faltavam, no mesmo ponto. Todo toque ali abria a que já tinha baixa,
+  // com ou sem o seguir, e aproximar não separa dois pinos no mesmo lugar. "Dar prioridade a quem
+  // não deu baixa na hora de apertar em cima."
+  test('o toque no ponto de um condomínio abre as que faltam, não a que já teve baixa', async ({page}) => {
+    const XLSX = (await import('xlsx')).default;
+    const {garantirMapa, verNoMapa} = await import('./apoio');
+    const cab = ['AT ID', 'Sequence', 'Stop', 'SPX TN', 'Destination Address', 'Bairro', 'City', 'Zipcode/Postal code', 'Latitude', 'Longitude'];
+    const linhas = [101, 102, 103, 104].map((apto, i) => ['AT-TESTE', 61 + i, 2, '',
+      `Rua Inventada Teste Oliveira, 200, Apto ${apto}, Condomínio Teste Mar 2`, 'Bairro Inventado', 'Aracaju', '49099-950', PORTA.lat, PORTA.lng]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cab, ...linhas]), 'Planilha');
+    await abrir(page);
+    await page.locator('#arquivo').setInputFiles({name: 'condominio.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'})});
+    await expect(page.locator('#status')).toContainText('parada(s) da planilha', {timeout: 30_000});
+    // com a rota montada os pinos saem na ordem dela; a baixa do vídeo foi fora de ordem (a #5,
+    // com a #1 ainda por fazer), e o pino da entregue saiu por último, em cima
+    await montar(page);
+    const ultima = await page.evaluate(() => {
+      const e = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
+      const ordem: string[] = e.rota.areas.flatMap((a: any) => a.ordem);
+      return e.paradas.find((p: any) => p.id === ordem[ordem.length - 1]).texto.match(/Apto \d+/)[0];
+    });
+    await garantirMapa(page);
+    await verNoMapa(page, PORTA.lat, PORTA.lng);
+
+    const cartao = page.locator(PINO);
+    await page.locator('.leaflet-marker-icon .pino').filter({hasText: '+3'}).click();
+    await expect(cartao).toContainText('Neste pino: 4 entregas');
+    const doEndereco = cartao.locator('.do-endereco');
+    await doEndereco.locator('summary').click();
+    await doEndereco.locator('.sub-entrega').filter({hasText: ultima}).locator('[data-acao=entregue-uma]').click();
+    await cartao.getByRole('button', {name: 'Fechar'}).click();
+    await expect(cartao).toBeHidden();
+
+    // os dois pinos no mesmo ponto: o da entregue e o das três que faltam
+    const pendente = page.locator('.leaflet-marker-icon').filter({has: page.locator('.pino', {hasText: '+2'})});
+    const entregue = page.locator('.leaflet-marker-icon').filter({has: page.locator('.pino', {hasText: '✓'})});
+    await expect(pendente).toHaveCount(1);
+    await expect(entregue).toHaveCount(1);
+    const a = (await pendente.boundingBox())!, b = (await entregue.boundingBox())!;
+    expect(Math.abs(a.x - b.x) + Math.abs(a.y - b.y), 'os dois pinos estão um em cima do outro').toBeLessThan(4);
+
+    // o dedo no ponto, como na rua: quem recebe é o que estiver por cima
+    await page.mouse.click(a.x + a.width / 2, a.y + a.height / 2);
+    await expect(cartao).toContainText('Neste pino: 3 entregas');
+    await expect(cartao.locator('[data-acao=entregue]').first()).toBeVisible();
+  });
 });
 
 // O caso do Luan, 26/09: "Rua Diamante Negro 320" e "Rua Wilson Almeida Santana 31" caíram no
