@@ -1090,6 +1090,12 @@ describe('o que o Colar link do mapa faz com o que veio colado', () => {
     expect(posicaoColada('https://maps.app.goo.gl/AbCdEf123Inventado?g_st=aw')).toEqual({tipo: 'link sem posicao'});
   });
 
+  // 032 (12/11): quando o link curto não traz a posição, o banco a tira da página do lugar no Google
+  // e devolve só o pedaço !3d…!4d…. O app não mudou para isso: este teste segura o combinado.
+  it('o que o banco devolve da página do lugar (032), o app lê como posição', () => {
+    expect(posicaoColada('!3d-11.0862417!4d-37.138266')).toEqual({tipo: 'posicao', lat: -11.0862417, lng: -37.138266});
+  });
+
   it('texto qualquer, vazio ou nada copiado não é link: pede para colar', () => {
     for (const t of ['Rua Inventada, 120, CEP 49000-100', 'ok, chego em 5 min', '', '   ', null]) expect([t, posicaoColada(t)]).toEqual([t, {tipo: 'nada'}]);
   });
