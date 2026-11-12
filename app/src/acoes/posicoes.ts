@@ -308,7 +308,10 @@ async function posicaoDoLink(): Promise<Ponto | null> {
 
 const SEM_POSICAO = 'Esse link não traz a posição. No Maps, toque e segure no lugar e copie os números que aparecem, ou toque aqui no mapa, no lugar certo.';
 const CURTO_SEM_SINAL = 'Sem sinal para abrir o link do Maps. Tente de novo com sinal, ou toque aqui no mapa, no lugar certo.';
-const CURTO_SEM_POSICAO = 'Não consegui tirar a posição desse link do Maps. Toque aqui no mapa, no lugar certo.';
+// O link curto de endereço de casa leva só o endereço e o código do lugar no Google, e nem a página
+// final traz a posição (medido em 12/11 com dois links antigos de rota; os de comércio trazem). O
+// banco não tem de onde tirar: o caminho é o mesmo do link longo sem posição.
+const CURTO_SEM_POSICAO = 'Esse link do Maps não traz a posição. No Maps, toque e segure no ponto do cliente e copie os números que aparecem, ou toque aqui no mapa, no lugar certo.';
 const ABRINDO = 'Abrindo o link do Maps…';
 
 // "Tem que usar os dois, a versão curta e a longa" (dono, 28/10). O longo traz a posição e serve
