@@ -1,6 +1,6 @@
 import {marcarIsoladas, marcarNumerosIncoerentes, marcarPontoGenerico, moverPeloBairro} from './geo';
 import type {ItemPlanilha} from './planilha';
-import {analisarLinha, chaveDaParada, chaveEndereco, chaveLugar, coordenadaNoTexto, semLink} from './texto';
+import {analisarLinha, chaveDaParada, chaveEndereco, chaveLugar, coordenadaNoTexto, ruaENumero, semLink} from './texto';
 import type {Estado, ItemDaParada, Parada, Precisao} from './tipos';
 
 export const novoId = () => Math.random().toString(36).slice(2, 10);
@@ -184,10 +184,17 @@ export function resumoPlanilha(r: ResumoPlanilha): string {
     + (r.semPosicao ? ` ${r.semPosicao} sem posição, buscando no mapa…` : '');
 }
 
+// A entrega que o endereço de uma localização compartilhada nomeia: mesma rua e mesmo número. Sem
+// número, o endereço não nomeia porta nenhuma, e o pino iria sem ele perguntar.
+export function entregaDoEndereco(paradas: Parada[], endereco: string): Parada | undefined {
+  const k = ruaENumero(endereco);
+  if (!k.split('|')[1]) return undefined;
+  return paradas.find(x => !x.entregue && ruaENumero(x.texto) === k);
+}
+
 // `doLeitor`: as linhas que a leitura de print ou vídeo trouxe (podem estar também em `linhas`).
 export function adicionarLinhas(e: Estado, linhas: string[], doLeitor: string[] = []): {novas: number; repetidas: number; arrumadas: number; coladas: Parada[]} {
-  const porNumero = new Map(e.paradas.filter(x => x.ml).map(x => [x.ml!, chaveEndereco(x.texto).split('|').slice(0, 2).join('|')]));
-  const soRuaNumero = (x: string) => chaveEndereco(x).split('|').slice(0, 2).join('|');
+  const porNumero = new Map(e.paradas.filter(x => x.ml).map(x => [x.ml!, ruaENumero(x.texto)]));
   let novas = 0, repetidas = 0, arrumadas = 0;
   const coladas: Parada[] = [];
   // Cartões iguais na mesma porta são entregas diferentes, e o leitor devolve um por cartão: a linha
@@ -211,7 +218,7 @@ export function adicionarLinhas(e: Estado, linhas: string[], doLeitor: string[] 
     // inteira não bate — o que bate é a rua e o número. Sem isto, colar as cinco portas de uma
     // avenida criava cinco paradas a mais em vez de arrumar as cinco que já estavam lá.
     if (coord && semComplemento.replace(/\|/g, '')) {
-      const mesmas = e.paradas.filter(x => !x.entregue && soRuaNumero(x.texto) === semComplemento);
+      const mesmas = e.paradas.filter(x => !x.entregue && ruaENumero(x.texto) === semComplemento);
       if (mesmas.length) {
         for (const x of mesmas) {
           Object.assign(x, {lat: coord.lat, lng: coord.lng, precisao: 'manual',

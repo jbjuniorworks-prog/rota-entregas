@@ -180,8 +180,17 @@ Fora da lista:
   localização do cliente, o Maps mandou junto o nome que dá ao ponto, e com endereço no texto o
   app segue o caminho de sempre: endereço que não bate com nenhuma parada vira parada nova. Sem
   endereço, o app já pergunta "É de qual entrega?". Não comprovado: o app não registra o
-  Compartilhar nem marca a parada criada assim. Próximo: decidir com o dono se o caso com endereço,
-  com a rota aberta, também pergunta. Branch própria.
+  Compartilhar nem marca a parada criada assim.
+  - **Consertado na branch `compartilhar-sem-parada-nova`** (em cima desta, nada enviado). Dono:
+    "aparecendo outro pino quando só queria arrumar uma localização". Com a rota aberta, um texto
+    com um endereço só e link do mapa (ou a posição) é localização: o endereço da entrega leva o
+    pino dela direto, mesma rua e número; outro endereço abre "É de qual entrega?"; link sem posição
+    dá o aviso. Nunca parada nova. Sem rota aberta, e lista de endereços, segue como era. Quem
+    acrescentava entrega pelo Compartilhar do Maps com a rota aberta passa a usar o Adicionar (o
+    dono aceitou a troca). 4 testes ponta a ponta e 9 de unidade; os três casos falharam antes do
+    conserto ("1 parada(s) nova(s)"), e cinco sabotagens quebraram cada uma o seu teste.
+    Não medido: o texto exato que o Compartilhar do Maps manda; o teste usa endereço e link curto
+    em linhas separadas.
 - **WhatsApp direto para o app:** `geo` está na lista de esquemas que um app da web pode pedir
   para abrir, mas não achei confirmação de que o Chrome do Android registra o app instalado para
   isso. Medir num celular antes de construir.

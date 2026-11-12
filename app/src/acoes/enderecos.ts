@@ -1,9 +1,9 @@
 ﻿import {operacoesDaPlanilha} from '../logica/fila';
 import {cidadeDaParada, haversine, levarGenericaAoBairro, levarGenericaParaARua, levarParaOCenso, marcarIsoladas, marcarPontoGenerico, mediana, marcarNumerosIncoerentes, moverGenericasPeloBairro, moverParaOBairro, moverPeloBairro, voltarDoBairro} from '../logica/geo';
-import {adicionarDaPlanilha, adicionarLinhas, novoId, resumoPlanilha} from '../logica/importar';
+import {adicionarDaPlanilha, adicionarLinhas, entregaDoEndereco, novoId, resumoPlanilha} from '../logica/importar';
 import {CORES, DA_PLANILHA} from '../logica/rotulos';
 import {medidor, montarEvento, origemDe, tipoDoArquivo, type OrigemLista} from '../logica/telemetria';
-import {decompor, extrairEnderecos, lerEdicao, posicaoColada, ruaGenerica, semLink} from '../logica/texto';
+import {decompor, ehLocalizacao, enderecosSemLink, extrairEnderecos, lerEdicao, ruaGenerica} from '../logica/texto';
 import type {Parada, Ponto, Precisao} from '../logica/tipos';
 import {loja, status} from '../loja';
 import {lerArquivos, lerPlanilhas, separarPlanilhas} from '../servicos/arquivos';
@@ -13,7 +13,7 @@ import {corretorDeNomes, enderecoDoIbge, nomeCorrigidoPeloCenso, portaNoBairroDo
 import {nuvem} from '../servicos/nuvem';
 import {desatualizarRota, e, enviarFila, fila, invalidarRota, memoria, ui} from './base';
 import {irPara} from './navegacao';
-import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, escolherEntregaDoLocal, focar, lerLinkDoMapa, separarAsConhecidas} from './posicoes';
+import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, escolherEntregaDoLocal, focar, lerLinkDoMapa, levarAoLocal, separarAsConhecidas} from './posicoes';
 import {registrarComoFicou} from './registro';
 import {montarRota} from './rota';
 import {semRecarregar} from './versao';
@@ -337,13 +337,19 @@ async function lerCompartilhado() {
   history.replaceState(history.state, '', location.pathname);
   if (!files.length && !texto.trim()) return;
   // "Eles recebem assim pelo WhatsApp" (dono, 28/10): a localização que o cliente mandou. Com a rota
-  // na mão, ela vem arrumar uma entrega que já está nela, não virar parada nova. Com endereço junto,
-  // segue o caminho de sempre, que já arruma a parada de mesmo endereço pelo local colado.
-  if (!files.length && e().paradas.some(p => !p.entregue) && !extrairEnderecos(semLink(texto)).length && posicaoColada(texto).tipo !== 'nada') {
+  // na mão, ela vem arrumar uma entrega que já está nela, nunca virar parada nova, nem quando o Maps
+  // manda junto o endereço que dá ao ponto (12/11). Se esse endereço é o de uma entrega, o pino dela
+  // vai direto; senão, ele escolhe de qual é.
+  if (!files.length && e().paradas.some(p => !p.entregue) && ehLocalizacao(texto)) {
     irPara('rota');
     const lido = await lerLinkDoMapa(texto);
-    if (lido.tipo === 'posicao') escolherEntregaDoLocal({lat: lido.lat, lng: lido.lng});
-    else if (lido.tipo === 'sem posicao') status(lido.aviso, 10000);
+    if (lido.tipo === 'sem posicao') status(lido.aviso, 10000);
+    if (lido.tipo !== 'posicao') return;
+    const ali = {lat: lido.lat, lng: lido.lng};
+    const [endereco] = enderecosSemLink(texto);
+    const dela = endereco ? entregaDoEndereco(e().paradas, endereco) : undefined;
+    if (dela) levarAoLocal(dela, ali);
+    else escolherEntregaDoLocal(ali);
     return;
   }
   try {
