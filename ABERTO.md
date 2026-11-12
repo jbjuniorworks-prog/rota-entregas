@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 10/11/2026.
+Atualizado em 12/11/2026.
 
 ## O que vem agora
 
@@ -153,6 +153,30 @@ Fora da lista:
 - "Falha viva" guarda os defeitos conhecidos sem conserto decidido;
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
+
+## Link curto de casa sem posição (12/11, Luan): aviso novo na branch `aviso-link-curto`, nada enviado
+
+- **O que aconteceu:** duas localizações que clientes mandaram pelo WhatsApp. Ele abriu no Maps,
+  compartilhou, colou o link curto, e veio "Não consegui tirar a posição desse link do Maps". Os
+  links longos dos mesmos lugares, que o dono mandou depois, a leitura do app entende.
+  A pedido do dono, as duas portas foram gravadas como correção do admin em 12/11 (5533 e 5534),
+  e o `posicoes_com` devolveu as duas como confirmadas.
+- **Medido (12/11):** os quatro links curtos de rota que estavam nas conversas, abertos um salto
+  só, como o banco abre. Os dois de comércio levam a `!3d…!4d…` e o app lê. Os dois de endereço de
+  casa levam só o endereço e o código do lugar no Google; seguindo até a página final, também não
+  há posição, só um centro de mapa genérico, o mesmo nos dois. O banco não tem de onde tirar.
+- **Não medido:** os links curtos do Luan, e o texto inteiro que o Compartilhar do Maps manda para
+  uma localização recebida no WhatsApp. Se vier o título do ponto solto em graus
+  (`11°04'05.6"S …`, hoje o app não lê), ler graus vira um commit separado, com teste próprio.
+- **Feito na branch:** o aviso do link curto sem posição passa a ensinar o mesmo caminho do longo
+  sem posição (texto aprovado pelo dono). Os dois testes do aviso falharam com o texto antigo e
+  passam com o novo; o do cartão da próxima também confere que o endereço da parada não muda.
+  578 de unidade, 310 ponta a ponta, tipos.
+- **Para depois:** o "toque aqui no mapa" do aviso só serve na faixa do Arrumar o pino. Quando o
+  aviso sai do cartão da próxima ou do Compartilhar, não há mapa armado para tocar. Já era assim.
+- **WhatsApp direto para o app:** `geo` está na lista de esquemas que um app da web pode pedir
+  para abrir, mas não achei confirmação de que o Chrome do Android registra o app instalado para
+  isso. Medir num celular antes de construir.
 
 ## Pino entregue por cima das que faltam (10/11, vídeo do Luan): branch `pino-pendente-por-cima` enviada, PR esperando merge
 
