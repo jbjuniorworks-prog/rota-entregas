@@ -388,7 +388,11 @@ export function levarAoLocalRecebido(p: Parada) {
   const ali = ui.localRecebido;
   ui.localRecebido = null;
   loja.mudou(false);
-  if (!ali) return;
+  if (ali) levarAoLocal(p, ali);
+}
+
+// Escolhida na faixa, ou nomeada pelo endereço que veio junto com a localização.
+export function levarAoLocal(p: Parada, ali: Ponto) {
   contar('local-recebido');
   if (!podeMexer(p)) return;
   corrigirPosicao(p, ali.lat, ali.lng, 'Pino no local recebido', 'Local recebido pelo Compartilhar');

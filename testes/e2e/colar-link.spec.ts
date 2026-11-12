@@ -264,4 +264,65 @@ test.describe('localização recebida pelo Compartilhar', () => {
     expect((await estado(page)).paradas.length).toBe(quantas);
     expect(gravadas(nuvem)).toEqual([]);
   });
+
+  // 12/11, dono, sobre o Luan: "só queria arrumar uma localização", e apareceu outra parada. O Compartilhar do Maps
+  // manda junto o nome que o Google dá ao ponto, e esse nome é um endereço: com outro número ou outro
+  // bairro, virava parada nova em vez de arrumar a entrega.
+  const NOME_DO_PONTO = 'Av. Inventada, 149 - Bairro Inventado, Cidade Teste - SE, 49000-999';
+
+  test('com o endereço que o Google dá ao ponto: pergunta de qual entrega é, sem parada nova', async ({page, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const todas = (await estado(page)).paradas;
+    const alvo = todas.filter(p => !p.entregue && p.lat != null).at(-1)!;
+    const local = aNorte(alvo, 30);
+    nuvem.rpc.abrir_link_do_mapa = (c: {link: string}) => c.link === CURTO ? linkDe(local) : null;
+    await compartilhar(page, NOME_DO_PONTO + '\n' + CURTO);
+    const faixa = page.locator('[data-local-recebido]');
+    await expect(faixa.locator('button[data-ids]').first()).toHaveAttribute('data-ids', alvo.id);
+    expect((await estado(page)).paradas.length, 'o nome do ponto não vira parada').toBe(todas.length);
+    await faixa.locator('button[data-ids]').first().click();
+    await expect(aviso(page)).toContainText('Pino no local recebido');
+    expect(await ondeEsta(page, alvo.id)).toEqual(local);
+  });
+
+  test('com o endereço de uma entrega: o pino dela vai direto para o local, sem perguntar', async ({page, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const todas = (await estado(page)).paradas;
+    const alvo = todas.find(p => /Flores, 900/.test(p.texto))!;
+    const local = aNorte(alvo, 30);
+    nuvem.rpc.abrir_link_do_mapa = (c: {link: string}) => c.link === CURTO ? linkDe(local) : null;
+    // o nome que o Google dá vem com bairro e CEP que a planilha não tem
+    await compartilhar(page, 'Rua das Flores, 900 - Bairro Inventado, Cidade Teste - SE, 49000-999\n' + CURTO);
+    await expect(aviso(page)).toContainText('Pino no local recebido');
+    expect(await ondeEsta(page, alvo.id)).toEqual(local);
+    await expect(page.locator('[data-local-recebido]')).toHaveCount(0);
+    expect((await estado(page)).paradas.length, 'nenhuma parada nova').toBe(todas.length);
+    await expect.poll(() => gravadas(nuvem).length).toBe(1);
+  });
+
+  test('com o endereço e o link curto que o banco não abre: diz por que, sem parada nova', async ({page, nuvem}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const quantas = (await estado(page)).paradas.length;
+    nuvem.rpc.abrir_link_do_mapa = () => null;
+    await compartilhar(page, NOME_DO_PONTO + '\n' + CURTO);
+    await expect(aviso(page)).toContainText(CURTO_SEM_POSICAO);
+    expect((await estado(page)).paradas.length).toBe(quantas);
+    expect(gravadas(nuvem)).toEqual([]);
+  });
+
+  test('sem rota aberta, o endereço compartilhado continua virando parada', async ({page, nuvem}) => {
+    await abrir(page);
+    nuvem.rpc.abrir_link_do_mapa = () => null;
+    await compartilhar(page, 'Rua Inventada, 10 - Bairro Inventado, Cidade Teste - SE\n' + CURTO);
+    await expect.poll(async () => ((await estado(page))?.paradas || []).map(p => p.texto))
+      .toEqual([expect.stringContaining('Rua Inventada, 10')]);
+  });
 });

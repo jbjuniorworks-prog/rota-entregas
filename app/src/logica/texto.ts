@@ -101,6 +101,24 @@ export function posicaoColada(texto: string | null): {tipo: 'posicao'; lat: numb
   return PARECE_LINK.test(t) ? {tipo: 'link sem posicao'} : {tipo: 'nada'};
 }
 
+// Os endereços do que veio compartilhado, sem os links. Linha por linha: o semLink junta tudo numa
+// linha só, e dois endereços viravam um.
+export const enderecosSemLink = (texto: string): string[] => extrairEnderecos(texto.split('\n').map(semLink).join('\n'));
+
+// Link de mapa de verdade (Google Maps, o curto do Compartilhar, Waze), não um link qualquer.
+const LINK_DO_MAPA = /\b(?:maps\.app\.goo\.gl\/|goo\.gl\/maps\/|maps\.google\.[a-z.]+\/|google\.[a-z.]+\/maps\b|waze\.com\/)/i;
+
+// O que chegou pelo Compartilhar, com a rota aberta: localização, para arrumar uma entrega, ou lista,
+// para acrescentar? O Compartilhar do Maps manda junto o nome que o Google dá ao ponto, e esse nome
+// é um endereço, que com outro número virava parada nova (12/11, dono, sobre o Luan: "só queria
+// arrumar uma localização"). Um endereço só, com link do mapa ou com a posição, é localização.
+export function ehLocalizacao(texto: string): boolean {
+  const enderecos = enderecosSemLink(texto);
+  const lido = posicaoColada(texto);
+  if (!enderecos.length) return lido.tipo !== 'nada';
+  return enderecos.length === 1 && (lido.tipo === 'posicao' || LINK_DO_MAPA.test(texto));
+}
+
 // O link curto do Compartilhar do Maps só diz onde é depois de aberto, e quem abre é o banco (027),
 // que recusa qualquer outra coisa. Vai sem o ?g_st=… do fim, que só marca quem compartilhou.
 export function linkCurtoDoMapa(texto: string): string | null {
@@ -214,8 +232,12 @@ export function chaveEndereco(linha: string): string {
   return [normal(d.rua).replace(TIPOS_RUA, ''), (d.numero || '') + letraDaPorta(t, d.numero), d.cep || '', complementoChave(d.resto)].join('|');
 }
 
+// Rua e número, sem CEP nem complemento: o título que o Google copia vem com CEP e bairro, e a
+// planilha nem sempre.
+export const ruaENumero = (texto: string): string => chaveEndereco(texto).split('|').slice(0, 2).join('|');
+
 export function mesmoEndereco(textos: string[]): boolean {
-  const chaves = new Set(textos.map(t => chaveEndereco(t).split('|').slice(0, 2).join('|')));
+  const chaves = new Set(textos.map(ruaENumero));
   return textos.length > 1 && chaves.size === 1 && !/^\|*$/.test([...chaves][0]);
 }
 
