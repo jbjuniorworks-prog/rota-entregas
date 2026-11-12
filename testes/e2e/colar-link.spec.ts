@@ -21,6 +21,9 @@ const aNorte = (p: {lat: number; lng: number}, metros: number) => ({lat: +(p.lat
 const copiar = (page: Page, texto: string) => page.evaluate(t => navigator.clipboard.writeText(t), texto);
 const gravadas = (nuvem: NuvemFalsa) => nuvem.pedidos.filter(p => p.metodo === 'POST' && p.caminho === 'correcoes').map(p => p.corpo as {lat: number; lng: number; chave_lugar: string});
 const CURTO = 'https://maps.app.goo.gl/AbCdEf123Inventado';
+// 12/11: o link curto de endereço de casa leva só o endereço e o código do lugar, sem posição nem
+// na página final. O aviso ensina o mesmo caminho do link longo sem posição: tocar e segurar.
+const CURTO_SEM_POSICAO = 'Esse link do Maps não traz a posição. No Maps, toque e segure no ponto do cliente e copie os números que aparecem, ou toque aqui no mapa, no lugar certo.';
 const ondeEsta = async (page: Page, id: string) => { const p = await parada(page, id); return {lat: p.lat, lng: p.lng}; };
 
 test.describe('Colar link do mapa', () => {
@@ -72,8 +75,9 @@ test.describe('Colar link do mapa', () => {
     nuvem.rpc.abrir_link_do_mapa = () => null;
     await copiar(page, CURTO);
     await page.locator('.proxima [data-acao="colar-link"]').click();
-    await expect(aviso(page)).toContainText('Não consegui tirar a posição desse link do Maps');
+    await expect(aviso(page)).toContainText(CURTO_SEM_POSICAO);
     expect(await ondeEsta(page, alvo.id)).toEqual({lat: alvo.lat, lng: alvo.lng});
+    expect((await parada(page, alvo.id)).texto, 'o endereço da parada não muda').toBe(alvo.texto);
     expect(gravadas(nuvem)).toEqual([]);
   });
 
@@ -255,7 +259,7 @@ test.describe('localização recebida pelo Compartilhar', () => {
     const quantas = (await estado(page)).paradas.length;
     nuvem.rpc.abrir_link_do_mapa = () => null;
     await compartilhar(page, 'LOJA INVENTADA\n' + CURTO);
-    await expect(aviso(page)).toContainText('Não consegui tirar a posição desse link do Maps');
+    await expect(aviso(page)).toContainText(CURTO_SEM_POSICAO);
     await expect(page.locator('[data-local-recebido]')).toHaveCount(0);
     expect((await estado(page)).paradas.length).toBe(quantas);
     expect(gravadas(nuvem)).toEqual([]);
