@@ -105,6 +105,12 @@ export function posicaoColada(texto: string | null): {tipo: 'posicao'; lat: numb
 // linha só, e dois endereços viravam um.
 export const enderecosSemLink = (texto: string): string[] => extrairEnderecos(texto.split('\n').map(semLink).join('\n'));
 
+// A linha que só tem link (com ou sem o https da frente) não é endereço (14/10). No teste do dono sem
+// rota aberta (12/11), o link curto virou uma parada "Não encontrado", e depois "entrega" na faixa do
+// "É de qual entrega?".
+export const soLink = (linha: string): boolean =>
+  PARECE_LINK.test(linha) && !semLink(linha).replace(/\b(?:www\.|maps\.app\.goo\.gl\/|goo\.gl\/|maps\.google\.[a-z.]+\/|waze\.com\/)\S*/gi, ' ').replace(/[\s,;]+/g, '');
+
 // Link de mapa de verdade (Google Maps, o curto do Compartilhar, Waze), não um link qualquer.
 const LINK_DO_MAPA = /\b(?:maps\.app\.goo\.gl\/|goo\.gl\/maps\/|maps\.google\.[a-z.]+\/|google\.[a-z.]+\/maps\b|waze\.com\/)/i;
 

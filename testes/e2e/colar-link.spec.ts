@@ -318,11 +318,48 @@ test.describe('localização recebida pelo Compartilhar', () => {
     expect(gravadas(nuvem)).toEqual([]);
   });
 
-  test('sem rota aberta, o endereço compartilhado continua virando parada', async ({page, nuvem}) => {
+  // 12/11, teste do dono sem rota aberta: o nome do lugar e o link curto viraram duas paradas "Não
+  // encontrado". Sem entrega por fazer, a localização não tem a que se ligar (opção a, aprovada pelo
+  // dono): nada vira parada, com ou sem posição, e o aviso diz o que fazer.
+  const ABRA_A_ROTA = 'Abra a rota do dia antes de compartilhar a localização.';
+  const TUDO_ENTREGUE = 'Todas as entregas já foram feitas: essa localização não tem entrega para arrumar.';
+  const paradasAgora = async (page: Page) => ((await estado(page))?.paradas || []).map(p => p.texto);
+
+  test('sem rota aberta, o nome do lugar e o link não viram paradas: pede para abrir a rota', async ({page, nuvem}) => {
     await abrir(page);
     nuvem.rpc.abrir_link_do_mapa = () => null;
-    await compartilhar(page, 'Rua Inventada, 10 - Bairro Inventado, Cidade Teste - SE\n' + CURTO);
-    await expect.poll(async () => ((await estado(page))?.paradas || []).map(p => p.texto))
-      .toEqual([expect.stringContaining('Rua Inventada, 10')]);
+    await compartilhar(page, 'LOJA INVENTADA\n' + CURTO);
+    await expect(aviso(page)).toContainText(ABRA_A_ROTA);
+    expect(await paradasAgora(page)).toEqual([]);
+  });
+
+  test('sem rota aberta, nem a localização com posição vira parada', async ({page}) => {
+    await abrir(page);
+    await compartilhar(page, 'Rua Inventada, 10 - Bairro Inventado, Cidade Teste - SE\n' + linkDe({lat: -10.96, lng: -37.045}));
+    await expect(aviso(page)).toContainText(ABRA_A_ROTA);
+    expect(await paradasAgora(page)).toEqual([]);
+  });
+
+  test('com todas entregues, a localização não vira parada e o aviso diz que não há o que arrumar', async ({page, nuvem}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    const antes = (await estado(page)).paradas.length;
+    await page.evaluate(() => {
+      const e = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
+      for (const p of e.paradas) p.entregue = true;
+      localStorage.setItem('rota-entregas-v2', JSON.stringify(e));
+    });
+    await compartilhar(page, 'LOJA INVENTADA\n' + linkDe({lat: -10.96, lng: -37.045}));
+    await expect(aviso(page)).toContainText(TUDO_ENTREGUE);
+    const depois = (await estado(page)).paradas;
+    expect(depois.length).toBe(antes);
+    expect(depois.every(p => p.entregue)).toBe(true);
+    expect(gravadas(nuvem)).toEqual([]);
+  });
+
+  test('sem rota aberta, a lista de endereços continua virando paradas', async ({page}) => {
+    await abrir(page);
+    await compartilhar(page, 'Rua Inventada, 10, Bairro Inventado\nRua Outra Inventada, 20, Bairro Inventado');
+    await expect.poll(() => paradasAgora(page)).toEqual([expect.stringContaining('Rua Inventada, 10'), expect.stringContaining('Rua Outra Inventada, 20')]);
   });
 });

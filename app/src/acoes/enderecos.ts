@@ -316,6 +316,9 @@ async function lerPrintsAgora(files: File[], textoAtual: string): Promise<string
   }
 }
 
+const ABRA_A_ROTA = 'Abra a rota do dia antes de compartilhar a localização.';
+const TUDO_ENTREGUE = 'Todas as entregas já foram feitas: essa localização não tem entrega para arrumar.';
+
 export function processarCompartilhado() {
   return semRecarregar(lerCompartilhado);
 }
@@ -340,7 +343,13 @@ async function lerCompartilhado() {
   // na mão, ela vem arrumar uma entrega que já está nela, nunca virar parada nova, nem quando o Maps
   // manda junto o endereço que dá ao ponto (12/11). Se esse endereço é o de uma entrega, o pino dela
   // vai direto; senão, ele escolhe de qual é.
-  if (!files.length && e().paradas.some(p => !p.entregue) && ehLocalizacao(texto)) {
+  if (!files.length && ehLocalizacao(texto)) {
+    // Sem entrega por fazer, a localização não tem a que se ligar, com ou sem posição: nada vira
+    // parada (opção a, dono, 12/11). Antes, o nome do lugar e o link viravam duas "Não encontrado".
+    if (!e().paradas.some(p => !p.entregue)) {
+      status(e().paradas.length ? TUDO_ENTREGUE : ABRA_A_ROTA, 10000);
+      return;
+    }
     irPara('rota');
     const lido = await lerLinkDoMapa(texto);
     if (lido.tipo === 'sem posicao') status(lido.aviso, 10000);

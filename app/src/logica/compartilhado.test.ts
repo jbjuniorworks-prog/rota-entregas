@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
-import {entregaDoEndereco} from './importar';
+import {estadoVazio} from './guarda';
+import {adicionarLinhas, entregaDoEndereco} from './importar';
 import {ehLocalizacao} from './texto';
 import type {Parada} from './tipos';
 
@@ -54,5 +55,17 @@ describe('a entrega que o endereço da localização nomeia', () => {
 
   it('a já entregue não conta', () => {
     expect(entregaDoEndereco(paradas, 'Rua dos Ipês, 300 - Bairro Norte')).toBeUndefined();
+  });
+});
+
+// 12/11, teste do dono sem rota aberta: o nome do lugar e o link curto viraram duas paradas "Não
+// encontrado", e o link apareceu depois como "entrega" na faixa do "É de qual entrega?". Link nenhum
+// é endereço (14/10): a linha que só tem link não vira parada, venha de onde vier.
+describe('linha que só tem link não vira parada', () => {
+  it('o link curto, com ou sem o https, e o longo do Google ficam de fora; o endereço entra', () => {
+    const e = estadoVazio();
+    expect(adicionarLinhas(e, ['https://maps.app.goo.gl/AbCdEf123Inventado', 'maps.app.goo.gl/AbCdEf123Inventado',
+      'https://www.google.com/maps/place/Lugar+Inventado/data=!4m2!3m1!1s0x0:0x1', 'Rua Inventada, 10'])).toMatchObject({novas: 1});
+    expect(e.paradas.map(p => p.texto)).toEqual(['Rua Inventada, 10']);
   });
 });
