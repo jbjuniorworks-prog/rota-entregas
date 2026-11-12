@@ -1,6 +1,6 @@
 import {marcarIsoladas, marcarNumerosIncoerentes, marcarPontoGenerico, moverPeloBairro} from './geo';
 import type {ItemPlanilha} from './planilha';
-import {analisarLinha, chaveDaParada, chaveEndereco, chaveLugar, coordenadaNoTexto, ruaENumero, semLink} from './texto';
+import {analisarLinha, chaveDaParada, chaveEndereco, chaveLugar, coordenadaNoTexto, ruaENumero, semLink, soLink} from './texto';
 import type {Estado, ItemDaParada, Parada, Precisao} from './tipos';
 
 export const novoId = () => Math.random().toString(36).slice(2, 10);
@@ -206,6 +206,7 @@ export function adicionarLinhas(e: Estado, linhas: string[], doLeitor: string[] 
   for (const x of e.paradas) { const k = chaveEndereco(x.texto); naRota.set(k, (naRota.get(k) || 0) + 1); }
   for (const l of doLeitor) { const k = chaveDaLinha(l); lidas.set(k, (lidas.get(k) || 0) + 1); }
   for (const l of linhas) {
+    if (soLink(l)) continue;
     // Endereço colado junto com um link do mapa: a coordenada é a resposta, não um palpite a
     // conferir. O censo não tem a porta de toda rua, e o dono às vezes chega com ela na mão.
     const coord = coordenadaNoTexto(l);
