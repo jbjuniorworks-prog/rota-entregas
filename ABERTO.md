@@ -174,6 +174,14 @@ Fora da lista:
   578 de unidade, 310 ponta a ponta, tipos.
 - **Para depois:** o "toque aqui no mapa" do aviso só serve na faixa do Arrumar o pino. Quando o
   aviso sai do cartão da próxima ou do Compartilhar, não há mapa armado para tocar. Já era assim.
+- **Outro defeito, parada nova pelo Compartilhar (mesma rota, 14:33):** apareceu uma parada que a
+  planilha do dia (102 pacotes) não tem, com outro número e outro bairro da mesma rua de uma
+  entrega dele, pino "Rua certa, número aproximado". O provável: ele compartilhou do Maps a
+  localização do cliente, o Maps mandou junto o nome que dá ao ponto, e com endereço no texto o
+  app segue o caminho de sempre: endereço que não bate com nenhuma parada vira parada nova. Sem
+  endereço, o app já pergunta "É de qual entrega?". Não comprovado: o app não registra o
+  Compartilhar nem marca a parada criada assim. Próximo: decidir com o dono se o caso com endereço,
+  com a rota aberta, também pergunta. Branch própria.
 - **WhatsApp direto para o app:** `geo` está na lista de esquemas que um app da web pode pedir
   para abrir, mas não achei confirmação de que o Chrome do Android registra o app instalado para
   isso. Medir num celular antes de construir.
