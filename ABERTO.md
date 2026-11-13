@@ -154,7 +154,38 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Link curto de casa sem posição (12/11, Luan): aviso novo na branch `aviso-link-curto`, nada enviado
+## Link do cliente sem posição (12/11, Luan): publicado do #8 ao #11, 032 rodada; #12 em revisão
+
+- **Estado (12/11, noite):**
+  - Publicados, cada um conferido na execução do publicar, no `versao.json` e com o
+    `colar-link.spec.ts` contra o endereço publicado: #8, o aviso novo (`mwdxigwe`); #9, com a rota
+    aberta o Compartilhar nunca cria parada (`mwdyc6ot`); #10, sem entrega por fazer nada vira
+    parada e linha só com link nunca vira parada; #11, o arquivo da 032 (`mwe6t21g`).
+  - **032 rodada pelo dono** no SQL Editor e conferida por ele: o link do conjunto, que dava erro,
+    voltou com a posição. A extensão de produção **segue** o salto do link curto (status 200 com um
+    Location): o registro de 28/10, abaixo, estava errado. A função lê o primeiro destino nos dois
+    casos.
+  - **#12 aberto:** a localização compartilhada sem rota fica guardada e vira a pergunta "É de qual
+    entrega?" quando a rota entra (dono: "o link se perdeu" ao carregar a planilha).
+- **Medido no celular do dono (12/11):**
+  - O WhatsApp do Android não deixa copiar nem compartilhar a mensagem de localização, só
+    encaminhar para outra conversa. Tocar nela abre o Maps direto.
+  - O Maps, ao abrir uma localização, oferece o lugar do Google que estiver naquele ponto (no
+    endereço do dono há uma loja cadastrada). Escolhido o lugar, o Compartilhar manda o link dele, não
+    o ponto do cliente, e o texto é o nome do lugar e o link curto, sem endereço e sem graus. O dono
+    corrigiu: o Maps não troca sozinho.
+  - Uma "localização atual" mandada pelo dono a ele mesmo, aberta nos dois aparelhos (12/11): no PC,
+    o link do WhatsApp traz os graus do ponto (`q=`) e o app lê. No celular, o Compartilhar do Maps
+    deu um link curto que leva, num salto, ao endereço mais perto do ponto, já com `!3d…!4d…`, e o
+    app lê. A posição é a do endereço, a 10 m do ponto do PC. Aberto daqui como o banco abre, não
+    pelo banco.
+  - No WhatsApp, o cliente pode mandar a localização atual ou escolher um "local próximo". O
+    conjunto e o bar dos links de hoje são lugares do Google: escolhidos pelo cliente na lista do
+    WhatsApp ou por quem abriu no Maps; não confirmado qual.
+  - A posição que o Google tem do lugar não é a porta: 15 m e 128 m das marcas de GPS de entrega. A
+    entrega do conjunto ficou verificada pelo "Entreguei aqui" do Luan, na marca dele.
+- **Ainda aberto:** tocar e segurar no pino vermelho do Maps mostra os números? Se mostrar, é o
+  caminho do ponto exato no celular; o Compartilhar dá o endereço mais perto.
 
 - **O que aconteceu:** duas localizações que clientes mandaram pelo WhatsApp. Ele abriu no Maps,
   compartilhou, colou o link curto, e veio "Não consegui tirar a posição desse link do Maps". Os
@@ -165,9 +196,9 @@ Fora da lista:
   só, como o banco abre. Os dois de comércio levam a `!3d…!4d…` e o app lê. Os dois de endereço de
   casa levam só o endereço e o código do lugar no Google; seguindo até a página final, também não
   há posição, só um centro de mapa genérico, o mesmo nos dois. O banco não tem de onde tirar.
-- **Não medido:** os links curtos do Luan, e o texto inteiro que o Compartilhar do Maps manda para
-  uma localização recebida no WhatsApp. Se vier o título do ponto solto em graus
-  (`11°04'05.6"S …`, hoje o app não lê), ler graus vira um commit separado, com teste próprio.
+- **Não medido na hora:** os links curtos do Luan, e o texto inteiro que o Compartilhar do Maps
+  manda para uma localização recebida no WhatsApp. Medido depois, no celular do dono: nome do lugar
+  e link curto (ver "Estado", acima).
 - **Feito na branch:** o aviso do link curto sem posição passa a ensinar o mesmo caminho do longo
   sem posição (texto aprovado pelo dono). Os dois testes do aviso falharam com o texto antigo e
   passam com o novo; o do cartão da próxima também confere que o endereço da parada não muda.
@@ -181,7 +212,7 @@ Fora da lista:
   app segue o caminho de sempre: endereço que não bate com nenhuma parada vira parada nova. Sem
   endereço, o app já pergunta "É de qual entrega?". Não comprovado: o app não registra o
   Compartilhar nem marca a parada criada assim.
-  - **Consertado na branch `compartilhar-sem-parada-nova`** (em cima desta, nada enviado). Dono:
+  - **Consertado na branch `compartilhar-sem-parada-nova`** (publicado no #9). Dono:
     "aparecendo outro pino quando só queria arrumar uma localização". Com a rota aberta, um texto
     com um endereço só e link do mapa (ou a posição) é localização: o endereço da entrega leva o
     pino dela direto, mesma rua e número; outro endereço abre "É de qual entrega?"; link sem posição
