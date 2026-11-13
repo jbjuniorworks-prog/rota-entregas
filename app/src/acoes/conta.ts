@@ -5,7 +5,7 @@ import {entrar as entrarNaNuvem, iniciarNuvem, nuvem, sair as sairDaNuvem} from 
 import {e, enviarFila, fila, ui} from './base';
 import {iniciarNavegacao, irPara, telaBase} from './navegacao';
 import {buscarDeNovoOsNomesTortos, conferirComOCensoAoAbrir, processarCompartilhado} from './enderecos';
-import {avisoCompartilhadas, consultarCompartilhadas, verPinosNovos} from './posicoes';
+import {avisoCompartilhadas, consultarCompartilhadas, oferecerLocalGuardado, verPinosNovos} from './posicoes';
 import {saiuDaTela, verVersao} from './versao';
 
 // Pedido de 28/09: um motorista mexendo numa porta confirmada tem de chegar no dono sem ele ir
@@ -64,6 +64,8 @@ export async function iniciar() {
   window.addEventListener('online', enviarFila);
   setInterval(enviarFila, 60000);
   if (new URLSearchParams(location.search).has('compartilhado')) processarCompartilhado();
+  // a localização guardada antes da rota, se a rota entrou e o app fechou antes de perguntar
+  else oferecerLocalGuardado();
   verPendenciasDoAdmin(true);
   verVersao(true);
   conferirComOCensoAoAbrir().finally(buscarDeNovoOsNomesTortos).finally(verPinosNovos);

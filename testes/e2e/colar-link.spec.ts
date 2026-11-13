@@ -319,25 +319,39 @@ test.describe('localização recebida pelo Compartilhar', () => {
   });
 
   // 12/11, teste do dono sem rota aberta: o nome do lugar e o link curto viraram duas paradas "Não
-  // encontrado". Sem entrega por fazer, a localização não tem a que se ligar (opção a, aprovada pelo
-  // dono): nada vira parada, com ou sem posição, e o aviso diz o que fazer.
-  const ABRA_A_ROTA = 'Abra a rota do dia antes de compartilhar a localização.';
+  // encontrado". Sem entrega por fazer, nada vira parada (opção a). E a localização não se perde
+  // (dono, 12/11: "o link se perdeu" ao carregar a planilha): fica guardada, e a pergunta vem quando
+  // a rota entra.
+  const GUARDADA = 'Localização guardada: carregue a rota do dia que eu pergunto de qual entrega é.';
   const TUDO_ENTREGUE = 'Todas as entregas já foram feitas: essa localização não tem entrega para arrumar.';
   const paradasAgora = async (page: Page) => ((await estado(page))?.paradas || []).map(p => p.texto);
 
-  test('sem rota aberta, o nome do lugar e o link não viram paradas: pede para abrir a rota', async ({page, nuvem}) => {
+  test('sem rota aberta, o link sem posição não vira parada e diz por quê', async ({page, nuvem}) => {
     await abrir(page);
     nuvem.rpc.abrir_link_do_mapa = () => null;
     await compartilhar(page, 'LOJA INVENTADA\n' + CURTO);
-    await expect(aviso(page)).toContainText(ABRA_A_ROTA);
+    await expect(aviso(page)).toContainText(CURTO_SEM_POSICAO);
     expect(await paradasAgora(page)).toEqual([]);
   });
 
-  test('sem rota aberta, nem a localização com posição vira parada', async ({page}) => {
+  test('sem rota aberta, a localização fica guardada e vira a pergunta quando a planilha entra', async ({page}) => {
+    page.on('dialog', d => d.accept());
     await abrir(page);
-    await compartilhar(page, 'Rua Inventada, 10 - Bairro Inventado, Cidade Teste - SE\n' + linkDe({lat: -10.96, lng: -37.045}));
-    await expect(aviso(page)).toContainText(ABRA_A_ROTA);
-    expect(await paradasAgora(page)).toEqual([]);
+    // a uns 20 m da Rua das Flores, 900, da planilha de teste
+    const local = {lat: -10.963202, lng: -37.047001};
+    await compartilhar(page, 'Av. Inventada, 149 - Bairro Inventado, Cidade Teste - SE\n' + linkDe(local));
+    await expect(aviso(page)).toContainText(GUARDADA);
+    expect(await paradasAgora(page), 'nada vira parada').toEqual([]);
+    await carregar(page, ROTA_A);
+    const faixa = page.locator('[data-local-recebido]');
+    await expect(faixa).toContainText('Local recebido. É de qual entrega?');
+    const alvo = (await estado(page)).paradas.find(p => /Flores, 900/.test(p.texto))!;
+    await expect(faixa.locator('button[data-ids]').first()).toHaveAttribute('data-ids', alvo.id);
+    const quantas = (await estado(page)).paradas.length;
+    await faixa.locator('button[data-ids]').first().click();
+    await expect(aviso(page)).toContainText('Pino no local recebido');
+    expect(await ondeEsta(page, alvo.id)).toEqual(local);
+    expect((await estado(page)).paradas.length, 'nenhuma parada nova').toBe(quantas);
   });
 
   test('com todas entregues, a localização não vira parada e o aviso diz que não há o que arrumar', async ({page, nuvem}) => {

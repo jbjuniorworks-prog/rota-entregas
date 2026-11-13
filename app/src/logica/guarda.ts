@@ -34,6 +34,7 @@ export const CHAVES = {
   buscas: 'rota-entregas-buscas',
   adminVisto: 'rota-entregas-admin-visto',
   comerciais: 'rota-entregas-comerciais',
+  localGuardado: 'rota-entregas-local-guardado',
   dono: 'rota-entregas-dono',
 } as const;
 
