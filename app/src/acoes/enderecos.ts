@@ -13,7 +13,7 @@ import {corretorDeNomes, enderecoDoIbge, nomeCorrigidoPeloCenso, portaNoBairroDo
 import {nuvem} from '../servicos/nuvem';
 import {desatualizarRota, e, enviarFila, fila, invalidarRota, memoria, ui} from './base';
 import {irPara} from './navegacao';
-import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, escolherEntregaDoLocal, focar, lerLinkDoMapa, levarAoLocal, separarAsConhecidas} from './posicoes';
+import {avisoCompartilhadas, consultarCompartilhadas, corrigirPosicao, escolherEntregaDoLocal, focar, guardarLocalSemRota, lerLinkDoMapa, levarAoLocal, oferecerLocalGuardado, separarAsConhecidas} from './posicoes';
 import {registrarComoFicou} from './registro';
 import {montarRota} from './rota';
 import {semRecarregar} from './versao';
@@ -284,6 +284,7 @@ async function lerPrintsAgora(files: File[], textoAtual: string): Promise<string
       const resumo = resumoPlanilha(r) + (e().rota ? ' A rota de agora continua na tela: toque em "Refazer a rota" para as novas entrarem na sequência.' : '');
       status(resumo, r.longe || e().rota ? 12000 : 5000);
       await buscarPendentes(resumo, origemDe(['planilha', ...outros.map(tipoDoArquivo)])!);
+      oferecerLocalGuardado();
     } catch (err) {
       status('Não consegui ler a planilha: ' + (err as Error).message, 6000);
     }
@@ -316,7 +317,7 @@ async function lerPrintsAgora(files: File[], textoAtual: string): Promise<string
   }
 }
 
-const ABRA_A_ROTA = 'Abra a rota do dia antes de compartilhar a localização.';
+const GUARDADA = 'Localização guardada: carregue a rota do dia que eu pergunto de qual entrega é.';
 const TUDO_ENTREGUE = 'Todas as entregas já foram feitas: essa localização não tem entrega para arrumar.';
 
 export function processarCompartilhado() {
@@ -344,18 +345,26 @@ async function lerCompartilhado() {
   // manda junto o endereço que dá ao ponto (12/11). Se esse endereço é o de uma entrega, o pino dela
   // vai direto; senão, ele escolhe de qual é.
   if (!files.length && ehLocalizacao(texto)) {
-    // Sem entrega por fazer, a localização não tem a que se ligar, com ou sem posição: nada vira
-    // parada (opção a, dono, 12/11). Antes, o nome do lugar e o link viravam duas "Não encontrado".
-    if (!e().paradas.some(p => !p.entregue)) {
-      status(e().paradas.length ? TUDO_ENTREGUE : ABRA_A_ROTA, 10000);
+    // Sem entrega por fazer, nada vira parada, com ou sem posição (opção a, dono, 12/11). Antes, o
+    // nome do lugar e o link viravam duas "Não encontrado".
+    const semRota = !e().paradas.length;
+    if (!semRota && !e().paradas.some(p => !p.entregue)) {
+      status(TUDO_ENTREGUE, 10000);
       return;
     }
-    irPara('rota');
+    if (!semRota) irPara('rota');
     const lido = await lerLinkDoMapa(texto);
     if (lido.tipo === 'sem posicao') status(lido.aviso, 10000);
     if (lido.tipo !== 'posicao') return;
     const ali = {lat: lido.lat, lng: lido.lng};
     const [endereco] = enderecosSemLink(texto);
+    // Sem rota, a localização não se perde ("o link se perdeu" ao carregar a planilha, dono, 12/11):
+    // fica guardada, e a pergunta vem quando a rota entrar. A posição é lida já, enquanto há sinal.
+    if (semRota) {
+      guardarLocalSemRota(ali, endereco || null);
+      status(GUARDADA, 10000);
+      return;
+    }
     const dela = endereco ? entregaDoEndereco(e().paradas, endereco) : undefined;
     if (dela) levarAoLocal(dela, ali);
     else escolherEntregaDoLocal(ali);
@@ -386,6 +395,7 @@ async function lerCompartilhado() {
     await montarRota();
     // por último, para o "Rota pronta" não cobrir o complemento que ficou de fora
     if (daComanda) status(daComanda, 20000);
+    oferecerLocalGuardado();
   } catch (err) {
     status('Não consegui processar: ' + (err as Error).message, 6000);
   }
@@ -411,6 +421,7 @@ export async function adicionarTexto(texto: string) {
     : '';
   status(`${novas} adicionada(s)${repetidas ? `, ${repetidas} repetida(s) ignorada(s)` : ''}.${doMapa}`, doMapa ? 9000 : 2500);
   await buscarPendentes('', origem);
+  oferecerLocalGuardado();
   return true;
 }
 

@@ -8,9 +8,11 @@ import {medidor} from '../logica/telemetria';
 import {hojeEmMaceio} from '../logica/painel';
 import {porQueNaoVerificou, type PacoteDaRota, type PortasDaRota} from '../logica/verificacao';
 import {chaveCidade, chaveDaParada, chaveLugar, chaveRua, decompor, linkCurtoDoMapa, mesmoEndereco, nomeDoLugar, posicaoColada} from '../logica/texto';
-import {marcarSeparada, separarParada} from '../logica/importar';
+import {entregaDoEndereco, marcarSeparada, separarParada} from '../logica/importar';
+import {CHAVES} from '../logica/guarda';
+import {localDeHoje} from '../logica/localGuardado';
 import type {Parada, PortaAntes, Ponto} from '../logica/tipos';
-import {loja, MINIMIZADO, status} from '../loja';
+import {guarda, loja, MINIMIZADO, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
 import {clienteNuvem} from '../servicos/nuvem';
 import {contar, desatualizarRota, e, enviarFila, ESPERA_DA_PORTA, fila, memoria, ui} from './base';
@@ -397,6 +399,26 @@ export function levarAoLocal(p: Parada, ali: Ponto) {
   if (!podeMexer(p)) return;
   corrigirPosicao(p, ali.lat, ali.lng, 'Pino no local recebido', 'Local recebido pelo Compartilhar');
   focar(p.id);
+}
+
+// A localização que chegou antes da rota (12/11): fica no aparelho, só a última, até a rota entrar.
+export function guardarLocalSemRota(ali: Ponto, endereco: string | null) {
+  guarda.gravar(CHAVES.localGuardado, {lat: ali.lat, lng: ali.lng, endereco, quando: Date.now()});
+}
+
+// Com entrega por fazer, a guardada vira o que viraria se tivesse chegado agora: o pino da entrega
+// que o endereço nomeia, ou a pergunta "É de qual entrega?". A de outro dia é jogada fora.
+export function oferecerLocalGuardado() {
+  const bruto = guarda.ler<unknown>(CHAVES.localGuardado, null);
+  if (!bruto) return;
+  const g = localDeHoje(bruto);
+  if (!g) { guarda.gravar(CHAVES.localGuardado, null); return; }
+  if (!e().paradas.some(p => !p.entregue)) return;
+  guarda.gravar(CHAVES.localGuardado, null);
+  const ali = {lat: g.lat, lng: g.lng};
+  const dela = g.endereco ? entregaDoEndereco(e().paradas, g.endereco) : undefined;
+  if (dela) levarAoLocal(dela, ali);
+  else escolherEntregaDoLocal(ali);
 }
 
 // Da faixa do "Marcar como admin": a porta de todos no ponto do link, com a mesma pergunta do toque.
