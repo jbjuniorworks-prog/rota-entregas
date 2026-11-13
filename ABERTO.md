@@ -226,6 +226,25 @@ Fora da lista:
   para abrir, mas não achei confirmação de que o Chrome do Android registra o app instalado para
   isso. Medir num celular antes de construir.
 
+## Migrações nos arquivos de rodar tudo (13/11, plano aprovado pelo dono): teste na branch `ordem-das-migracoes`, nada enviado
+
+- **Medido:** a 011 está inteira no `000_rodar_tudo.sql`, igual ao arquivo, mas sem a linha de
+  marca: ficou dentro da seção da 010. Nada a rodar no Supabase por isso. A 016 no `000` não tinha
+  a primeira linha do comentário. Da 006 em diante, o resto é igual ao arquivo nos dois
+  combinados. Da 001 à 005 os combinados trazem a versão reescrita para rodar de novo, igual nos
+  dois. A 031 antes da 030 é a ordem em que rodaram (09/11), não erro.
+- **Feito:** a marca da 011 e a linha da 016 no `000`, só comentário. `app/src/logica/migracoes.test.ts`,
+  7 testes: cada migração uma vez em cada combinado (a 001 e a 002 fora do `000`, que nasceu em
+  20/09 com o que faltava rodar), a mesma ordem nos dois, a ordem dos números fora os pares
+  explicados, a seção igual ao arquivo da 006 em diante em cada combinado, e as reescritas iguais
+  nos dois. Sem a correção falharam 3; cada um dos 7 falhou em uma sabotagem. 596 de unidade, 317
+  de ponta a ponta, tipos, build.
+- **Migração nova daqui em diante:** no fim dos dois combinados, com a linha
+  `-- ===== 0NN_nome.sql =====` antes. Fora da ordem dos números (a 029, quando entrar), o par vai
+  para `FORA_DA_ORDEM` no teste, com o motivo.
+- **Para depois:** provar num Postgres local que o `000` roda duas vezes seguidas sem erro, junto
+  com a suíte de permissões.
+
 ## Pino entregue por cima das que faltam (10/11, vídeo do Luan): branch `pino-pendente-por-cima` enviada, PR esperando merge
 
 - **Era:** num condomínio (11 pacotes no mesmo ponto), ele deu baixa numa entrega fora de ordem (a

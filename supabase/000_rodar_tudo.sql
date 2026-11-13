@@ -283,6 +283,7 @@ $$;
 revoke all on function public.lugares_conhecidos(text[], text) from public, anon;
 grant execute on function public.lugares_conhecidos(text[], text) to authenticated;
 
+-- ===== 011_registro.sql =====
 -- Registro do que o app decidiu: de onde saiu cada posição e se a rota teve as ruas.
 -- Sem isso não dá para dizer se o app acertou — só para achar que acertou.
 -- Rodar uma vez em SQL Editor > New query > Run.
@@ -538,6 +539,7 @@ create unique index if not exists ruas_fonte_id on public.ruas (fonte, fonte_id)
 grant update (lat, lng, fonte, precisao) on public.pacotes to authenticated;
 
 -- ===== 016_uso_dos_botoes.sql =====
+-- Conta qual botão do cartão é usado e qual vem depois de qual.
 -- O cartão de cada parada tem cinco botões na mesma fileira, e até agora quais ficam na frente
 -- foi decidido no chute. Uma semana de rota responde melhor do que qualquer opinião: se "Ver" é
 -- quase sempre seguido de "Editar", os dois são na prática um fluxo só e podem virar um botão.
