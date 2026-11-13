@@ -2213,7 +2213,8 @@ grant execute on function public.decidir_marcas(uuid, text[], boolean) to authen
 --
 -- Testada num Postgres local (supabase/postgres 17.11, extensão http 1.6): 21 testes, com sabotagens.
 -- - O primeiro pedido é o da 027, sem mudar. Lá a extensão seguiu o salto do link curto e devolveu
---   junto o cabeçalho Location do primeiro salto; o registro de 28/10 diz que a de produção não segue.
+--   junto o cabeçalho Location do primeiro salto. A de produção também segue (conferido em 12/11:
+--   status 200 com um Location; o registro de 28/10 dizia o contrário).
 --   A função lê o primeiro Location nos dois casos.
 -- - O pedido novo vai a um endereço FIXO do Google, montado só com dígitos (o número do lugar,
 --   convertido do hexadecimal): nada do que o motorista manda entra nele. E só sai se o destino do
