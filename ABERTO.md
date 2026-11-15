@@ -154,7 +154,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Rota que segue a entrega fora da ordem (15/11, dono, na rota: "a rota não se adapta quando faço um pino diferente"): na branch `rota-segue-a-entrega`, nada enviado
+## Rota que segue a entrega fora da ordem (15/11, dono, na rota: "a rota não se adapta quando faço um pino diferente"): publicado em 15/11 (#18, versão `mwicfxnm`), falta ver no celular
 
 - **Pedido:** entregando outra parada que não a do cartão, o cartão voltava para a pulada, já para
   trás dele. A ordem só mudava com "Refazer a rota", que precisa de rede.
@@ -182,7 +182,7 @@ Fora da lista:
 - **Para depois:** com rede, refazer sozinho quando muda o pino de uma parada por entregar (15/11,
   item 3 da proposta; 0 casos na rota dele) e contar, sem endereço, quantas entregas saem da ordem.
 
-## Som perto do pino (15/11, dono, na rota: "um barulho pra quando chegar perto de um pino"): na branch `aviso-perto-do-pino`, nada enviado
+## Som perto do pino (15/11, dono, na rota: "um barulho pra quando chegar perto de um pino"): publicado em 15/11 (#17, versão `mwhtsvge`), falta ouvir no celular
 
 - **Pedido:** indo para uma entrega, ele passa na porta de outra sem ver, olhando a rua ou o outro
   celular.
@@ -207,7 +207,7 @@ Fora da lista:
 - **Para depois:** manter a tela acesa com o app aberto (Wake Lock), para o aviso não parar quando
   a tela apaga sozinha. É outra frente.
 
-## Topo que conta o dia (15/11, foto do dono na rota: "0 de 15 entregas" com 67 pacotes entregues): na branch `contador-do-dia`, nada enviado
+## Topo que conta o dia (15/11, foto do dono na rota: "0 de 15 entregas" com 67 pacotes entregues): publicado em 15/11 (#19, versão `mwicfxnm`)
 
 - **Causa:** o topo contava só as paradas da ordem da rota, e montar a rota só leva as que faltam.
   Refeita no meio do dia, o que foi feito antes sumia da contagem e da barra. No código, é o único
@@ -216,7 +216,7 @@ Fora da lista:
 - **Testado:** e2e novo em `rota.spec.ts` (duas entregas na rota-a e Refazer): sem o conserto, "0 de
   8 entregas"; com ele, "2 de 10". Bateria: tipos, 614 de unidade e 323 de e2e. **Não testado** num celular de verdade.
 
-## Pino longe do balão depois da pinça (14/11, vídeos do dono): na branch `pinos-depois-do-zoom`, nada enviado
+## Pino longe do balão depois da pinça (14/11, vídeos do dono): publicado em 14/11 (#15, versão `mwh3iuya`), falta ver num Android
 
 - **O que se via:** no zoom máximo, a pinça estica o mapa além dele e, ao soltar, o mapa volta. Os
   balões ("P13 ×5") voltavam para o lugar e os pinos ficavam onde estavam no meio da pinça, longe
@@ -308,7 +308,7 @@ Fora da lista:
   para abrir, mas não achei confirmação de que o Chrome do Android registra o app instalado para
   isso. Medir num celular antes de construir.
 
-## Endereço sem número com referência (14/11, rota da Shopee do dono): na branch `chave-sem-numero`, nada enviado
+## Endereço sem número com referência (14/11, rota da Shopee do dono): publicado em 14/11 (#16, versão `mwh3iuya`)
 
 - **O caso:** dos 55 endereços da rota, 53 verificaram; os 2 que não verificaram são os sem número
   ("próximo ao…", "em frente ao…"). Sem número e sem "S/N", não havia chave: o "Entreguei aqui"
@@ -337,7 +337,7 @@ Fora da lista:
   25 m do pino da planilha; gravar como marcação do admin com a chave nova precisa do sim do dono.
   A da travessa (#16) não deixou nada na nuvem: só se a rota entregue ainda estiver num celular.
 
-## Migrações nos arquivos de rodar tudo (13/11, plano aprovado pelo dono): teste na branch `ordem-das-migracoes`, nada enviado
+## Migrações nos arquivos de rodar tudo (13/11, plano aprovado pelo dono): publicado em 13/11 (#14, versão `mwefyx9o`)
 
 - **Medido:** a 011 está inteira no `000_rodar_tudo.sql`, igual ao arquivo, mas sem a linha de
   marca: ficou dentro da seção da 010. Nada a rodar no Supabase por isso. A 016 no `000` não tinha
