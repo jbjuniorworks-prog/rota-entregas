@@ -38,7 +38,13 @@ export function desatualizarRota(mudouMuito = false) {
   if (!r) return;
   r.desatualizada = true;
   if (mudouMuito) r.mudouMuito = true;
+  posicaoMudou();
 }
+
+// Quem refaz a rota sozinha quando um pino anda demais (acoes/rota.ts) se registra aqui: a base
+// não importa a rota, que importa a base.
+let posicaoMudou: () => void = () => {};
+export const quandoAPosicaoMudar = (f: () => void) => { posicaoMudou = f; };
 
 // Só quando a rota deixa de descrever o dia: parada removida, área apagada, planilha nova, reset.
 // (Com um id que não existe mais em `ordem`, a aba Rota não só mente: ela quebra.)
