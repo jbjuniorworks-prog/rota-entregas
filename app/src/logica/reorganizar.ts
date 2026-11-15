@@ -1,6 +1,6 @@
 import {haversine} from './geo';
 import {blocos, matrizAproximada, otimizar, type Matriz} from './otimizacao';
-import type {Estado, Parada, Perna, Ponto, Rota, RotaArea} from './tipos';
+import type {Estado, Local, Parada, Perna, Ponto, Rota, RotaArea} from './tipos';
 
 // Entregou fora da ordem, e o resto da área volta a ser ordenado a partir dali (dono, 15/11, na
 // rota: "a rota não se adapta quando faço um pino diferente"). O cartão da próxima apontava para
@@ -95,4 +95,37 @@ export function reorganizarDaqui(e: Estado, feita: Parada, tempoMs = TEMPO_DA_CO
     ...(t.fim ? {fim} : {}),
   };
   return {rota, pernas, area: ra.id, pontos: seq.map(v => ({lat: pontosDaMatriz[v].lat, lng: pontosDaMatriz[v].lng}))};
+}
+
+// Um pino do que falta andou mais que ANDOU_DEMAIS desde a montagem (dono, 15/11: "quando mudamos
+// pinos, ela reage?"). A ordem foi feita com o ponto velho, e a da entrega fora da ordem não roda
+// mais. No histórico, em 26 de 111 dias de rota um pino de parada por entregar andou mais de 100 m
+// pelo menos 10 min antes da entrega dela. Refazer pede rede: quando, quem decide é acoes/rota.ts.
+export function andouDemais(e: Estado): boolean {
+  const R = e.rota;
+  if (!R || R.ordemDoApp || e.ordemDoApp) return false;
+  for (const ra of R.areas) {
+    const t = ra.tempos;
+    if (!t) continue;
+    const visita = new Map(t.visitas.flatMap(v => v.ids.map(id => [id, v] as const)));
+    for (const id of ra.ordem) {
+      const p = e.paradas.find(x => x.id === id), v = visita.get(id);
+      if (!p || !v || p.entregue || p.adiada || p.lat == null || p.lng == null) continue;
+      if (haversine(p as Ponto, v) > ANDOU_DEMAIS) return true;
+    }
+  }
+  return false;
+}
+
+// De onde sai a rota refeita no caminho: de onde ele está, se o GPS é de agora e bom; senão, da
+// última entrega. A saída da manhã faria a rota do meio do dia começar do outro lado da cidade.
+export const GPS_DE_AGORA = 120_000;
+export const GPS_QUE_SERVE = 100;
+export function pontoDePartida(e: Estado, eu: {lat: number; lng: number; precisao: number; quando: number} | null, agora: number): Local | null {
+  if (eu && agora - eu.quando <= GPS_DE_AGORA && eu.precisao <= GPS_QUE_SERVE)
+    return {id: 'inicio', lat: eu.lat, lng: eu.lng, exibido: `Minha localização (±${Math.round(eu.precisao)} m)`};
+  const ultima = e.paradas.filter(p => p.entregue && p.entregueEm && p.lat != null && p.lng != null)
+    .sort((a, b) => b.entregueEm! - a.entregueEm!)[0];
+  if (ultima) return {id: 'inicio', lat: ultima.lat!, lng: ultima.lng!, exibido: 'Onde foi a última entrega'};
+  return e.inicio;
 }

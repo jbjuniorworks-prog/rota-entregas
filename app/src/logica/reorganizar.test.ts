@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {haversine} from './geo';
 import {montarRota} from './montagem';
-import {ANDOU_DEMAIS, reorganizarDaqui} from './reorganizar';
+import {ANDOU_DEMAIS, andouDemais, GPS_DE_AGORA, pontoDePartida, reorganizarDaqui} from './reorganizar';
 import type {Estado, Parada, Ponto} from './tipos';
 
 // Seis paradas em fila para o sul, uns 111 m uma da outra, saindo do norte: a rota é a, b, c, d, e, f.
@@ -148,5 +148,84 @@ describe('a rota segue da entrega feita fora da ordem', () => {
     const novas = ['a', 'b', 'c', 'd', 'e'].reduce((s, id) => s + r.pernas[id].dist, 0);
     expect(r.rota.dist).toBeCloseTo(antes - velhas + novas, 6);
     expect(r.rota.areas[0].dist).toBeCloseTo(e.rota!.areas[0].dist - velhas + novas, 6);
+  });
+});
+
+// Dono, 15/11: "quando mudamos pinos, ela reage?". Com rede, a rota se refaz sozinha quando um
+// pino do que falta anda mais que o limite (acoes/rota.ts); aqui, só a decisão.
+describe('quando um pino do que falta anda demais', () => {
+  const longe = (m: number) => LNG + m / 109000;
+
+  it('acabada de montar, nada andou', async () => {
+    expect(andouDemais(await montado())).toBe(false);
+  });
+
+  it('um pino do que falta que andou mais que o limite pede a rota de novo', async () => {
+    const e = await montado();
+    p(e, 'c').lng = longe(ANDOU_DEMAIS + 20);
+    expect(andouDemais(e)).toBe(true);
+  });
+
+  it('andando pouco, a ordem continua valendo', async () => {
+    const e = await montado();
+    p(e, 'c').lng = longe(ANDOU_DEMAIS - 20);
+    expect(andouDemais(e)).toBe(false);
+  });
+
+  it('a entregue que mudou de lugar (a porta marcada na entrega) não pede nada', async () => {
+    const e = await montado();
+    p(e, 'c').lng = longe(ANDOU_DEMAIS + 20);
+    p(e, 'c').entregue = true;
+    expect(andouDemais(e)).toBe(false);
+  });
+
+  it('a deixada para depois não pede nada: ela volta pelo "Voltar para a rota"', async () => {
+    const e = await montado();
+    p(e, 'c').lng = longe(ANDOU_DEMAIS + 20);
+    p(e, 'c').adiada = true;
+    expect(andouDemais(e)).toBe(false);
+  });
+
+  it('na sequência das entregas, a ordem não depende do pino', async () => {
+    const e = await montado();
+    p(e, 'c').lng = longe(ANDOU_DEMAIS + 20);
+    e.ordemDoApp = true;
+    expect(andouDemais(e)).toBe(false);
+  });
+
+  it('rota de antes desta versão, sem os tempos, fica com o aviso de sempre', async () => {
+    const e = await montado();
+    p(e, 'c').lng = longe(ANDOU_DEMAIS + 20);
+    delete e.rota!.areas[0].tempos;
+    expect(andouDemais(e)).toBe(false);
+  });
+});
+
+describe('de onde sai a rota refeita no caminho', () => {
+  const agora = 1_000_000;
+  const eu = {lat: -10.97, lng: -37.06, precisao: 12, quando: agora - 30_000};
+
+  it('do GPS, se é de agora e bom', async () => {
+    const e = await montado();
+    expect(pontoDePartida(e, eu, agora)).toMatchObject({lat: eu.lat, lng: eu.lng});
+  });
+
+  it('com o GPS velho, da última entrega, não da saída da manhã', async () => {
+    const e = await montado();
+    Object.assign(p(e, 'b'), {entregue: true, entregueEm: agora - 600_000});
+    Object.assign(p(e, 'd'), {entregue: true, entregueEm: agora - 60_000});
+    const velho = {...eu, quando: agora - GPS_DE_AGORA - 1};
+    expect(pontoDePartida(e, velho, agora)).toMatchObject({lat: p(e, 'd').lat, lng: p(e, 'd').lng});
+  });
+
+  it('com o GPS impreciso, também da última entrega', async () => {
+    const e = await montado();
+    Object.assign(p(e, 'b'), {entregue: true, entregueEm: agora - 60_000});
+    expect(pontoDePartida(e, {...eu, precisao: 900}, agora)).toMatchObject({lat: p(e, 'b').lat});
+  });
+
+  it('sem GPS e sem entrega feita, da saída de sempre', async () => {
+    const e = await montado();
+    expect(pontoDePartida(e, null, agora)).toBe(e.inicio);
   });
 });
