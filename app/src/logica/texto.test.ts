@@ -91,7 +91,8 @@ describe('decompor', () => {
   it('sem número da rua, a numeração de dentro do condomínio não vira número da porta', () => {
     expect(decompor('Rua Antônio Andrade Casa 03, Coroa do Meio, CEP 49035-050'))
       .toMatchObject({rua: 'Rua Antônio Andrade', numero: null, resto: ['Casa 03', 'Coroa do Meio']});
-    expect(chaveLugar('Rua Antônio Andrade Casa 03, Coroa do Meio, CEP 49035-050', 'Coroa do Meio', 'Aracaju')).toBeNull();
+    // a casa do condomínio é a referência da porta (14/11), nunca o número 3 da rua
+    expect(chaveLugar('Rua Antônio Andrade Casa 03, Coroa do Meio, CEP 49035-050', 'Coroa do Meio', 'Aracaju')).toBe('49035050|sn casa 03');
   });
 
   it('palavra de unidade que faz parte do nome da rua não tira o número da porta', () => {
@@ -1145,6 +1146,35 @@ describe('endereço sem número também precisa de chave', () => {
     expect(chaveLugar('Rua Sem Nome, 12', 'Bairro Teste', 'Aracaju')).toBe('r|rua sem nome|12|bairro teste|aracaju');
   });
 
+  // 14/11, duas da Shopee do dono, sem número nenhum e com "próximo ao…": a porta que ele marcou na
+  // entrega valia só para o dia. A referência é o que separa a casa das outras da rua. Inventados.
+  it('sem número nenhum, a referência faz a chave, com CEP ou com bairro', () => {
+    expect(chaveLugar('Travessa Teste Inventada, Próximo ao Mercado Teste, CEP 49000-413', '', 'Aracaju'))
+      .toBe('49000413|sn proximo ao mercado teste');
+    expect(chaveLugar('Travessa Teste Inventada, Próximo ao Mercado Teste', 'Bairro Teste', 'Aracaju'))
+      .toBe('r|travessa teste inventada|sn proximo ao mercado teste|bairro teste|aracaju');
+  });
+
+  it('a mesma referência escrita igual cai na mesma chave, e outra referência em outra', () => {
+    const a = chaveLugar('Travessa Teste Inventada, Próximo ao Mercado Teste, CEP 49000-413', '', 'Aracaju');
+    expect(chaveLugar('TRAVESSA TESTE INVENTADA, proximo ao mercado teste, CEP 49000-413', '', 'Aracaju')).toBe(a);
+    expect(chaveLugar('Travessa Teste Inventada, Em frente à Escola Teste, CEP 49000-413', '', 'Aracaju')).not.toBe(a);
+  });
+
+  it('a chave da referência não se confunde com a do S/N do mesmo CEP', () => {
+    const k = chaveLugar('Travessa Teste Inventada, Próximo ao Mercado Teste, CEP 49000-413', '', 'Aracaju')!;
+    const sn = chaveLugar('Travessa Teste Inventada, S/N, CEP 49000-413', '', 'Aracaju')!;
+    expect(k).not.toBe(sn);
+    // a porta da entrega separada é a chave + "|" + complemento: a da referência não pode parecer
+    // uma separada do S/N
+    expect(k.startsWith(sn + '|')).toBe(false);
+  });
+
+  it('sem número e sem referência, a rua inteira seria uma porta só: continua sem chave', () => {
+    expect(chaveLugar('Travessa Teste Inventada, CEP 49000-413', '', 'Aracaju')).toBeNull();
+    expect(chaveLugar('Travessa Teste Inventada, Bairro Teste', 'Bairro Teste', 'Aracaju')).toBeNull();
+  });
+
   it('o aviso diz o que faltou de verdade', () => {
     expect(faltaNaChave('Travessa Teste Inventada, Casa Azul, CEP 49000-413')).toBe('Sem número da porta');
     expect(faltaNaChave('Rua Teste Inventada, 100')).toBe('Sem CEP nem bairro');
@@ -1181,8 +1211,9 @@ describe('"Nr" antes do número da porta', () => {
   it('o "Nr" do complemento não vira o número da porta', () => {
     const lugar = (texto: string) => chaveLugar(texto, 'Bairro Teste', 'Aracaju, SE');
     expect(lugar('Rua Teste Inventada, 15, Bloco Nr 3, Bairro Teste, CEP 49000-123')).toBe('49000123|15');
-    expect(lugar('Rua Teste Inventada, Casa Azul Nr 3, Bairro Teste, CEP 49000-123')).toBeNull();
-    expect(lugar('Rua Teste Inventada, Casa Azul, Nr 3, Bairro Teste, CEP 49000-123')).toBeNull();
+    // sem número da rua, o complemento inteiro é a referência da porta (14/11), nunca a porta 3
+    expect(lugar('Rua Teste Inventada, Casa Azul Nr 3, Bairro Teste, CEP 49000-123')).toBe('49000123|sn casa azul nr 3');
+    expect(lugar('Rua Teste Inventada, Casa Azul, Nr 3, Bairro Teste, CEP 49000-123')).toBe('49000123|sn casa azul nr 3');
   });
 
   // Revisão de 08/11: com número no fim da rua, o "Nr" do pedaço seguinte não troca a porta. A

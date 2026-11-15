@@ -103,8 +103,11 @@ export function bateNaChave(chave: string, busca: string): boolean {
 export function textoDaChave(chave: string): {endereco: string; bairro: string} {
   const partes = chave.split('|');
   const numero = (n: string) => n === 'sn' ? 'S/N' : n;
-  if (partes[0] === 'r') return {endereco: `${partes[1]}, ${numero(partes[2])}`, bairro: partes[3] || ''};
-  return {endereco: `CEP ${partes[0].slice(0, 5)}-${partes[0].slice(5)}, nº ${numero(partes[1])}`, bairro: ''};
+  // sem número, a referência vai no lugar dele (chaveLugar, 14/11): "sn próximo ao…"
+  const referencia = (n: string) => n.startsWith('sn ') ? `S/N, ${n.slice(3)}` : null;
+  if (partes[0] === 'r') return {endereco: `${partes[1]}, ${referencia(partes[2]) ?? numero(partes[2])}`, bairro: partes[3] || ''};
+  const cep = `CEP ${partes[0].slice(0, 5)}-${partes[0].slice(5)}`;
+  return {endereco: `${cep}, ${referencia(partes[1]) ?? `nº ${numero(partes[1])}`}`, bairro: ''};
 }
 
 // Um lugar por chave. O endereço escrito vem do pacote mais novo, quando há; sem pacote, sai da
