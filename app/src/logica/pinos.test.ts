@@ -1,4 +1,4 @@
-import {emLeque, empilhar} from './pinos';
+import {abrirAsQueSeCobrem, emLeque, empilhar, SE_COBREM} from './pinos';
 import type {Parada, Ponto} from './tipos';
 
 const GRAU = 111320;
@@ -106,5 +106,53 @@ describe('empilhar pinos', () => {
   it('uma separada sozinha no ponto não sai do lugar', () => {
     const pilhas = emLeque(empilhar([parada('so', 'Rodovia Teste, 67, Mercearia', 0, {separada: true}), parada('outra', 'Rua Longe, 5', 300)], tela(0.5)));
     expect(pilhas.map(g => g.dx)).toEqual([undefined, undefined]);
+  });
+});
+
+// Dono, 15/11: duas casas uma em frente à outra, a 8 m, viravam um pino que nenhum zoom separava.
+describe('no zoom máximo, casa diferente não divide pino', () => {
+  // zoom 19 em Aracaju: uns 0,29 m por pixel, e os 38 px de juntar dão 11 m
+  const z19 = tela(0.29);
+  const desenhado = (g: ReturnType<typeof empilhar>[number]) => ({x: g.x + (g.dx ?? 0), y: g.y + (g.dy ?? 0)});
+  const entre = (a: {x: number; y: number}, b: {x: number; y: number}) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  it('a 8 m, juntam fora do zoom máximo e se separam nele', () => {
+    const ps = [parada('426', 'Rua Recanto, 426', 0), parada('425', 'Rua Recanto, 425', 8)];
+    expect(ids(empilhar(ps, z19))).toEqual([['426', '425']]);
+    expect(ids(empilhar(ps, z19, () => 0, true))).toEqual([['426'], ['425']]);
+  });
+
+  it('o mesmo endereço continua um pino só no zoom máximo', () => {
+    const ps = [parada('predio1', 'Avenida das Flores, 1210, Apto 1601', 0), parada('predio2', 'Avenida das Flores, 1210, Condomínio Portal', 17)];
+    expect(ids(empilhar(ps, z19, () => 0, true))).toEqual([['predio1', 'predio2']]);
+  });
+
+  it('as que se cobrem abrem em leque, cada uma do seu lado, sem se cobrir', () => {
+    const ps = [parada('30', 'Rua Recanto, 30', 0), parada('32', 'Rua Recanto, 32', 1.8)];
+    const gs = abrirAsQueSeCobrem(empilhar(ps, z19, () => 0, true));
+    expect(gs.every(g => g.dx != null)).toBe(true);
+    const [a, b] = gs.map(desenhado);
+    expect(entre(a, b)).toBeGreaterThanOrEqual(30);
+    // a do 32 está ao norte: desenhada mais acima (y menor) que a do 30
+    expect(b.y).toBeLessThan(a.y);
+  });
+
+  it('três no mesmo ponto vão para a volta dele, sem se cobrir', () => {
+    const ps = [parada('a', 'Rua Um, 1', 0), parada('b', 'Rua Dois, 2', 0), parada('c', 'Rua Três, 3', 0)];
+    const ds = abrirAsQueSeCobrem(empilhar(ps, z19, () => 0, true)).map(desenhado);
+    for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) expect(entre(ds[i], ds[j])).toBeGreaterThanOrEqual(30);
+  });
+
+  it('afastadas o bastante para o dedo, ficam no seu ponto', () => {
+    const ps = [parada('426', 'Rua Recanto, 426', 0), parada('425', 'Rua Recanto, 425', 8)];
+    const gs = abrirAsQueSeCobrem(empilhar(ps, z19, () => 0, true));
+    expect(Math.abs(gs[0].y - gs[1].y)).toBeGreaterThanOrEqual(SE_COBREM);
+    expect(gs.map(g => g.dx)).toEqual([undefined, undefined]);
+  });
+
+  it('a entregue não abre em leque com a que falta', () => {
+    const ps = [parada('feita', 'Rua Recanto, 30', 0, {entregue: true}), parada('falta', 'Rua Recanto, 32', 1)];
+    const gs = abrirAsQueSeCobrem(empilhar(ps, z19, () => 0, true));
+    expect(gs.map(g => g.dx)).toEqual([undefined, undefined]);
   });
 });
