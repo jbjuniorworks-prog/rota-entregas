@@ -146,7 +146,15 @@ export default function Mapa() {
       if (loja.ui.posicionando || loja.ui.marcandoLugar) { tocouNoMapa(ev.latlng.lat, ev.latlng.lng); return; }
       if (loja.ui.pino) voltar();
     });
-    m.on('zoomend', () => setZoom(m.getZoom()));
+    // Todo zoom termina com cada pino no seu ponto (vídeos do dono, 14/11). Os pinos não acompanham
+    // a animação (markerZoomAnimation: false) e esperam o aviso do fim dela para se reposicionar. A
+    // pinça além do zoom máximo volta sozinha e, quando a volta termina na vista de antes, o Leaflet
+    // 1.9.4 encerra a animação por um atalho sem esse aviso: os balões voltavam e os pinos ficavam
+    // onde estavam no meio da pinça, longe da entrega, até a próxima mexida.
+    m.on('zoomend', () => {
+      m.eachLayer(l => { if (l instanceof L.Marker) l.setLatLng(l.getLatLng()); });
+      setZoom(m.getZoom());
+    });
     // "Qualquer mexida ainda para de seguir" (dono, 06/11): arrastar desligava o seguir, e a pinça
     // também, porque no celular o primeiro dedo anda antes de o segundo chegar e isso já conta como
     // arrastar. Agora, com o seguir ligado, arrastar e pinçar são só para olhar: o mapa obedece à
