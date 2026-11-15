@@ -1,4 +1,4 @@
-import {abrir, carregar, montar, test, expect, ROTA_A} from './apoio';
+import {abrir, carregar, menu, montar, test, expect, ROTA_A} from './apoio';
 
 // O toque perto do pino (dono, 15/11): indo para uma entrega, ele passa na porta de outra sem ver,
 // olhando a rua ou o outro celular. O teste escuta o que o app pede ao aparelho: a vibração do
@@ -50,5 +50,18 @@ test.describe('o toque perto do pino', () => {
     await context.setGeolocation(parado);
     await chegou(page, parado);
     expect(await avisos(page), 'parado na porta, tocou de novo').toBe(1);
+  });
+
+  test('com o som desligado no Mais, chegar perto não toca', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await menu(page, 'Desligar o som perto do pino');
+    await expect(page.locator('#status')).toContainText('Som perto do pino desligado.');
+
+    const perto = aNorteDe(await umPino(page), 20);
+    await context.setGeolocation(perto);
+    await chegou(page, perto);
+    expect(await avisos(page)).toBe(0);
   });
 });
