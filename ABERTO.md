@@ -246,6 +246,35 @@ Fora da lista:
   para abrir, mas não achei confirmação de que o Chrome do Android registra o app instalado para
   isso. Medir num celular antes de construir.
 
+## Endereço sem número com referência (14/11, rota da Shopee do dono): na branch `chave-sem-numero`, nada enviado
+
+- **O caso:** dos 55 endereços da rota, 53 verificaram; os 2 que não verificaram são os sem número
+  ("próximo ao…", "em frente ao…"). Sem número e sem "S/N", não havia chave: o "Entreguei aqui"
+  dizia "a porta vale só para hoje", nada subia, e a rota seguinte trazia o pino da planilha. O
+  dono: "não posso perder a posição".
+- **Medido no histórico (14/11, só leitura, scripts na pasta privada):** 10.174 entregas feitas, 30
+  sem chave; 19 sem número, todas com CEP e com referência. São 13 endereços; 3 voltaram em outro
+  dia (9 pacotes), cada um com mais de um motorista, e o pino caiu no mesmo lugar (2 a até 30 m, 1
+  a até 100 m). Nenhum sinal de dois clientes com o mesmo texto em lugares diferentes.
+- **Regra (`chaveLugar`):** sem número nem S/N, a referência (o complemento, sem bairro e cidade)
+  vai no lugar do número: `CEP|sn <referência>`, ou `r|rua|sn <referência>|bairro|cidade`. Sem
+  referência, continua sem chave: a rua inteira viraria uma porta só. O espaço depois do "sn" não
+  deixa a chave parecer uma separada do S/N do mesmo CEP (`chave|complemento`). Chave nova onde
+  não havia: nada gravado muda. O Admin lê "CEP …, S/N, <referência>" (`textoDaChave`).
+- **Testado:** 4 de unidade novos na chave, e 2 antigos (a casa do condomínio e o "Nr") passaram a
+  afirmar a referência, nunca a porta 3; 1 da leitura da chave no Admin; 1 e2e: o "Entreguei aqui"
+  manda a passagem com a chave nova e, na rota seguinte, o pino chega onde ele entregou. Dois e2e
+  antigos trocaram "Casa Azul" por uma linha sem referência, para continuar provando o aviso de
+  quem fica sem chave. Sabotagens: sem a regra, 5 de unidade (3 novos e os 2 ajustados) e o e2e
+  falham; com chave para todo sem número, 4 falham, entre eles o novo "sem referência continua sem
+  chave"; com "|" no lugar do espaço, 4 falham. Bateria: tipos, 604 de unidade e 318 de e2e.
+- **Não medido:** a linha sem número da leitura de print ou gravação do Meli não sobe pacote, e
+  ficou fora da conta. A ferramenta `npm run portas` recebe o número já separado e não grava porta
+  de endereço sem número.
+- **Depois de publicar:** a da rodovia (#41) deixou em `lugares` a posição marcada na entrega, a
+  25 m do pino da planilha; gravar como marcação do admin com a chave nova precisa do sim do dono.
+  A da travessa (#16) não deixou nada na nuvem: só se a rota entregue ainda estiver num celular.
+
 ## Migrações nos arquivos de rodar tudo (13/11, plano aprovado pelo dono): teste na branch `ordem-das-migracoes`, nada enviado
 
 - **Medido:** a 011 está inteira no `000_rodar_tudo.sql`, igual ao arquivo, mas sem a linha de

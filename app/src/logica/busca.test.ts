@@ -129,4 +129,11 @@ describe('procurar um endereço no que a nuvem guarda', () => {
     ]);
     expect(textoDaChave('r|rua projetada|sn|bairro sul|aracaju').endereco).toBe('rua projetada, S/N');
   });
+
+  // a porta do endereço sem número tem a referência no lugar do número (14/11)
+  it('a chave da referência se lê como S/N seguido da referência', () => {
+    expect(textoDaChave('49000150|sn proximo ao mercado teste').endereco).toBe('CEP 49000-150, S/N, proximo ao mercado teste');
+    expect(textoDaChave('r|rua projetada|sn proximo ao mercado teste|bairro sul|aracaju').endereco)
+      .toBe('rua projetada, S/N, proximo ao mercado teste');
+  });
 });

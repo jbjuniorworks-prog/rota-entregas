@@ -368,12 +368,13 @@ test.describe('a porta espera o prazo de desfazer antes de ir para a nuvem', () 
   // o relógio controlado anda sozinho; depois de pular o prazo, o envio ainda tem de acontecer
   const depoisDoPrazo = async (page) => { await page.clock.fastForward(PRAZO); await page.waitForTimeout(1500); };
 
-  // Pedro, 19/10: o aviso dizia "Sem CEP nem bairro" numa parada com CEP e bairro. Inventado.
+  // Pedro, 19/10: o aviso dizia "Sem CEP nem bairro" numa parada com CEP e bairro. Inventado. Sem
+  // referência: com ela, desde 14/11, a porta fica guardada (o teste seguinte).
   test('"Entreguei aqui" sem número da porta diz que falta o número, não o CEP', async ({page}) => {
     await abrir(page);
     await colar(page);
     await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
-    await page.getByLabel(/Endereços da área/).fill('Travessa Teste Outra, Casa Azul, CEP 49000-414');
+    await page.getByLabel(/Endereços da área/).fill('Travessa Teste Outra, CEP 49000-414');
     await page.getByRole('button', {name: /^Adicionar em/}).click();
     await expect(aviso(page)).toContainText(/Pronto|falharam/, {timeout: 30_000});
     await aba(page, '2. Conferir');
@@ -382,6 +383,43 @@ test.describe('a porta espera o prazo de desfazer antes de ir para a nuvem', () 
     await montar(page);
     await page.locator('.proxima [data-acao="aqui"]').click();
     await expect(aviso(page)).toContainText('com a porta marcada aqui (±12 m). Sem número da porta, a porta vale só para hoje.');
+  });
+
+  // 14/11, duas da Shopee do dono, sem número e com "próximo ao…": a porta do "Entreguei aqui"
+  // valia só para o dia, e a rota seguinte trazia o pino de volta para a planilha. Inventado.
+  test('"Entreguei aqui" sem número, com referência: a porta vai para a nuvem e volta na rota seguinte', async ({page, nuvem}) => {
+    const LINHA = 'Travessa Teste Outra, Próximo ao Mercado Teste, CEP 49000-414';
+    const CHAVE = '49000414|sn proximo ao mercado teste';
+    await page.clock.install();
+    await abrir(page);
+    await colar(page);
+    await page.getByLabel('Cidade padrão').fill('Aracaju, SE');
+    await page.getByLabel(/Endereços da área/).fill(LINHA);
+    await page.getByRole('button', {name: /^Adicionar em/}).click();
+    await expect(aviso(page)).toContainText(/Pronto|falharam/, {timeout: 30_000});
+    await aba(page, '2. Conferir');
+    // o pino de partida a uns 70 m de onde ele vai entregar: é a entrega que diz onde fica a porta
+    await linhaDe(page, 'Travessa Teste Outra', 'Marcar no mapa').getByRole('button', {name: 'Marcar no mapa'}).click();
+    await clicarMapa(page, -10.9600, -37.0450);
+    await montar(page);
+    await page.locator('.proxima [data-acao="aqui"]').click();
+    await expect(aviso(page)).toContainText('com a porta marcada aqui (±12 m). Vai para os outros motoristas como porta confirmada.');
+    await depoisDoPrazo(page);
+    await expect.poll(() => enviados(nuvem, 'observacoes').map(p => (p.corpo as {chave_lugar: string}).chave_lugar)).toEqual([CHAVE]);
+    const passagem = enviados(nuvem, 'observacoes')[0].corpo as {lat: number; lng: number};
+    expect([passagem.lat, passagem.lng]).toEqual([-10.9605, -37.0455]);
+
+    // outro dia, a mesma linha: o pino já chega onde ele entregou
+    page.on('dialog', d => d.accept());
+    await menu(page, 'Resetar a rota');
+    await colar(page);
+    await page.getByLabel(/Endereços da área/).fill(LINHA);
+    await page.getByRole('button', {name: /^Adicionar em/}).click();
+    await expect(aviso(page)).toContainText(/Pronto|falharam/, {timeout: 30_000});
+    await aba(page, '2. Conferir');
+    await expect(linhaDe(page, 'Travessa Teste Outra', 'Marcar no mapa')).toContainText('Posição que você corrigiu em');
+    const onde = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.map((p: {lat: number; lng: number}) => [p.lat, p.lng]));
+    expect(onde).toEqual([[-10.9605, -37.0455]]);
   });
 
   test('"Entreguei aqui" desfeito não manda passagem nem lugar, nem depois do prazo', async ({page, nuvem}) => {
@@ -548,7 +586,8 @@ test('"Sem N" guarda a porta para os outros como o S/N, e sem número o aviso di
   await carregar(page, ROTA_A);
   await colar(page);
   await page.getByLabel(/Endereços da área/).fill(
-    'Travessa Teste Inventada, Sem N, Invasão Rua B Próx Casa 26, CEP 49000-413\nTravessa Teste Outra, Casa Azul, CEP 49000-414');
+    // a outra, sem número e sem referência: com referência, desde 14/11, ela também guarda
+    'Travessa Teste Inventada, Sem N, Invasão Rua B Próx Casa 26, CEP 49000-413\nTravessa Teste Outra, CEP 49000-414');
   await page.getByRole('button', {name: /^Adicionar em/}).click();
   await expect(aviso(page)).toContainText(/Pronto|falharam/, {timeout: 30_000});
   await aba(page, '2. Conferir');

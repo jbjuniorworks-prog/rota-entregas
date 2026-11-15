@@ -1065,7 +1065,13 @@ export function chaveLugar(texto: string, bairro: string | undefined, cidade: st
   // "S/N" é endereço de verdade, e justamente o que fonte nenhuma acha — é o que mais precisa
   // ficar guardado depois que alguém marca. Antes ele caía fora por não ter número, e a marcação
   // valia só para o dia. Chave nova onde não havia nenhuma: não mexe no que já está gravado.
-  const numero = d.numero || (SEM_NUMERO.test(texto) ? 'sn' : null);
+  // Sem número nenhum escrito, nem S/N (14/11, duas da Shopee do dono: "próximo ao…", "em frente
+  // ao…"), a referência é o que separa a casa das outras da rua, e vai no lugar do número. Sem
+  // referência, a rua inteira viraria uma porta só: fica sem chave. Medido no histórico em 14/11:
+  // 19 de 10.174 entregas, todas com CEP e referência; 3 voltaram em outro dia, e o pino caiu no
+  // mesmo lugar, a até 100 m.
+  const referencia = d.numero || SEM_NUMERO.test(texto) ? '' : complementoDaParada(texto, bairro, cidade);
+  const numero = d.numero || (SEM_NUMERO.test(texto) ? 'sn' : referencia ? 'sn ' + referencia : null);
   if (!numero) return null;
   if (d.cep && !/000$/.test(d.cep)) return d.cep + '|' + numero;
   // sem número, o "S/N" fica grudado no nome da rua: tira, senão "SN" e "S/N" viram chaves
