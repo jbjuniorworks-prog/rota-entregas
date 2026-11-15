@@ -154,6 +154,34 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Rota que segue a entrega fora da ordem (15/11, dono, na rota: "a rota não se adapta quando faço um pino diferente"): na branch `rota-segue-a-entrega`, nada enviado
+
+- **Pedido:** entregando outra parada que não a do cartão, o cartão voltava para a pulada, já para
+  trás dele. A ordem só mudava com "Refazer a rota", que precisa de rede.
+- **Medido antes, na rota dele de 15/11 (só leitura):** 67 pacotes em 46 entregas, mediana de 6 min
+  entre elas; 24 portas marcadas na hora da entrega e nenhum pino de parada por entregar mexido. A
+  ordem do app fica só no celular: quantas vezes ele saiu dela não dá para medir.
+- **Regra (`logica/reorganizar.ts`):** ao montar, a rota guarda os tempos entre as visitas de cada
+  área (`tempos`, sem a saída), que já vinham do serviço de ruas e eram jogados fora. Entregue uma
+  parada fora do bloco do cartão, o que falta da área é ordenado de novo a partir dela, no celular,
+  sem rede. Nada muda quando: era a do cartão ou do mesmo bloco; a ordem nova sai igual; está em
+  "Sequência das entregas"; a rota é de antes desta versão; a entregue, ou uma que falta, andou
+  mais de 100 m desde a montagem (aí fica o "Refazer a rota" de antes).
+- **Na tela (`acoes/reorganizar.ts`):** o aviso da entrega diz "Fora da ordem: a sequência agora
+  segue daqui."; o Desfazer da entrega, no aviso ou na lista, devolve a ordem de antes, se nada
+  mexeu nela depois. A linha verde da área sai até haver rede, e é pedida de novo a cada entrega e
+  quando a rede volta.
+- **Limites:** só dentro da área da entrega (outra área com prazo continua na frente); parte do
+  ponto medido da entregue, não do GPS; a volta para a saída não é recalculada no total.
+- **Testado:** 14 testes de unidade (`reorganizar.test.ts`) e 3 e2e em 412×915
+  (`reorganizar.spec.ts`). Sabotagens: 12 na regra e 5 na tela, cada uma quebrou o seu teste; o
+  teste da linha passava sem o aviso de rede de volta (o `setOffline` não barra o que o próprio
+  teste responde) e foi corrigido. Medido: 4 a 8 ms para 60 visitas no computador, uns 31 mil
+  caracteres a mais na memória do celular. Bateria: tipos, 628 de unidade e 325 de e2e. **Não
+  testado** num celular de verdade.
+- **Para depois:** com rede, refazer sozinho quando muda o pino de uma parada por entregar (15/11,
+  item 3 da proposta; 0 casos na rota dele) e contar, sem endereço, quantas entregas saem da ordem.
+
 ## Som perto do pino (15/11, dono, na rota: "um barulho pra quando chegar perto de um pino"): na branch `aviso-perto-do-pino`, nada enviado
 
 - **Pedido:** indo para uma entrega, ele passa na porta de outra sem ver, olhando a rua ou o outro
