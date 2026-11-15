@@ -182,6 +182,27 @@ Fora da lista:
 - **Para depois:** com rede, refazer sozinho quando muda o pino de uma parada por entregar (15/11,
   item 3 da proposta; 0 casos na rota dele) e contar, sem endereço, quantas entregas saem da ordem.
 
+## Rota que se refaz quando um pino anda demais (15/11, dono: "quando mudamos pinos, ela reage?"): na branch `refazer-quando-o-pino-anda`, nada enviado
+
+- **Medido antes, no histórico** (111 dias de rota): em 26, um pino de parada por entregar andou mais
+  de 100 m pelo menos 10 min antes da entrega dela (54 casos). Os pinos verificados que chegam da
+  nuvem no meio do dia não entram nessa conta.
+- **Regra (`logica/reorganizar.ts`):** `andouDemais` quando uma parada da ordem, por entregar e não
+  adiada, está a mais de 100 m do ponto medido na montagem (o mesmo limite que desliga a
+  reorganização da entrega fora da ordem); não vale em "Sequência das entregas" nem em rota sem os
+  tempos. `pontoDePartida`: o GPS, se é de até 2 min e ±100 m; senão, a última entrega.
+- **No app (`acoes/reorganizar.ts`):** 10 s depois da última mudança de pino, com rede, ela se refaz
+  sozinha, uma vez só por leva de pinos. Sem rede não tenta, e tenta quando a rede volta. Sem
+  resposta do serviço de ruas, fica a de antes. Aviso "Um pino mudou de lugar, e a rota foi
+  refeita." com Desfazer; desfeita, aquela rota não é refeita sozinha de novo. Não muda de tela nem
+  o enquadramento.
+- **Testado:** 11 de unidade e 3 e2e (`refazer-sozinha.spec.ts`, 412×915, serviço de ruas de mentira,
+  pinos movidos pelo Arrumar). Sabotagens: 8 na regra e 6 no app, cada uma quebrou o seu teste; o
+  teste da espera passava sem ela na primeira versão e foi corrigido. Bateria: tipos, 639 de unidade e 329 de e2e.
+  **Não testado** num celular de verdade.
+- Cobre o "para depois" da seção "Rota que segue a entrega fora da ordem", menos contar as entregas
+  fora da ordem.
+
 ## Som perto do pino (15/11, dono, na rota: "um barulho pra quando chegar perto de um pino"): publicado em 15/11 (#17, versão `mwhtsvge`), falta ouvir no celular
 
 - **Pedido:** indo para uma entrega, ele passa na porta de outra sem ver, olhando a rua ou o outro
