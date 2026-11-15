@@ -18,6 +18,7 @@ import {clienteNuvem} from '../servicos/nuvem';
 import {contar, desatualizarRota, e, enviarFila, ESPERA_DA_PORTA, fila, memoria, ui} from './base';
 import {abrir, alturaAgora, irPara, voltar} from './navegacao';
 import {cartaoAoAndar} from '../logica/seguir';
+import {avisarPerto} from './aviso';
 import {revisaoComercial} from './comerciais';
 
 export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number; lembradasVerificadas: number; xaropes: number}> {
@@ -619,12 +620,14 @@ const ANDANDO = 0.8;
 
 export function seguirMinhaPosicao(): () => void {
   if (!navigator.geolocation) return () => {};
+  const avisadas = new Set<string>();
   const vigia = navigator.geolocation.watchPosition(pos => {
     const {latitude, longitude, accuracy, heading, speed} = pos.coords;
     ui.euAqui = {
       lat: latitude, lng: longitude, precisao: accuracy, quando: Date.now(),
       rumo: heading != null && Number.isFinite(heading) && (speed || 0) > ANDANDO ? heading : (ui.euAqui?.rumo ?? null),
     };
+    avisarPerto(ui.euAqui, avisadas);
     // Com o cartão de um pino aberto o seguir pausa; longe de onde abriu, ele já foi embora: fecha
     // e o mapa volta para ele. Não com o seguir desligado por ele, nem com o toque no mapa armado.
     if (ui.pino && ui.tela === 'rota' && ui.seguindo && !ui.posicionando) {

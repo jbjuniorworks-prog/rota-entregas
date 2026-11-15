@@ -15,6 +15,7 @@ import {rotuloDe} from './logica/rotulo';
 import type {Parada, Ponto} from './logica/tipos';
 import {guardarLeitor} from './servicos/arquivos';
 import {nuvem} from './servicos/nuvem';
+import {destravarSom} from './servicos/som';
 
 const Mapa = lazy(() => import('./componentes/Mapa'));
 const TelaAdmin = lazy(() => import('./componentes/Admin').then(m => ({default: m.TelaAdmin})));
@@ -130,6 +131,8 @@ function App() {
 
 // antes de desenhar: o Chrome pode avisar que dá para instalar logo que a página carrega
 A.ouvirInstalacao();
+// o som do aviso perto do pino só toca depois de um toque na tela (servicos/som.ts)
+addEventListener('pointerdown', destravarSom, {capture: true, passive: true});
 createRoot(document.getElementById('raiz')!).render(<App />);
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
