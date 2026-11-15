@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 12/11/2026.
+Atualizado em 14/11/2026.
 
 ## O que vem agora
 
@@ -153,6 +153,26 @@ Fora da lista:
 - "Falha viva" guarda os defeitos conhecidos sem conserto decidido;
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
+
+## Pino longe do balão depois da pinça (14/11, vídeos do dono): na branch `pinos-depois-do-zoom`, nada enviado
+
+- **O que se via:** no zoom máximo, a pinça estica o mapa além dele e, ao soltar, o mapa volta. Os
+  balões ("P13 ×5") voltavam para o lugar e os pinos ficavam onde estavam no meio da pinça, longe
+  da entrega, até a próxima mexida; às vezes o mapa piscava cinza só com o balão. É o "só o balão
+  P9 ×3" de 16/10, que tinha ficado sem reproduzir.
+- **Causa, no Leaflet 1.9.4:** quando a volta termina na vista de antes, a animação acaba por um
+  atalho (o `zoomanim` da camada de animação chama o fim antes de marcar que o zoom mudou), e o
+  aviso de zoom não chega aos marcadores. Os nossos pinos não acompanham a animação
+  (`markerZoomAnimation: false`, de 21/09, para o mapa pesar menos) e dependem desse aviso.
+- **Conserto:** no fim de todo zoom, cada marcador é reposto no seu ponto (`Mapa.tsx`).
+- **Testado:** 2 testes novos em `mapa.spec.ts`, com pinça de dedos de verdade (CDP) em 412×915,
+  com o mapa solto (rota-d, três pinças seguidas) e seguindo. Sem o conserto, 80 de 80 e 9 pinos
+  fora do ponto; com ele, nenhum, três vezes cada. Bateria: tipos, 599 de unidade e 319 de e2e.
+  **Não testado** num Android de verdade.
+- **"Separar totalmente":** o "#11+2" do vídeo eram 3 pacotes da mesma casa (P4): o pino é um só
+  de propósito, e o Separar existe para quando não são. Na rota do dono de 14/11, só 2 pares de
+  endereços diferentes ficam a menos de 12 m: aumentar o zoom máximo além do 19, com o mapa
+  borrado, não se justifica agora.
 
 ## Link do cliente sem posição (12/11, Luan): publicado do #8 ao #11, 032 rodada; #12 em revisão
 

@@ -458,6 +458,87 @@ test.describe('o seguir com os dedos', () => {
   });
 });
 
+// Vídeos do dono (14/11): no zoom máximo, a pinça estica o mapa além dele e, ao soltar, o mapa
+// volta. Os balões voltavam para o lugar e os pinos ficavam onde estavam no meio da pinça, longe
+// do balão e da entrega, até a próxima mexida. Com dedos de verdade, como no celular.
+test.describe('a pinça além do zoom máximo', () => {
+  const NA_ROTA = {latitude: -10.9605, longitude: -37.0455, accuracy: 10};
+  test.use({viewport: {width: 412, height: 915}, hasTouch: true, isMobile: true, permissions: ['geolocation'], geolocation: NA_ROTA});
+  const zoomAgora = (page) => page.evaluate(() => (window as any).rotaTeste.zoomAtual() as number);
+  // Os pinos cuja ponta (o pé do ícone) não cai no ponto da entrega que ele desenha, a primeira da
+  // pilha. Os que estão fora da tela também contam: o Leaflet os mantém no lugar do mesmo jeito.
+  const foraDoLugar = (page) => page.evaluate(() => {
+    const ps = JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas as {id: string; lat: number; lng: number}[];
+    const m = document.querySelector('#map')!.getBoundingClientRect();
+    const icones = [...document.querySelectorAll('.leaflet-marker-icon')].filter(el => el.querySelector('.pino[data-ids]'));
+    return {
+      pinos: icones.length,
+      fora: icones.filter(el => {
+        const p = ps.find(q => q.id === el.querySelector('.pino')!.getAttribute('data-ids')!.split('+')[0])!;
+        const r = el.getBoundingClientRect(), alvo = (window as any).rotaTeste.pixel(p.lat, p.lng);
+        return Math.hypot(r.left - m.left + r.width / 2 - alvo.x, r.top - m.top + r.height - alvo.y) > 3;
+      }).length,
+    };
+  });
+  // dois dedos se afastando devagar, até passar do máximo; devolve o zoom com os dedos na tela
+  async function pincarAlemDoMaximo(page, x: number, y: number) {
+    const cdp = await page.context().newCDPSession(page);
+    const toque = (type: string, touchPoints: {x: number; y: number}[]) => cdp.send('Input.dispatchTouchEvent', {type, touchPoints});
+    await toque('touchStart', [{x: x - 30, y}, {x: x + 30, y}]);
+    for (let k = 1; k <= 14; k++) {
+      await toque('touchMove', [{x: x - 30 - k * 9, y: y - k * 2}, {x: x + 30 + k * 9, y: y + k * 2}]);
+      await page.waitForTimeout(40);
+    }
+    const esticado = await zoomAgora(page);
+    await toque('touchEnd', []);
+    await cdp.detach();
+    return esticado;
+  }
+  // a volta do mapa acabou: no máximo de novo, sem animação, e passado o prazo de 250 ms com que o
+  // Leaflet encerra a animação quando o navegador não avisa
+  const voltou = async (page) => {
+    await expect.poll(() => zoomAgora(page)).toBe(19);
+    await expect(page.locator('.leaflet-zoom-anim')).toHaveCount(0);
+    await page.waitForTimeout(400);
+  };
+
+  test('com o mapa solto, cada pino volta para o ponto da sua entrega', async ({page}) => {
+    const {garantirMapa, verNoMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-d.xlsx');
+    await garantirMapa(page);
+    const [p] = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.filter((q: any) => q.lat != null));
+    await verNoMapa(page, p.lat, p.lng, 19);
+    expect((await foraDoLugar(page)).fora, 'antes da pinça, no lugar').toBe(0);
+    const caixa = (await page.locator('#map').boundingBox())!;
+    // a volta nem sempre cai no mesmo caminho do Leaflet: três pinças seguidas, como no vídeo
+    for (let vez = 1; vez <= 3; vez++) {
+      expect(await pincarAlemDoMaximo(page, caixa.x + caixa.width / 2, caixa.y + 250), 'a pinça passou do máximo').toBeGreaterThan(19.5);
+      await voltou(page);
+      const r = await foraDoLugar(page);
+      expect(r.pinos).toBeGreaterThan(0);
+      expect(r.fora, `pinça ${vez}: pinos fora do ponto da entrega`).toBe(0);
+    }
+  });
+
+  test('seguindo, a pinça em volta dele também devolve cada pino ao seu ponto', async ({page}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    await page.evaluate(() => (window as any).rotaTeste.zoom(19));
+    await voltou(page);
+    expect((await foraDoLugar(page)).fora, 'antes da pinça, no lugar').toBe(0);
+    const caixa = (await page.locator('#map').boundingBox())!;
+    expect(await pincarAlemDoMaximo(page, caixa.x + caixa.width / 2, caixa.y + 250), 'a pinça passou do máximo').toBeGreaterThan(19.5);
+    await voltou(page);
+    await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');
+    const r = await foraDoLugar(page);
+    expect(r.pinos).toBeGreaterThan(0);
+    expect(r.fora, 'pinos fora do ponto da entrega').toBe(0);
+  });
+});
+
 // O cartão de baixo muda de altura, e o Leaflet só desenha no tamanho que ele conhece: no print
 // do Pedro (03/10), o cartão de um pino, mais baixo, deixou uma faixa cinza no pé do mapa.
 test.describe('o mapa acompanha a altura do cartão', () => {
