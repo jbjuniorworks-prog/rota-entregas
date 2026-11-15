@@ -27,6 +27,7 @@ export function MenuMais() {
       {comParadas && item(e.rota ? 'Refazer a rota' : 'Montar a rota', A.montarRota)}
       {item('Ponto de chegada', () => A.abrir({tela: 'saida'}))}
       {item('Áreas e horários', () => A.abrir({tela: 'areas'}))}
+      {item(A.somLigado() ? 'Desligar o som perto do pino' : 'Ligar o som perto do pino', A.trocarSom)}
       {e.rota && item('Copiar a rota para o WhatsApp', A.copiarRota)}
       {comParadas && item('Ler mais uma planilha ou endereços', () => A.abrir({tela: 'inicio'}))}
       {comParadas && item('Resetar a rota', A.resetar, 'perigo')}

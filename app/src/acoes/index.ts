@@ -9,3 +9,4 @@ export * from './rota';
 export * from './versao';
 export * from './instalar';
 export * from './nomesNoMapa';
+export * from './aviso';

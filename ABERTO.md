@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 14/11/2026.
+Atualizado em 15/11/2026.
 
 ## O que vem agora
 
@@ -153,6 +153,31 @@ Fora da lista:
 - "Falha viva" guarda os defeitos conhecidos sem conserto decidido;
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
+
+## Som perto do pino (15/11, dono, na rota: "um barulho pra quando chegar perto de um pino"): na branch `aviso-perto-do-pino`, nada enviado
+
+- **Pedido:** indo para uma entrega, ele passa na porta de outra sem ver, olhando a rua ou o outro
+  celular.
+- **Medido antes, no histórico** (111 rotas, 5.566 paradas; a posição de cada uma é o GPS da
+  passagem, senão o pino da planilha): com 40 m, 6,7% das paradas foram entregues depois de o
+  motorista já ter parado a menos de 40 m delas, em outra entrega, e ido embora; 14,3% ficaram a
+  menos de 40 m da linha reta entre duas entregas anteriores. O histórico não separa distração de
+  escolha de ordem. Tocando uma vez por parada, seriam uns 49 toques numa rota de 50.
+- **Regra (`logica/aviso.ts`):** a menos de 40 m de uma parada por entregar, com o GPS a ±40 m ou
+  melhor, toca uma vez: dois bipes e vibração (`servicos/som.ts`), um toque só por leitura do GPS,
+  por mais paradas que sejam. A mesma parada só toca de novo depois de ele se afastar 100 m.
+  Entregue e pino em dúvida (os de Conferir) não tocam. Ligado de começo; "Desligar o som perto do
+  pino" no Mais, por celular.
+- **Limites:** a especificação da localização só entrega posição com a página visível: com a tela
+  apagada ou outro app por cima, não toca. Antes do primeiro toque na tela desde que o app abriu,
+  o navegador não deixa tocar nem vibrar.
+- **Testado:** 10 testes de unidade (`logica/aviso.test.ts`) e 2 e2e (`aviso.spec.ts`), que escutam
+  a vibração e os bipes pedidos ao aparelho. Sabotagens: sem a chamada no GPS, sem o desligar, sem
+  a memória entre leituras, sem o rearmar, sem tirar entregue, dúvida e GPS impreciso; cada uma
+  quebrou o seu teste. Bateria: tipos, 614 de unidade e 322 de e2e. **Não testado** num celular de
+  verdade: o volume no trânsito e de capacete é o que falta ver.
+- **Para depois:** manter a tela acesa com o app aberto (Wake Lock), para o aviso não parar quando
+  a tela apaga sozinha. É outra frente.
 
 ## Pino longe do balão depois da pinça (14/11, vídeos do dono): na branch `pinos-depois-do-zoom`, nada enviado
 
