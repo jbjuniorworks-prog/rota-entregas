@@ -114,12 +114,24 @@ export interface Perna {
   dist: number;
 }
 
+// Os tempos entre as visitas de uma área, do jeito que o serviço de ruas mediu ao montar a rota.
+// Ficam guardados para a ordem poder ser refeita no celular, sem rede, quando ele entrega fora da
+// ordem. Sem `dur`/`dist`, a rota saiu em linha reta, e a conta é refeita pelos pontos.
+export interface TemposDaArea {
+  visitas: {ids: string[]; lat: number; lng: number}[];
+  // com `fim`, a última linha e a última coluna são o ponto final
+  dur?: number[][];
+  dist?: number[][];
+  fim?: Ponto;
+}
+
 export interface RotaArea {
   id: string;
   ordem: string[];
   dur: number;
   dist: number;
   linha: [number, number][] | null;
+  tempos?: TemposDaArea;
 }
 
 export interface Rota {
