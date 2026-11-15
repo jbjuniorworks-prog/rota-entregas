@@ -6,6 +6,7 @@
 // que falta é a conferência do motorista novo, a entrega longe do pino e as do fim da rota, que
 // ainda não subiram.
 import {haversine, NO_PINO} from './geo';
+import {hojeEmMaceio} from './painel';
 
 export type Motivo = 'aprovar' | 'subindo' | 'longe' | 'so-correcao' | 'sem-marca' | 'nao-batem' | 'nao-conta' | 'separada' | 'recusada' | 'sem-chave';
 
@@ -147,4 +148,39 @@ export function verificadasPorMotorista(rotas: {id: string; motorista: string; m
     saida.set(quem, m);
   }
   return [...saida.values()].sort((a, b) => a.verificados / a.entregues - b.verificados / b.entregues || a.motorista.localeCompare(b.motorista));
+}
+
+export interface MinhaRota {
+  id: string;
+  dia: string;
+  arquivo: string | null;
+}
+
+export interface MinhasPortas {
+  rotas: number;
+  entregues: number;
+  verificados: number;
+  // a mais nova primeiro, só as que têm entrega
+  porRota: {rota: MinhaRota; portas: PortasDaRota}[];
+}
+
+// "Aquela lista de verificados aparecendo para eles também" (Luan, pelo dono, 15/11): o mesmo
+// "Portas verificadas por motorista" do Admin, só das rotas dele, com o porquê de cada rota. A conta
+// é a mesma (`porQueNaoVerificou` rota por rota), para os dois números baterem. As marcas valem no
+// dia da rota: a passagem traz o dia; a correção, a hora, que vira o dia de Aracaju.
+export function minhasPortas(rotas: MinhaRota[], pacotes: (PacoteDaRota & {rota_id: string})[], confirmadas: ReadonlySet<string>,
+  passagens: (MarcaDoDia & {dia?: string})[], correcoes: MarcaDoDia[], agora = Date.now()): MinhasPortas {
+  const diaDe = (m: MarcaDoDia & {dia?: string}) => m.dia || hojeEmMaceio(Date.parse(m.criado_em));
+  const saida: MinhasPortas = {rotas: 0, entregues: 0, verificados: 0, porRota: []};
+  for (const rota of [...rotas].sort((a, b) => b.dia.localeCompare(a.dia))) {
+    const ps = pacotes.filter(p => p.rota_id === rota.id);
+    const doDia = (m: MarcaDoDia & {dia?: string}) => diaDe(m) === rota.dia;
+    const portas = porQueNaoVerificou(ps, confirmadas, passagens.filter(doDia), correcoes.filter(doDia), agora);
+    if (!portas.entregues) continue;
+    saida.rotas++;
+    saida.entregues += portas.entregues;
+    saida.verificados += portas.verificados;
+    saida.porRota.push({rota, portas});
+  }
+  return saida;
 }
