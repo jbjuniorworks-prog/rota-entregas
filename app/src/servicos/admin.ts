@@ -5,6 +5,7 @@ import {hojeEmMaceio, resumirDia, type Dia, type MarcaDoAdmin, type PacoteDoDia}
 import type {PortaDaNuvem} from '../logica/triagem';
 import {porQueNaoVerificou, verificadasPorMotorista, type MarcaDoDia, type PacoteDaRota, type PortasDaRota, type VerificadasDoMotorista} from '../logica/verificacao';
 import {nuvem} from './nuvem';
+import {falhou, paginado, pedacos} from './paginado';
 
 export interface Motorista {
   id: string;
@@ -69,22 +70,6 @@ function cliente(): SupabaseClient {
   if (!c || !nuvem.sessao) throw new Error('entre na conta de administrador');
   return c;
 }
-
-function falhou(error: {message?: string} | null) {
-  if (error) throw new Error(error.message || 'erro no servidor');
-}
-
-async function paginado<T>(consulta: (de: number, ate: number) => PromiseLike<{data: T[] | null; error: any}>): Promise<T[]> {
-  const saida: T[] = [];
-  for (let de = 0; ; de += 1000) {
-    const {data, error} = await consulta(de, de + 999);
-    falhou(error);
-    saida.push(...(data || []));
-    if (!data || data.length < 1000) return saida;
-  }
-}
-
-const pedacos = <T>(xs: T[], n: number) => Array.from({length: Math.ceil(xs.length / n)}, (_, i) => xs.slice(i * n, i * n + n));
 
 export async function listarMotoristas(): Promise<Motorista[]> {
   const {data, error} = await cliente().from('perfis').select('*').order('papel').order('nome');
