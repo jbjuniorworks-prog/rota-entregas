@@ -10,3 +10,4 @@ export * from './versao';
 export * from './instalar';
 export * from './nomesNoMapa';
 export * from './aviso';
+export * from './reorganizar';

@@ -12,6 +12,7 @@ import {foraDaRegiao} from '../servicos/geocodificacao';
 import {linhaDaRota, matriz} from '../servicos/ruas';
 import {contar, desatualizarRota, e, enviarFila, fila, ui} from './base';
 import {abrir, irPara} from './navegacao';
+import {pedirLinhas, SEGUE_DAQUI, seguirDaqui, voltarOrdem} from './reorganizar';
 import {ARRUMAR_DE_LONGE, comMinhaPosicao, consultarCompartilhadas, desfazerPorta, GPS_PASSAGEM, guardarPassagem, guardarPassagens, longeDemais, portaDaEntrega} from './posicoes';
 import {registrarComoFicou} from './registro';
 
@@ -124,7 +125,10 @@ export async function montarRota() {
   loja.mudou();
 }
 
-export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = true, comGps = true) {
+// Diz se a ordem da rota mudou: refeita a partir desta entrega, ou de volta à de antes ao desfazê-la.
+export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = true, comGps = true): boolean {
+  // antes de marcar, que é quando dá para saber se ela era a do cartão
+  const mudou = entregue ? !p.entregue && seguirDaqui(p) : !!p.entregue && voltarOrdem(p);
   p.entregue = entregue;
   p.entregueEm = entregue ? Date.now() : null;
   // Tocou em Arrumar e entregou sem tocar no mapa: o modo ficava armado, e o toque seguinte no
@@ -143,9 +147,8 @@ export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = tru
     const d = proximaAPe(p, proxima);
     // Uma mensagem só: o aviso tem uma vaga, e o do desfazer apagaria o de "dá para ir a pé".
     const aPe = d && proxima ? ` Próxima a ~${d} m: ${proxima.texto.split(',').slice(0, 2).join(',')}. Dá para ir a pé.` : '';
-    status('Entregue.' + aPe, aPe ? 7000 : 6000, () => {
-      marcarEntregue(p, false, false, false);
-      status('Entrega desfeita.', 3000);
+    status('Entregue.' + (mudou ? ' ' + SEGUE_DAQUI : '') + aPe, aPe || mudou ? 7000 : 6000, () => {
+      status(desfeita('Entrega desfeita.', marcarEntregue(p, false, false, false)), 3000);
     });
     if (aPe) { try { navigator.vibrate?.(200); } catch {} }
   }
@@ -154,7 +157,12 @@ export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = tru
     fila.enfileirar({tipo: 'entregue', rota: p.rota, tns: p.pacotes, quando: entregue ? new Date(p.entregueEm!).toISOString() : null});
     enviarFila();
   }
+  // a linha da ordem refeita sem rede: cada entrega é uma nova chance de ter rede
+  if (entregue) void pedirLinhas();
+  return mudou;
 }
+
+const desfeita = (texto: string, voltou: boolean) => texto + (voltou ? ' A ordem de antes voltou.' : '');
 
 export function entregarTodas(ps: Parada[]) {
   const faltando = ps.filter(p => !p.entregue);
@@ -163,11 +171,10 @@ export function entregarTodas(ps: Parada[]) {
   if (!confirm(`Marcar como entregue tudo desta parada?
 
 ${faltando.length} entrega(s), ${pacotes} pacote(s).`)) return;
-  faltando.forEach(p => marcarEntregue(p, true, false, false));
+  const mudou = faltando.map(p => marcarEntregue(p, true, false, false)).some(Boolean);
   guardarPassagens(faltando);
-  status(`${faltando.length} entrega(s) marcada(s) aqui. Se sobrou alguma, desfaça na lista.`, 6000, () => {
-    faltando.forEach(p => marcarEntregue(p, false, false, false));
-    status('Entregas desfeitas.', 3000);
+  status(`${faltando.length} entrega(s) marcada(s) aqui.${mudou ? ' ' + SEGUE_DAQUI : ''} Se sobrou alguma, desfaça na lista.`, 6000, () => {
+    status(desfeita('Entregas desfeitas.', faltando.map(p => marcarEntregue(p, false, false, false)).some(Boolean)), 3000);
   });
 }
 
@@ -182,12 +189,11 @@ export function entregueAqui(ps: Parada[]) {
 
 ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
   // A entrega é fato e não espera o GPS, que parado na porta pode levar uns segundos.
-  alvo.forEach(p => marcarEntregue(p, true, false, false));
+  const daqui = alvo.map(p => marcarEntregue(p, true, false, false)).some(Boolean) ? ' ' + SEGUE_DAQUI : '';
   const quantas = alvo.length > 1 ? ` as ${alvo.length}` : '';
-  const desfazerEntrega = () => alvo.forEach(p => marcarEntregue(p, false, false, false));
-  const soEntregue = (motivo: string, depois = '') => status(`Entregue${quantas}. ${motivo} O pino ficou onde estava.${depois ? ' ' + depois : ''}`, 8000, () => {
-    desfazerEntrega();
-    status('Entrega desfeita.', 3000);
+  const desfazerEntrega = () => alvo.map(p => marcarEntregue(p, false, false, false)).some(Boolean);
+  const soEntregue = (motivo: string, depois = '') => status(`Entregue${quantas}. ${motivo} O pino ficou onde estava.${depois ? ' ' + depois : ''}${daqui}`, 8000, () => {
+    status(desfeita('Entrega desfeita.', desfazerEntrega()), 3000);
   });
   comMinhaPosicao((lat, lng, precisao) => {
     // desfeita ou resetada enquanto o GPS respondia: a porta já não é desta entrega
@@ -203,12 +209,11 @@ ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
     const {guardou} = portaDaEntrega(vivas, lat, lng, precisao);
     status(`Entregue${quantas}, com a porta marcada aqui (±${margem} m).` + (guardou
       ? ' Vai para os outros motoristas como porta confirmada.'
-      : ` ${faltaNaChave(vivas[0].texto)}, a porta vale só para hoje.`), 10000, () => {
+      : ` ${faltaNaChave(vivas[0].texto)}, a porta vale só para hoje.`) + daqui, 10000, () => {
       // desfazer a entrega volta a porta junto (desfazerPorta, em marcarEntregue)
-      desfazerEntrega();
-      status('Desfeito: a entrega voltou para a lista e o pino para onde estava.', 4000);
+      status(desfeita('Desfeito: a entrega voltou para a lista e o pino para onde estava.', desfazerEntrega()), 4000);
     });
-  }, motivo => soEntregue(`Não consegui o GPS: ${motivo}`), `Entregue${quantas}. Marcando a porta pelo GPS…`);
+  }, motivo => soEntregue(`Não consegui o GPS: ${motivo}`), `Entregue${quantas}. Marcando a porta pelo GPS…${daqui}`);
 }
 
 // Os pacotes de uma parada, um por entrega (26/10): cada um com o seu Entreguei e a sua porta. A

@@ -1,6 +1,6 @@
 import {haversine} from './geo';
 import {agruparVisitas, custo, otimizar, type Matriz, type Visita} from './otimizacao';
-import type {Area, Estado, Local, Parada, Ponto, Rota} from './tipos';
+import type {Area, Estado, Local, Parada, Ponto, Rota, TemposDaArea} from './tipos';
 
 export interface ServicosDeRota {
   matriz(pts: Ponto[]): Promise<{dur: Matriz; dist: Matriz; porRuas: boolean; motivo?: string}>;
@@ -80,7 +80,15 @@ export async function montarRota(e: Estado, s: ServicosDeRota, aviso: (m: string
     }
     const seq = p.map(i => pts[i]);
     const linha = M.porRuas && seq.length >= 2 ? await s.linha(seq) : null;
-    rota.areas.push({id: a.id, ordem, dur, dist, linha});
+    // A saída sai da matriz: a ordem refeita no caminho começa da entrega, não de onde ele saiu.
+    // Inteiros, porque isto vai para a memória do celular a cada mudança.
+    const semSaida = (m: Matriz) => m.slice(off).map(l => l.slice(off).map(Math.round));
+    const tempos: TemposDaArea = {
+      visitas: visitas.map(v => ({ids: v.ps.map(x => x.id), lat: v.ponto.lat, lng: v.ponto.lng})),
+      ...(M.porRuas ? {dur: semSaida(M.dur), dist: semSaida(M.dist)} : {}),
+      ...(fim ? {fim: {lat: fim.lat, lng: fim.lng}} : {}),
+    };
+    rota.areas.push({id: a.id, ordem, dur, dist, linha, tempos});
     rota.dur += dur;
     rota.dist += dist;
     pos = e.paradas.find(x => x.id === ordem[ordem.length - 1]) as ComPosicao;
