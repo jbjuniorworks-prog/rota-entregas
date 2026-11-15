@@ -154,6 +154,24 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Casas diferentes no zoom máximo (15/11, dono: "as entregas era uma na frente da casa da outra, e os pinos juntaram"): na branch `leque-no-zoom-maximo`, nada enviado
+
+- **O que se via:** o 426 e o 425 da rota de 15/11, com as portas a 8,1 m, eram um pino só, e o 30 e
+  o 32, a 1,8 m, também. O mapa do Admin, que não empilha, mostrava dois.
+- **Causa (`logica/pinos.ts`):** pinos a menos de 38 px viram um. No zoom 19, o máximo, isso dá
+  uns 11 m, e nenhum zoom separava.
+- **Medido no histórico** (114 rotas, 5.566 endereços entregues): 98 rotas com pelo menos um par de
+  endereços diferentes a menos de 11,1 m; 441 pares, 162 deles a menos de 2 m; 642 endereços (11,5%)
+  presos num pino dividido.
+- **Conserto:** no zoom máximo, só junta o mesmo endereço (ou a mesma porta pelo nome). Os de
+  endereços diferentes que ainda se cobrem (a menos de 24 px; o pino tem 30) abrem em leque em
+  volta do meio deles, cada um do lado onde está, com o traço até o ponto. Só os que faltam. Nos
+  zooms menores continua juntando.
+- **Testado:** 6 de unidade (`pinos.test.ts`) e 1 e2e (`leque.spec.ts`, 412×915, duas casas a 1,5 m
+  marcadas pelo Conferir: um pino no zoom 18, dois no 19, cada um com o seu cartão e o seu Arrumar).
+  Sabotagens: 6 na regra e 2 no mapa, cada uma quebrou o seu teste. Prints conferidos nos dois zooms.
+  Bateria: tipos, 634 de unidade e 327 de e2e. **Não testado** num celular de verdade.
+
 ## Rota que segue a entrega fora da ordem (15/11, dono, na rota: "a rota não se adapta quando faço um pino diferente"): publicado em 15/11 (#18, versão `mwicfxnm`), falta ver no celular
 
 - **Pedido:** entregando outra parada que não a do cartão, o cartão voltava para a pulada, já para
