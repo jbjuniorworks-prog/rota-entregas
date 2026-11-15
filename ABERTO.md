@@ -179,6 +179,15 @@ Fora da lista:
 - **Para depois:** manter a tela acesa com o app aberto (Wake Lock), para o aviso não parar quando
   a tela apaga sozinha. É outra frente.
 
+## Topo que conta o dia (15/11, foto do dono na rota: "0 de 15 entregas" com 67 pacotes entregues): na branch `contador-do-dia`, nada enviado
+
+- **Causa:** o topo contava só as paradas da ordem da rota, e montar a rota só leva as que faltam.
+  Refeita no meio do dia, o que foi feito antes sumia da contagem e da barra. No código, é o único
+  caminho para zero feitas com entregas feitas.
+- **Conserto (`TelaRota.tsx`):** o topo conta as paradas do dia no celular, feitas sobre todas.
+- **Testado:** e2e novo em `rota.spec.ts` (duas entregas na rota-a e Refazer): sem o conserto, "0 de
+  8 entregas"; com ele, "2 de 10". Bateria: tipos, 614 de unidade e 323 de e2e. **Não testado** num celular de verdade.
+
 ## Pino longe do balão depois da pinça (14/11, vídeos do dono): na branch `pinos-depois-do-zoom`, nada enviado
 
 - **O que se via:** no zoom máximo, a pinça estica o mapa além dele e, ao soltar, o mapa volta. Os
