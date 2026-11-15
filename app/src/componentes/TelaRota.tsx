@@ -34,7 +34,9 @@ const verSemLocal = () => {
 export function TopoRota() {
   const {e} = useLoja();
   const R = e.rota;
-  const todas = daRota(), feitas = todas.filter(p => p.entregue).length;
+  // O dia inteiro, não só a rota (dono, 15/11): refeita no meio do dia, a rota só leva as que
+  // faltam, e o topo mostrou "0 de 15 entregas" depois de 67 pacotes entregues.
+  const todas = e.paradas.length, feitas = e.paradas.filter(p => p.entregue).length;
   const prev = R ? previsoes(e) : null;
   const ultima = R ? R.areas[R.areas.length - 1] : null;
   const fim = prev && ultima ? prev.porArea[ultima.id] : null;
@@ -46,9 +48,9 @@ export function TopoRota() {
   return <div className="topo-rota" data-topo>
     <div className="progresso">
       {R ? <>
-        <div className="resumo"><b>{feitas} de {todas.length} entregas</b>{fim ? <span className={R.desatualizada ? 'velho' : ''}> · fim às {hhmm(fim.fim)}</span> : null}
+        <div className="resumo"><b>{feitas} de {todas} entregas</b>{fim ? <span className={R.desatualizada ? 'velho' : ''}> · fim às {hhmm(fim.fim)}</span> : null}
           {esperando > 0 ? <span> · {esperando} para enviar{haQuanto ? ` (${haQuanto})` : ''}</span> : null}</div>
-        <div className="barra"><i style={{width: `${todas.length ? Math.round(feitas * 100 / todas.length) : 0}%`}} /></div>
+        <div className="barra"><i style={{width: `${todas ? Math.round(feitas * 100 / todas) : 0}%`}} /></div>
       </> : <div className="resumo"><b>{e.paradas.length} entrega(s) carregada(s)</b></div>}
     </div>
     <BotaoMais />

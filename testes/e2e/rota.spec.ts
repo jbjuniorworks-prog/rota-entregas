@@ -309,3 +309,23 @@ test.describe('a saída é onde ele está', () => {
     expect([inicio.lat, inicio.lng]).toEqual([-10.9301, -37.0502]);
   });
 });
+
+// Foto do dono, 15/11, no meio da rota: "0 de 15 entregas" com 67 pacotes entregues. A rota
+// refeita só leva as que faltam; o topo conta o dia.
+test('refeita no meio do dia, o topo continua contando as entregas já feitas', async ({page}) => {
+  page.on('dialog', d => d.accept());
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await montar(page);
+  const cartao = page.locator('.proxima');
+  await cartao.locator('[data-acao="entregue"]').first().click();
+  await expect.poll(() => feitas(page)).toBeGreaterThan(0);
+  await cartao.locator('[data-acao="entregue"]').first().click();
+  await expect.poll(() => feitas(page)).toBeGreaterThan(1);
+  const antes = await feitas(page);
+  await expect(page.locator('.resumo')).toContainText(`${antes} de 10 entregas`);
+
+  await montar(page);
+  await expect(aviso(page)).toContainText('Rota pronta');
+  await expect(page.locator('.resumo')).toContainText(`${antes} de 10 entregas`);
+});
