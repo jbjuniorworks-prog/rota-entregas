@@ -246,6 +246,28 @@ Fora da lista:
 - **Para depois:** manter a tela acesa com o app aberto (Wake Lock), para o aviso não parar quando
   a tela apaga sozinha. É outra frente.
 
+## Minhas portas verificadas e o "13/45" do topo (15/11, Luan, pelo dono: "aquela lista de verificados aparecendo pra eles também"): na branch `minhas-portas-verificadas`, nada enviado
+
+- **Escolha do dono:** cada motorista vê só os números dele.
+- **Tela dos 14 dias (`TelaVerificadas.tsx`):** no Mais e no cartão de fim da rota. O total dos
+  últimos 14 dias (a janela do Admin) e cada rota, a mais nova primeiro, com "Por que algum não
+  verificou?" nas palavras do motorista. A conta é a de cada rota do Admin (`porQueNaoVerificou`),
+  somada (`minhasPortas`); um teste confere que bate com o "Portas verificadas por motorista".
+  O banco já limita o motorista às próprias rotas, mas abre todas para quem administra: a consulta
+  (`servicos/verificadas.ts`) filtra pela conta aberta. Sem migração.
+- **Na tela dos pinos, "N/M verificados"** ao lado da barra das entregas (o dono: "o que eles forem
+  verificando, só mostra 13/45"; preferiu isso a um atalho no fim da lista). Conta o pino
+  verificado e a entregue cuja porta a nuvem verificou depois: entregue, o pino não recebia mais o
+  "confirmado" (`aplicarCompartilhadas` pula as entregues), então a entregue ganhou
+  `portaVerificada`. A pergunta à nuvem (`conferirVerificadas`) é ao abrir, ao voltar para o app e
+  a cada 3 min, no máximo uma vez por minuto; a porta do "Entreguei aqui" sobe 10 min depois, e o
+  número acompanha com esse atraso. Desfeita a entrega, sai da conta.
+- **Testado:** 6 de unidade e 6 e2e (`minhas-portas.spec.ts`, 412×915: conta de motorista e de
+  administrador com a rota de outro na nuvem simulada; o atalho do fim; o topo subindo ao voltar,
+  ao abrir e pelo relógio do teste, e descendo ao desfazer). Sabotagens: 6 nas regras e 10 na
+  tela, cada uma quebrou o seu teste. Prints conferidos. Bateria: tipos, 634 de unidade e 332 de
+  e2e. **Não testado** num celular de verdade nem com a nuvem de verdade.
+
 ## Topo que conta o dia (15/11, foto do dono na rota: "0 de 15 entregas" com 67 pacotes entregues): publicado em 15/11 (#19, versão `mwicfxnm`)
 
 - **Causa:** o topo contava só as paradas da ordem da rota, e montar a rota só leva as que faltam.

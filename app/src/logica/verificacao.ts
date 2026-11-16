@@ -6,6 +6,8 @@
 // que falta é a conferência do motorista novo, a entrega longe do pino e as do fim da rota, que
 // ainda não subiram.
 import {haversine, NO_PINO} from './geo';
+import {hojeEmMaceio} from './painel';
+import type {Parada} from './tipos';
 
 export type Motivo = 'aprovar' | 'subindo' | 'longe' | 'so-correcao' | 'sem-marca' | 'nao-batem' | 'nao-conta' | 'separada' | 'recusada' | 'sem-chave';
 
@@ -147,4 +149,58 @@ export function verificadasPorMotorista(rotas: {id: string; motorista: string; m
     saida.set(quem, m);
   }
   return [...saida.values()].sort((a, b) => a.verificados / a.entregues - b.verificados / b.entregues || a.motorista.localeCompare(b.motorista));
+}
+
+export interface MinhaRota {
+  id: string;
+  dia: string;
+  arquivo: string | null;
+}
+
+export interface MinhasPortas {
+  rotas: number;
+  entregues: number;
+  verificados: number;
+  // a mais nova primeiro, só as que têm entrega
+  porRota: {rota: MinhaRota; portas: PortasDaRota}[];
+}
+
+// "Aquela lista de verificados aparecendo para eles também" (Luan, pelo dono, 15/11): o mesmo
+// "Portas verificadas por motorista" do Admin, só das rotas dele, com o porquê de cada rota. A conta
+// é a mesma (`porQueNaoVerificou` rota por rota), para os dois números baterem. As marcas valem no
+// dia da rota: a passagem traz o dia; a correção, a hora, que vira o dia de Aracaju.
+export function minhasPortas(rotas: MinhaRota[], pacotes: (PacoteDaRota & {rota_id: string})[], confirmadas: ReadonlySet<string>,
+  passagens: (MarcaDoDia & {dia?: string})[], correcoes: MarcaDoDia[], agora = Date.now()): MinhasPortas {
+  const diaDe = (m: MarcaDoDia & {dia?: string}) => m.dia || hojeEmMaceio(Date.parse(m.criado_em));
+  const saida: MinhasPortas = {rotas: 0, entregues: 0, verificados: 0, porRota: []};
+  for (const rota of [...rotas].sort((a, b) => b.dia.localeCompare(a.dia))) {
+    const ps = pacotes.filter(p => p.rota_id === rota.id);
+    const doDia = (m: MarcaDoDia & {dia?: string}) => diaDe(m) === rota.dia;
+    const portas = porQueNaoVerificou(ps, confirmadas, passagens.filter(doDia), correcoes.filter(doDia), agora);
+    if (!portas.entregues) continue;
+    saida.rotas++;
+    saida.entregues += portas.entregues;
+    saida.verificados += portas.verificados;
+    saida.porRota.push({rota, portas});
+  }
+  return saida;
+}
+
+// As verificadas do dia, para o "13/45 verificados" da tela dos pinos (dono, 15/11: "o que eles
+// forem verificando"). Verificada é a de pino verificado ou a entregue cuja porta a nuvem confirmou
+// depois: o pino da entregue não se mexe mais, e por isso o "confirmado" dele não chegava.
+export function verificadasDoDia(paradas: Pick<Parada, 'precisao' | 'portaVerificada'>[]): {verificadas: number; total: number} {
+  return {verificadas: paradas.filter(p => p.precisao === 'confirmado' || p.portaVerificada).length, total: paradas.length};
+}
+
+// Marca as entregues cuja porta a nuvem dá como verificada. Não mexe no pino: entregue, o lugar
+// dela não decide mais nada. Diz quantas marcou.
+export function marcarPortasVerificadas(paradas: Parada[], confirmadas: ReadonlySet<string>, chaveDe: (p: Parada) => string | null): number {
+  let n = 0;
+  for (const p of paradas) {
+    if (!p.entregue || p.precisao === 'confirmado' || p.portaVerificada) continue;
+    const k = chaveDe(p);
+    if (k && confirmadas.has(k)) { p.portaVerificada = true; n++; }
+  }
+  return n;
 }

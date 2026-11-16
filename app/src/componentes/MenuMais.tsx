@@ -27,6 +27,8 @@ export function MenuMais() {
       {comParadas && item(e.rota ? 'Refazer a rota' : 'Montar a rota', A.montarRota)}
       {item('Ponto de chegada', () => A.abrir({tela: 'saida'}))}
       {item('Áreas e horários', () => A.abrir({tela: 'areas'}))}
+      {/* a lista do Admin, só com as rotas dele (Luan, pelo dono, 15/11) */}
+      {nuvem.sessao && item('Minhas portas verificadas', () => { A.contar('minhas-portas'); A.abrir({tela: 'verificadas'}); })}
       {item(A.somLigado() ? 'Desligar o som perto do pino' : 'Ligar o som perto do pino', A.trocarSom)}
       {e.rota && item('Copiar a rota para o WhatsApp', A.copiarRota)}
       {comParadas && item('Ler mais uma planilha ou endereços', () => A.abrir({tela: 'inicio'}))}

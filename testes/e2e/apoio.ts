@@ -12,7 +12,7 @@ export interface NuvemFalsa {
   pedidos: {metodo: string; caminho: string; busca: string; corpo: unknown; prefer?: string; quem?: string | null}[];
 }
 
-const EU = {id: '00000000-0000-4000-8000-000000000001', nome: 'Você Teste'};
+export const EU = {id: '00000000-0000-4000-8000-000000000001', nome: 'Você Teste'};
 
 // O sub do JWT que veio no pedido; a chave pública (anon) não tem.
 function quemMandou(autorizacao: string | undefined): string | null {

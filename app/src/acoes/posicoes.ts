@@ -6,7 +6,7 @@ import type {Operacao} from '../logica/fila';
 import {avisoGuardou} from '../logica/memoria';
 import {medidor} from '../logica/telemetria';
 import {hojeEmMaceio} from '../logica/painel';
-import {porQueNaoVerificou, type PacoteDaRota, type PortasDaRota} from '../logica/verificacao';
+import {marcarPortasVerificadas, porQueNaoVerificou, type PacoteDaRota, type PortasDaRota} from '../logica/verificacao';
 import {chaveCidade, chaveDaParada, chaveLugar, chaveRua, decompor, linkCurtoDoMapa, mesmoEndereco, nomeDoLugar, posicaoColada} from '../logica/texto';
 import {entregaDoEndereco, marcarSeparada, separarParada} from '../logica/importar';
 import {CHAVES} from '../logica/guarda';
@@ -123,6 +123,28 @@ export async function verPinosNovos() {
   if (ficam.length) aplicarCompartilhadas(e().paradas, ficam, chaveDe);
   ui.pinosNovos = movem.length ? {resultados: movem, entregas} : null;
   loja.mudou(ficam.length > 0);
+}
+
+// O "13/45 verificados" da tela dos pinos (dono, 15/11): a porta da entrega só fica verificada na
+// nuvem depois que a marca sobe (10 min, o prazo do Desfazer), e a de cima só pergunta pelas que
+// faltam. Esta pergunta pelas entregues ainda sem porta verificada: ao abrir, ao voltar para a
+// tela e a cada 3 min com ela aberta (acoes/conta.ts).
+export const VERIFICADAS_DE_NOVO = 60000;
+let verificadasPerguntadas = 0;
+
+export async function conferirVerificadas() {
+  if (!navigator.onLine || document.visibilityState === 'hidden' || Date.now() - verificadasPerguntadas < VERIFICADAS_DE_NOVO) return;
+  const c = clienteNuvem();
+  if (!c) return;
+  const chaveDe = (p: Parada) => chaveDaParada(p, e().cidade);
+  const alvo = e().paradas.filter(p => p.entregue && p.precisao !== 'confirmado' && !p.portaVerificada);
+  const chaves = [...new Set(alvo.map(chaveDe).filter((k): k is string => !!k))];
+  if (!chaves.length) return;
+  verificadasPerguntadas = Date.now();
+  let resultados;
+  try { resultados = await c.posicoes(chaves); } catch { return; }
+  const confirmadas = new Set(resultados.filter(r => r.situacao === 'confirmado').map(r => r.chave_lugar));
+  if (marcarPortasVerificadas(e().paradas, confirmadas, chaveDe)) loja.mudou();
 }
 
 export function atualizarPinos() {

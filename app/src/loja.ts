@@ -6,7 +6,7 @@ import type {NomeNoMapa} from './logica/nomesNoMapa';
 import type {Estado, Parada} from './logica/tipos';
 
 // Uma tela por vez, e o mapa só nas que trabalham nele: a Rota e o Admin.
-export type Tela = 'inicio' | 'rota' | 'conferir' | 'saida' | 'areas' | 'admin';
+export type Tela = 'inicio' | 'rota' | 'conferir' | 'saida' | 'areas' | 'admin' | 'verificadas';
 
 export interface Marca {
   lat: number;

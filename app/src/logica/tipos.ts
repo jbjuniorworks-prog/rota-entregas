@@ -50,6 +50,8 @@ export interface Parada {
   comercialOutros?: boolean;
   // como ela estava antes do "Entreguei aqui" levar o pino para a porta
   portaAntes?: PortaAntes;
+  // entregue, a nuvem disse depois que a porta ficou verificada (o pino da entregue não se mexe mais)
+  portaVerificada?: boolean;
   // A cidade da linha da planilha. O censo e a busca são da cidade de cada entrega: com a de
   // ontem guardada no app, a Barra dos Coqueiros era procurada no censo de Aracaju (05/10).
   cidade?: string;

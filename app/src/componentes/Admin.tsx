@@ -435,7 +435,7 @@ function ProcurarLugar() {
 const NOME_DO_BOTAO: Record<string, string> = {ver: 'Ver no mapa', mapa: 'Marcar no mapa', aqui: 'Estou aqui', editar: 'Editar', remover: 'Remover',
   'balao-aqui': 'Entreguei aqui', 'balao-entreguei': 'Entreguei (cartão do pino)', busca: 'Busca em Todos os endereços', 'busca-antiga': 'Procurar nos dias anteriores',
   minimizar: 'Minimizar o cartão (mapa na tela toda)', 'escolher-maps': 'Escolher pinos para o Maps', circular: 'Circular grupos no mapa',
-  separar: 'Separar os pacotes da parada', 'separar-entregas': 'Separar as entregas do endereço', 'separada-aqui': 'Entreguei aqui (uma separada)', 'colar-link': 'Colar link do mapa', 'local-recebido': 'Local recebido pelo Compartilhar', 'portas-ver': 'Por que algum pino não verificou'};
+  separar: 'Separar os pacotes da parada', 'separar-entregas': 'Separar as entregas do endereço', 'separada-aqui': 'Entreguei aqui (uma separada)', 'colar-link': 'Colar link do mapa', 'local-recebido': 'Local recebido pelo Compartilhar', 'portas-ver': 'Por que algum pino não verificou', 'minhas-portas': 'Minhas portas verificadas', 'minhas-portas-fim': 'Minhas portas verificadas (fim da rota)'};
 
 // Para parar de decidir no chute quais botões ficam na frente do cartão. Mostra quanto cada um
 // é usado e qual costuma vir depois de qual — dois botões que andam sempre juntos são, na

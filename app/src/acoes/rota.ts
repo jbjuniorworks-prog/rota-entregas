@@ -138,7 +138,9 @@ export function marcarEntregue(p: Parada, entregue: boolean, avisarProxima = tru
   // Desfeita, por aviso ou pela lista: a porta que esperava o prazo não vai mais, e a que o
   // "aqui" marcou volta. Nesta ordem, já não entregue: a volta da posição recalcula as isoladas,
   // e parada entregue não entra na conta — o aviso de "longe" sumia de quem voltou para a lista.
-  if (!entregue) { fila.soltar(p.id); desfazerPorta(p); }
+  // A porta verificada de uma entrega desfeita não conta mais no topo: volta a ser uma que falta,
+  // e a de cima (verPinosNovos) é que diz se o pino dela é verificado.
+  if (!entregue) { fila.soltar(p.id); desfazerPorta(p); delete p.portaVerificada; }
   // um pulso curto confirma o toque sem olhar a tela; o de 200 ms é o de "próxima a pé"
   if (entregue) { try { navigator.vibrate?.(35); } catch {} }
   loja.mudou();
