@@ -239,6 +239,46 @@ Fora da lista:
 - Cobre o "para depois" da seção "Rota que segue a entrega fora da ordem", menos contar as entregas
   fora da ordem.
 
+## Conferir romaneio (16/11, dono: "identificar já os que estão fora de rota pra avisar aos analistas enquanto pegamos a rota logo cedo"): na branch `conferir-romaneio`, nada enviado
+
+- **O romaneio:** a planilha do galpão inteiro, uma linha por pacote, só com o bairro e a gaiola
+  ("Neighborhood", "Corridor Cage"). Não tem código de pacote, endereço nem cidade. Os números do
+  galpão ficam fora daqui: o repositório é público.
+- **Medido em 16/11:** a rota do dono batia com uma gaiola (60 dos 65 pacotes) e a do Pedro com
+  outra (os 77 da gaiola, mais 6). Os sem número de parada, 6 em cada rota, eram justamente os que não
+  estavam na gaiola: vieram de outras. Do bairro principal do dono, 2 estavam numa gaiola a 13 km do
+  bairro, 2 noutra a 16 km e 2 noutra a 3 km.
+- **Regra (`logica/romaneio.ts`):** o núcleo de cada gaiola são os bairros com pelo menos 10% dos
+  pacotes dela. O meio de cada bairro é a mediana das portas do censo das quatro cidades. O bairro
+  com até 3 pacotes na gaiola, a mais de 5 km de todo bairro do núcleo, entra na lista, com as
+  gaiolas onde ele é do núcleo. O nome que existe em duas cidades do censo, com os meios a mais de
+  3 km, fica com os dois lugares e vale o mais perto da gaiola: na dúvida, não acusa. A gaiola sem
+  núcleo de lugar certo conta inteira como sem conferir.
+- **Na tela (Mais, "Conferir romaneio", para todos):** escolhe a planilha e vê os de fora na sua
+  gaiola, os da sua área parados em outras gaiolas e o galpão inteiro. Cada lista tem um botão que
+  copia o texto para o WhatsApp dos analistas. A gaiola digitada fica no celular. Sem o censo de uma
+  das cidades (sem sinal na primeira vez), a tela diz isso. Nada vai para a nuvem; o toque é
+  contado ("romaneio", "romaneio-copiar").
+- **Limites:**
+  - O bairro é o que o cliente escreveu. No histórico, a porta verificada fica a mais de 5 km do
+    meio do bairro escrito em 1,7% de 3.887 entregas.
+  - Na gaiola do dono, em 16/11, um pacote sai na lista a 16 km, com o pino da planilha dentro da rota. Ali
+    quem estava certo era o endereço: o pacote não foi entregue, e o pino foi levado para o CEP
+    escrito. A lista acertou.
+  - Os 2 que estavam a 3 km ficam de fora.
+  - Sem código de pacote, o analista acha o pacote na gaiola pelo bairro. Um romaneio com o código
+    e o CEP, ou a coordenada, permitiria conferir pacote por pacote.
+- **Testado:**
+  - 18 testes de unidade (`romaneio.test.ts`) e 6 e2e (`romaneio.spec.ts`, em 412×915, com um
+    romaneio inventado sobre bairros do censo).
+  - Sabotagens: 13 na regra e 9 na tela, cada uma quebrou o seu teste. Três testes não guardavam e
+    foram corrigidos. O teste do núcleo ambíguo achou um defeito: os pacotes do núcleo não contavam
+    como sem conferir.
+  - Bateria: tipos, 669 testes de unidade e 343 e2e.
+  - No romaneio real de 16/11, fora do git: uns 0,3% dos pacotes na lista e 6,5% sem conferir. Da
+    gaiola do dono, a lista acha os 4 que estavam a 13 e 16 km.
+  - **Não testado** num celular de verdade nem com o romaneio de outro dia.
+
 ## Som perto do pino (15/11, dono, na rota: "um barulho pra quando chegar perto de um pino"): publicado em 15/11 (#17, versão `mwhtsvge`), falta ouvir no celular
 
 - **Pedido:** indo para uma entrega, ele passa na porta de outra sem ver, olhando a rua ou o outro
