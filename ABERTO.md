@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 15/11/2026.
+Atualizado em 16/11/2026.
 
 ## O que vem agora
 
@@ -154,7 +154,25 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Casas diferentes no zoom máximo (15/11, dono: "as entregas era uma na frente da casa da outra, e os pinos juntaram"): na branch `leque-no-zoom-maximo`, nada enviado
+## O CI que parou a publicação de #20 a #23 (16/11): era o teste, não o app; conserto na branch `medir-pinos-no-mesmo-quadro`, nada enviado
+
+- **O que houve:** depois do merge de #20 a #23, o CI da main falhou em `mapa.spec.ts` ("o toque no
+  ponto de um condomínio..."), na tentativa e na repetição, com 92 px entre dois pinos que deviam
+  estar juntos. Nada foi publicado; o app no ar continuou `mwicfxnm`.
+- **Medido:** a main com um log a mais passou no CI, e tirando um PR por vez também (5 rodadas, em
+  branches `diag-*`). No Linux local (Docker, Node 22), passou.
+- **A causa, reproduzida:** ao fechar o cartão do pino, a caixa do mapa cresce de 388 para 571 px,
+  e só no quadro seguinte o Leaflet sabe e arrasta o mapa 92 px para manter o meio. O teste media o
+  pino das que faltam e o da entregue em duas chamadas: caindo o quadro entre elas, saíam 92 px.
+  Com o ajuste do mapa atrasado de propósito, o teste antigo com uma pausa entre as medidas deu
+  92 px três vezes de três; sem o atraso, passou. Os dois pinos andam sempre juntos.
+- **Conserto, só no teste:** os dois saem da mesma leitura, com o mapa do tamanho da caixa e
+  parado, e o toque usa essa posição. Sabotado: a entregue desenhada 40 px ao lado falha em "um em
+  cima do outro"; a entregue por cima faz o toque abrir a errada; com o mapa atrasado, passa.
+- **Não visto:** por que naquela rodada do CI o quadro caiu entre as duas medidas, e nas outras
+  não. Máquina mais lenta é o provável, sem prova.
+
+## Casas diferentes no zoom máximo (15/11, dono: "as entregas era uma na frente da casa da outra, e os pinos juntaram"): mergeado em 16/11 (#20), esperando publicar
 
 - **O que se via:** o 426 e o 425 da rota de 15/11, com as portas a 8,1 m, eram um pino só, e o 30 e
   o 32, a 1,8 m, também. O mapa do Admin, que não empilha, mostrava dois.
@@ -200,7 +218,7 @@ Fora da lista:
 - **Para depois:** com rede, refazer sozinho quando muda o pino de uma parada por entregar (15/11,
   item 3 da proposta; 0 casos na rota dele) e contar, sem endereço, quantas entregas saem da ordem.
 
-## Rota que se refaz quando um pino anda demais (15/11, dono: "quando mudamos pinos, ela reage?"): na branch `refazer-quando-o-pino-anda`, nada enviado
+## Rota que se refaz quando um pino anda demais (15/11, dono: "quando mudamos pinos, ela reage?"): mergeado em 16/11 (#21), esperando publicar
 
 - **Medido antes, no histórico** (111 dias de rota): em 26, um pino de parada por entregar andou mais
   de 100 m pelo menos 10 min antes da entrega dela (54 casos). Os pinos verificados que chegam da
@@ -246,7 +264,7 @@ Fora da lista:
 - **Para depois:** manter a tela acesa com o app aberto (Wake Lock), para o aviso não parar quando
   a tela apaga sozinha. É outra frente.
 
-## Minhas portas verificadas e o "13/45" do topo (15/11, Luan, pelo dono: "aquela lista de verificados aparecendo pra eles também"): na branch `minhas-portas-verificadas`, nada enviado
+## Minhas portas verificadas e o "13/45" do topo (15/11, Luan, pelo dono: "aquela lista de verificados aparecendo pra eles também"): mergeado em 16/11 (#22), esperando publicar
 
 - **Escolha do dono:** cada motorista vê só os números dele.
 - **Tela dos 14 dias (`TelaVerificadas.tsx`):** no Mais e no cartão de fim da rota. O total dos
@@ -277,7 +295,7 @@ Fora da lista:
 - **Testado:** e2e novo em `rota.spec.ts` (duas entregas na rota-a e Refazer): sem o conserto, "0 de
   8 entregas"; com ele, "2 de 10". Bateria: tipos, 614 de unidade e 323 de e2e. **Não testado** num celular de verdade.
 
-## Rua errada e o Waze (15/11, dono: "entrou na rua errada, atualiza a rota?"): contagem na branch `contar-waze-e-maps`, nada enviado
+## Rua errada e o Waze (15/11, dono: "entrou na rua errada, atualiza a rota?"): contagem mergeada em 16/11 (#23), esperando publicar
 
 - **Hoje:** o caminho rua a rua é do Waze e do Google Maps, que refazem sozinhos; a linha verde do
   nosso mapa é desenhada na montagem e não acompanha o desvio. A ordem das paradas é nossa, e a
