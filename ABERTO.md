@@ -286,6 +286,31 @@ Fora da lista:
   tela, cada uma quebrou o seu teste. Prints conferidos. Bateria: tipos, 634 de unidade e 332 de
   e2e. **Não testado** num celular de verdade nem com a nuvem de verdade.
 
+## Aviso dos pacotes fora da gaiola (16/11, dono: "um aviso em vermelho avisando que 3 pacotes não estão na sua gaiola"): na branch `aviso-fora-da-gaiola`, nada enviado
+
+- **Medido em 16/11:** pelo romaneio do galpão, os 6 pacotes sem número de parada da rota do dono e
+  os 6 da do Pedro eram exatamente os que não estavam na gaiola de cada um. Estavam em gaiolas a até
+  16 km. No histórico, 162 das 193 rotas de planilha têm pacote sem número, em geral 3 por rota, e
+  todos com código de pacote. Em 152 rotas eles são até 10% da planilha; 9 rotas vieram com a
+  planilha inteira sem sequência, e só uma ficou no meio (entre 10% e 30%).
+- **Regra (`logica/gaiola.ts`):** por planilha (AT), os pacotes com código e sem sequência nem
+  número de parada, fora os entregues. Com mais de 30% assim, é a planilha que veio sem sequência, e
+  não avisa. O pacote com número de parada, mesmo sem sequência, não avisa.
+- **Na tela (`AvisoGaiola.tsx`):** aviso vermelho no cartão de montar a rota e no alto dos avisos
+  da rota montada. "Ver" mostra o código, o bairro e o endereço. "Copiar para os analistas" leva o
+  código e o bairro. "Já peguei" esconde o aviso para aqueles pacotes, e um pacote sem número de uma
+  planilha lida depois volta a avisar. Com o aviso aberto, os botões de montar descem para a borda
+  de baixo em 412×915.
+- **Testado:**
+  - 11 testes de unidade (`gaiola.test.ts`) e 5 e2e (`gaiola.spec.ts`, em 412×915, com a
+    rota-c, que tem um pacote sem número, e a rota-d, que não tem).
+  - Sabotagens: 10 na regra e 6 na tela, cada uma quebrou o seu teste.
+  - Bateria: tipos, 662 testes de unidade e 342 e2e.
+  - **Não testado** num celular de verdade. O "sem número = fora da gaiola" foi visto em 2 rotas
+    de um dia (12 de 12 pacotes).
+- **Para depois:** com o romaneio lido (branch `conferir-romaneio`), dizer em que gaiola o bairro
+  de cada um aparece fora do lugar.
+
 ## Topo que conta o dia (15/11, foto do dono na rota: "0 de 15 entregas" com 67 pacotes entregues): publicado em 15/11 (#19, versão `mwicfxnm`)
 
 - **Causa:** o topo contava só as paradas da ordem da rota, e montar a rota só leva as que faltam.
