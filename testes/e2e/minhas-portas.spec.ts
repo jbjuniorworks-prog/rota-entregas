@@ -1,5 +1,5 @@
 import type {Page} from '@playwright/test';
-import {abrir, EU, menu, test, expect} from './apoio';
+import {abrir, carregar, EU, lista, menu, montar, test, expect, ROTA_A} from './apoio';
 
 // Luan, pelo dono, 15/11: "aquela lista de verificados aparecendo pra eles também". Cada motorista
 // vê as portas verificadas das rotas dele; as dos outros não aparecem.
@@ -61,3 +61,81 @@ for (const papel of ['motorista', 'admin'] as const) {
     });
   });
 }
+
+// Dono, 15/11: "no fim da rota"; e, na tela dos pinos, "a da própria rota, o que eles forem
+// verificando, só mostra 13/45".
+test.describe('a tela dos 14 dias pelo fim da rota, e as verificadas do dia na tela dos pinos', () => {
+  test.use({viewport: {width: 412, height: 915}});
+
+  const entregues = (page: Page) => page.evaluate(() =>
+    JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.filter((p: {entregue: boolean}) => p.entregue).length as number);
+
+  test('abre do cartão de fim da rota, e o voltar leva de volta a ele', async ({page}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const fim = page.locator('[data-folha="fim"]');
+    for (let i = 0; i < 20 && !(await fim.isVisible()); i++) {
+      await page.locator('[data-folha="proxima"] [data-acao="entregue"]').first().click();
+      await page.waitForTimeout(150);
+    }
+    await expect(fim).toBeVisible();
+    await fim.locator('[data-minhas-portas-abrir="fim"]').click();
+    await expect(page.locator('.cabecalho .titulo')).toHaveText('Minhas portas verificadas');
+    await page.locator('.cabecalho').getByRole('button', {name: 'Voltar'}).click();
+    await expect(fim).toBeVisible();
+    // na lista, atalho nenhum: na tela dos pinos vale o número do topo
+    await lista(page);
+    await expect(page.locator('[data-minhas-portas-abrir]')).toHaveCount(0);
+  });
+
+  // A nuvem de mentira dá como verificada só a pergunta pelas entregues (uma ou duas chaves): a dos
+  // pinos que faltam (oito ou nove) volta vazia, para nenhum pino que falta mudar e contar junto.
+  const verificaAsEntregues = (nuvem: {rpc: Record<string, unknown>}) => {
+    nuvem.rpc.posicoes = (corpo: {chaves: string[]}) => corpo.chaves.length <= 2
+      ? corpo.chaves.map(k => ({chave_lugar: k, lat: -10.95, lng: -37.05, situacao: 'confirmado', motoristas: 2, minha: true}))
+      : [];
+  };
+  const entregarUma = async (page: Page) => {
+    await page.locator('[data-folha="proxima"] [data-acao="entregue"]').first().click();
+    await expect.poll(() => entregues(page)).toBeGreaterThan(0);
+    return entregues(page);
+  };
+  const topo = (page: Page) => page.locator('[data-verificadas-topo]');
+
+  for (const como of ['voltando para o app', 'abrindo o app'] as const) {
+    test(`o topo mostra as verificadas do dia e sobe quando a porta de uma entregue verifica (${como})`, async ({page, nuvem}) => {
+      page.on('dialog', d => d.accept());
+      await abrir(page);
+      await carregar(page, ROTA_A);
+      await montar(page);
+      await expect(topo(page)).toHaveText('0/10 verificados');
+      const feitas = await entregarUma(page);
+      verificaAsEntregues(nuvem as never);
+      if (como === 'abrindo o app') await page.reload();
+      else await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      await expect(topo(page)).toHaveText(`${feitas}/10 verificados`);
+
+      // desfeitas na lista, voltam a ser das que faltam e saem da conta
+      await lista(page);
+      await page.locator('details.feitas > summary').click();
+      for (let i = feitas; i > 0; i--) await page.locator('details.feitas [aria-label="Desfazer"]').first().click();
+      await expect(topo(page)).toHaveText('0/10 verificados');
+    });
+  }
+
+  test('com o app aberto o tempo todo, o topo também sobe, de 3 em 3 minutos', async ({page, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    await page.clock.install();
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const feitas = await entregarUma(page);
+    verificaAsEntregues(nuvem as never);
+    await page.clock.fastForward('01:00');
+    await expect(topo(page)).toHaveText('0/10 verificados');
+    await page.clock.fastForward('02:10');
+    await expect(topo(page)).toHaveText(`${feitas}/10 verificados`);
+  });
+});

@@ -7,9 +7,10 @@ import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, lin
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
-import {MOTIVOS_DO_MOTORISTA, type PortasDaRota} from '../logica/verificacao';
+import {MOTIVOS_DO_MOTORISTA, verificadasDoDia, type PortasDaRota} from '../logica/verificacao';
 import type {Parada, Ponto, RotaArea} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
+import {nuvem} from '../servicos/nuvem';
 import {rotuloDe} from '../logica/rotulo';
 import {AvisoXarope, BotaoMais, hhmm, Icone, LinhaComercial, MarcarXarope, Meta, PortasExplicadas, Tag} from './comuns';
 
@@ -37,6 +38,7 @@ export function TopoRota() {
   // O dia inteiro, não só a rota (dono, 15/11): refeita no meio do dia, a rota só leva as que
   // faltam, e o topo mostrou "0 de 15 entregas" depois de 67 pacotes entregues.
   const todas = e.paradas.length, feitas = e.paradas.filter(p => p.entregue).length;
+  const verificadas = verificadasDoDia(e.paradas);
   const prev = R ? previsoes(e) : null;
   const ultima = R ? R.areas[R.areas.length - 1] : null;
   const fim = prev && ultima ? prev.porArea[ultima.id] : null;
@@ -50,7 +52,12 @@ export function TopoRota() {
       {R ? <>
         <div className="resumo"><b>{feitas} de {todas} entregas</b>{fim ? <span className={R.desatualizada ? 'velho' : ''}> · fim às {hhmm(fim.fim)}</span> : null}
           {esperando > 0 ? <span> · {esperando} para enviar{haQuanto ? ` (${haQuanto})` : ''}</span> : null}</div>
-        <div className="barra"><i style={{width: `${todas ? Math.round(feitas * 100 / todas) : 0}%`}} /></div>
+        {/* Ao lado da barra, as verificadas do dia (dono, 15/11: "o que eles forem verificando, só
+            mostra 13/45"): no texto de cima, quebrava a linha e o mapa encolhia. */}
+        <div className="linha-barra">
+          <div className="barra"><i style={{width: `${todas ? Math.round(feitas * 100 / todas) : 0}%`}} /></div>
+          <span className="verificadas-topo" data-verificadas-topo>{verificadas.verificadas}/{verificadas.total} verificados</span>
+        </div>
       </> : <div className="resumo"><b>{e.paradas.length} entrega(s) carregada(s)</b></div>}
     </div>
     <BotaoMais />
@@ -210,7 +217,7 @@ function CartaoMontar() {
   // Ideia do Luan, 19/10: antes de sair, saber quantas já têm a porta certa. Numa linha que já
   // existe: uma a mais tirava o "Escolher pinos para o Maps" da tela em 412×915, e na do título o
   // crédito do mapa cobria a contagem.
-  const verificadas = e.paradas.filter(p => p.precisao === 'confirmado').length;
+  const {verificadas} = verificadasDoDia(e.paradas);
   return <div className="folha" data-folha="montar">
     <div className="titulo">{e.paradas.length} entrega(s) no mapa</div>
     <div className="info-contagem">
@@ -270,6 +277,7 @@ function CartaoProxima() {
     return <div className="folha proxima" data-folha="fim">{puxar}<AvisosDaRota />
       <div className="grande">{falta ? `Sequência concluída. Falta(m) ${falta}, na lista.` : 'Todas as entregas da rota foram feitas!'}</div>
       <PortasDasEntregas />
+      <AbrirMinhasPortas de="fim" />
     </div>;
   }
   const bp = agora.b.map(loja.parada).filter((p): p is Parada => !!p);
@@ -490,6 +498,15 @@ function Lista() {
           : 'Você escolheu a sequência das entregas. O melhor caminho não faria diferença hoje.'
         : R.mlDist > 0 ? R.mlDist - R.dist > 200 ? `${fmtKm(R.mlDist - R.dist)} a menos que a sequência das entregas.` : 'A sequência das entregas já estava boa.' : ''}</div>
   </div>;
+}
+
+// A tela "Minhas portas verificadas" também daqui (dono, 15/11): no fim da rota, que é quando ele
+// quer ver o resultado. Na tela dos pinos fica o "N/M verificados" do topo, só da rota do dia (o
+// dono preferiu assim ao atalho no fim da lista). Sem conta não há o que buscar.
+function AbrirMinhasPortas({de}: {de: 'fim'}) {
+  if (!nuvem.sessao) return null;
+  return <button className="link" data-minhas-portas-abrir={de} onClick={() => { A.contar('minhas-portas-' + de); A.abrir({tela: 'verificadas'}); }}>
+    Minhas portas verificadas (14 dias)</button>;
 }
 
 // Escolher os pinos para o Maps (pedido do dono, 16/10): ele toca nos pinos na ordem em que quer

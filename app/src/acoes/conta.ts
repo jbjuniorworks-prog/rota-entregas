@@ -5,8 +5,11 @@ import {entrar as entrarNaNuvem, iniciarNuvem, nuvem, sair as sairDaNuvem} from 
 import {e, enviarFila, fila, ui} from './base';
 import {iniciarNavegacao, irPara, telaBase} from './navegacao';
 import {buscarDeNovoOsNomesTortos, conferirComOCensoAoAbrir, processarCompartilhado} from './enderecos';
-import {avisoCompartilhadas, consultarCompartilhadas, oferecerLocalGuardado, verPinosNovos} from './posicoes';
+import {avisoCompartilhadas, conferirVerificadas, consultarCompartilhadas, oferecerLocalGuardado, verPinosNovos} from './posicoes';
 import {saiuDaTela, verVersao} from './versao';
+
+// de quanto em quanto o topo pergunta pelas portas das entregas feitas (conferirVerificadas)
+const VERIFICADAS_A_CADA = 3 * 60000;
 
 // Pedido de 28/09: um motorista mexendo numa porta confirmada tem de chegar no dono sem ele ir
 // procurar. Sem servidor de notificação, o aviso é o número no botão Mais e no Admin, conferido
@@ -69,11 +72,15 @@ export async function iniciar() {
   verPendenciasDoAdmin(true);
   verVersao(true);
   conferirComOCensoAoAbrir().finally(buscarDeNovoOsNomesTortos).finally(verPinosNovos);
+  conferirVerificadas();
+  // com a tela aberta a rota inteira, sem voltar para ela, o "verificados" do topo também anda
+  setInterval(conferirVerificadas, VERIFICADAS_A_CADA);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') { saiuDaTela(); return; }
     verPendenciasDoAdmin();
     verVersao(false);
     verPinosNovos();
+    conferirVerificadas();
   });
 }
 
