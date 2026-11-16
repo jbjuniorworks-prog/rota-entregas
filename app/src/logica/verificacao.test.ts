@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
-import {minhasPortas, porQueNaoVerificou, SUBINDO_MIN, verificadasPorMotorista, type MarcaDoDia, type PacoteDaRota} from './verificacao';
+import {marcarPortasVerificadas, minhasPortas, porQueNaoVerificou, SUBINDO_MIN, verificadasDoDia, verificadasPorMotorista, type MarcaDoDia, type PacoteDaRota} from './verificacao';
+import type {Parada} from './tipos';
 
 // Os casos medidos nas rotas de 15 a 29/10, com endereços inventados.
 const AGORA = Date.parse('2026-10-29T22:00:00Z');
@@ -135,5 +136,31 @@ describe('as portas verificadas do próprio motorista', () => {
     const dasDez = marca('1|20', {criado_em: '2026-10-29T01:00:00Z'});
     const r = minhasPortas([ontem, hoje], pacotes, confirmadas, [], [dasDez], AGORA);
     expect(motivos(r.porRota[1].portas)).toEqual([['Rua Teste, 1|20', 'so-correcao']]);
+  });
+});
+
+// Dono, 15/11: "o que eles forem verificando, só mostra 13/45", na tela dos pinos.
+describe('as verificadas do dia, no topo da tela dos pinos', () => {
+  const parada = (id: string, extra: Partial<Parada> = {}): Parada =>
+    ({id, area: 'a', ml: null, texto: 'Rua ' + id, unidades: null, comercial: false, lat: -10.96, lng: -37.06, exibido: '', precisao: 'planilha', candidatos: [], entregue: false, ...extra});
+  const chaveDe = (p: Parada) => 'k|' + p.id;
+
+  it('conta o pino verificado e a entregue cuja porta a nuvem verificou depois', () => {
+    const ps = [parada('a', {precisao: 'confirmado'}), parada('b', {entregue: true, portaVerificada: true}), parada('c', {entregue: true}), parada('d')];
+    expect(verificadasDoDia(ps)).toEqual({verificadas: 2, total: 4});
+  });
+
+  it('a nuvem verificando a porta de uma entregue marca ela, sem mexer no pino', () => {
+    const ps = [parada('feita', {entregue: true}), parada('falta')];
+    expect(marcarPortasVerificadas(ps, new Set(['k|feita', 'k|falta']), chaveDe)).toBe(1);
+    expect(ps[0]).toMatchObject({portaVerificada: true, lat: -10.96, lng: -37.06, precisao: 'planilha'});
+    // a que falta é da conferência de pinos (verPinosNovos), que pode mover o pino: aqui, não
+    expect(ps[1].portaVerificada).toBeUndefined();
+  });
+
+  it('a entregue sem a porta na resposta da nuvem continua sem verificar', () => {
+    const ps = [parada('feita', {entregue: true})];
+    expect(marcarPortasVerificadas(ps, new Set(['k|outra']), chaveDe)).toBe(0);
+    expect(verificadasDoDia(ps).verificadas).toBe(0);
   });
 });

@@ -7,6 +7,7 @@
 // ainda não subiram.
 import {haversine, NO_PINO} from './geo';
 import {hojeEmMaceio} from './painel';
+import type {Parada} from './tipos';
 
 export type Motivo = 'aprovar' | 'subindo' | 'longe' | 'so-correcao' | 'sem-marca' | 'nao-batem' | 'nao-conta' | 'separada' | 'recusada' | 'sem-chave';
 
@@ -183,4 +184,23 @@ export function minhasPortas(rotas: MinhaRota[], pacotes: (PacoteDaRota & {rota_
     saida.porRota.push({rota, portas});
   }
   return saida;
+}
+
+// As verificadas do dia, para o "13/45 verificados" da tela dos pinos (dono, 15/11: "o que eles
+// forem verificando"). Verificada é a de pino verificado ou a entregue cuja porta a nuvem confirmou
+// depois: o pino da entregue não se mexe mais, e por isso o "confirmado" dele não chegava.
+export function verificadasDoDia(paradas: Pick<Parada, 'precisao' | 'portaVerificada'>[]): {verificadas: number; total: number} {
+  return {verificadas: paradas.filter(p => p.precisao === 'confirmado' || p.portaVerificada).length, total: paradas.length};
+}
+
+// Marca as entregues cuja porta a nuvem dá como verificada. Não mexe no pino: entregue, o lugar
+// dela não decide mais nada. Diz quantas marcou.
+export function marcarPortasVerificadas(paradas: Parada[], confirmadas: ReadonlySet<string>, chaveDe: (p: Parada) => string | null): number {
+  let n = 0;
+  for (const p of paradas) {
+    if (!p.entregue || p.precisao === 'confirmado' || p.portaVerificada) continue;
+    const k = chaveDe(p);
+    if (k && confirmadas.has(k)) { p.portaVerificada = true; n++; }
+  }
+  return n;
 }
