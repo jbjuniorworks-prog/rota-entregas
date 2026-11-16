@@ -1,8 +1,10 @@
-import {reorganizarDaqui} from '../logica/reorganizar';
+import {montarRota as calcularRota} from '../logica/montagem';
+import {andouDemais, pontoDePartida, reorganizarDaqui} from '../logica/reorganizar';
 import type {Parada, Perna, Ponto, Rota} from '../logica/tipos';
-import {loja} from '../loja';
-import {linhaDaRota} from '../servicos/ruas';
-import {e} from './base';
+import {loja, status} from '../loja';
+import {linhaDaRota, matriz} from '../servicos/ruas';
+import {e, enviarFila, quandoAPosicaoMudar, ui} from './base';
+import {registrarComoFicou} from './registro';
 
 export const SEGUE_DAQUI = 'Fora da ordem: a sequência agora segue daqui.';
 
@@ -65,5 +67,49 @@ export async function pedirLinhas() {
     }
   } finally {
     pedindo = false;
+  }
+}
+
+// Um pino do que falta andou demais (andouDemais, em logica/reorganizar.ts): com rede, a rota se
+// refaz sozinha, sem ele tocar em nada (dono, 15/11: "quando mudamos pinos, ela reage?"). Espera
+// ele parar de mexer nos pinos: arrumando vários em Conferir, refaz uma vez só, e o serviço de
+// ruas, que é de graça e pede no máximo um pedido por segundo, não leva um pedido por pino.
+export const QUIETO = 10_000;
+let espera: ReturnType<typeof setTimeout> | undefined;
+// a que ele desfez: não volta a ser refeita sozinha na mudança seguinte
+let recusada: Rota | null = null;
+
+export function agendarRefazer() {
+  clearTimeout(espera);
+  if (e().rota && e().rota !== recusada && andouDemais(e())) espera = setTimeout(() => void refazerSozinha(), QUIETO);
+}
+quandoAPosicaoMudar(agendarRefazer);
+
+export async function refazerSozinha() {
+  // sem rede fica o aviso de sempre, com o "Refazer a rota"; a rede voltando, main.tsx agenda de novo
+  if (ui.ocupado || !navigator.onLine || !e().rota || e().rota === recusada || !andouDemais(e())) return;
+  const {rota: velha, pernas, inicio, areas} = e();
+  const voltar = () => Object.assign(e(), {rota: velha, pernas, inicio, areas});
+  ui.ocupado = true;
+  try {
+    const partida = pontoDePartida(e(), ui.euAqui, Date.now());
+    if (partida) e().inicio = partida;
+    const nova = await calcularRota(e(), {matriz, linha: linhaDaRota});
+    // sem acesso às ruas, a de antes, feita pelas ruas, é melhor: fica ela, com o aviso
+    if (!nova.porRuas && velha!.porRuas) { voltar(); return; }
+    registrarComoFicou(nova.porRuas ? null : nova.motivoSemRuas || 'sem motivo anotado');
+    enviarFila();
+    status('Um pino mudou de lugar, e a rota foi refeita.', 8000, () => {
+      if (e().rota !== nova) return;
+      voltar();
+      recusada = velha;
+      loja.mudou();
+      status('A rota de antes voltou.', 3000);
+    });
+  } catch {
+    voltar();
+  } finally {
+    ui.ocupado = false;
+    loja.mudou();
   }
 }

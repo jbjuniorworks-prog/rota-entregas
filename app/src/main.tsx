@@ -133,8 +133,9 @@ function App() {
 A.ouvirInstalacao();
 // o som do aviso perto do pino só toca depois de um toque na tela (servicos/som.ts)
 addEventListener('pointerdown', destravarSom, {capture: true, passive: true});
-// a linha da ordem refeita sem rede (acoes/reorganizar.ts)
-addEventListener('online', () => void A.pedirLinhas());
+// com a rede de volta: a linha da ordem refeita sem rede, e a rota que um pino deixou para trás
+// (acoes/reorganizar.ts)
+addEventListener('online', () => { void A.pedirLinhas(); A.agendarRefazer(); });
 createRoot(document.getElementById('raiz')!).render(<App />);
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
