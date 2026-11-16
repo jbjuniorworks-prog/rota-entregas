@@ -432,7 +432,7 @@ function ProcurarLugar() {
 
 // Os nomes gravados no banco ficaram os de antes da tela nova (02/10): o balão do pino virou o
 // cartão de baixo, e o "Ver" da Conferir virou "Ver no mapa".
-const NOME_DO_BOTAO: Record<string, string> = {ver: 'Ver no mapa', mapa: 'Marcar no mapa', aqui: 'Estou aqui', editar: 'Editar', remover: 'Remover',
+const NOME_DO_BOTAO: Record<string, string> = {waze: 'Waze', maps: 'Google Maps (uma parada)', 'maps-varios': 'Google Maps (várias paradas)', ver: 'Ver no mapa', mapa: 'Marcar no mapa', aqui: 'Estou aqui', editar: 'Editar', remover: 'Remover',
   'balao-aqui': 'Entreguei aqui', 'balao-entreguei': 'Entreguei (cartão do pino)', busca: 'Busca em Todos os endereços', 'busca-antiga': 'Procurar nos dias anteriores',
   minimizar: 'Minimizar o cartão (mapa na tela toda)', 'escolher-maps': 'Escolher pinos para o Maps', circular: 'Circular grupos no mapa',
   separar: 'Separar os pacotes da parada', 'separar-entregas': 'Separar as entregas do endereço', 'separada-aqui': 'Entreguei aqui (uma separada)', 'colar-link': 'Colar link do mapa', 'local-recebido': 'Local recebido pelo Compartilhar', 'portas-ver': 'Por que algum pino não verificou', 'minhas-portas': 'Minhas portas verificadas', 'minhas-portas-fim': 'Minhas portas verificadas (fim da rota)'};
