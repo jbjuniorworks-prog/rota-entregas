@@ -37,6 +37,7 @@ export const CHAVES = {
   localGuardado: 'rota-entregas-local-guardado',
   dono: 'rota-entregas-dono',
   somPerto: 'rota-entregas-som-perto',
+  gaiola: 'rota-entregas-gaiola',
 } as const;
 
 // Cada conta tem o seu dia no aparelho (auditoria da fila, 20/10). As chaves de sempre guardam só

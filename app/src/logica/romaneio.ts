@@ -90,7 +90,7 @@ export interface Suspeito {
 
 export interface Conferencia {
   pacotes: number;
-  gaiolas: number;
+  gaiolas: string[];
   suspeitos: Suspeito[];
   // pacotes que não deu para conferir: bairro que o censo não conhece, ou gaiola sem núcleo conhecido
   semConferir: number;
@@ -145,7 +145,7 @@ export function conferirRomaneio(pacotes: PacoteDoRomaneio[], meios: Map<string,
     }
   }
   suspeitos.sort((a, b) => ordemDaGaiola(a.gaiola, b.gaiola) || b.metros - a.metros);
-  return {pacotes: pacotes.length, gaiolas: gaiolas.size, suspeitos, semConferir};
+  return {pacotes: pacotes.length, gaiolas: [...gaiolas.keys()].sort(ordemDaGaiola), suspeitos, semConferir};
 }
 
 // Para quem pega a rota da gaiola: os de fora que estão nela, e os do bairro dela parados em outras.
@@ -164,9 +164,9 @@ export function linhaDoSuspeito(s: Suspeito): string {
   return `${s.gaiola}: ${s.pacotes} pacote(s) de ${s.bairro}, a ${km(s.metros)} da área da gaiola.${casa}`;
 }
 
-// O texto para colar no WhatsApp dos analistas.
-export function textoParaAnalistas(c: Conferencia): string {
-  if (!c.suspeitos.length) return 'Romaneio conferido: nenhum pacote parece fora de rota.';
-  const total = c.suspeitos.reduce((s, x) => s + x.pacotes, 0);
-  return [`Romaneio: ${total} pacote(s) parecem fora de rota, pelo bairro. Para conferir:`, ...c.suspeitos.map(linhaDoSuspeito)].join('\n');
+// O texto para colar no WhatsApp dos analistas: o galpão inteiro, ou só o que toca uma gaiola.
+export function textoParaAnalistas(suspeitos: Suspeito[]): string {
+  if (!suspeitos.length) return 'Romaneio conferido: nenhum pacote parece fora de rota.';
+  const total = suspeitos.reduce((s, x) => s + x.pacotes, 0);
+  return [`Romaneio: ${total} pacote(s) parecem fora de rota, pelo bairro. Para conferir:`, ...suspeitos.map(linhaDoSuspeito)].join('\n');
 }

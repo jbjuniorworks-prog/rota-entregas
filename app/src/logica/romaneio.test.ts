@@ -129,7 +129,7 @@ describe('a gaiola de quem pega a rota', () => {
 describe('o texto para os analistas', () => {
   it('uma linha por gaiola e bairro, com a distância e para onde o bairro vai', () => {
     const c = conferirRomaneio([...GALPAO, ...pacotes('B-7', 'Bairro Gama', 1), ...pacotes('D-2', 'Bairro Alfa', 2)], MEIOS);
-    expect(textoParaAnalistas(c)).toBe([
+    expect(textoParaAnalistas(c.suspeitos)).toBe([
       'Romaneio: 3 pacote(s) parecem fora de rota, pelo bairro. Para conferir:',
       // da Beta, a parte da B-7 mais perto da Gama
       'B-7: 1 pacote(s) de Bairro Gama, a 10 km da área da gaiola. Esse bairro vai na gaiola D-2.',
@@ -138,6 +138,13 @@ describe('o texto para os analistas', () => {
   });
 
   it('sem nenhum suspeito, diz isso', () => {
-    expect(textoParaAnalistas(conferirRomaneio(GALPAO, MEIOS))).toBe('Romaneio conferido: nenhum pacote parece fora de rota.');
+    expect(textoParaAnalistas(conferirRomaneio(GALPAO, MEIOS).suspeitos)).toBe('Romaneio conferido: nenhum pacote parece fora de rota.');
+  });
+});
+
+describe('as gaiolas do romaneio', () => {
+  it('vêm todas, em ordem de letra e número, para a tela saber se a gaiola digitada existe', () => {
+    const c = conferirRomaneio([...pacotes('B-10', 'Bairro Alfa', 1), ...GALPAO, ...pacotes('A-3', 'Bairro Beta', 1)], MEIOS);
+    expect(c.gaiolas).toEqual(['A-3', 'B-7', 'B-10', 'D-2']);
   });
 });

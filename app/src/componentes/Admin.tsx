@@ -435,7 +435,8 @@ function ProcurarLugar() {
 const NOME_DO_BOTAO: Record<string, string> = {waze: 'Waze', maps: 'Google Maps (uma parada)', 'maps-varios': 'Google Maps (várias paradas)', ver: 'Ver no mapa', mapa: 'Marcar no mapa', aqui: 'Estou aqui', editar: 'Editar', remover: 'Remover',
   'balao-aqui': 'Entreguei aqui', 'balao-entreguei': 'Entreguei (cartão do pino)', busca: 'Busca em Todos os endereços', 'busca-antiga': 'Procurar nos dias anteriores',
   minimizar: 'Minimizar o cartão (mapa na tela toda)', 'escolher-maps': 'Escolher pinos para o Maps', circular: 'Circular grupos no mapa',
-  separar: 'Separar os pacotes da parada', 'separar-entregas': 'Separar as entregas do endereço', 'separada-aqui': 'Entreguei aqui (uma separada)', 'colar-link': 'Colar link do mapa', 'local-recebido': 'Local recebido pelo Compartilhar', 'portas-ver': 'Por que algum pino não verificou', 'minhas-portas': 'Minhas portas verificadas', 'minhas-portas-fim': 'Minhas portas verificadas (fim da rota)'};
+  separar: 'Separar os pacotes da parada', 'separar-entregas': 'Separar as entregas do endereço', 'separada-aqui': 'Entreguei aqui (uma separada)', 'colar-link': 'Colar link do mapa', 'local-recebido': 'Local recebido pelo Compartilhar', 'portas-ver': 'Por que algum pino não verificou', 'minhas-portas': 'Minhas portas verificadas', 'minhas-portas-fim': 'Minhas portas verificadas (fim da rota)',
+  romaneio: 'Conferir romaneio', 'romaneio-copiar': 'Copiar a lista do romaneio'};
 
 // Para parar de decidir no chute quais botões ficam na frente do cartão. Mostra quanto cada um
 // é usado e qual costuma vir depois de qual — dois botões que andam sempre juntos são, na

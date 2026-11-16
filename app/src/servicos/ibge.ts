@@ -3,6 +3,7 @@
 // O arquivo é gerado por `npm run cnefe`.
 import {cidadeDoCep, haversine} from '../logica/geo';
 import {analisarLinha, chaveBairro, chaveEndereco, chaveRua, decompor, distanciaDeEdicao, jeitosDeLerBairro, mesmaRua, normal, ruaGenerica, tipoDaRua} from '../logica/texto';
+import {meiosDosBairros} from '../logica/romaneio';
 import type {Candidato, Ponto} from '../logica/tipos';
 
 // Um arquivo por cidade: aracaju-v1.bin, nossa-senhora-do-socorro-v1.bin… O mesmo apelido que
@@ -461,4 +462,15 @@ export async function ancoraDoIbge(cep: string | null, bairro: string, cidade: s
   if (pelaRua) return pelaRua;
   const n = cep ? parseInt(cep, 10) : NaN;
   return Number.isFinite(n) ? ancoras(t).porPrefixo.get(Math.floor(n / 1000)) || null : null;
+}
+
+// As cidades com censo no app, uma por arquivo em app/public. O romaneio não diz a cidade do
+// pacote, então o meio de cada bairro sai das quatro juntas.
+export const CIDADES_DO_CENSO = ['Aracaju', 'Barra dos Coqueiros', 'Nossa Senhora do Socorro', 'São Cristóvão'];
+
+export async function meiosDosBairrosDoCenso(): Promise<Map<string, Ponto[]>> {
+  const tabelas = await Promise.all(CIDADES_DO_CENSO.map(c => tabela(c)));
+  // sem uma das cidades, os bairros dela virariam "não conhecidos" calados: melhor dizer
+  if (tabelas.some(t => !t)) throw new Error('não baixou o censo do IBGE. Tente de novo com internet');
+  return meiosDosBairros(tabelas as Tabela[]);
 }

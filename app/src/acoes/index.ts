@@ -11,3 +11,4 @@ export * from './instalar';
 export * from './nomesNoMapa';
 export * from './aviso';
 export * from './reorganizar';
+export * from './romaneio';
