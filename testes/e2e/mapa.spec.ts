@@ -1486,11 +1486,28 @@ test.describe('um condomínio com muitas entregas no mesmo pino', () => {
     const entregue = page.locator('.leaflet-marker-icon').filter({has: page.locator('.pino', {hasText: '✓'})});
     await expect(pendente).toHaveCount(1);
     await expect(entregue).toHaveCount(1);
-    const a = (await pendente.boundingBox())!, b = (await entregue.boundingBox())!;
-    expect(Math.abs(a.x - b.x) + Math.abs(a.y - b.y), 'os dois pinos estão um em cima do outro').toBeLessThan(4);
+    // Fechado o cartão, o mapa cresce e só no quadro seguinte o Leaflet sabe, e o arrasta para
+    // manter o meio: 92 px, com a lista do condomínio aberta. Medidos um de cada vez, um pino podia
+    // sair de antes do arraste e o outro de depois, e o CI de 16/11 viu 92 px entre dois pinos que
+    // estavam juntos. Os dois saem da mesma leitura, com o mapa do tamanho da caixa e parado: é
+    // nessa posição que o dedo toca.
+    const lerOsDois = () => page.evaluate(() => {
+      const caixa = (txt: string) => [...document.querySelectorAll('.leaflet-marker-icon')]
+        .find(el => el.querySelector('.pino')?.textContent?.includes(txt))!.getBoundingClientRect();
+      const p = caixa('+2'), e = caixa('✓');
+      const emDia = (window as any).rotaTeste.tamanho().altura === document.querySelector('#map')!.clientHeight;
+      return {x: p.x, y: p.y, largura: p.width, altura: p.height, longe: Math.abs(p.x - e.x) + Math.abs(p.y - e.y), emDia};
+    });
+    let a = await lerOsDois();
+    await expect.poll(async () => {
+      const antes = a;
+      a = await lerOsDois();
+      return a.emDia && a.x === antes.x && a.y === antes.y;
+    }, {message: 'o mapa para depois de o cartão fechar'}).toBe(true);
+    expect(a.longe, 'os dois pinos estão um em cima do outro').toBeLessThan(4);
 
     // o dedo no ponto, como na rua: quem recebe é o que estiver por cima
-    await page.mouse.click(a.x + a.width / 2, a.y + a.height / 2);
+    await page.mouse.click(a.x + a.largura / 2, a.y + a.altura / 2);
     await expect(cartao).toContainText('Neste pino: 3 entregas');
     await expect(cartao.locator('[data-acao=entregue]').first()).toBeVisible();
   });
