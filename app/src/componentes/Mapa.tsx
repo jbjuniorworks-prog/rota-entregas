@@ -5,7 +5,7 @@ import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, pausaDoSeguir, seg
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
 import {emendar, rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
-import {emLeque, empilhar} from '../logica/pinos';
+import {abrirAsQueSeCobrem, emLeque, empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {ehComercial} from '../logica/comerciais';
@@ -229,7 +229,10 @@ export default function Mapa() {
       .sort((a, b) => a.i - b.i)[0]?.p;
 
     const z = m.getZoom();
-    const pilhas = emLeque(empilhar(comLocal, q => m.project([q.lat, q.lng], z), q => ondeNaRota(q.id) ?? 1e6));
+    // no zoom máximo, casa diferente não divide pino (logica/pinos.ts)
+    const noMaximo = z >= m.getMaxZoom();
+    const empilhadas = emLeque(empilhar(comLocal, q => m.project([q.lat, q.lng], z), q => ondeNaRota(q.id) ?? 1e6, noMaximo));
+    const pilhas = noMaximo ? abrirAsQueSeCobrem(empilhadas) : empilhadas;
     const desenho = [
       pilhas.map(g => g.ps.map(p => [p.id, p.lat, p.lng, p.entregue, p.adiada, p.precisao, p.area, p.stop, p.adicional, p.unidades, rotuloDe(p),
         (p.reclamacoes || []).map(r => r.motivo).join('+'), ehComercial(p)].join(',')).join(';')).join('/'),
