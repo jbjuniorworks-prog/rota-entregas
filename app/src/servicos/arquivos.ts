@@ -35,14 +35,16 @@ export async function separarPlanilhas(files: Arquivo[]) {
   return {planilhas, outros};
 }
 
-export async function lerPlanilhas(files: Arquivo[]): Promise<ItemPlanilha[]> {
+// A primeira aba, linha por linha: a planilha da rota e o romaneio do galpão.
+export async function linhasDaPlanilha(f: Arquivo): Promise<unknown[][]> {
   const XLSX = await import('xlsx');
+  const wb = XLSX.read(new Uint8Array(await f.arrayBuffer()), {type: 'array'});
+  return XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: '', raw: true});
+}
+
+export async function lerPlanilhas(files: Arquivo[]): Promise<ItemPlanilha[]> {
   const itens: ItemPlanilha[] = [];
-  for (const f of files) {
-    const wb = XLSX.read(new Uint8Array(await f.arrayBuffer()), {type: 'array'});
-    const linhas = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: '', raw: true});
-    itens.push(...itensDaPlanilha(linhas, f.name || 'planilha'));
-  }
+  for (const f of files) itens.push(...itensDaPlanilha(await linhasDaPlanilha(f), f.name || 'planilha'));
   return itens;
 }
 
