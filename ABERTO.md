@@ -216,6 +216,20 @@ Fora da lista:
 - **Testado:** e2e novo em `rota.spec.ts` (duas entregas na rota-a e Refazer): sem o conserto, "0 de
   8 entregas"; com ele, "2 de 10". Bateria: tipos, 614 de unidade e 323 de e2e. **Não testado** num celular de verdade.
 
+## Rua errada e o Waze (15/11, dono: "entrou na rua errada, atualiza a rota?"): contagem na branch `contar-waze-e-maps`, nada enviado
+
+- **Hoje:** o caminho rua a rua é do Waze e do Google Maps, que refazem sozinhos; a linha verde do
+  nosso mapa é desenhada na montagem e não acompanha o desvio. A ordem das paradas é nossa, e a
+  entrega fora da ordem já reorganiza o resto (#18).
+- **Escolha do dono: medir primeiro.** Os links de navegação passam a contar o toque no uso dos
+  botões ("waze", "maps", "maps-varios"), sem endereço. Redesenhar o trecho de onde ele está até a
+  próxima parada só vale se eles seguem a nossa linha, e custa pedidos ao serviço de rotas gratuito
+  (não comercial, um por segundo).
+- **Testado:** 1 e2e em `uso.spec.ts`; tirar a contagem de cada um dos 6 links quebrou o teste.
+  Bateria: tipos, 628 de unidade e 327 de e2e.
+- **Próximo:** com alguns dias de contagem, olhar no Admin ("Uso dos botões do cartão") quanto o
+  Waze e o Maps são usados por entrega, e decidir.
+
 ## Pino longe do balão depois da pinça (14/11, vídeos do dono): publicado em 14/11 (#15, versão `mwh3iuya`), falta ver num Android
 
 - **O que se via:** no zoom máximo, a pinça estica o mapa além dele e, ao soltar, o mapa volta. Os
