@@ -154,7 +154,7 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## O CI que parou a publicação de #20 a #23 (16/11): era o teste, não o app; conserto na branch `medir-pinos-no-mesmo-quadro`, nada enviado
+## O CI que parou a publicação de #20 a #23 (16/11): era o teste, não o app; consertado no teste (#24) e publicado com eles em 16/11
 
 - **O que houve:** depois do merge de #20 a #23, o CI da main falhou em `mapa.spec.ts` ("o toque no
   ponto de um condomínio..."), na tentativa e na repetição, com 92 px entre dois pinos que deviam
@@ -171,8 +171,13 @@ Fora da lista:
   cima do outro"; a entregue por cima faz o toque abrir a errada; com o mapa atrasado, passa.
 - **Não visto:** por que naquela rodada do CI o quadro caiu entre as duas medidas, e nas outras
   não. Máquina mais lenta é o provável, sem prova.
+- **Publicado em 16/11 (`ae02959`, versão `mwj2iqwh`, 06:35):** o dono fez o merge do #24 e o CI
+  da main passou de primeira (651 de unidade, 337 de ponta a ponta) e publicou #20 a #24 juntos.
+  Conferido no endereço publicado: `versao.json` diz `mwj2iqwh`; os textos novos de #21, #22 e
+  #23 estão nos arquivos servidos; o do mapa (#20) é igual ao montado aqui da mesma main, fora o
+  nome do arquivo principal que ele importa.
 
-## Casas diferentes no zoom máximo (15/11, dono: "as entregas era uma na frente da casa da outra, e os pinos juntaram"): mergeado em 16/11 (#20), esperando publicar
+## Casas diferentes no zoom máximo (15/11, dono: "as entregas era uma na frente da casa da outra, e os pinos juntaram"): publicado em 16/11 (#20, versão `mwj2iqwh`), falta ver no celular
 
 - **O que se via:** o 426 e o 425 da rota de 15/11, com as portas a 8,1 m, eram um pino só, e o 30 e
   o 32, a 1,8 m, também. O mapa do Admin, que não empilha, mostrava dois.
@@ -218,7 +223,7 @@ Fora da lista:
 - **Para depois:** com rede, refazer sozinho quando muda o pino de uma parada por entregar (15/11,
   item 3 da proposta; 0 casos na rota dele) e contar, sem endereço, quantas entregas saem da ordem.
 
-## Rota que se refaz quando um pino anda demais (15/11, dono: "quando mudamos pinos, ela reage?"): mergeado em 16/11 (#21), esperando publicar
+## Rota que se refaz quando um pino anda demais (15/11, dono: "quando mudamos pinos, ela reage?"): publicado em 16/11 (#21, versão `mwj2iqwh`), falta ver no celular
 
 - **Medido antes, no histórico** (111 dias de rota): em 26, um pino de parada por entregar andou mais
   de 100 m pelo menos 10 min antes da entrega dela (54 casos). Os pinos verificados que chegam da
@@ -264,7 +269,7 @@ Fora da lista:
 - **Para depois:** manter a tela acesa com o app aberto (Wake Lock), para o aviso não parar quando
   a tela apaga sozinha. É outra frente.
 
-## Minhas portas verificadas e o "13/45" do topo (15/11, Luan, pelo dono: "aquela lista de verificados aparecendo pra eles também"): mergeado em 16/11 (#22), esperando publicar
+## Minhas portas verificadas e o "13/45" do topo (15/11, Luan, pelo dono: "aquela lista de verificados aparecendo pra eles também"): publicado em 16/11 (#22, versão `mwj2iqwh`), falta ver no celular
 
 - **Escolha do dono:** cada motorista vê só os números dele.
 - **Tela dos 14 dias (`TelaVerificadas.tsx`):** no Mais e no cartão de fim da rota. O total dos
@@ -295,7 +300,7 @@ Fora da lista:
 - **Testado:** e2e novo em `rota.spec.ts` (duas entregas na rota-a e Refazer): sem o conserto, "0 de
   8 entregas"; com ele, "2 de 10". Bateria: tipos, 614 de unidade e 323 de e2e. **Não testado** num celular de verdade.
 
-## Rua errada e o Waze (15/11, dono: "entrou na rua errada, atualiza a rota?"): contagem mergeada em 16/11 (#23), esperando publicar
+## Rua errada e o Waze (15/11, dono: "entrou na rua errada, atualiza a rota?"): contagem publicada em 16/11 (#23, versão `mwj2iqwh`), falta ler o uso no Admin
 
 - **Hoje:** o caminho rua a rua é do Waze e do Google Maps, que refazem sozinhos; a linha verde do
   nosso mapa é desenhada na montagem e não acompanha o desvio. A ordem das paradas é nossa, e a
