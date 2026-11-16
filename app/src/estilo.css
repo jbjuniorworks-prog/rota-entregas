@@ -177,6 +177,7 @@ textarea{min-height:140px;resize:vertical}
 .aviso .link{min-height:0}
 .aviso.laranja{background:#ffedd5;border-color:#fb923c}
 .aviso.vermelho{background:#fee2e2;border-color:#fca5a5}
+.fora-da-gaiola{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .aviso.xarope{background:#111827;color:#fff;border-color:#111827;font-weight:600}
 .info{font-size:14px;color:var(--mut)}
 /* estimativa de antes das correções: dá para ler, não dá para confundir com a de agora */

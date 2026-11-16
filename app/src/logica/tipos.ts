@@ -175,4 +175,6 @@ export interface Estado {
   paradas: Parada[];
   rota: Rota | null;
   pernas: Record<string, Perna>;
+  // os códigos dos pacotes sem número de parada que ele disse que pegou ("Já peguei")
+  gaiolaVistos?: string[];
 }
