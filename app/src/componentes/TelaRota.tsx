@@ -117,9 +117,11 @@ function BotoesDoEndereco({abertas, ids, quantas, noChao}: {abertas: Parada[]; i
   </>;
   const ir = <>
     {/* "Cadê o botão do Waze?" (Luan, 06/10): ele toca no pino para ir até ele. Um por endereço,
-        porque um pino de ruas diferentes tem mais de um destino. */}
-    <a className="btn contorno-azul" data-acao="waze" data-ids={ids} href={linkWaze(abertas[0] as Ponto)} target="_blank" rel="noopener">Waze</a>
-    <a className="btn contorno-azul" data-acao="maps" data-ids={ids} data-pontos={trecho && trecho.length > 1 ? trecho.length : 1} target="_blank" rel="noopener"
+        porque um pino de ruas diferentes tem mais de um destino. Contados, aqui e em todo link
+        para o Waze e o Maps (15/11): se eles vão pelo Waze, redesenhar a nossa linha quando ele
+        erra a rua não serve a ninguém; medir antes de construir. */}
+    <a className="btn contorno-azul" data-acao="waze" data-ids={ids} href={linkWaze(abertas[0] as Ponto)} onClick={() => A.contar('waze')} target="_blank" rel="noopener">Waze</a>
+    <a className="btn contorno-azul" data-acao="maps" data-ids={ids} data-pontos={trecho && trecho.length > 1 ? trecho.length : 1} onClick={() => A.contar(trecho && trecho.length > 1 ? 'maps-varios' : 'maps')} target="_blank" rel="noopener"
       href={trecho && trecho.length > 1 ? linkMapsVarios(trecho.map(x => x.alvo)) : linkMaps(abertas[0] as Ponto)}>Maps</a>
     {/* Na porta ele toca no pino, e é ali que procura o Depois (print de 05/10): só o cartão da
         próxima tinha. Adiada, o mesmo lugar traz de volta, que serve de desfazer. */}
@@ -322,7 +324,7 @@ function CartaoProxima() {
         ? <button className="btn ok grande-btn" data-acao="aqui" onClick={() => { A.contar('balao-aqui'); A.entregueAqui(pend); }}>Entreguei aqui{pend.length > 1 ? ` as ${pend.length}` : ''}</button>
         : entreguei('btn ok grande-btn')}
       <div className="tres">
-        <a className="btn contorno-azul" href={linkWaze(alvo as Ponto)} target="_blank" rel="noopener">Waze</a>
+        <a className="btn contorno-azul" href={linkWaze(alvo as Ponto)} onClick={() => A.contar('waze')} target="_blank" rel="noopener">Waze</a>
         {podeAqui && entreguei('btn contorno-ok')}
         <button className="btn contorno" onClick={() => A.deixarParaDepois(...pend)}>Depois</button>
       </div>
@@ -335,7 +337,7 @@ function CartaoProxima() {
     <div className="secundarios">
       {alvo.precisao !== 'confirmado' && <button className="link" onClick={() => A.estouAqui(alvo)}>Pino errado? Estou aqui</button>}
       {alvo.precisao !== 'confirmado' && <button className="link" data-acao="colar-link" onClick={() => A.colarLinkDoMapa(alvo)}>Colar link do mapa</button>}
-      <a className="link" href={linkMaps(alvo as Ponto)} target="_blank" rel="noopener">Google Maps</a>
+      <a className="link" href={linkMaps(alvo as Ponto)} onClick={() => A.contar('maps')} target="_blank" rel="noopener">Google Maps</a>
       <button className="link" data-escolher-maps onClick={A.escolherParaMaps}>Escolher pinos para o Maps</button>
     </div>
     {vizinhas.length > 0 && <div className="info perto">Aqui perto, fora desta parada: {vizinhas.slice(0, 3).map(v =>
@@ -432,7 +434,7 @@ function Lista() {
     <button className="puxador" onClick={A.voltar}><i />Voltar ao mapa</button>
     {/* é daqui que uma adiada volta para a rota: o "Refazer" tem de estar à mão */}
     <AvisosDaRota />
-    {proximoTrecho && proximoTrecho.length > 1 && <a className="btn contorno-azul" href={linkMapsVarios(proximoTrecho.map(x => x.alvo))} target="_blank" rel="noopener">Abrir as próximas {proximoTrecho.filter(x => x.ids.length).length} no Google Maps</a>}
+    {proximoTrecho && proximoTrecho.length > 1 && <a className="btn contorno-azul" href={linkMapsVarios(proximoTrecho.map(x => x.alvo))} onClick={() => A.contar('maps-varios')} target="_blank" rel="noopener">Abrir as próximas {proximoTrecho.filter(x => x.ids.length).length} no Google Maps</a>}
     <button className="link" data-escolher-maps onClick={A.escolherParaMaps}>Ou escolher os pinos no mapa</button>
     <div className="ordem-da-rota">
       <EscolhaDaOrdem />
@@ -463,7 +465,7 @@ function Lista() {
         {bs.length > 0 && <div className="trechos"><span className="info">No Google Maps, por trecho:</span>{trechosDe(ra).map((t, k) => {
           const ini = n + 1;
           n += t.filter(x => x.ids.length).length;
-          return <a key={k} className="btn peq contorno-azul" aria-label={`Trecho ${k + 1}, pontos ${ini} a ${n}`} href={linkMapsVarios(t.map(x => x.alvo))} target="_blank" rel="noopener">{ini}–{n}</a>;
+          return <a key={k} className="btn peq contorno-azul" aria-label={`Trecho ${k + 1}, pontos ${ini} a ${n}`} href={linkMapsVarios(t.map(x => x.alvo))} onClick={() => A.contar('maps-varios')} target="_blank" rel="noopener">{ini}–{n}</a>;
         })}</div>}
         {/* só o que falta: a feita vai para o "N entregue(s)" do fim, mesmo com o bloco pela
             metade (pedido de 07/10, ver as feitas no meio atrapalhava) */}

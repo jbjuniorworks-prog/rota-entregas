@@ -1,4 +1,4 @@
-import {aba, abrir, carregar, clicarMapa, expect, test, ROTA_A} from './apoio';
+import {aba, abrir, carregar, clicarMapa, expect, lista, montar, test, ROTA_A} from './apoio';
 
 // A medição que decide quais botões ficam à mão. Vale pouco se não chegar: este teste segue o
 // caminho inteiro, do toque no cartão até a chamada que o servidor recebe.
@@ -39,4 +39,32 @@ test('o contador não aparece como trabalho pendente do motorista', async ({page
   await page.locator('[data-item]').first().getByRole('button', {name: 'Ver no mapa'}).click();
   await aba(page, '3. Rota');
   await expect(page.locator('#app')).not.toContainText('para enviar');
+});
+
+// Dono, 15/11: "entrou na rua errada, atualiza a rota?". Antes de redesenhar a linha quando ele
+// erra a rua, saber se eles seguem a linha do app ou o Waze: cada ida para fora é contada.
+test('o toque no Waze e no Maps é contado, sem nada do endereço', async ({page, context}) => {
+  // a ida de verdade não importa aqui, só o toque
+  await context.route(/waze\.com|google\.com\/maps|maps\.google\.com/, r => r.abort());
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  await montar(page);
+  const cartao = page.locator('[data-folha="proxima"]');
+  await cartao.getByRole('link', {name: 'Waze'}).click();
+  await cartao.getByRole('link', {name: 'Google Maps'}).click();
+  await lista(page);
+  await page.getByRole('link', {name: /^Abrir as próximas \d+ no Google Maps$/}).click();
+  await page.getByRole('link', {name: /^Trecho 1, pontos/}).click();
+  // o cartão do pino: o Maps dele leva o trecho da rota a partir do pino, várias paradas
+  await page.getByRole('button', {name: 'Voltar ao mapa'}).click();
+  await page.locator('.pino.alvo').click();
+  await page.locator('[data-folha="pino"] [data-acao="waze"]').first().click();
+  await page.locator('[data-folha="pino"] [data-acao="maps"]').first().click();
+
+  const uso = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-uso')!).contas as Record<string, number>);
+  expect(uso['waze|']).toBe(2);
+  expect(uso['maps|']).toBe(1);
+  expect(uso['maps-varios|']).toBe(3);
+  expect(uso['maps|waze'], 'Maps logo depois do Waze').toBe(1);
+  expect(JSON.stringify(uso)).not.toContain('Rua');
 });
