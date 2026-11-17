@@ -5,6 +5,7 @@ import {escolhidasValidas, LETRAS} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos} from '../logica/grupos';
 import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, MAPS_MAX, partesDoEndereco, porPerto, trechoDesde, trechos} from '../logica/otimizacao';
 import {resumoDoDia} from '../logica/diaNovo';
+import {paradasDaShopee} from '../logica/paradasDaShopee';
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
@@ -41,7 +42,7 @@ export function TopoRota() {
   // O dia inteiro, não só a rota (dono, 15/11): refeita no meio do dia, a rota só leva as que
   // faltam, e o topo mostrou "0 de 15 entregas" depois de 67 pacotes entregues.
   const todas = e.paradas.length, feitas = e.paradas.filter(p => p.entregue).length;
-  const verificadas = verificadasDoDia(e.paradas);
+  const shopee = paradasDaShopee(e.paradas);
   const prev = R ? previsoes(e) : null;
   const ultima = R ? R.areas[R.areas.length - 1] : null;
   const fim = prev && ultima ? prev.porArea[ultima.id] : null;
@@ -55,11 +56,12 @@ export function TopoRota() {
       {R ? <>
         <div className="resumo"><b>{feitas} de {todas} entregas</b>{fim ? <span className={R.desatualizada ? 'velho' : ''}> · fim às {hhmm(fim.fim)}</span> : null}
           {esperando > 0 ? <span> · {esperando} para enviar{haQuanto ? ` (${haQuanto})` : ''}</span> : null}</div>
-        {/* Ao lado da barra, as verificadas do dia (dono, 15/11: "o que eles forem verificando, só
-            mostra 13/45"): no texto de cima, quebrava a linha e o mapa encolhia. */}
+        {/* Ao lado da barra, as paradas da Shopee (Luan, 17/11, pelo dono: "ele quer as paradas, não
+            os verificados"). No texto de cima, quebrava a linha e o mapa encolhia. Sem planilha da
+            Shopee não há parada para contar, e o lado fica vazio. */}
         <div className="linha-barra">
           <div className="barra"><i style={{width: `${todas ? Math.round(feitas * 100 / todas) : 0}%`}} /></div>
-          <span className="verificadas-topo" data-verificadas-topo>{verificadas.verificadas}/{verificadas.total} verificados</span>
+          {shopee.total > 0 && <span className="paradas-topo" data-paradas-topo>{shopee.feitas}/{shopee.total} paradas</span>}
         </div>
       </> : <div className="resumo"><b>{e.paradas.length} entrega(s) carregada(s)</b></div>}
     </div>
