@@ -190,6 +190,39 @@ Fora da lista:
   Sabotagens: 6 na regra e 2 no mapa, cada uma quebrou o seu teste. Prints conferidos nos dois zooms.
   Bateria: tipos, 634 de unidade e 327 de e2e. **Não testado** num celular de verdade.
 
+## Fim da rota e dia seguinte (16/11, dono: "finalizei a última entrega, o app fica nisso mesmo, não finaliza nada; aí temos que resetar a rota?"): na branch `fim-da-rota`, nada enviado
+
+- **Como era:** depois da última entrega, o cartão dizia "Todas as entregas da rota foram feitas!" e
+  mais nada. A rota do celular não tinha data, e o dia seguinte começava com a de ontem até alguém
+  achar "Resetar a rota" no Mais. A planilha nova lida por cima somava com ela.
+- **Escolhas do dono:**
+  - No fim da rota, um cartão "Rota finalizada" com o botão "Encerrar a rota".
+  - No dia seguinte, a rota de ontem toda feita sai sozinha. Se ficou entrega por fazer, o app
+    pergunta, dizendo quantas.
+- **Regra (`logica/diaNovo.ts`):**
+  - Ler endereços grava o dia, em Aracaju.
+  - O dia da rota é o mais novo entre esse e o da última entrega. A rota guardada antes desta versão
+    fica com o dia das entregas.
+  - Num dia depois desse: toda entregue, limpa; com entrega por fazer (a deixada para depois conta),
+    pergunta; sem data nenhuma, não mexe.
+  - Ler de novo a mesma planilha no dia seguinte não muda o dia, porque nada entrou.
+- **Na tela:**
+  - O cartão de fim mostra "Rota finalizada", o dia em uma linha ("43 entregas, das 07:12 às
+    14:03") e "Encerrar a rota". Encerrar limpa como o reset, sem a pergunta. O Desfazer fica no
+    aviso pelos 10 minutos do backup e volta para a rota.
+  - Com entrega deixada para depois, o cartão continua "Sequência concluída", sem o botão.
+  - A virada do dia acontece ao abrir o app e ao voltar para ele.
+  - A pergunta (laranja) fica no cartão de montar e nos avisos da rota, com "Começar do zero" e
+    "Continuar a de 16/11".
+- **Testado:**
+  - 12 testes de unidade (`diaNovo.test.ts`) e 8 e2e (`fim.spec.ts`, em 412×915, com o relógio do
+    teste virando de 16/11 para 17/11).
+  - Sabotagens: 11 na regra e 10 na tela, cada uma quebrou o seu teste.
+  - O teste achou um defeito: o Desfazer devolvia a rota, mas deixava a tela no começo.
+  - Bateria: tipos, 663 testes de unidade e 345 e2e. Com as quatro branches juntas: tipos e 692
+    testes de unidade.
+  - **Não testado** num celular de verdade.
+
 ## Rota que segue a entrega fora da ordem (15/11, dono, na rota: "a rota não se adapta quando faço um pino diferente"): publicado em 15/11 (#18, versão `mwicfxnm`), falta ver no celular
 
 - **Pedido:** entregando outra parada que não a do cartão, o cartão voltava para a pulada, já para
