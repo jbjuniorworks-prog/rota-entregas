@@ -163,6 +163,8 @@ export interface Regiao {
 
 export interface Estado {
   cidade: string;
+  // o dia (em Aracaju) da última leitura de endereços: a rota de ontem se reconhece por ele
+  dia?: string;
   regiao?: Regiao | null;
   tamTrecho: number;
   inicio: Local | null;

@@ -26,7 +26,7 @@ test.describe('por que o pino não verificou, no celular', () => {
     await expect(page.locator('.resumo')).toContainText('3 de 4 entregas');
     await proxima.locator('[data-acao="entregue"]').first().click();
     const fim = page.locator('[data-folha="fim"]');
-    await expect(fim).toContainText('Todas as entregas da rota foram feitas!');
+    await expect(fim).toContainText('Rota finalizada');
 
     // a nuvem: o número das três verificado; a rua a mais com a entrega a 200 m do pino
     const outra = (await paradas(page)).find(p => p.texto.startsWith('Rua Outra Teste'))!;

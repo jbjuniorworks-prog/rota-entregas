@@ -1,4 +1,5 @@
 import {marcarIsoladas, marcarNumerosIncoerentes, marcarPontoGenerico, moverPeloBairro} from './geo';
+import {hojeEmMaceio} from './painel';
 import type {ItemPlanilha} from './planilha';
 import {analisarLinha, chaveDaParada, chaveEndereco, chaveLugar, coordenadaNoTexto, ruaENumero, semLink, soLink} from './texto';
 import type {Estado, ItemDaParada, Parada, Precisao} from './tipos';
@@ -82,6 +83,7 @@ export function adicionarDaPlanilha(
     else if (!temCoord) r.semPosicao++;
   }
   if (!e.cidade) { const c = itens.find(i => i.cidade); if (c) e.cidade = c.cidade; }
+  if (r.novas || r.juntas) e.dia = hojeEmMaceio(agora);
   r.genericas = marcarPontoGenerico(e.paradas);
   r.numeros = marcarNumerosIncoerentes(e.paradas);
   r.longe = marcarIsoladas(e.paradas);
@@ -193,7 +195,7 @@ export function entregaDoEndereco(paradas: Parada[], endereco: string): Parada |
 }
 
 // `doLeitor`: as linhas que a leitura de print ou vídeo trouxe (podem estar também em `linhas`).
-export function adicionarLinhas(e: Estado, linhas: string[], doLeitor: string[] = []): {novas: number; repetidas: number; arrumadas: number; coladas: Parada[]} {
+export function adicionarLinhas(e: Estado, linhas: string[], doLeitor: string[] = [], agora = Date.now()): {novas: number; repetidas: number; arrumadas: number; coladas: Parada[]} {
   const porNumero = new Map(e.paradas.filter(x => x.ml).map(x => [x.ml!, ruaENumero(x.texto)]));
   let novas = 0, repetidas = 0, arrumadas = 0;
   const coladas: Parada[] = [];
@@ -246,5 +248,6 @@ export function adicionarLinhas(e: Estado, linhas: string[], doLeitor: string[] 
     novas++;
   }
   if (novas || arrumadas) { marcarIsoladas(e.paradas); if (e.rota) e.rota.desatualizada = true; }
+  if (novas) e.dia = hojeEmMaceio(agora);
   return {novas, repetidas, arrumadas, coladas};
 }

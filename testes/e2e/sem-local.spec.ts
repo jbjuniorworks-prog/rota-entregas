@@ -63,7 +63,7 @@ test.describe('parada sem local com a rota montada', () => {
     const fim = page.locator('[data-folha="fim"]');
     for (let i = 0; i < 20 && !(await fim.isVisible()); i++) await proxima.locator('[data-acao="entregue"]').first().click();
     await expect(fim).toContainText('Sequência concluída. Falta(m) 1 sem local, na lista.');
-    await expect(fim).not.toContainText('Todas as entregas da rota foram feitas!');
+    await expect(fim).not.toContainText('Rota finalizada');
     await expect(fim.locator('[data-lista]')).toContainText('faltam 1');
   });
 });
