@@ -34,7 +34,7 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
 /* a barra das entregas com as verificadas do dia ao lado (15/11), na mesma altura de antes */
 .linha-barra{display:flex;align-items:center;gap:8px;margin-top:6px}
 .linha-barra .barra{flex:1;margin-top:0}
-.verificadas-topo{flex:none;font-size:12px;font-weight:700;color:var(--ok);line-height:1}
+.paradas-topo{flex:none;font-size:12px;font-weight:700;color:var(--ok);line-height:1}
 .titulo{font-size:18px;font-weight:800;line-height:1.25}
 .quadrado{flex:none;width:44px;height:44px;border-radius:12px;border:0;background:#f3f4f6;color:var(--tx);display:grid;place-items:center;cursor:pointer;padding:0}
 .quadrado.ok{background:#fff;color:var(--ok);box-shadow:inset 0 0 0 2px var(--ok)}

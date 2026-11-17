@@ -342,7 +342,29 @@ Fora da lista:
 - **Para depois:** manter a tela acesa com o app aberto (Wake Lock), para o aviso não parar quando
   a tela apaga sozinha. É outra frente.
 
-## Minhas portas verificadas e o "13/45" do topo (15/11, Luan, pelo dono: "aquela lista de verificados aparecendo pra eles também"): publicado em 16/11 (#22, versão `mwj2iqwh`), falta ver no celular
+## Paradas da Shopee no topo (17/11, Luan, pelo dono: "ele quer as paradas, não os verificados"): na branch `paradas-no-topo`, nada enviado
+
+- **O que se via:** na rota de condomínios do Luan de 17/11, o topo dizia "45 de 81 entregas" e
+  "28/81 verificados". As 81 são paradas do celular, uma por apartamento; na planilha eram 117
+  pacotes em 13 paradas da Shopee, as P1 a P13 dos balões do mapa.
+- **Escolha do dono:** as paradas no lugar dos verificados; o "N de M entregas" fica.
+- **Mudança:** ao lado da barra, "N/M paradas" em vez de "N/M verificados". Regra em
+  `logica/paradasDaShopee.ts`:
+  - a parada da Shopee só conta feita com tudo o que é dela entregue;
+  - a P9 de uma planilha não é a P9 de outra;
+  - o pacote sem número de parada não conta;
+  - sem planilha da Shopee (a lista do Meli), o lado da barra fica vazio.
+- **Os verificados continuam** no cartão de montar a rota e em "Minhas portas verificadas" (Mais e
+  cartão do fim). A marca de porta verificada continua chegando às entregues, ao abrir, ao voltar e
+  a cada 3 min. Durante a rota, ela não aparece mais em lugar nenhum: só o cartão de montar a conta.
+- **Testado:**
+  - 6 testes de unidade e 5 e2e (`paradas-topo.spec.ts`, 412×915). Os 3 e2e do topo antigo
+    (`minhas-portas.spec.ts`) passaram a ler a marca guardada no celular.
+  - Sabotagens: 4 na regra e 5 na tela, cada uma quebrou o seu teste. Print conferido.
+  - **Não testado** num celular de verdade.
+- **Para depois:** a consulta de 3 em 3 min só serve agora ao cartão de montar; ver se ainda vale.
+
+## Minhas portas verificadas e o "13/45" do topo (15/11, Luan, pelo dono: "aquela lista de verificados aparecendo pra eles também"): publicado em 16/11 (#22, versão `mwj2iqwh`), falta ver no celular; em 17/11 o topo passou a contar as paradas da Shopee (seção acima)
 
 - **Escolha do dono:** cada motorista vê só os números dele.
 - **Tela dos 14 dias (`TelaVerificadas.tsx`):** no Mais e no cartão de fim da rota. O total dos
