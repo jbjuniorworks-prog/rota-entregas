@@ -2,10 +2,8 @@ import {useEffect, useState} from 'react';
 import * as A from '../acoes';
 import {backupRecente} from '../logica/guarda';
 import {guarda, loja, useLoja} from '../loja';
-import {BotaoMais, Cabecalho} from './comuns';
+import {BotaoMais, Cabecalho, PLANILHAS} from './comuns';
 
-// os formatos que o leitor de planilha reconhece (pareceNomeDePlanilha), por extensão e por tipo
-const PLANILHAS = '.xlsx,.xls,.ods,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.oasis.opendocument.spreadsheet,text/csv';
 
 const hoje = () => new Date().toLocaleDateString('pt-BR', {weekday: 'long', day: '2-digit', month: '2-digit'});
 

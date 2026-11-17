@@ -105,6 +105,9 @@ export function LinhaComercial({ps}: {ps: Parada[]}) {
   </div>;
 }
 
+// os formatos que o leitor de planilha reconhece (pareceNomeDePlanilha), por extensão e por tipo
+export const PLANILHAS = '.xlsx,.xls,.ods,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.oasis.opendocument.spreadsheet,text/csv';
+
 export const hhmm = (ms: number) => new Date(ms).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
 
 // Os endereços entregues sem a porta verificada, agrupados pelo motivo (29/10): no Admin, de
