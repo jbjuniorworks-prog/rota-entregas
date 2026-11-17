@@ -6,6 +6,7 @@ import {e, enviarFila, fila, ui} from './base';
 import {iniciarNavegacao, irPara, telaBase} from './navegacao';
 import {buscarDeNovoOsNomesTortos, conferirComOCensoAoAbrir, processarCompartilhado} from './enderecos';
 import {avisoCompartilhadas, conferirVerificadas, consultarCompartilhadas, oferecerLocalGuardado, verPinosNovos} from './posicoes';
+import {virarODia} from './rota';
 import {saiuDaTela, verVersao} from './versao';
 
 // de quanto em quanto o topo pergunta pelas portas das entregas feitas (conferirVerificadas)
@@ -62,6 +63,8 @@ export async function iniciar() {
   usarRegiao(e().regiao || null);
   await iniciarNuvem();
   await assumirODia();
+  // depois de saber de quem é o dia: a rota de ontem é da conta que está no celular
+  virarODia();
   loja.mudou(false);
   enviarFila();
   window.addEventListener('online', enviarFila);
@@ -77,6 +80,7 @@ export async function iniciar() {
   setInterval(conferirVerificadas, VERIFICADAS_A_CADA);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') { saiuDaTela(); return; }
+    virarODia();
     verPendenciasDoAdmin();
     verVersao(false);
     verPinosNovos();

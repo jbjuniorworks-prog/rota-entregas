@@ -1,9 +1,11 @@
 import {longeDaPorta, proximaAPe} from '../logica/geo';
+import {diaCurto, oQueFazerNoDiaNovo} from '../logica/diaNovo';
 import {backupRecente, CHAVES, estadoVazio, resetarDia} from '../logica/guarda';
 import {aplicarGrupos, circular, gruposValidos, tirarGrupos as tirarOsGrupos} from '../logica/grupos';
 import {juntarDeNovo, juntarEntregas, novoId, separarEntregas, separarParada} from '../logica/importar';
 import {montarRota as calcularRota} from '../logica/montagem';
 import {linkWaze} from '../logica/otimizacao';
+import {hojeEmMaceio} from '../logica/painel';
 import {CORES} from '../logica/rotulos';
 import {faltaNaChave} from '../logica/texto';
 import type {Parada, Ponto} from '../logica/tipos';
@@ -11,7 +13,7 @@ import {guarda, loja, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
 import {linhaDaRota, matriz} from '../servicos/ruas';
 import {contar, desatualizarRota, e, enviarFila, fila, ui} from './base';
-import {abrir, irPara} from './navegacao';
+import {abrir, irPara, telaBase} from './navegacao';
 import {pedirLinhas, SEGUE_DAQUI, seguirDaqui, voltarOrdem} from './reorganizar';
 import {ARRUMAR_DE_LONGE, comMinhaPosicao, consultarCompartilhadas, desfazerPorta, GPS_PASSAGEM, guardarPassagem, guardarPassagens, longeDemais, portaDaEntrega} from './posicoes';
 import {registrarComoFicou} from './registro';
@@ -295,6 +297,32 @@ export function resetar() {
   loja.trocarEstado(resetarDia(guarda, e()));
   irPara('inicio');
   status('Rota resetada. Carregue a planilha, o PDF ou os prints. Dá para desfazer nos próximos 10 minutos.', 7000);
+}
+
+// "Encerrar a rota" do cartão de fim e "Começar do zero" do dia seguinte: o reset, sem a pergunta
+// do Mais, porque a rota acabou; o Desfazer fica no aviso pelo mesmo prazo do backup.
+export function encerrarRota(msg = 'Rota encerrada. O celular está pronto para a rota de amanhã.') {
+  ui.posicionando = null;
+  loja.trocarEstado(resetarDia(guarda, e()));
+  irPara('inicio');
+  // desfeito, volta para a rota: na tela de começo, a rota devolvida ficava escondida
+  status(msg, 10000, () => { desfazerReset(); irPara(telaBase()); });
+}
+
+// Ao abrir o app e ao voltar para ele: a rota de ontem toda feita sai sozinha; com entrega por
+// fazer, o aviso do dia novo pergunta (é a tela que lê a regra, aqui só se redesenha).
+export function virarODia() {
+  const v = oQueFazerNoDiaNovo(e());
+  if (v.acao === 'limpar') {
+    contar('dia-novo-limpo');
+    encerrarRota(`A rota de ${diaCurto(v.dia)} foi encerrada: todas as entregas estavam feitas.`);
+  } else if (v.acao === 'perguntar') loja.mudou(false);
+}
+
+export function continuarADeOntem() {
+  contar('dia-novo-continuar');
+  e().dia = hojeEmMaceio();
+  loja.mudou();
 }
 
 export function desfazerReset() {

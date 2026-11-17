@@ -4,6 +4,7 @@ import {haversine, RAIO_BLOCO} from '../logica/geo';
 import {escolhidasValidas, LETRAS} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos} from '../logica/grupos';
 import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, MAPS_MAX, partesDoEndereco, porPerto, trechoDesde, trechos} from '../logica/otimizacao';
+import {resumoDoDia} from '../logica/diaNovo';
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
@@ -11,6 +12,7 @@ import {MOTIVOS_DO_MOTORISTA, verificadasDoDia, type PortasDaRota} from '../logi
 import type {Parada, Ponto, RotaArea} from '../logica/tipos';
 import {loja, useLoja} from '../loja';
 import {nuvem} from '../servicos/nuvem';
+import {AvisoDiaNovo} from './AvisoDiaNovo';
 import {rotuloDe} from '../logica/rotulo';
 import {AvisoXarope, BotaoMais, hhmm, Icone, LinhaComercial, MarcarXarope, Meta, PortasExplicadas, Tag} from './comuns';
 
@@ -222,6 +224,7 @@ function CartaoMontar() {
   const {verificadas} = verificadasDoDia(e.paradas);
   return <div className="folha" data-folha="montar">
     <div className="titulo">{e.paradas.length} entrega(s) no mapa</div>
+    <AvisoDiaNovo />
     <div className="info-contagem">
       <div className="info">A rota sai de onde você está.</div>
       <div className={verificadas ? 'verificado' : 'info'} data-verificadas>{verificadas}/{e.paradas.length} verificados</div>
@@ -257,6 +260,7 @@ function AvisosDaRota() {
       : 'As posições mudaram depois de montar a rota: a sequência continua valendo, o tempo é que é de antes.'} <button className="link" onClick={A.montarRota}>Refazer a rota</button></div>}
     {foraDaRota > 0 && <div className="aviso">{foraDaRota} parada(s) nova(s) ou corrigida(s) fora da rota. <button className="link" onClick={A.montarRota}>Refazer a rota</button></div>}
     {sem > 0 && <div className="aviso">{sem} parada(s) sem local, fora da rota. <button className="link" data-ver-sem-local onClick={verSemLocal}>Ver</button></div>}
+    <AvisoDiaNovo />
   </>;
 }
 
@@ -277,7 +281,17 @@ function CartaoProxima() {
     // com uma sem local por entregar, "todas feitas" mentia
     const falta = [adiadas && `${adiadas} deixada(s) para depois`, sem && `${sem} sem local`].filter(Boolean).join(' e ');
     return <div className="folha proxima" data-folha="fim">{puxar}<AvisosDaRota />
-      <div className="grande">{falta ? `Sequência concluída. Falta(m) ${falta}, na lista.` : 'Todas as entregas da rota foram feitas!'}</div>
+      {/* "o app fica nisso mesmo, não finaliza nada" (dono, 16/11): o fim da rota limpa o celular
+          para amanhã, sem ter de achar o Resetar no Mais. O botão logo abaixo do resumo: depois dos
+          links das portas, saía do cartão em 412×915 */}
+      {falta
+        ? <div className="grande">Sequência concluída. Falta(m) {falta}, na lista.</div>
+        : <>
+          <div className="grande">Rota finalizada</div>
+          <ResumoDoDia />
+          <button className="btn pri" data-encerrar onClick={() => { A.contar('encerrar-rota'); A.encerrarRota(); }}>Encerrar a rota</button>
+          <div className="info">Limpa o celular para a rota de amanhã. As portas que você marcou continuam guardadas.</div>
+        </>}
       <PortasDasEntregas />
       <AbrirMinhasPortas de="fim" />
     </div>;
@@ -414,6 +428,13 @@ function SemLocal() {
 // entregas não desenha 95 cartões o tempo todo.
 // "Esses dois pinos não verificaram por quê?" (o Luan sempre pergunta ao dono, 29/10): a resposta
 // do Admin, aqui, para as entregas dele. Só ao tocar: pergunta à nuvem, e precisa de sinal.
+// "43 entregas, das 07:12 às 14:03": o dia em uma linha, no cartão de fim.
+function ResumoDoDia() {
+  const {e} = useLoja();
+  const r = resumoDoDia(e);
+  return <div className="info" data-resumo-do-dia>{r.entregas === 1 ? '1 entrega' : `${r.entregas} entregas`}{r.de != null && r.ate != null ? `, das ${hhmm(r.de)} às ${hhmm(r.ate)}` : ''}.</div>;
+}
+
 function PortasDasEntregas() {
   const [r, setR] = useState<PortasDaRota | {erro: string} | 'buscando' | null>(null);
   const ver = () => {
