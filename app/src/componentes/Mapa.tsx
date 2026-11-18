@@ -9,6 +9,7 @@ import {abrirAsQueSeCobrem, emLeque, empilhar} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {ehComercial} from '../logica/comerciais';
+import {numerosDaShopee} from '../logica/paradasDaShopee';
 import {passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
 import {loja, useLoja} from '../loja';
 
@@ -287,7 +288,7 @@ export default function Mapa() {
         // O Leaflet põe o texto do balão como HTML. O número da parada só entra com dígitos
         // (numeroDaParada), mas essa trava mora longe daqui: escapar aqui não depende dela.
         const balao = esc(((xarope ? '! ' : '') + balaoDoGrupo({
-          stops: [...new Set(pendentes.map(x => x.stop).filter(Boolean) as string[])].sort((a, b) => +a - +b),
+          stops: numerosDaShopee(pendentes),
           adicionais: pendentes.filter(x => x.adicional).length,
           pacotes: pendentes.reduce((n, x) => n + (x.unidades || 1), 0),
         })).trim());
