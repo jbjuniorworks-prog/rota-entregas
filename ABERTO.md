@@ -154,6 +154,28 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## As paradas do topo são os pinos do mapa (18/11, Luan, pelo dono): na branch `paradas-sao-pinos`, nada enviado
+
+- **Pedido:** "Luan quer que as paradas que aparecem pra ele sejam a quantidade de pinos no mapa".
+- **Por quê, medido:** na rota dele de 18/11 eram 60 pacotes, 54 entregas, 40 paradas da Shopee e 50
+  pontos distintos no mapa. Nove paradas da Shopee estavam em mais de um ponto (a P37, com dois
+  endereços a 919 m), e dois pontos tinham mais de uma parada (a P6 e a P40).
+- **Decisão do dono:** o pino é o lugar, como o mapa mostra no zoom máximo, e não muda com o zoom. O
+  contador substitui o das paradas da Shopee e continua com o nome "paradas".
+- **Regra (`pinosDoDia`, `pinos.ts`):** o mesmo endereço a até 150 m, ou a mesma porta pelo nome, é um
+  pino. É a regra do "mesmo lugar" que o mapa usa para empilhar, agora uma função só. A separada é
+  sempre um pino, mesmo entregue: no mapa, entregue, ela pode cair na pilha das outras, e o total do
+  dia encolheria. O pino conta como feito quando tudo dele foi entregue. Sem posição não há pino.
+- **Ficou como era:** o contador só aparece na rota de planilha da Shopee; na lista do Meli o lado
+  fica vazio. Os rótulos P6, P40 continuam nos pinos.
+- **Testado:** 5 de unidade, um por regra, e 2 na tela, em 412×915. Com a `rota-f` e a `rota-g`
+  juntas, são 6 entregas, 5 paradas da Shopee e 4 pinos; o topo diz "0/4 paradas". Na `rota-f`, o
+  desfazer de uma das três entregas do mesmo pino tira o pino da conta. Cada regra desligada quebrou o
+  teste dela. Saíram 3 testes da regra antiga (a P9 de duas planilhas, o pacote sem número de parada
+  e as 7 paradas da `rota-a`). Não visto num celular de verdade.
+- **Depende de `paradas-juntas`:** as duas mexem na mesma linha de `TelaRota.tsx`, e esta nasceu dela.
+  Mergear a `paradas-juntas` primeiro.
+
 ## A P40 escondida na parada juntada (18/11, vídeo do Luan, Rua Tuta 106): na branch `paradas-juntas`, nada enviado
 
 - **O vídeo (antes das 08:13, sem o áudio ouvido):** dois pinos no mesmo ponto, 6 com "P6" e 7 com

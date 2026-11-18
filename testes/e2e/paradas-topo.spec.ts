@@ -1,60 +1,56 @@
 import type {Page} from '@playwright/test';
-import {abrir, carregar, colar, lista, montar, paraABase, test, expect, ROTA_A} from './apoio';
+import {abrir, carregar, colar, lista, montar, paraABase, test, expect} from './apoio';
 
-// Luan, 17/11, pelo dono: no topo da rota ele quer as paradas da Shopee (o "P4" dos balões do mapa),
-// não os verificados. Planilhas inventadas: na rota-d, cada parada tem dois endereços a 134 m; a
-// rota-c tem 9 paradas e um pacote sem número; a rota-e tem uma P9 também.
-const ROTA_C = 'testes/planilhas/rota-c.xlsx', ROTA_D = 'testes/planilhas/rota-d.xlsx', ROTA_E = 'testes/planilhas/rota-e.xlsx';
+// Luan, 17/11, pelo dono: no topo da rota ele quer as paradas, não os verificados. Desde 18/11 elas
+// são os pinos do mapa (Luan: "as paradas que aparecem pra ele sejam a quantidade de pinos"), não as
+// paradas da Shopee, que não batiam com o mapa. Planilhas inventadas: na rota-f, três entregas do
+// mesmo número no mesmo ponto (um pino) e uma em outra rua; na rota-g, a P6 e a P40 juntas numa
+// entrega (um pino) e a P7 em outra rua.
+const ROTA_F = 'testes/planilhas/rota-f.xlsx', ROTA_G = 'testes/planilhas/rota-g.xlsx';
 
 test.use({viewport: {width: 412, height: 915}});
 
 const paradas = (page: Page) => page.locator('[data-paradas-topo]');
 const entregas = (page: Page) => page.locator('[data-topo] .resumo b');
-const entregar = (page: Page) => page.locator('[data-folha="proxima"] [data-acao="entregue"]').first().click();
 
-test('a parada da Shopee só conta com os dois endereços entregues, e o desfazer tira da conta', async ({page}) => {
-  page.on('dialog', d => d.accept());
-  await abrir(page);
-  await carregar(page, ROTA_D);
-  // pela sequência, as duas primeiras entregas são os dois endereços da P1
+async function montarPelaSequencia(page: Page) {
   await paraABase(page);
   await page.locator('[data-montar="sequencia"]').click();
   await expect(page.locator('[data-folha="proxima"]')).toBeVisible({timeout: 20_000});
-  await expect(paradas(page)).toHaveText('0/40 paradas');
-  await expect(page.locator('[data-topo]')).not.toContainText('verificados');
+}
 
-  await entregar(page);
-  // a entrega chega no topo antes de olhar a parada: senão o "0/40" seria o de antes dela
-  await expect(entregas(page)).toHaveText('1 de 80 entregas');
-  await expect(paradas(page)).toHaveText('0/40 paradas');
-  await entregar(page);
-  await expect(entregas(page)).toHaveText('2 de 80 entregas');
-  await expect(paradas(page)).toHaveText('1/40 paradas');
+test('as paradas do topo são os pinos do mapa: nem as paradas da Shopee, nem as entregas', async ({page}) => {
+  await abrir(page);
+  await carregar(page, ROTA_F);
+  await carregar(page, ROTA_G);
+  await montarPelaSequencia(page);
+  // 5 paradas da Shopee (P6 e P7 de uma planilha; P6, P7 e P40 da outra), 6 entregas, 4 pinos
+  await expect(entregas(page)).toHaveText('0 de 6 entregas');
+  await expect(paradas(page)).toHaveText('0/4 paradas');
+  await expect(page.locator('[data-topo]')).not.toContainText('verificados');
+});
+
+test('o pino só conta com todas as entregas dele entregues, e o desfazer tira da conta', async ({page}) => {
+  page.on('dialog', d => d.accept());
+  await abrir(page);
+  await carregar(page, ROTA_F);
+  await montarPelaSequencia(page);
+  await expect(entregas(page)).toHaveText('0 de 4 entregas');
+  await expect(paradas(page)).toHaveText('0/2 paradas');
+  // a primeira da sequência é o pino das três entregas do mesmo número
+  await page.locator('[data-folha="proxima"] [data-acao="entregue"]').first().click();
+  await expect(entregas(page)).toHaveText('3 de 4 entregas');
+  await expect(paradas(page)).toHaveText('1/2 paradas');
 
   await lista(page);
   await page.locator('details.feitas > summary').click();
   await page.locator('details.feitas [aria-label="Desfazer"]').first().click();
-  await expect(entregas(page)).toHaveText('1 de 80 entregas');
-  await expect(paradas(page)).toHaveText('0/40 paradas');
+  // a entrega chega no topo antes de olhar o pino: senão o "1/2" seria o de antes dela
+  await expect(entregas(page)).toHaveText('2 de 4 entregas');
+  await expect(paradas(page)).toHaveText('0/2 paradas');
 });
 
-test('o pacote sem número de parada não conta como parada', async ({page}) => {
-  await abrir(page);
-  await carregar(page, ROTA_C);
-  await montar(page);
-  await expect(entregas(page)).toHaveText('0 de 10 entregas');
-  await expect(paradas(page)).toHaveText('0/9 paradas');
-});
-
-test('duas planilhas: a P9 de uma não é a P9 da outra', async ({page}) => {
-  await abrir(page);
-  await carregar(page, ROTA_C);
-  await carregar(page, ROTA_E);
-  await montar(page);
-  await expect(paradas(page)).toHaveText('0/11 paradas');
-});
-
-// A rota-a, apesar do .txt, é planilha da Shopee com 7 paradas: a rota sem parada é a lista do Meli.
+// Sem planilha da Shopee, o lado da barra fica vazio, como era.
 test('a lista do Meli não tem parada da Shopee: o lado da barra fica vazio', async ({page}) => {
   await abrir(page);
   await colar(page);
@@ -68,11 +64,4 @@ test('a lista do Meli não tem parada da Shopee: o lado da barra fica vazio', as
   await expect(entregas(page)).toHaveText('0 de 2 entregas');
   await expect(paradas(page)).toHaveCount(0);
   await expect(page.locator('[data-topo]')).not.toContainText('verificados');
-});
-
-test('a rota-a, planilha da Shopee, conta as 7 paradas dela', async ({page}) => {
-  await abrir(page);
-  await carregar(page, ROTA_A);
-  await montar(page);
-  await expect(paradas(page)).toHaveText('0/7 paradas');
 });

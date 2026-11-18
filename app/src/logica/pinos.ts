@@ -18,6 +18,10 @@ const estadoDe = (p: Parada) => p.entregue ? 'e' : p.adiada ? 'a' : 'p';
 // Separada pelo motorista para ter o seu pino (26/10): não entra na pilha de ninguém, nem recebe.
 const sozinha = (p: Parada) => !!p.separada && !p.entregue;
 
+// O mesmo lugar, que nenhum zoom separa: o mesmo endereço a até 150 m, ou a mesma porta pelo nome.
+const mesmoLugar = (a: Parada, b: Parada) => haversine(a as Ponto, b as Ponto) <= MESMO_LUGAR
+  && (mesmoEndereco([a.texto, b.texto]) || mesmaPortaPeloNome(a, b));
+
 // O pino de uma pilha é desenhado na primeira dela pela ordem da rota, e é com essa que as outras
 // se medem: o grupo nasce dela. Nascendo da primeira da planilha, a pilha decidia por um ponto e
 // aparecia em outro. Em 16/10 o Luan entregou "aqui" os dois do 1630, ao lado de uma ADS do 1623
@@ -35,15 +39,30 @@ export function empilhar(ps: Parada[], projetar: (p: Ponto) => {x: number; y: nu
     const pt = projetar(p as Ponto);
     const estado = estadoDe(p);
     if (sozinha(p)) { out.push({ps: [p], x: pt.x, y: pt.y, estado}); continue; }
-    const mesmoLugar = out.find(x => x.estado === estado && !sozinha(x.ps[0])
-      && haversine(x.ps[0] as Ponto, p as Ponto) <= MESMO_LUGAR
-      && (mesmoEndereco([x.ps[0].texto, p.texto]) || mesmaPortaPeloNome(x.ps[0], p)));
-    const g = mesmoLugar || !soMesmoLugar && out.find(x => x.estado === estado && !sozinha(x.ps[0])
+    const doLugar = out.find(x => x.estado === estado && !sozinha(x.ps[0]) && mesmoLugar(x.ps[0], p));
+    const g = doLugar || !soMesmoLugar && out.find(x => x.estado === estado && !sozinha(x.ps[0])
       && Math.abs(x.x - pt.x) < PIXELS_JUNTOS && Math.abs(x.y - pt.y) < PIXELS_JUNTOS);
     if (g) g.ps.push(p);
     else out.push({ps: [p], x: pt.x, y: pt.y, estado});
   }
   return out;
+}
+
+// "As paradas que aparecem pra ele sejam a quantidade de pinos no mapa" (Luan, pelo dono, 18/11). As
+// paradas da Shopee não batiam com o mapa: na rota dele de 18/11 eram 40, em 50 pontos (a P37 com
+// dois endereços a 919 m; a P6 e a P40 na mesma porta). O pino aqui é o lugar, como o mapa mostra no
+// zoom máximo, e não muda com o zoom nem com a entrega: a separada é sempre um pino, mesmo entregue
+// (no mapa, entregue, ela pode cair na pilha das outras, e o total do dia encolheria). Feito quando
+// tudo dele foi entregue. Sem posição não há pino.
+export function pinosDoDia(ps: Parada[]): {feitos: number; total: number} {
+  const lugares: Parada[][] = [];
+  for (const p of ps) {
+    if (p.lat == null || p.lng == null) continue;
+    const l = !p.separada && lugares.find(x => !x[0].separada && mesmoLugar(x[0], p));
+    if (l) l.push(p);
+    else lugares.push([p]);
+  }
+  return {feitos: lugares.filter(l => l.every(p => p.entregue)).length, total: lugares.length};
 }
 
 // As separadas que ainda estão no mesmo ponto (acabaram de ser separadas, ninguém arrumou)
