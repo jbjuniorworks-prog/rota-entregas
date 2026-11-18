@@ -5,7 +5,7 @@ import {escolhidasValidas, LETRAS} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos} from '../logica/grupos';
 import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, MAPS_MAX, partesDoEndereco, porPerto, trechoDesde, trechos} from '../logica/otimizacao';
 import {resumoDoDia} from '../logica/diaNovo';
-import {paradasDaShopee} from '../logica/paradasDaShopee';
+import {numerosDaShopee, paradasDaShopee, textoDasParadas} from '../logica/paradasDaShopee';
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
@@ -184,11 +184,13 @@ function EntregasDoEndereco({ps}: {ps: Parada[]}) {
 function PacotesDaParada({p}: {p: Parada}) {
   if (p.entregue || !p.itens || p.itens.length < 2) return null;
   const {proprio} = partesDoEndereco(p.itens.map(it => ({texto: it.texto}) as Parada));
+  // de paradas diferentes da Shopee, cada pacote diz a dele: é por ela que o app da Shopee chama
+  const variasDaShopee = numerosDaShopee([p]).length > 1;
   return <>
     <details className="do-endereco" data-pacotes={p.id} open={p.itens.length <= 3}>
       <summary>Os {p.itens.length} pacotes desta parada</summary>
       {p.itens.map((it, i) => <div className="sub-entrega" key={i}>
-        <span className="o-que-muda">{it.ml ? `#${it.ml} · ` : ''}{proprio[i] || 'Sem complemento'}</span>
+        <span className="o-que-muda">{variasDaShopee && it.stop ? `P${it.stop} · ` : ''}{it.ml ? `#${it.ml} · ` : ''}{proprio[i] || 'Sem complemento'}</span>
       </div>)}
     </details>
     <button className="btn contorno" data-acao="separar" onClick={() => { A.contar('separar'); A.separar(p); }}>Separar os {p.itens.length} pacotes</button>
@@ -316,6 +318,7 @@ function CartaoProxima() {
   }
   const umEndereco = agruparPorEndereco(pend).length === 1;
   const pacotes = pend.reduce((n, p) => n + (p.unidades || 1), 0);
+  const daShopee = numerosDaShopee(pend);
   const vizinhas = porPerto(e.paradas, alvo as Ponto, agora.b);
   const perna = e.pernas[agora.b[0]];
   const podeAqui = alvo.precisao !== 'confirmado' && pend.every(x => haversine(x as Ponto, alvo as Ponto) <= RAIO_BLOCO);
@@ -330,7 +333,7 @@ function CartaoProxima() {
     <div className="linha-entrega">
       <div className="badge grande-badge" style={{background: loja.area(alvo.area).cor}}>{rotuloDe(alvo)}</div>
       <div className="txt">
-        <div className="rotulo-proxima">Próxima{alvo.stop ? ` · parada ${alvo.stop}` : alvo.adicional ? ' · ADS' : ''}{pacotes > 1 ? ` · ${pacotes} pacotes` : ''}{perna && perna.dur ? ` · ${fmtMin(perna.dur)}` : ''}</div>
+        <div className="rotulo-proxima" data-rotulo-proxima>Próxima{daShopee.length ? ` · ${textoDasParadas(daShopee)}` : alvo.adicional ? ' · ADS' : ''}{pacotes > 1 ? ` · ${pacotes} pacotes` : ''}{perna && perna.dur ? ` · ${fmtMin(perna.dur)}` : ''}</div>
         <div className="endereco">{alvo.texto}</div>
         {/* junto do endereço, à vista sem rolar: embaixo dos botões o Pedro não via (10/10) */}
         {pend.every(x => x.precisao === 'confirmado') && <div className="verificado" data-confirmada>Endereço verificado</div>}

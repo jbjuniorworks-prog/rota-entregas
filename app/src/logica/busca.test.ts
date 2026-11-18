@@ -45,6 +45,19 @@ describe('busca de Todos os endereços', () => {
     expect(acha(CENTRAL_135, '#135')).toBe(false);
   });
 
+  // Luan, 18/11: a P40 juntada na P6 (a mesma porta, escrita de dois jeitos) não se achava
+  const JUNTADA = parada('Rua Inventada, 106, R: lado do Restaurante Teste, CEP 49000-084', {ml: '6', stop: '6', pacotes: ['BRTESTG0001', 'BRTESTG0003'],
+    itens: [{tn: 'BRTESTG0001', texto: 'Rua Inventada, 106, R: lado do Restaurante Teste', ml: '6', stop: '6', adicional: false},
+      {tn: 'BRTESTG0003', texto: 'Rua Inventada, 106, Próximo rest. Restaurante Teste', ml: '60', stop: '40', adicional: false}]});
+
+  it('pela parada da Shopee de um pacote que a parada juntou', () => {
+    expect(acha(JUNTADA, '40')).toBe(true);
+  });
+
+  it('pelo número no app de um pacote que a parada juntou', () => {
+    expect(acha(JUNTADA, '#60')).toBe(true);
+  });
+
   it('pelo CEP, a partir de 5 dígitos', () => {
     expect(acha(CENTRAL_135, '49000103')).toBe(true);
     expect(acha(CENTRAL_135, '49000-103')).toBe(true);

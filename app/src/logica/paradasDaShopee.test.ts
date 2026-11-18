@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {estadoVazio} from './guarda';
 import {adicionarDaPlanilha} from './importar';
-import {paradasDaShopee} from './paradasDaShopee';
+import {numerosDaShopee, paradasDaShopee, textoDasParadas} from './paradasDaShopee';
 import {itensDaPlanilha} from './planilha';
 import type {Estado} from './tipos';
 
@@ -62,5 +62,29 @@ describe('as paradas da Shopee no topo', () => {
   it('sem planilha da Shopee, nenhuma parada', () => {
     const e = carregar(estadoVazio(), [linha('AT1', '-', '-', 70), linha('AT1', '-', '-', 80)]);
     expect(paradasDaShopee(e.paradas)).toEqual({feitas: 0, total: 0});
+  });
+});
+
+// Luan, 18/11: a P6 e a P40 da Shopee, mesma porta com o complemento escrito de dois jeitos, viram
+// uma parada do celular. O pino, o cartão e a busca só falavam da P6.
+describe('os números da Shopee de uma parada juntada', () => {
+  const linhaDe = (seq: number, stop: number, complemento: string) =>
+    ['AT1', seq, stop, `BRAT1${seq}`, `Rua Inventada, 106, ${complemento}`, 'Bairro Alfa', 'Aracaju', '49000-084', -10.95, -37.05];
+
+  it('a parada juntada tem os números de todos os pacotes, em ordem de número', () => {
+    const e = carregar(estadoVazio(), [linhaDe(6, 6, 'R: lado do Restaurante Teste'), linhaDe(60, 40, 'Próximo rest. Restaurante Teste')]);
+    expect(e.paradas).toHaveLength(1);
+    expect(numerosDaShopee(e.paradas)).toEqual(['6', '40']);
+  });
+
+  it('em ordem de número, não de texto: a 9 vem antes da 10', () => {
+    expect(numerosDaShopee([{stop: '10', itens: undefined}, {stop: '9', itens: undefined}])).toEqual(['9', '10']);
+  });
+
+  it('o texto do cartão diz uma, duas ou mais paradas', () => {
+    expect(textoDasParadas([])).toBe('');
+    expect(textoDasParadas(['6'])).toBe('parada 6');
+    expect(textoDasParadas(['6', '40'])).toBe('paradas 6 e 40');
+    expect(textoDasParadas(['6', '12', '40'])).toBe('paradas 6, 12 e 40');
   });
 });

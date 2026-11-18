@@ -74,6 +74,14 @@ const rotaF = [
   [31, 7, 'Rua Outra Teste, 20', 'Bairro Março Teste', '49098-233', -10.9630, -37.0630],
 ];
 
+// A rua de 18/11 (Luan), com nomes de teste: a Shopee pôs dois pacotes da mesma porta na P6 e na
+// P40, com o complemento escrito de dois jeitos, e o app junta os dois numa parada do celular.
+const rotaG = [
+  [6, 6, 'Rua Teste Inventada, 106, R: lado do Restaurante Teste', 'Bairro Areia Teste/ Mosqueiro Teste', '49097-084', -10.9700, -37.0700],
+  [7, 7, 'Rua Outra Teste, 30', 'Bairro Areia Teste', '49097-085', -10.9760, -37.0760],
+  [60, 40, 'Rua Teste Inventada, 106, Próximo rest. Restaurante Teste', 'Bairro Areia Teste', '49097-084', -10.9700, -37.0700],
+];
+
 function planilha(at, prefixo, linhas) {
   const realista = (v, crua) => crua ? v : +(v - 0.0000013).toFixed(7);
   const dados = linhas.map(([seq, stop, end, bairro, cep, lat, lng, crua], i) =>
@@ -91,4 +99,5 @@ writeFileSync(new URL('rota-c.xlsx', pasta), planilha('ATTESTE0003', 'BRTESTC', 
 writeFileSync(new URL('rota-d.xlsx', pasta), planilha('ATTESTE0004', 'BRTESTD', rotaD));
 writeFileSync(new URL('rota-e.xlsx', pasta), planilha('ATTESTE0005', 'BRTESTE', rotaE));
 writeFileSync(new URL('rota-f.xlsx', pasta), planilha('ATTESTE0006', 'BRTESTF', rotaF));
+writeFileSync(new URL('rota-g.xlsx', pasta), planilha('ATTESTE0007', 'BRTESTG', rotaG));
 console.log('planilhas geradas em testes/planilhas/');

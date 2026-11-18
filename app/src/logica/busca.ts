@@ -1,3 +1,4 @@
+import {numerosDaShopee} from './paradasDaShopee';
 import {normal} from './texto';
 import type {Parada} from './tipos';
 
@@ -41,6 +42,10 @@ export function acharNaParada(p: Parada, busca: string): Achado | null {
   const numeros = new Set(texto.match(/\d+/g) || []);
   const cep = (p.texto.match(/\d{5}-?\d{3}/) || [''])[0].replace('-', '');
   const pacotes = (p.pacotes || []).map(c => c.toLowerCase());
+  // a parada que juntou pacotes de outras paradas da Shopee responde também pelos números delas
+  // (Luan, 18/11: "40" não achava a P40, juntada na P6)
+  const daShopee = numerosDaShopee([p]);
+  const doApp = new Set([p.ml, ...(p.itens || []).map(it => it.ml)].filter(Boolean));
   const bateram = new Set<string>();
   for (const w of ps) {
     const so = w.replace(/^#/, '');
@@ -48,7 +53,7 @@ export function acharNaParada(p: Parada, busca: string): Achado | null {
     if (/^\d+$/.test(so)) {
       const doPacote = so.length < NO_CODIGO ? [] : (p.pacotes || []).filter((_, i) => pacotes[i].includes(so));
       doPacote.forEach(c => bateram.add(c));
-      const achou = (!w.startsWith('#') && numeros.has(so)) || p.ml === so || p.stop === so
+      const achou = (!w.startsWith('#') && numeros.has(so)) || doApp.has(so) || daShopee.includes(so)
         || doPacote.length > 0 || (so.length >= 5 && cep.includes(so));
       if (!achou) return null;
       continue;
