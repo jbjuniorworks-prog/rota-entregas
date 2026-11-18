@@ -1,4 +1,4 @@
-import {abrirAsQueSeCobrem, emLeque, empilhar, SE_COBREM} from './pinos';
+import {abrirAsQueSeCobrem, emLeque, empilhar, pinosDoDia, SE_COBREM} from './pinos';
 import type {Parada, Ponto} from './tipos';
 
 const GRAU = 111320;
@@ -154,5 +154,48 @@ describe('no zoom máximo, casa diferente não divide pino', () => {
     const ps = [parada('feita', 'Rua Recanto, 30', 0, {entregue: true}), parada('falta', 'Rua Recanto, 32', 1)];
     const gs = abrirAsQueSeCobrem(empilhar(ps, z19, () => 0, true));
     expect(gs.map(g => g.dx)).toEqual([undefined, undefined]);
+  });
+});
+
+// Luan, pelo dono, 18/11: as paradas do topo são os pinos do mapa, não as paradas da Shopee.
+describe('os pinos do dia, para o topo', () => {
+  it('o mesmo endereço é um pino só, e o vizinho de número é outro', () => {
+    const ps = [
+      parada('ap1', 'Avenida das Flores, 1210, Apto 1601', 0),
+      parada('ap2', 'Avenida das Flores, 1210, Apto 302', 17),
+      parada('vizinho', 'Avenida das Flores, 1241', 22),
+    ];
+    expect(pinosDoDia(ps)).toEqual({feitos: 0, total: 2});
+  });
+
+  it('uma parada da Shopee em dois lugares são dois pinos', () => {
+    const ps = [
+      parada('cem', 'Rodovia Inventada, 100, por trás do condomínio', 0, {stop: '37'}),
+      parada('cinquenta', 'Rodovia Inventada, 50A, atrás do condomínio', 919, {stop: '37'}),
+    ];
+    expect(pinosDoDia(ps)).toEqual({feitos: 0, total: 2});
+  });
+
+  it('o pino só está feito quando tudo dele foi entregue', () => {
+    const ps = [parada('ap1', 'Avenida das Flores, 1210, Apto 1601', 0), parada('ap2', 'Avenida das Flores, 1210, Apto 302', 5)];
+    ps[0].entregue = true;
+    expect(pinosDoDia(ps)).toEqual({feitos: 0, total: 1});
+    ps[1].entregue = true;
+    expect(pinosDoDia(ps)).toEqual({feitos: 1, total: 1});
+  });
+
+  it('a separada é o seu pino, e continua sendo depois de entregue', () => {
+    const ps = [
+      parada('s1', 'Rua do Restaurante, 106, ao lado do restaurante', 0, {separada: true}),
+      parada('s2', 'Rua do Restaurante, 106, próximo ao restaurante', 0, {separada: true}),
+    ];
+    expect(pinosDoDia(ps)).toEqual({feitos: 0, total: 2});
+    ps[0].entregue = true;
+    expect(pinosDoDia(ps)).toEqual({feitos: 1, total: 2});
+  });
+
+  it('sem posição não há pino', () => {
+    const ps = [parada('com', 'Rua Recanto, 30', 0), parada('sem', 'Rua Recanto, 90', 0, {lat: null, lng: null})];
+    expect(pinosDoDia(ps)).toEqual({feitos: 0, total: 1});
   });
 });
