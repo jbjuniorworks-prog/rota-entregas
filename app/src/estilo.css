@@ -219,6 +219,8 @@ details summary{font-weight:600;cursor:pointer;padding:8px 0}
 code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
 
 /* os pinos */
+/* inclinado no leque: gira em volta da âncora do pino, onde o traço termina */
+.inclinado{transform-origin:15px 30px}
 .pino{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:grid;place-items:center}
 .pino span{transform:rotate(45deg);color:#fff;font-weight:700;font-size:11px}
 /* Circulando grupos (16/10): um dedo desenha. Sem isto, o navegador toma o arrasto como rolagem e corta o traço.

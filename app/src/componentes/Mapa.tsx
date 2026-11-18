@@ -5,7 +5,7 @@ import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, pausaDoSeguir, seg
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
 import {emendar, rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
-import {abrirAsQueSeCobrem, emLeque, empilhar} from '../logica/pinos';
+import {abrirAsQueSeCobrem, emLeque, empilhar, inclinacao} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {ehComercial} from '../logica/comerciais';
@@ -15,18 +15,27 @@ import {loja, useLoja} from '../loja';
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]!));
 
-function icone(texto: string, cor: string, apagado = false, borda = '', ids = '') {
+function icone(texto: string, cor: string, apagado = false, borda = '', ids = '', giro = 0) {
   // Não verificado (dono, 19/10): vazado, com a cor da área na borda e no número, para a cor da
   // área continuar dizendo de que área é. A borda de dúvida, quando há, fica no lugar da dela.
   const vazio = /\bnao-verificado\b/.test(borda);
   const fundo = vazio ? `background:#fff;color:${cor}${/\b(duvida|quase)\b/.test(borda) ? '' : `;border-color:${cor}`}` : `background:${cor}`;
+  // Inclinado no leque (logica/pinos.ts): gira em volta da ponta, e o número desgira para ser lido
+  const numero = giro ? ` style="transform:rotate(${(/\bcomercial\b/.test(borda) ? 0 : 45) - giro}deg)"` : '';
+  const pino = `<div class="pino ${borda}"${ids ? ` data-ids="${esc(ids)}"` : ''} style="${fundo};opacity:${apagado ? .4 : 1}"><span${numero}>${esc(texto)}</span></div>`;
   return L.divIcon({
     className: '', iconSize: [30, 30], iconAnchor: [15, 30],
-    html: `<div class="pino ${borda}"${ids ? ` data-ids="${esc(ids)}"` : ''} style="${fundo};opacity:${apagado ? .4 : 1}"><span>${esc(texto)}</span></div>`,
+    html: giro ? `<div class="inclinado" style="transform:rotate(${giro}deg)">${pino}</div>` : pino,
   });
 }
 
 const BALAO = {permanent: true as const, direction: 'top' as const, offset: [0, -28] as [number, number], className: 'balao'};
+// no pino inclinado, o balão vai junto para a cabeça dele
+function balaoDo(giro: number) {
+  if (!giro) return BALAO;
+  const a = giro * Math.PI / 180, d = -BALAO.offset[1];
+  return {...BALAO, offset: [Math.round(d * Math.sin(a)), Math.round(-d * Math.cos(a))] as [number, number]};
+}
 // os nomes das ruas ficam em -1000; as que faltam, em 0
 const POR_BAIXO = -500;
 const ZOOM_DO_FOCO = 17;
@@ -99,6 +108,7 @@ interface NoMapa {
   lat: number;
   lng: number;
   balao: string;
+  giro: number;
 }
 
 export default function Mapa() {
@@ -263,9 +273,15 @@ export default function Mapa() {
       leque.clearLayers();
       for (const g of pilhas) {
         const p = g.ps[0];
-        // no leque o pino é desenhado ao lado do ponto, e um traço mostra onde ela está de verdade
+        // no leque o pino é desenhado ao lado do ponto, inclinado para ele, e um traço mostra onde ela
+        // está de verdade. O traço tem borda branca para o V se ver sobre qualquer fundo do mapa.
         const onde = g.dx == null ? {lat: p.lat!, lng: p.lng!} : m.unproject(m.project([p.lat!, p.lng!], z).add([g.dx, g.dy!]), z);
-        if (g.dx != null) L.polyline([[p.lat!, p.lng!], [onde.lat, onde.lng]], {color: '#374151', weight: 2, opacity: .7, interactive: false}).addTo(leque);
+        if (g.dx != null) {
+          const traco: L.LatLngExpression[] = [[p.lat!, p.lng!], [onde.lat, onde.lng]];
+          L.polyline(traco, {color: '#ffffff', weight: 6, opacity: .9, interactive: false}).addTo(leque);
+          L.polyline(traco, {color: '#374151', weight: 3, opacity: .95, interactive: false}).addTo(leque);
+        }
+        const giro = inclinacao(g);
         const chave = g.ps.map(x => x.id).join('+');
         // escolhido para o Maps: a letra que ele vai ter lá, num pino escuro
         const letra = escolhendo ? letraDoPino(escolhidas, g.ps.map(x => x.id)) : '';
@@ -292,7 +308,7 @@ export default function Mapa() {
           adicionais: pendentes.filter(x => x.adicional).length,
           pacotes: pendentes.reduce((n, x) => n + (x.unidades || 1), 0),
         })).trim());
-        const sig = [onde.lat, onde.lng, rotulo, cor, apagado, borda, balao].join('|');
+        const sig = [onde.lat, onde.lng, rotulo, cor, apagado, borda, balao, giro].join('|');
         const antes = pinos.current[chave];
         if (antes && antes.sig === sig) continue;
         // Entregue ou adiada vai por baixo (Luan, 10/11): no mesmo ponto das que faltam, o pino que
@@ -300,7 +316,7 @@ export default function Mapa() {
         // separa dois pinos no mesmo lugar. Acima dos nomes das ruas, que não se tocam.
         const camada = apagado ? POR_BAIXO : 0;
         if (!antes) {
-          const mk = L.marker([onde.lat, onde.lng], {icon: icone(rotulo, cor, apagado, borda, chave), zIndexOffset: camada});
+          const mk = L.marker([onde.lat, onde.lng], {icon: icone(rotulo, cor, apagado, borda, chave, giro), zIndexOffset: camada});
           // O pino abre o cartão de baixo com as entregas dele, os mesmos botões do cartão da
           // próxima. O balão do Leaflet era pequeno para o dedo e montado em texto, à parte.
           mk.on('click', () => {
@@ -310,9 +326,9 @@ export default function Mapa() {
             if (loja.ui.folha === 'circular') return;
             (loja.ui.pino ? trocar : abrir)({pino: chave.split('+'), folha: 'proxima'});
           });
-          if (balao) mk.bindTooltip(balao, BALAO);
+          if (balao) mk.bindTooltip(balao, balaoDo(giro));
           mk.addTo(camadaP);
-          pinos.current[chave] = {mk, sig, lat: onde.lat, lng: onde.lng, balao};
+          pinos.current[chave] = {mk, sig, lat: onde.lat, lng: onde.lng, balao, giro};
           continue;
         }
         if (antes.lat !== onde.lat || antes.lng !== onde.lng) {
@@ -320,13 +336,15 @@ export default function Mapa() {
           antes.lat = onde.lat;
           antes.lng = onde.lng;
         }
-        antes.mk.setIcon(icone(rotulo, cor, apagado, borda, chave));
+        antes.mk.setIcon(icone(rotulo, cor, apagado, borda, chave, giro));
         // a mesma pilha pode virar entregue (uma parada só) ou voltar, com o desfazer
         antes.mk.setZIndexOffset(camada);
-        if (antes.balao !== balao) {
+        // o zoom abre e fecha o leque: o balão muda de lugar com a inclinação
+        if (antes.balao !== balao || antes.giro !== giro) {
           antes.mk.unbindTooltip();
-          if (balao) antes.mk.bindTooltip(balao, BALAO);
+          if (balao) antes.mk.bindTooltip(balao, balaoDo(giro));
           antes.balao = balao;
+          antes.giro = giro;
         }
         antes.sig = sig;
       }

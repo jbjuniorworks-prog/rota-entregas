@@ -154,6 +154,33 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Os pinos do mesmo ponto em V (18/11, print do Luan, pelo dono): na branch `leque-em-v`, nada enviado
+
+- **O print:** no zoom máximo, a P6 e a P40, no mesmo ponto, ficavam uma em cima da outra, ligadas
+  por uma barra em pé. O dono: "ao invés de deixar assim com uma barra reta, vamos deixar em formato
+  de V com os dois pinos, pra visualmente saber que é o mesmo lugar".
+- **Causa (`logica/pinos.ts`):** o leque abria em círculo em volta do ponto, a partir de cima. Com
+  dois pinos, um ia para cima e o outro para baixo, e os traços até cada um viravam uma linha em pé
+  atrás deles.
+- **Escolha do dono:** entre três formas, mostradas em prints do app com endereços inventados, a 3: o
+  V com os pinos inclinados, cada um apontando para o ponto.
+- **Conserto:** os pinos do mesmo ponto abrem por cima dele, 60 graus entre um e o seguinte e no
+  máximo 120 no V inteiro. Com mais pinos, os braços crescem para eles não se cobrirem. Cada pino
+  gira em volta da âncora para apontar o seu ponto, o número continua em pé e o balão vai junto
+  para a cabeça do pino. O traço ganhou borda branca. Vale para os dois leques: o das separadas
+  (`emLeque`) e o das casas diferentes que se cobrem no zoom máximo (`abrirAsQueSeCobrem`). Neste,
+  os pinos vão da esquerda para a direita, como os pontos estão. Antes cada um ia para o lado em que
+  o seu ponto estava, e agora estar mais ao norte ou ao sul já não conta. Só o desenho muda: a
+  posição gravada é a mesma.
+- **Testado:** 6 de unidade novos (`pinos.test.ts`) e 2 e2e (`leque.spec.ts`, 412×915, as 4
+  separadas da `rota-e`: todas por cima do ponto, cada uma inclinada para o lado em que está). Um
+  de unidade foi reescrito: "cada uma do seu lado" agora olha leste e oeste, e não norte e sul.
+  Sabotagens: 4 na regra (círculo, sem ordenar da esquerda para a direita, inclinação ao contrário,
+  sem o teto dos 120 graus) e 2 no mapa (círculo, pino sem inclinar), cada uma quebrou o seu teste.
+  Bateria: tipos, 714 de unidade e 364 de e2e. Print do build no tamanho do celular conferido.
+  **Não testado** num celular de verdade.
+- **Limite:** com muitos pinos no mesmo ponto o V cresce. Com 8, os braços têm uns 120 px.
+
 ## As paradas do topo são os pinos do mapa (18/11, Luan, pelo dono): na branch `paradas-sao-pinos`, nada enviado
 
 - **Pedido:** "Luan quer que as paradas que aparecem pra ele sejam a quantidade de pinos no mapa".

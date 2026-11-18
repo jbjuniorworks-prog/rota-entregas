@@ -53,3 +53,41 @@ test.describe('no zoom máximo, casa diferente não divide pino', () => {
     await expect(page.locator(PINO)).not.toContainText(OUTRA);
   });
 });
+
+// Dono, 18/11: dois pinos no mesmo ponto ficavam um em cima do outro, ligados por uma barra em pé
+// que sumia atrás deles. Em V, por cima do ponto e inclinados para ele, se vê que é um lugar só.
+test.describe('as do mesmo ponto abrem em V', () => {
+  test.use({viewport: {width: 412, height: 915}});
+
+  const separar = async (page: Page) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-e.xlsx');
+    await montar(page);
+    await page.locator('[data-folha="proxima"]').getByRole('button', {name: 'Separar os 4 pacotes'}).click();
+    const separadas = await page.evaluate(() => (JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas as
+      {id: string; lat: number; lng: number; separada?: boolean}[]).filter(p => p.separada));
+    expect(separadas).toHaveLength(4);
+    const mapa = (await page.locator('#map').boundingBox())!;
+    const c = await page.evaluate(([a, b]) => (window as any).rotaTeste.pixel(a, b), [separadas[0].lat, separadas[0].lng]);
+    const pinos: {x: number; y: number; giro: number}[] = [];
+    for (const p of separadas) {
+      const el = page.locator(`.pino[data-ids="${p.id}"]`);
+      const caixa = (await el.boundingBox())!;
+      // o giro que a tela mostra, de quem segura o pino
+      const giro = await el.evaluate(e => { const m = new DOMMatrix(getComputedStyle(e.parentElement!).transform); return Math.atan2(m.b, m.a) * 180 / Math.PI; });
+      pinos.push({x: caixa.x + caixa.width / 2, y: caixa.y + caixa.height / 2, giro});
+    }
+    return {ponto: {x: mapa.x + c.x, y: mapa.y + c.y}, pinos};
+  };
+
+  test('os pinos ficam todos por cima do ponto', async ({page}) => {
+    const {ponto, pinos} = await separar(page);
+    for (const p of pinos) expect(p.y).toBeLessThan(ponto.y);
+  });
+
+  test('cada pino se inclina para o ponto: o da esquerda para a esquerda, o da direita para a direita', async ({page}) => {
+    const {ponto, pinos} = await separar(page);
+    for (const p of pinos) expect(Math.sign(p.giro)).toBe(Math.sign(p.x - ponto.x));
+  });
+});
