@@ -1,4 +1,4 @@
-import {abrirAsQueSeCobrem, emLeque, empilhar, pinosDoDia, SE_COBREM} from './pinos';
+import {abrirAsQueSeCobrem, emLeque, empilhar, inclinacao, pinosDoDia, SE_COBREM} from './pinos';
 import type {Parada, Ponto} from './tipos';
 
 const GRAU = 111320;
@@ -103,6 +103,28 @@ describe('empilhar pinos', () => {
     expect(ids(empilhar([merc(), parada('perto', 'Rua Vizinha, 3', 5)], tela(0.5)))).toEqual([['merc'], ['perto']]);
   });
 
+  it('as separadas do mesmo ponto abrem por cima dele', () => {
+    const ps = ['Mercearia', 'Condominio Portal', 'Casa'].map((c, k) => parada(String(k), `Rodovia Teste, 67, ${c}`, 0, {separada: true}));
+    const pilhas = emLeque(empilhar(ps, tela(0.5)));
+    expect(pilhas.every(g => g.dy! < 0)).toBe(true);
+  });
+
+  // O pino inclinado aponta para o ponto, na ponta do traço: o da esquerda tomba para a esquerda.
+  it('o pino do leque se inclina para o lado em que foi desenhado, e o do ponto fica em pé', () => {
+    const ps = [parada('a', 'Rua Um, 1', 0), parada('b', 'Rua Dois, 2', 0), parada('longe', 'Rua Longe, 5', 300)];
+    const [a, b, longe] = abrirAsQueSeCobrem(empilhar(ps, tela(0.29), () => 0, true));
+    const [esq, dir] = a.dx! < b.dx! ? [a, b] : [b, a];
+    expect(inclinacao(esq)).toBeLessThan(0);
+    expect(inclinacao(dir)).toBeGreaterThan(0);
+    expect(inclinacao(longe)).toBe(0);
+  });
+
+  it('o pino inclinado aponta para o ponto', () => {
+    // desenhado 30 px à direita e 30 px acima: a ponta olha para baixo e para a esquerda, a 45 graus
+    expect(inclinacao({ps: [], x: 0, y: 0, estado: 'p', dx: 30, dy: -30})).toBe(45);
+    expect(inclinacao({ps: [], x: 0, y: 0, estado: 'p', dx: 0, dy: -30})).toBe(0);
+  });
+
   it('uma separada sozinha no ponto não sai do lugar', () => {
     const pilhas = emLeque(empilhar([parada('so', 'Rodovia Teste, 67, Mercearia', 0, {separada: true}), parada('outra', 'Rua Longe, 5', 300)], tela(0.5)));
     expect(pilhas.map(g => g.dx)).toEqual([undefined, undefined]);
@@ -127,20 +149,43 @@ describe('no zoom máximo, casa diferente não divide pino', () => {
     expect(ids(empilhar(ps, z19, () => 0, true))).toEqual([['predio1', 'predio2']]);
   });
 
-  it('as que se cobrem abrem em leque, cada uma do seu lado, sem se cobrir', () => {
-    const ps = [parada('30', 'Rua Recanto, 30', 0), parada('32', 'Rua Recanto, 32', 1.8)];
+  it('as que se cobrem abrem sem se cobrir, cada uma do seu lado', () => {
+    // a do 32 fica 1,8 m a leste da do 30, e vem antes na planilha
+    const ps = [parada('32', 'Rua Recanto, 32', 0, {lng: -37.06 + metros(1.8)}), parada('30', 'Rua Recanto, 30', 0)];
     const gs = abrirAsQueSeCobrem(empilhar(ps, z19, () => 0, true));
     expect(gs.every(g => g.dx != null)).toBe(true);
-    const [a, b] = gs.map(desenhado);
-    expect(entre(a, b)).toBeGreaterThanOrEqual(30);
-    // a do 32 está ao norte: desenhada mais acima (y menor) que a do 30
-    expect(b.y).toBeLessThan(a.y);
+    const [d32, d30] = gs.map(desenhado);
+    expect(entre(d32, d30)).toBeGreaterThanOrEqual(30);
+    expect(d32.x).toBeGreaterThan(d30.x);
   });
 
-  it('três no mesmo ponto vão para a volta dele, sem se cobrir', () => {
+  it('três no mesmo ponto não se cobrem', () => {
     const ps = [parada('a', 'Rua Um, 1', 0), parada('b', 'Rua Dois, 2', 0), parada('c', 'Rua Três, 3', 0)];
     const ds = abrirAsQueSeCobrem(empilhar(ps, z19, () => 0, true)).map(desenhado);
     for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) expect(entre(ds[i], ds[j])).toBeGreaterThanOrEqual(30);
+  });
+
+  // Dono, 18/11: com dois no mesmo ponto, um ia para cima e o outro para baixo, e os traços viravam
+  // uma barra em pé que sumia atrás dos pinos. Em V, os dois por cima do ponto, se vê que é um lugar.
+  it('dois no mesmo ponto ficam os dois por cima dele, um de cada lado', () => {
+    const ps = [parada('a', 'Rua Um, 1', 0), parada('b', 'Rua Dois, 2', 0)];
+    const gs = abrirAsQueSeCobrem(empilhar(ps, z19, () => 0, true));
+    expect(gs.every(g => g.dy! < 0)).toBe(true);
+  });
+
+  it('dois no mesmo ponto ficam lado a lado, na mesma altura, um de cada lado do ponto', () => {
+    const ps = [parada('a', 'Rua Um, 1', 0), parada('b', 'Rua Dois, 2', 0)];
+    const [a, b] = abrirAsQueSeCobrem(empilhar(ps, z19, () => 0, true));
+    expect(a.dy).toBe(b.dy);
+    expect(Math.sign(a.dx!) * Math.sign(b.dx!)).toBe(-1);
+  });
+
+  it('muitos no mesmo ponto continuam por cima dele, sem se cobrir', () => {
+    const ps = Array.from({length: 8}, (_, k) => parada(String(k), `Rua ${k}, ${k + 1}`, 0));
+    const gs = abrirAsQueSeCobrem(empilhar(ps, z19, () => 0, true));
+    expect(gs.every(g => g.dy! < 0)).toBe(true);
+    const ds = gs.map(desenhado);
+    for (let i = 0; i < ds.length; i++) for (let j = i + 1; j < ds.length; j++) expect(entre(ds[i], ds[j])).toBeGreaterThanOrEqual(30);
   });
 
   it('afastadas o bastante para o dedo, ficam no seu ponto', () => {
