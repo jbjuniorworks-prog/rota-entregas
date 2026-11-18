@@ -154,6 +154,33 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## A P40 escondida na parada juntada (18/11, vídeo do Luan, Rua Tuta 106): na branch `paradas-juntas`, nada enviado
+
+- **O vídeo (antes das 08:13, sem o áudio ouvido):** dois pinos no mesmo ponto, 6 com "P6" e 7 com
+  "P40", os dois "Rua Tuta, 106", perto do mesmo restaurante, com o complemento escrito de dois
+  jeitos. Os dois têm o aviso vermelho "Na porta da vizinha de mesmo número". Depois ele filma a casa.
+  O relato ("não aparecia uma parada, porque estavam juntas") foi lido pelo dono, não pelo áudio.
+- **Pelo banco:** a Shopee pôs os dois pacotes em paradas diferentes (P6 e P40). O app juntou os dois
+  numa parada do celular. O Luan usou "Separar os pacotes da parada" 2 vezes no dia, cada uma seguida
+  de "Entreguei aqui". Entregou os dois às 08:14, a 19 m da porta que o Pedro verificou 8 vezes.
+- **Causa (reproduzida com as funções do app):** `chaveEndereco` só olha apto, bloco, casa, sala e
+  quadra no complemento. Por isso as duas linhas juntam numa parada (`adicionarDaPlanilha`), que fica
+  com o `stop` da primeira. O `stop` da segunda fica só em `itens`. O balão do pino mostra "P6"
+  (`Mapa.tsx`, só `x.stop`), o "Próxima · parada 6" também, e a busca por "40" não acha nada. Só o
+  contador do topo (`paradasDaShopee`) lê os itens: conta as 2.
+- **Dono, 18/11:** "o problema foi não mostrar as duas paradas pro motorista, logo ele não sabia
+  exatamente".
+- **Feito:** uma regra só, `numerosDaShopee` (`paradasDaShopee.ts`), que o contador também passou a
+  usar. O balão do pino mostra "P6+40 ×2". O cartão da próxima diz "paradas 6 e 40". Na lista dos
+  pacotes da parada, cada pacote diz a parada dele ("P40 · #60 ·"), só quando há mais de uma. A busca
+  acha a parada juntada pela parada ("40") e pelo número no app ("#60") de qualquer pacote dela.
+- **Testado:** 2 de unidade na busca e 3 na tela, em 412×915 com a `rota-g.xlsx` (inventada, nova). Cada
+  um falhou com a sua parte do conserto desligada. A tela do pino (o cartão "Neste pino") usa a mesma
+  lista de pacotes da próxima, mas não tem teste próprio. Bateria completa: 364 de ponta a ponta,
+  703 de unidade, tipos e build. Não visto num celular de verdade.
+- **Fora do escopo (item futuro):** depois de separar, as duas recebem o aviso vermelho "porta da
+  vizinha", embora sejam o mesmo lugar, com porta verificada.
+
 ## O CI que parou a publicação de #20 a #23 (16/11): era o teste, não o app; consertado no teste (#24) e publicado com eles em 16/11
 
 - **O que houve:** depois do merge de #20 a #23, o CI da main falhou em `mapa.spec.ts` ("o toque no
