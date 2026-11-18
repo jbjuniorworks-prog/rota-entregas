@@ -6,6 +6,7 @@ import {coresDosGrupos, gruposValidos} from '../logica/grupos';
 import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, MAPS_MAX, partesDoEndereco, porPerto, trechoDesde, trechos} from '../logica/otimizacao';
 import {resumoDoDia} from '../logica/diaNovo';
 import {numerosDaShopee, paradasDaShopee, textoDasParadas} from '../logica/paradasDaShopee';
+import {pinosDoDia} from '../logica/pinos';
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
@@ -43,6 +44,7 @@ export function TopoRota() {
   // faltam, e o topo mostrou "0 de 15 entregas" depois de 67 pacotes entregues.
   const todas = e.paradas.length, feitas = e.paradas.filter(p => p.entregue).length;
   const shopee = paradasDaShopee(e.paradas);
+  const pinos = pinosDoDia(e.paradas);
   const prev = R ? previsoes(e) : null;
   const ultima = R ? R.areas[R.areas.length - 1] : null;
   const fim = prev && ultima ? prev.porArea[ultima.id] : null;
@@ -56,12 +58,13 @@ export function TopoRota() {
       {R ? <>
         <div className="resumo"><b>{feitas} de {todas} entregas</b>{fim ? <span className={R.desatualizada ? 'velho' : ''}> · fim às {hhmm(fim.fim)}</span> : null}
           {esperando > 0 ? <span> · {esperando} para enviar{haQuanto ? ` (${haQuanto})` : ''}</span> : null}</div>
-        {/* Ao lado da barra, as paradas da Shopee (Luan, 17/11, pelo dono: "ele quer as paradas, não
-            os verificados"). No texto de cima, quebrava a linha e o mapa encolhia. Sem planilha da
-            Shopee não há parada para contar, e o lado fica vazio. */}
+        {/* Ao lado da barra, as paradas (Luan, 17/11, pelo dono: "ele quer as paradas, não os
+            verificados"). No texto de cima, quebrava a linha e o mapa encolhia. Desde 18/11 elas são
+            os pinos do mapa, não as paradas da Shopee, que não batiam com o que ele via (`pinosDoDia`).
+            Continua só na rota de planilha da Shopee, como era: na lista do Meli o lado fica vazio. */}
         <div className="linha-barra">
           <div className="barra"><i style={{width: `${todas ? Math.round(feitas * 100 / todas) : 0}%`}} /></div>
-          {shopee.total > 0 && <span className="paradas-topo" data-paradas-topo>{shopee.feitas}/{shopee.total} paradas</span>}
+          {shopee.total > 0 && <span className="paradas-topo" data-paradas-topo>{pinos.feitos}/{pinos.total} paradas</span>}
         </div>
       </> : <div className="resumo"><b>{e.paradas.length} entrega(s) carregada(s)</b></div>}
     </div>
