@@ -2,6 +2,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 import {lugaresDaBusca, peneiraDaNuvem, peneiraDeChave, textoDaChave, type LugarDaBusca} from '../logica/busca';
 import {agruparConferencia, marcadasDoMesmoPonto, type MarcaEmConferencia, type MotoristaEmConferencia, type PontoPendente} from '../logica/conferencia';
 import {hojeEmMaceio, resumirDia, type Dia, type MarcaDoAdmin, type PacoteDoDia} from '../logica/painel';
+import type {PacoteDaMarca} from '../logica/outraPorta';
 import type {PortaDaNuvem} from '../logica/triagem';
 import {porQueNaoVerificou, verificadasPorMotorista, type MarcaDoDia, type PacoteDaRota, type PortasDaRota, type VerificadasDoMotorista} from '../logica/verificacao';
 import {nuvem} from './nuvem';
@@ -452,6 +453,20 @@ export async function decidirMarcas(motorista: string, chaves: string[], aprovar
   const {data, error} = await cliente().rpc('decidir_marcas', {motorista, chaves, aprovar});
   falhou(error);
   return (data as number) || 0;
+}
+
+// Os pacotes do motorista naquele número, na rota mais nova dele com ele (a do pacote cujo endereço
+// a conferência mostra, 030), como a planilha os trouxe: o complemento diz qual é a outra porta.
+export async function pacotesDaMarca(motorista: string, chave: string): Promise<PacoteDaMarca[]> {
+  const c = cliente();
+  const {data: ps, error} = await c.from('pacotes').select('endereco,bairro,cep,rota_id,criado_em').eq('chave_lugar', chave).order('criado_em', {ascending: false}).limit(200);
+  falhou(error);
+  if (!ps?.length) return [];
+  const {data: rs, error: e2} = await c.from('rotas').select('id').eq('motorista_id', motorista).in('id', [...new Set(ps.map(p => p.rota_id))]);
+  falhou(e2);
+  const dele = new Set((rs || []).map(r => r.id));
+  const rota = ps.find(x => dele.has(x.rota_id))?.rota_id;
+  return ps.filter(x => x.rota_id === rota).map(p => ({endereco: p.endereco, bairro: p.bairro, cep: p.cep}));
 }
 
 export async function confirmarPosicao(chave: string, lat: number, lng: number) {
