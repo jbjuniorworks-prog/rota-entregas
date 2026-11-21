@@ -3,6 +3,7 @@ import {haversine} from '../logica/geo';
 import {contarConferencia, totalDe, type ItemEmConferencia, type MotoristaEmConferencia} from '../logica/conferencia';
 import {CHAVES} from '../logica/guarda';
 import {fmtKm} from '../logica/otimizacao';
+import {outraPorta} from '../logica/outraPorta';
 import {hojeEmMaceio, type Dia, type LinhaDoDia, type ParaConferir, type SemLocal, type Suspeita} from '../logica/painel';
 import {MOTIVOS, type PortasDaRota, type VerificadasDoMotorista} from '../logica/verificacao';
 import {faltaNaChave} from '../logica/texto';
@@ -332,6 +333,31 @@ Ela passa a valer para todos os motoristas, como marcação sua.`)) return;
       'Porta definida: vale para todos os motoristas.');
     if (feito) recarregar();
   };
+  // Outra entrada do mesmo número (dono, 21/11: Chico Mendes 100 e 15, Matapoã 42): a marca dele
+  // vira a porta do complemento do pacote dele e sai da disputa. A porta geral não muda, e o
+  // celular usa a nova ao ler a próxima planilha com esse complemento (separarAsConhecidas).
+  const separar = async (g: MotoristaEmConferencia, i: ItemEmConferencia) => {
+    const nome = 'sep' + g.id + i.chave_lugar;
+    const achada = await correr(nome, async () => outraPorta(await Adm.pacotesDaMarca(g.id, i.chave_lugar), i.chave_lugar, loja.e.cidade));
+    if (achada === undefined) return;
+    if ('motivo' in achada) {
+      status(achada.motivo === 'sem complemento' ? `O pacote de ${g.nome} em ${i.endereco} não tem complemento: não há outra porta para separar.`
+        : achada.motivo === 'várias entradas' ? `${g.nome} tinha neste número entregas de entradas diferentes (${achada.complementos.map(c => `"${c}"`).join(', ') || 'uma sem complemento'}): não dá para saber de qual é a marca. Defina a posição como porta ou apague.`
+        : `Não achei o pacote de ${g.nome} neste endereço: não separo sem saber a entrada.`, 8000);
+      return;
+    }
+    if (!confirm(`Separar como outra porta?
+
+A entrada "${achada.complemento}" de ${i.endereco} passa a ter a porta onde ${g.nome} marcou. A porta geral não muda.
+
+Vale para as próximas planilhas com esse complemento. A marca de ${g.nome} sai da disputa.`)) return;
+    const feito = await correr(nome, async () => {
+      await Adm.confirmarPosicao(achada.chave, i.lat, i.lng);
+      await Adm.decidirMarcas(g.id, [i.chave_lugar], false);
+      return true;
+    }, `Separada: a entrada "${achada.complemento}" tem a porta dela.`);
+    if (feito) recarregar();
+  };
   const verNoMapa = (g: MotoristaEmConferencia, i: ItemEmConferencia) => mostrarNoMapa([
     {lat: i.lat, lng: i.lng, rotulo: g.nome.slice(0, 2), texto: `${g.nome} · ${i.endereco}`, cor: corDe(g.id)},
     ...(i.pino_lat != null && i.pino_lng != null ? [{lat: i.pino_lat, lng: i.pino_lng, rotulo: 'R', texto: `Pino da rota de ${g.nome} · ${i.endereco}`, cor: '#6b7280'}] : []),
@@ -350,6 +376,7 @@ Ela passa a valer para todos os motoristas, como marcação sua.`)) return;
       {i.disputa
         ? <button className="btn peq pri" onClick={() => definir(g, i)} disabled={!!ocupado}>{fazendo('def' + g.id + i.chave_lugar) ? 'Definindo…' : 'Definir esta posição como porta'}</button>
         : !i.no_pino && <button className="btn peq pri" onClick={() => decidir(g, [i], true)} disabled={!!ocupado}>{fazendo('ok' + g.id + i.chave_lugar) ? 'Aprovando…' : 'Aprovar'}</button>}
+      {i.disputa && <button className="btn peq" onClick={() => separar(g, i)} disabled={!!ocupado}>{fazendo('sep' + g.id + i.chave_lugar) ? 'Separando…' : 'Separar como outra porta'}</button>}
       <button className="btn peq" onClick={() => decidir(g, [i], false)} disabled={!!ocupado}>{fazendo('x' + g.id + i.chave_lugar) ? 'Apagando…' : 'Apagar'}</button>
     </div>
   </div>;
@@ -358,7 +385,7 @@ Ela passa a valer para todos os motoristas, como marcação sua.`)) return;
   if (!total) return null;
   return <details open data-secao="Em conferência">
     <summary>Em conferência ({total})</summary>
-    <div className="info">O que os motoristas em conferência marcaram ou entregaram e mudaria a porta para os outros. Só vale depois que você aprovar. A marca longe de uma porta verificada fica em disputa, de qualquer motorista: você define a posição dela como porta ou apaga.</div>
+    <div className="info">O que os motoristas em conferência marcaram ou entregaram e mudaria a porta para os outros. Só vale depois que você aprovar. A marca longe de uma porta verificada fica em disputa, de qualquer motorista: você define a posição dela como porta, separa como outra porta (quando é outra entrada do mesmo número) ou apaga.</div>
     {estado.map(g => <div key={g.id} data-conferencia={g.nome}>
       <div className="area-cab"><span className="txt">{g.nome} · {totalDe(g)} endereço(s)</span></div>
       {g.disputas.map(i => item(g, i))}

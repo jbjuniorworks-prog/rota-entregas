@@ -154,6 +154,34 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Separar como outra porta, no Admin (21/11, dono): na branch `outra-porta`, nada enviado
+
+- **Por quê:** dois clientes no mesmo número (Chico Mendes 100 e 15, Matapoã 42) dividiam a porta, e
+  a entrega certa de um virava disputa com a do outro. Separar era um script.
+- **Medido em 21/11 (produção, só leitura):** 101 disputas abertas. Em 37, a chave já teve pacotes de
+  complementos diferentes e marcas a mais de 100 m uma da outra. São 115 chaves nesse padrão ao
+  todo, e só 9 de CEP genérico. "Complemento diferente" conta também "Casa" contra nada: é teto, e
+  quantas eram outra porta de verdade só a revisão diz.
+- **Feito:** na disputa, "Separar como outra porta" grava a marca do motorista como porta de admin
+  na chave do complemento do pacote dele (`chave|complemento`) e apaga a marca dele da chave geral.
+  A porta geral não muda. O celular já usava a porta do complemento ao ler a planilha
+  (`separarAsConhecidas`): não mudou nada ali. A chave sai de `outraPorta`, que remonta o texto do
+  pacote como a planilha monta (`textoDaLinha`, agora uma função só para os dois).
+- **Recusa em vez de chute:** sem complemento; com pacotes do motorista naquele número de entradas
+  diferentes (ou um sem complemento), porque a marca não diz de qual pacote é; e com o pacote de
+  outro endereço-base. Cada recusa diz o motivo.
+- **Testado:** 8 de unidade (`outraPorta.test.ts`) e 7 e2e (`outra-porta.spec.ts`, 412×915). O
+  fluxo inteiro: o Admin separa, a planilha é lida de novo e a entrada vai para a porta nova, com
+  CEP genérico (`rota-e`) e com CEP próprio (`rota-f`). Os testes de unidade falharam antes do
+  código existir. Sabotagens: 6 (gravar na chave geral, chave errada, não tirar da disputa, gravar no
+  ponto da porta, escolher a primeira entrada, texto sem bairro e CEP), cada uma quebrou o seu teste.
+  Print do cartão da disputa a 412×915 conferido. Bateria: tipos, 722 de unidade e 371 de e2e.
+  **Não testado** com o banco de verdade.
+- **Desfazer:** não tem caminho na tela. O "Procurar um endereço" só marca, e não conferi se a porta do
+  complemento aparece com "Apagar" nas listas de marcações. Por enquanto, por script.
+- **Fora deste PR:** guardar a marca de origem e listar as separações com "Desfazer" (migração);
+  normalizar "qd"/"quadra" e "07"/"7" e regravar as chaves; ligar duas grafias à mesma porta.
+
 ## Os pinos do mesmo ponto em V (18/11, print do Luan, pelo dono): na branch `leque-em-v`, nada enviado
 
 - **O print:** no zoom máximo, a P6 e a P40, no mesmo ponto, ficavam uma em cima da outra, ligadas

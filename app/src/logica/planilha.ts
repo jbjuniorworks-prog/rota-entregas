@@ -52,6 +52,16 @@ export function pareceNomeDePlanilha(nome: string, tipo: string): boolean | null
   return null;
 }
 
+// O texto de uma linha como o app usa: o endereço, mais o bairro e o CEP quando ele não os traz.
+// O Admin remonta este texto a partir do pacote gravado para achar a chave do complemento
+// (`outraPorta`): montado de outro jeito, a porta separada ficaria numa chave que nenhuma planilha procura.
+export function textoDaLinha(endereco: string, bairro: string, cep: string): string {
+  let texto = endereco;
+  if (bairro && !normal(texto).includes(normal(bairro))) texto += ', ' + bairro;
+  if (cep.length === 8 && !texto.replace(/\D/g, '').includes(cep)) texto += `, CEP ${cep.slice(0, 5)}-${cep.slice(5)}`;
+  return texto;
+}
+
 export function itensDaPlanilha(linhas: unknown[][], arquivo: string): ItemPlanilha[] {
   const iCab = linhas.slice(0, 10).findIndex(l => l.some(c => COLUNAS.endereco.test(String(c))));
   if (iCab < 0) throw new Error('não achei a coluna de endereço');
@@ -60,11 +70,9 @@ export function itensDaPlanilha(linhas: unknown[][], arquivo: string): ItemPlani
   const campo = (l: unknown[], k: Coluna) => col[k] < 0 ? '' : String(l[col[k]] ?? '').trim();
   const itens: ItemPlanilha[] = [];
   for (const l of linhas.slice(iCab + 1)) {
-    let texto = campo(l, 'endereco');
-    if (!texto) continue;
+    if (!campo(l, 'endereco')) continue;
     const bairro = campo(l, 'bairro'), cep = campo(l, 'cep').replace(/\D/g, '');
-    if (bairro && !normal(texto).includes(normal(bairro))) texto += ', ' + bairro;
-    if (cep.length === 8 && !texto.replace(/\D/g, '').includes(cep)) texto += `, CEP ${cep.slice(0, 5)}-${cep.slice(5)}`;
+    const texto = textoDaLinha(campo(l, 'endereco'), bairro, cep);
     const coord = col.lat >= 0 && col.lng >= 0 ? coordenadaDaPlanilha(l[col.lat], l[col.lng]) : null;
     const ordem = campo(l, 'ordem');
     itens.push({
