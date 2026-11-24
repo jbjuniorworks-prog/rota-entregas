@@ -49,3 +49,21 @@ export function previsoes(e: Estado, agora = Date.now()): {porArea: Record<strin
   }
   return {porArea, ritmo};
 }
+
+// O "fim às" do topo. No começo da rota a previsão erra uns 20 a 30 minutos: medido em 127 rotas
+// de produção em 24/11, contra a hora da última entrega. O minuto cravado prometia mais do que a
+// conta sabe. Até a metade das entregas, a hora vai arredondada para 15 minutos. Da metade em
+// diante o erro cai para uns 15 a 20 minutos, e o minuto volta. Pedido do Luan (24/11).
+// "Pelas", e não "por volta das": esse quebrava a linha do topo num celular de 360 px, e na CI.
+const QUARTO_DE_HORA = 15 * 60000;
+const dois = (n: number) => String(n).padStart(2, '0');
+
+export function textoDoFim(fim: number, feitas: number, total: number): string {
+  if (total > 0 && feitas * 2 >= total) {
+    const d = new Date(fim);
+    return `fim às ${dois(d.getHours())}:${dois(d.getMinutes())}`;
+  }
+  const r = new Date(Math.round(fim / QUARTO_DE_HORA) * QUARTO_DE_HORA);
+  const h = r.getHours(), m = r.getMinutes();
+  return `fim ${h <= 1 ? 'pela' : 'pelas'} ${h}h${m ? dois(m) : ''}`;
+}
