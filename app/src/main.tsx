@@ -9,6 +9,7 @@ import {TelaAreas, TelaSaida} from './componentes/TelaAjustes';
 import {TelaConferir} from './componentes/TelaConferir';
 import {TelaInicio} from './componentes/TelaInicio';
 import {TelaRomaneio} from './componentes/TelaRomaneio';
+import {TelaCaminho} from './componentes/TelaCaminho';
 import {TelaVerificadas} from './componentes/TelaVerificadas';
 import {FolhaRota, SobreOMapa, TopoRota} from './componentes/TelaRota';
 import {loja, SEM_ESPACO, useLoja} from './loja';
@@ -128,6 +129,7 @@ function App() {
       {ui.tela === 'areas' && <TelaAreas />}
       {ui.tela === 'verificadas' && <TelaVerificadas />}
       {ui.tela === 'romaneio' && <TelaRomaneio />}
+      {ui.tela === 'caminho' && <TelaCaminho />}
       {ui.tela === 'admin' && <Suspense fallback={<div className="info">Abrindo…</div>}><TelaAdmin /></Suspense>}
     </div>
     {ui.menu && <MenuMais />}
