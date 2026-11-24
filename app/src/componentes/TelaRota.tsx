@@ -18,6 +18,7 @@ import {nuvem} from '../servicos/nuvem';
 import {AvisoDiaNovo} from './AvisoDiaNovo';
 import {rotuloDe} from '../logica/rotulo';
 import {AvisoGaiola} from './AvisoGaiola';
+import {AvisoLongeDoCep} from './AvisoLongeDoCep';
 import {AvisoXarope, BotaoMais, hhmm, Icone, LinhaComercial, MarcarXarope, Meta, PortasExplicadas, Tag} from './comuns';
 
 const daRota = () => {
@@ -249,6 +250,7 @@ function CartaoMontar() {
       <div className={verificadas ? 'verificado' : 'info'} data-verificadas>{verificadas}/{e.paradas.length} verificados</div>
     </div>
     <AvisoGaiola />
+    <AvisoLongeDoCep />
     {semLocal > 0 && <div className="aviso">{semLocal} parada(s) sem local ficarão fora da rota. Corrija em Conferir.</div>}
     {/* um toque e a rota aparece no mapa (dono, 16/10): escolher a ordem e depois montar eram dois
         toques para uma decisão só */}
@@ -274,6 +276,7 @@ function AvisosDaRota() {
   const estouro = R.areas.map(ra => loja.area(ra.id)).find(a => prev && prev.porArea[a.id]?.estoura);
   return <>
     <AvisoGaiola />
+    <AvisoLongeDoCep />
     {estouro && prev && <div className="aviso vermelho">A área {estouro.nome} não fecha até {estouro.prazo}: previsão de terminar às {hhmm(prev.porArea[estouro.id]!.fim)} ({Math.round(prev.ritmo.segundos / 60)} min por parada, {prev.ritmo.medido ? 'seu ritmo de hoje' : 'estimado'}).</div>}
     {!R.porRuas && <div className="aviso laranja">Rota em linha reta{R.motivoSemRuas ? ` (${R.motivoSemRuas})` : ''}: não sabe de mão única. <button className="link" onClick={A.montarRota}>Tentar de novo</button></div>}
     {R.desatualizada && <div className={`aviso${R.mudouMuito ? ' laranja' : ''}`}>{R.mudouMuito

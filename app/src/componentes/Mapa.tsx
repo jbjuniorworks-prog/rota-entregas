@@ -9,6 +9,7 @@ import {abrirAsQueSeCobrem, emLeque, empilhar, inclinacao} from '../logica/pinos
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {ehComercial} from '../logica/comerciais';
+import {longeDoProprioCep} from '../logica/longeDoCep';
 import {numerosDaShopee} from '../logica/paradasDaShopee';
 import {passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
 import {loja, useLoja} from '../loja';
@@ -291,7 +292,7 @@ export default function Mapa() {
         const apagado = p.entregue || !!p.adiada;
         const so = g.ps.length === 1;
         const rotulo = letra || (p.entregue ? '✓' : p.adiada ? '⏸' : rotuloDe(p)) + (so ? '' : `+${g.ps.length - 1}`);
-        const duvidosa = g.ps.some(x => DUVIDA.has(x.precisao)) ? 'duvida' : g.ps.some(x => QUASE.has(x.precisao)) ? 'quase' : '';
+        const duvidosa = g.ps.some(x => DUVIDA.has(x.precisao)) || longeDoProprioCep(g.ps).length ? 'duvida' : g.ps.some(x => QUASE.has(x.precisao)) ? 'quase' : '';
         // "Cliente xarope" (pedido de 28/09): o pino já chega com outra cor, antes de ele tocar
         const xarope = g.ps.some(x => !x.entregue && x.reclamacoes?.length);
         // Escolhendo para o Maps ou circulando, a cor é a resposta da tela e fica cheia. Entregue não

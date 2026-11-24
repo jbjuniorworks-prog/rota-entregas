@@ -247,6 +247,19 @@ ele sai da linha.
   **Não testado** num celular de verdade.
 - **Limite:** com muitos pinos no mesmo ponto o V cresce. Com 8, os braços têm uns 120 px.
 
+## Pino longe do próprio CEP (23/11, dono: "já é a segunda vez, nem um aviso nem nada"): na branch `longe-do-cep`, nada enviado
+
+- **O caso:** o condomínio Mirante Mais Viver (CEP 49089-141, Soledade) veio com o pino da planilha no
+  meio da rota do dono, a 14 km da faixa do CEP. O de 16/11 estava a 15 km.
+- **Medido e recusado:** mover pelo CEP (com o pino a mais de 10 km, a porta verificada ficou perto do
+  pino em 4 de 5 casos); pelo bairro escrito (20 de 35 a 2 km); pelos dois juntos (o pino estava certo
+  em 10 de 13 a 8 km); e levar o condomínio para a porta do censo.
+- **Feito:** avisar sem mover. Aviso vermelho na rota, borda de dúvida no pino e uma linha na leitura
+  da planilha, enquanto a posição for a da planilha. Roda na leitura e na abertura do app, com o censo
+  da cidade de cada entrega. No histórico de 62 dias, dispararia em 9 pinos.
+- **Testado:** 10 de unidade (um com o censo de verdade) e 6 e2e. 9 sabotagens, cada uma quebrou o seu
+  teste. Bateria: 732 de unidade e 377 e2e. Prints a 412×915. **Não testado** num celular de verdade.
+
 ## As paradas do topo são os pinos do mapa (18/11, Luan, pelo dono): na branch `paradas-sao-pinos`, nada enviado
 
 - **Pedido:** "Luan quer que as paradas que aparecem pra ele sejam a quantidade de pinos no mapa".
