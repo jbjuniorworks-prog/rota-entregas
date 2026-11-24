@@ -2,7 +2,7 @@ import {longeDaPorta, proximaAPe} from '../logica/geo';
 import {diaCurto, oQueFazerNoDiaNovo} from '../logica/diaNovo';
 import {backupRecente, CHAVES, estadoVazio, resetarDia} from '../logica/guarda';
 import {aplicarGrupos, circular, gruposValidos, tirarGrupos as tirarOsGrupos} from '../logica/grupos';
-import {juntarDeNovo, juntarEntregas, novoId, separarEntregas, separarParada} from '../logica/importar';
+import {juntarDeNovo, juntarEntregas, juntarSeparadas, novoId, separadasDoEndereco, separarEntregas, separarParada} from '../logica/importar';
 import {montarRota as calcularRota} from '../logica/montagem';
 import {linkWaze} from '../logica/otimizacao';
 import {hojeEmMaceio} from '../logica/painel';
@@ -12,7 +12,7 @@ import type {Parada, Ponto} from '../logica/tipos';
 import {guarda, loja, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
 import {linhaDaRota, matriz} from '../servicos/ruas';
-import {contar, desatualizarRota, e, enviarFila, fila, ui} from './base';
+import {contar, desatualizarRota, e, enviarFila, fila, memoria, ui} from './base';
 import {abrir, irPara, telaBase} from './navegacao';
 import {pedirLinhas, SEGUE_DAQUI, seguirDaqui, voltarOrdem} from './reorganizar';
 import {ARRUMAR_DE_LONGE, comMinhaPosicao, consultarCompartilhadas, desfazerPorta, GPS_PASSAGEM, guardarPassagem, guardarPassagens, longeDemais, portaDaEntrega} from './posicoes';
@@ -240,6 +240,38 @@ export async function separar(p: Parada) {
   await consultarCompartilhadas();
   const foram = todas.filter((q, i) => `${q.lat},${q.lng}` !== onde[i]).length;
   if (foram) status(`${separada} ${foram === 1 ? '1 já foi' : foram + ' já foram'} para a porta guardada do complemento.`, 10000, juntar);
+}
+
+
+// "Não tem a função de juntar" (dono, 23/11): as separadas abertas do número voltam a dividir a
+// porta do endereço. A posição firme de uma delas (a que ele arrumou) vira a porta do endereço
+// também na nuvem: na próxima planilha, arrumar uma vez vale para todas.
+export function juntar(p: Parada) {
+  const antes = new Map(separadasDoEndereco(e(), p).map(q => [q, structuredClone(q)]));
+  const {juntadas, porta} = juntarSeparadas(e(), p);
+  if (!juntadas.length) return;
+  // sem o complemento, a chave da porta é a do endereço
+  const foto = porta ? memoria.fotografar(porta) : null;
+  const guardou = porta ? memoria.lembrar(porta) : false;
+  desatualizarRota(!!porta);
+  loja.mudou();
+  const desfazer = () => {
+    if (juntadas.some(q => q.entregue)) { status('Não dá para separar de novo: uma delas já foi entregue.', 4000); return; }
+    if (foto && porta && porta.lat != null && porta.lng != null) {
+      fila.desfazerCorrecao(foto.chave, +porta.lat.toFixed(6), +porta.lng.toFixed(6));
+      memoria.restaurar(foto);
+      enviarFila();
+    }
+    for (const [q, a] of antes) {
+      for (const k of Object.keys(q) as (keyof Parada)[]) delete q[k];
+      Object.assign(q, a);
+    }
+    desatualizarRota();
+    loja.mudou();
+    status('Separadas de novo, cada uma com o seu pino.', 3000);
+  };
+  status(`Juntadas as ${juntadas.length} entregas deste endereço${!porta ? '' : porta.precisao === 'confirmado' ? ' na porta verificada de uma delas' : ' no ponto arrumado de uma delas'}. Arrumar o pino de uma agora leva todas.`
+    + (guardou ? ' Esse ponto vai como porta do endereço para os outros motoristas.' : ''), 10000, desfazer);
 }
 
 // As entregas de complemento diferente do mesmo número, cada uma com o seu pino e a sua porta
