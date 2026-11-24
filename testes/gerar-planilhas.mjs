@@ -82,10 +82,18 @@ const rotaG = [
   [60, 40, 'Rua Teste Inventada, 106, Próximo rest. Restaurante Teste', 'Bairro Areia Teste', '49097-084', -10.9700, -37.0700],
 ];
 
-function planilha(at, prefixo, linhas) {
+// O condomínio de 23/11 (dono), com nomes de teste: o CEP é de verdade (a faixa 49089 do censo), e o
+// pino da planilha no meio de outra região, a uns 14 km dela. A de perto e a de CEP genérico não avisam.
+const rotaH = [
+  [1, 1, 'Rua Teste Longe, 250, Torre 1', 'Bairro Teste Norte', '49089-141', -11.0600, -37.1000],
+  [2, 2, 'Rua Teste Perto, 12', 'Bairro Teste Norte', '49089-141', -10.8747, -37.0885],
+  [3, 3, 'Rua Teste Genérica, 5', 'Bairro Teste Sul', '49099-000', -11.0610, -37.1010],
+];
+
+function planilha(at, prefixo, linhas, cidade = 'Cidade Teste') {
   const realista = (v, crua) => crua ? v : +(v - 0.0000013).toFixed(7);
   const dados = linhas.map(([seq, stop, end, bairro, cep, lat, lng, crua], i) =>
-    [at, seq, stop, `${prefixo}${String(i + 1).padStart(4, '0')}`, end, bairro, 'Cidade Teste', cep, realista(lat, crua), realista(lng, crua)]);
+    [at, seq, stop, `${prefixo}${String(i + 1).padStart(4, '0')}`, end, bairro, cidade, cep, realista(lat, crua), realista(lng, crua)]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([CAB, ...dados]), 'Sheet1');
   return XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'});
@@ -100,4 +108,5 @@ writeFileSync(new URL('rota-d.xlsx', pasta), planilha('ATTESTE0004', 'BRTESTD', 
 writeFileSync(new URL('rota-e.xlsx', pasta), planilha('ATTESTE0005', 'BRTESTE', rotaE));
 writeFileSync(new URL('rota-f.xlsx', pasta), planilha('ATTESTE0006', 'BRTESTF', rotaF));
 writeFileSync(new URL('rota-g.xlsx', pasta), planilha('ATTESTE0007', 'BRTESTG', rotaG));
+writeFileSync(new URL('rota-h.xlsx', pasta), planilha('ATTESTE0008', 'BRTESTH', rotaH, 'Aracaju'));
 console.log('planilhas geradas em testes/planilhas/');
