@@ -154,6 +154,44 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Noite de 23/11 (dono: "revisa o app, faz tudo, sobe o PR"): duas branches commitadas, nada enviado
+
+O push e a abertura de PR pediam confirmação, e o dono pediu para não ser chamado durante a noite.
+As branches ficaram só locais, com o texto do PR pronto no diretório de rascunho da sessão.
+
+- **`linha-rente-a-rua`:** o traço da rota cortava quarteirão porque a linha vinha simplificada pelo
+  tamanho da rota inteira. Numa de 46 km (a do dono, com a Soledade), metade dos pontos ficava a mais
+  de 15 m da rua, até 89 m. Agora a linha vem inteira (1.014 pontos, 24 KB). Bateria: 723 de
+  unidade e 371 e2e.
+- **`juntar-separadas`:** o botão "Juntar as N entregas deste endereço" no cartão de uma separada.
+  A posição firme vira a porta do endereço, também na nuvem. Na leitura da planilha, a porta de
+  complemento a até 30 m da porta do endereço não separa mais: 21 das 38 do banco estão nesse caso.
+  Bateria: 729 de unidade e 378 e2e.
+- **O Mirante (Rua A, 250, CEP 49089-141, Soledade):** 15 pacotes, todos a 21,5 km do lugar. As 6
+  marcas do dono ficaram nas chaves de complemento, e a porta do endereço continua vazia. O script
+  `porta-mirante.mjs` grava a porta do endereço no ponto das 6 marcas. Ensaiado, não gravado.
+
+**Medido e recusado:**
+- **Levar condomínio para a porta do censo quando a planilha está longe:** acima de 1 km, a planilha
+  estava a uma mediana de 70 m da porta verificada, e o censo a 1,7 km. E o censo nem tem o CEP
+  49089-141.
+- **Mover o pino pelo bairro escrito:** a 2 km, a porta verificada estava no bairro escrito em só 20
+  de 35 casos. Acima de 10 km, em 13 de 13, mas o centro do bairro pelo mapa erra 10 km no Marivan,
+  e a Soledade tem menos de 3 portas na base. Fazer certo pede o centro de cada bairro tirado das
+  nossas portas, uma função nova no banco. Fica como proposta.
+
+**Mapa sem Waze ou Maps:** desde 16/11, o Pedro tocou 11 vezes no Waze e no Maps em 856 entregas, o
+Luan 22 vezes em 606, e o dono 51 vezes em 298 (36 delas no Maps com vários pontos). Os motoristas
+já navegam pelo app. A linha rente à rua era o defeito visível. Próximos passos possíveis, sem
+escopo aprovado: a próxima curva escrita no cartão (o OSRM dá os passos) e refazer o trecho quando
+ele sai da linha.
+
+**Revisão de dados (produção, só leitura, 24/11):**
+- 131 disputas abertas (70 correções e 61 passagens), 62 delas dos últimos 7 dias.
+- 100 passagens pendentes com mais de 30 dias.
+- 60 pacotes sem chave, nenhum dos últimos 7 dias. Nenhum sem posição.
+- 26 `catch {}` em `acoes/` e `servicos/`, que engolem erros. Não revisados um a um.
+
 ## Separar como outra porta, no Admin (21/11, dono): na branch `outra-porta`, nada enviado
 
 - **Por quê:** dois clientes no mesmo número (Chico Mendes 100 e 15, Matapoã 42) dividiam a porta, e
