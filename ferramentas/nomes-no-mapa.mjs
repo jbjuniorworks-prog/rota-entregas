@@ -2,13 +2,16 @@
 // OSM): 'com_nome' (o mapa já mostra este nome ali), 'sem_nome' (o mapa
 // desenha a rua, com outro nome ou nenhum) ou 'fora' (o mapa não tem o trecho). O celular usa isso
 // para escrever no mapa o nome da rua das entregas do dia, e desenhar o trecho que falta.
+// Desde 24/11, também as ruas que nasceram das entregas: o nome delas vai no traçado do mapa onde
+// ficam as portas (`linha_no_mapa`), sem traço nenhum (ver `linhasDoNome`).
 //
 //   npm run nomes-no-mapa              (só mostra o que faria)
-//   npm run nomes-no-mapa -- gravar    (grava; precisa da supabase/023_nome_no_mapa.sql)
+//   npm run nomes-no-mapa -- gravar    (grava; precisa da 023 e da 033)
 //
 // Roda no computador, com o mapa inteiro: no celular, buscar o mapa em volta das entregas deixava
-// de fora as rodovias, que vão a 7 km do ponto guardado. Rodar de novo depois de `npm run ruas` ou
-// `npm run prefeitura -- gravar`.
+// de fora as rodovias, que vão a 7 km do ponto guardado. Rodar de novo depois de `npm run ruas`, de
+// `npm run prefeitura -- gravar` e de criar ruas das entregas no Admin, e de tempos em tempos: as
+// portas novas mudam o pedaço de cada rua.
 // Medido em 17/10: no Robalo o OSM tem o traçado de quase todas as ruas, mas com nome de projeto do
 // loteamento ("Rua B" onde a prefeitura e a planilha dizem "Professora Albertina Bezerra Ribeiro").
 import {pathToFileURL} from 'node:url';
@@ -84,6 +87,112 @@ export function classificar(trecho, grade) {
 // entregas: nos dois o nome ou o traçado é dedução das portas, que a medição de 17/10 recusou.
 export const daCarga = ruas => ruas.filter(r => r.fonte === 'prefeitura' && Array.isArray(r.linha) && r.linha.length >= 2);
 
+// As ruas das entregas (24/11, 033). O traçado delas sai das portas, e por isso não vai para o mapa.
+// O que vai é o NOME da planilha, em cima do traçado do próprio mapa onde ficam as portas daquela rua:
+// as 70 estão todas desenhadas, a 1–20 m das portas, com outro nome ou nenhum (medido em 24/11).
+// Uma porta de esquina, ou com o GPS torto, cai na rua do lado. Por isso a rua do mapa precisa de
+// várias portas: 2 quando o nome dela é a mesma rua com outra grafia (Izaura e Isaura), 3 e pelo
+// menos 30% das portas da rua quando o nome é outro (Rua Zenza e Rua Josefina Alves). No ensaio de
+// 24/11, com 2 portas o nome ia parar na rua do lado (a Praia de Aruanda na Rua Canal).
+export const PORTA_NA_RUA_M = 25, MARGEM_M = 40, PORTA_DA_RUA_M = 60, GRAFIA = 0.75;
+export const PORTAS_GRAFIA = 2, PORTAS_OUTRO_NOME = 3, PARTE_OUTRO_NOME = 0.3;
+
+function distancia(a, b) {
+  const d = Array.from({length: a.length + 1}, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+
+// "Josino Meneses" e "Josino Menezes": a mesma rua escrita de outro jeito.
+export const mesmaGrafia = (a, b) => !!a && !!b && 1 - distancia(a, b) / Math.max(a.length, b.length) >= GRAFIA;
+
+// As ruas desenhadas no mapa, por segmento, sabendo de que rua e em que ponto dela cada um está. O
+// 'motorista' é trecho do mapa que só ganhou o nome pelas entregas: está desenhado, mas o mapa não
+// mostra esse nome, então entra sem nome.
+export function indexarVias(ruas) {
+  const grade = new Map();
+  for (const r of ruas) {
+    if ((r.fonte !== 'osm' && r.fonte !== 'motorista') || !Array.isArray(r.linha) || r.linha.length < 2) continue;
+    const via = {linha: r.linha, nome_chave: r.fonte === 'osm' ? r.nome_chave || null : null, id: r.id};
+    for (let i = 1; i < r.linha.length; i++) {
+      for (const c of new Set(amostrar([r.linha[i - 1], r.linha[i]]).map(q => `${Math.round(q[0] / CEL)}|${Math.round(q[1] / CEL)}`))) {
+        if (!grade.has(c)) grade.set(c, []);
+        grade.get(c).push({via, i});
+      }
+    }
+  }
+  return grade;
+}
+
+function noSegmento(q, a, b) {
+  const k = Math.cos(q[0] * Math.PI / 180);
+  const ax = (a[1] - q[1]) * k, ay = a[0] - q[0], bx = (b[1] - q[1]) * k, by = b[0] - q[0];
+  const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / (dx * dx + dy * dy || 1)));
+  return {t, d: 111320 * Math.hypot(ax + t * dx, ay + t * dy)};
+}
+
+// O pedaço da linha entre `de` e `ate` metros do começo dela.
+export function recortar(linha, de, ate) {
+  const out = [];
+  let s = 0;
+  for (let i = 1; i < linha.length; i++) {
+    const a = linha[i - 1], b = linha[i], l = metros(a, b);
+    const ponto = x => [+(a[0] + (b[0] - a[0]) * x).toFixed(6), +(a[1] + (b[1] - a[1]) * x).toFixed(6)];
+    const t0 = l ? (de - s) / l : 0, t1 = l ? (ate - s) / l : 1;
+    if (t1 >= 0 && t0 <= 1) {
+      if (!out.length) out.push(ponto(Math.max(0, t0)));
+      out.push(ponto(Math.min(1, t1)));
+    }
+    s += l;
+  }
+  return out;
+}
+
+// As portas de uma rua das entregas: uma por lugar, das passagens com o nome dela e perto do traçado
+// dela (um "Rua A" de outro loteamento tem a mesma chave).
+export function portasDaRua(rua, passagens) {
+  const porLugar = new Map();
+  for (const o of passagens) {
+    if (o.rua_chave !== rua.nome_chave || o.recusada || !(o.precisao_m <= 50) || porLugar.has(o.chave_lugar)) continue;
+    const q = [o.lat, o.lng];
+    const perto = rua.linha.length === 1 ? metros(q, rua.linha[0])
+      : Math.min(...rua.linha.slice(1).map((b, i) => noSegmento(q, rua.linha[i], b).d));
+    if (perto <= PORTA_DA_RUA_M) porLugar.set(o.chave_lugar, q);
+  }
+  return [...porLugar.values()];
+}
+
+// As linhas do mapa onde escrever o nome desta rua: o trecho da rua desenhada que tem portas dela,
+// das primeiras às últimas e mais 40 m de cada lado. Nada, se o mapa já mostra esse nome ali.
+export function linhasDoNome(nomeChave, portas, grade) {
+  const porVia = new Map();
+  for (const q of portas) {
+    let melhor = null;
+    for (const s of vizinhos(grade, q)) {
+      const {t, d} = noSegmento(q, s.via.linha[s.i - 1], s.via.linha[s.i]);
+      if (d <= PORTA_NA_RUA_M && (!melhor || d < melhor.d)) melhor = {s, t, d};
+    }
+    if (!melhor) continue;
+    const {via, i} = melhor.s;
+    let aqui = 0;
+    for (let k = 1; k < i; k++) aqui += metros(via.linha[k - 1], via.linha[k]);
+    aqui += melhor.t * metros(via.linha[i - 1], via.linha[i]);
+    if (!porVia.has(via)) porVia.set(via, []);
+    porVia.get(via).push(aqui);
+  }
+  const naRua = [...porVia.values()].reduce((n, ps) => n + ps.length, 0);
+  const linhas = [];
+  for (const [via, ps] of porVia) {
+    if (via.nome_chave === nomeChave) continue;
+    const grafia = mesmaGrafia(via.nome_chave, nomeChave);
+    if (grafia ? ps.length < PORTAS_GRAFIA : ps.length < PORTAS_OUTRO_NOME || ps.length < PARTE_OUTRO_NOME * naRua) continue;
+    linhas.push(recortar(via.linha, Math.min(...ps) - MARGEM_M, Math.max(...ps) + MARGEM_M));
+  }
+  return linhas;
+}
+
 const ehCli = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (ehCli) {
   const {readFileSync} = await import('node:fs');
@@ -113,6 +222,20 @@ if (ehCli) {
   for (const r of ruas) porFonte[r.fonte] = (porFonte[r.fonte] || 0) + 1;
   console.log(`${ruas.length} trechos na base (${Object.entries(porFonte).map(([f, n]) => `${f} ${n}`).join(', ')}); entram na carga só os ${alvo.length} da prefeitura:`);
   for (const [c, rs] of Object.entries(porClasse)) console.log(`  ${c.padEnd(9)} ${rs.length}`);
+
+  // As ruas das entregas: o nome delas no traçado do mapa, pelas portas (24/11, 033).
+  const passagens = [];
+  for (let de = 0; ; de += 1000) {
+    const parte = await api(`/rest/v1/observacoes?select=chave_lugar,rua_chave,lat,lng,precisao_m,recusada&order=id.asc&offset=${de}&limit=1000`);
+    passagens.push(...parte);
+    if (parte.length < 1000) break;
+  }
+  const vias = indexarVias(ruas);
+  const dasEntregas = ruas.filter(r => r.fonte === 'entregas' && Array.isArray(r.linha) && r.linha.length);
+  const nomes = dasEntregas.map(r => ({r, linhas: linhasDoNome(r.nome_chave, portasDaRua(r, passagens), vias)}));
+  const comNome = nomes.filter(n => n.linhas.length);
+  console.log(`\n${dasEntregas.length} ruas das entregas; ${comNome.length} ganham o nome no mapa, pelas portas (${passagens.length} passagens lidas):`);
+  for (const {r, linhas} of comNome) console.log(`  ${r.nome} (${linhas.length} trecho(s))`);
   if (!gravar) {
     console.log('\nPara gravar de verdade: npm run nomes-no-mapa -- gravar');
     process.exit(0);
@@ -123,5 +246,10 @@ if (ehCli) {
       await api(`/rest/v1/ruas?id=in.(${ids})`, {method: 'PATCH', body: JSON.stringify({no_mapa: c}), headers: {Prefer: 'return=minimal'}});
     }
   }
-  console.log(`\nGravado em ${alvo.length} trechos. Os celulares usam na próxima vez que abrirem o mapa.`);
+  // uma por uma: cada rua leva as linhas dela; a que não ganhou nome volta a nulo (pode ter ganho antes)
+  for (const {r, linhas} of nomes) {
+    await api(`/rest/v1/ruas?id=eq.${r.id}`, {method: 'PATCH', headers: {Prefer: 'return=minimal'},
+      body: JSON.stringify(linhas.length ? {no_mapa: 'sem_nome', linha_no_mapa: linhas} : {no_mapa: null, linha_no_mapa: null})});
+  }
+  console.log(`\nGravado em ${alvo.length} trechos da prefeitura e ${nomes.length} ruas das entregas. Os celulares usam na próxima vez que abrirem o mapa.`);
 }

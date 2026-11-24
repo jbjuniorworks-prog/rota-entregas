@@ -67,7 +67,10 @@ export function nomesNoMapa(doDia: Map<string, RuaDoDia>, trechos: TrechoDaBase[
     if (!r || !Array.isArray(t.linha) || t.linha.length < 2) return [];
     if (!r.pontos.some(p => ateALinha(p, t.linha) <= PERTO_DA_ENTREGA_M)) return [];
     if (t.no_mapa !== 'sem_nome' && t.no_mapa !== 'fora') return [];
-    // só a prefeitura, mesmo que a busca traga outra coisa: nome deduzido das entregas não entra
+    // A rua das entregas (24/11, 033) só ganha o nome, e no traçado do próprio mapa onde ficam as
+    // portas dela: o traçado dela mesma sai das portas, e desenhá-lo seria inventar a rua.
+    if (t.fonte === 'entregas') return t.no_mapa === 'sem_nome' ? [{texto: r.texto, linha: t.linha, traco: false}] : [];
+    // o nome que a nomear_ruas deduziu sozinha para um trecho sem nome ('motorista') não entra
     if (t.fonte !== 'prefeitura') return [];
     return [{texto: r.texto, linha: t.linha, traco: t.no_mapa === 'fora'}];
   });

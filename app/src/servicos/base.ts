@@ -184,6 +184,24 @@ export async function trechosNoMapa(chaves: string[]): Promise<TrechoDaBase[]> {
       if (!data || data.length < 1000) break;
     }
   }
+  return [...out, ...await trechosDasEntregas(supa, chaves)];
+}
+
+// As ruas que nasceram das entregas (24/11, 033): o nome delas vai no traçado do próprio mapa onde
+// ficam as portas, que a `npm run nomes-no-mapa` guarda em `linha_no_mapa`. Uma linha por rua e
+// cidade, então 50 chaves não chegam às 1.000 linhas. Sem a 033 na nuvem, os nomes da prefeitura
+// seguem como antes: só faltam estes.
+async function trechosDasEntregas(supa: NonNullable<typeof nuvem.cliente>, chaves: string[]): Promise<TrechoDaBase[]> {
+  const out: TrechoDaBase[] = [];
+  for (let i = 0; i < chaves.length; i += 50) {
+    const {data, error} = await supa.from('ruas').select('nome_chave, linha_no_mapa')
+      .eq('fonte', 'entregas').in('nome_chave', chaves.slice(i, i + 50)).eq('no_mapa', 'sem_nome');
+    if (error) return out;
+    for (const r of (data || []) as {nome_chave: string; linha_no_mapa: unknown}[]) {
+      if (!Array.isArray(r.linha_no_mapa)) continue;
+      for (const linha of r.linha_no_mapa) out.push({nome_chave: r.nome_chave, fonte: 'entregas', linha, no_mapa: 'sem_nome'});
+    }
+  }
   return out;
 }
 
