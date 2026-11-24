@@ -29,6 +29,8 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
 .progresso,.titulos{flex:1;min-width:0}
 .resumo{font-size:15px}
 .resumo span{color:var(--mut)}
+/* a hora do fim forte como as entregas: o Luan não via o cinza (24/11) */
+.resumo .fim{color:var(--tx);font-weight:600}
 .barra{height:6px;border-radius:99px;background:var(--bd);overflow:hidden;margin-top:6px}
 .barra i{display:block;height:100%;background:var(--ok)}
 /* a barra das entregas com as verificadas do dia ao lado (15/11), na mesma altura de antes */

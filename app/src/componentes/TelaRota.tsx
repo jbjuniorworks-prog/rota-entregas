@@ -7,7 +7,7 @@ import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, lin
 import {resumoDoDia} from '../logica/diaNovo';
 import {numerosDaShopee, paradasDaShopee, textoDasParadas} from '../logica/paradasDaShopee';
 import {pinosDoDia} from '../logica/pinos';
-import {previsoes} from '../logica/previsao';
+import {previsoes, textoDoFim} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {mesmoEndereco} from '../logica/texto';
 import {MOTIVOS_DO_MOTORISTA, verificadasDoDia, type PortasDaRota} from '../logica/verificacao';
@@ -56,7 +56,7 @@ export function TopoRota() {
   return <div className="topo-rota" data-topo>
     <div className="progresso">
       {R ? <>
-        <div className="resumo"><b>{feitas} de {todas} entregas</b>{fim ? <span className={R.desatualizada ? 'velho' : ''}> · fim às {hhmm(fim.fim)}</span> : null}
+        <div className="resumo"><b>{feitas} de {todas} entregas</b>{fim ? <span className={'fim' + (R.desatualizada ? ' velho' : '')} data-fim> · {textoDoFim(fim.fim, feitas, todas)}</span> : null}
           {esperando > 0 ? <span> · {esperando} para enviar{haQuanto ? ` (${haQuanto})` : ''}</span> : null}</div>
         {/* Ao lado da barra, as paradas (Luan, 17/11, pelo dono: "ele quer as paradas, não os
             verificados"). No texto de cima, quebrava a linha e o mapa encolhia. Desde 18/11 elas são
