@@ -67,6 +67,8 @@ export interface Ui {
   podeInstalar: boolean;
   // o cartão da próxima reduzido a uma linha, e o mapa com quase a tela toda (pedido de 03/10)
   minimizado: boolean;
+  // a última gravação da rota no celular falhou (armazenamento cheio): faixa fixa até voltar a gravar
+  semEspaco: boolean;
 }
 
 // Fica escolhido neste celular: o Android fecha o app quando ele vai para o Waze, e minimizar de
@@ -84,8 +86,16 @@ const ui: Ui = {
   // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
   posicionando: null, marcandoLugar: null, localRecebido: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
   euAqui: null, irParaMim: 0, seguindo: true, cartaoDesde: null, esperandoAdmin: 0, xarope: null, versaoNova: null, pinosNovos: null, nomesNoMapa: [], podeInstalar: false,
-  minimizado: lerMinimizado(),
+  minimizado: lerMinimizado(), semEspaco: false,
 };
+
+// Revisão de 24/11: com o armazenamento do celular cheio, a rota deixava de ser guardada calada, e o
+// Android fecha o app quando ele vai ao Waze: o que ele marcou depois se perdia, entregas e a fila de
+// envio juntas. Uma faixa fixa, que outro aviso não apaga, até voltar a gravar.
+export const SEM_ESPACO = 'O celular não conseguiu guardar a rota (falta espaço). O que você marcar agora pode se perder ao fechar o app: libere espaço no celular e não feche o app.';
+function guardar() {
+  ui.semEspaco = !salvarEstado(guarda, estado);
+}
 
 let versao = 0;
 const ouvintes = new Set<() => void>();
@@ -98,13 +108,13 @@ export const loja = {
   get geracao() { return geracao; },
   ui,
   mudou(salvar = true) {
-    if (salvar) salvarEstado(guarda, estado);
+    if (salvar) guardar();
     avisar();
   },
   trocarEstado(novo: Estado) {
     estado = novo;
     geracao++;
-    salvarEstado(guarda, estado);
+    guardar();
     avisar();
   },
   parada: (id: string): Parada | undefined => {

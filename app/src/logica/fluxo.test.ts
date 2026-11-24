@@ -573,6 +573,27 @@ describe('fila da nuvem', () => {
     expect(f.buscas()).toBe(1);
   });
 
+  // Revisão de 24/11: com a fila cheia, o corte das 3.000 levava a que estava em envio, e ao fim do
+  // envio o app tirava a seguinte, que nunca tinha ido. A que estava em envio foi; a seguinte tem de ir.
+  it('com a fila cheia, a seguinte à que está em envio não some', async () => {
+    const g = guardaNaMemoria(), f = criarFila(g), {c, chamadas} = servidor();
+    f.enfileirar(...Array.from({length: FILA_MAX}, (_, i) => ({tipo: 'correcao' as const, chave: 'x|' + i, lat: 1, lng: 1})));
+    let soltar = () => {};
+    const original = c.inserirCorrecao;
+    c.inserirCorrecao = async (k, lat, lng) => {
+      if (k === 'x|0') await new Promise<void>(r => { soltar = r; });
+      return original(k, lat, lng);
+    };
+    const envio = f.enviar(c);
+    await new Promise(r => setTimeout(r, 0));
+    // chega uma nova com a fila cheia: o corte leva a x|0, que já está indo
+    f.enfileirar({tipo: 'correcao', chave: 'nova|1', lat: 1, lng: 1});
+    soltar();
+    await envio;
+    expect(chamadas).toContain('correcao x|1');
+    // 3.000 envios, cada um relendo a fila inteira
+  }, 60_000);
+
   // Auditoria da fila, primeira rodada (20/10): o retrato de como é HOJE, defeitos incluídos.
   // Quando um conserto mudar o comportamento, o teste muda junto, com a decisão escrita.
   it('hoje: passando de 3.000, a fila descarta os mais antigos calada, e sem a rota a entrega dela também se perde', async () => {

@@ -268,10 +268,13 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
       try {
         for (;;) {
           if (ler().length) {
-            const r = await enviarUma(c, ler()[0]);
+            const op = ler()[0];
+            const r = await enviarUma(c, op);
             if (r === 'rede') break;
             const f = ler();
-            f.shift();
+            // Sai a que foi enviada. Com a fila cheia, o corte das 3.000 pode tê-la levado enquanto
+            // ia, e aí a primeira já é a seguinte, que não foi (revisão de 24/11).
+            if (JSON.stringify(f[0]) === JSON.stringify(op)) f.shift();
             g.gravar(CHAVES.fila, f);
             if (!f.length) g.gravar(CHAVES.filaDesde, 0);
             continue;

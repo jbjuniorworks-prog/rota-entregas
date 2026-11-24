@@ -220,6 +220,21 @@ ele sai da linha.
 - **Fora deste PR:** guardar a marca de origem e listar as separações com "Desfazer" (migração);
   normalizar "qd"/"quadra" e "07"/"7" e regravar as chaves; ligar duas grafias à mesma porta.
 
+## Revisão do app (24/11, dono: "revisar o app todo"): na branch `nao-perder-calado`, nada enviado
+
+- **Consertado:**
+  - Com o armazenamento do celular cheio, a rota e a fila deixavam de ser guardadas sem aviso. Agora
+    uma faixa vermelha fixa fica no topo enquanto gravar falhar.
+  - A fila cheia tirava, ao fim de um envio, a operação seguinte, que nunca tinha ido.
+- **Revisado e deixado:** os 26 `catch {}`. Os que tocam dado degradam de propósito e não escondem
+  perda.
+- **Itens futuros:**
+  - A fila relê a si mesma inteira a cada envio: uns 8 s para 3.000 itens.
+  - O Admin acumula 131 disputas abertas e 100 passagens pendentes há mais de 30 dias.
+  - O cache do app (`rota-v2`) guarda os arquivos de toda versão publicada e cresce a cada uma.
+- **Testado:** 1 de unidade e 2 e2e, cada um falhando com o seu conserto desligado, e o teste da auditoria de 20/10 atualizado (ele registrava o "sem aviso"). Bateria:
+  723 de unidade e 373 e2e. **Não testado** num celular de verdade com a memória cheia.
+
 ## Os pinos do mesmo ponto em V (18/11, print do Luan, pelo dono): na branch `leque-em-v`, nada enviado
 
 - **O print:** no zoom máximo, a P6 e a P40, no mesmo ponto, ficavam uma em cima da outra, ligadas

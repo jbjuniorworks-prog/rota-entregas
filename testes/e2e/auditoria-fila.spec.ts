@@ -233,7 +233,10 @@ test.describe('a primeira abertura da versão que separa o dia por conta', () =>
   });
 });
 
-test('hoje: com a memória do navegador cheia, a entrega aparece feita e some ao reabrir, sem aviso', async ({page}) => {
+// Revisão de 24/11: o aviso chegou. A faixa vermelha fixa diz que o celular não conseguiu guardar, e
+// continua até uma gravação dar certo. O que já não coube continua perdido ao reabrir: o conserto avisa,
+// não faz caber.
+test('com a memória do navegador cheia, a entrega some ao reabrir, mas a faixa avisa antes', async ({page}) => {
   page.on('dialog', d => d.accept());
   await abrir(page);
   await carregar(page, ROTA_A);
@@ -250,7 +253,7 @@ test('hoje: com a memória do navegador cheia, a entrega aparece feita e some ao
   await page.locator('.proxima').getByRole('button', {name: 'Entreguei', exact: true}).click();
   await expect(page.locator('.resumo')).toContainText('1 de 10 entregas');
   await expect(aviso(page)).toContainText('Entregue.');
-  await expect(aviso(page)).not.toContainText(/grav|memória|espaço|cheio/i);
+  await expect(page.locator('[data-sem-espaco]')).toContainText('O celular não conseguiu guardar a rota');
   // nem a entrega nem o envio dela ficaram no aparelho
   expect((await fila(page)).filter(o => o.tipo === 'entregue')).toEqual([]);
   await page.reload();
