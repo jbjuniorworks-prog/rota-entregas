@@ -78,7 +78,7 @@ describe('o nome da rua no mapa, no celular', () => {
     expect(nomes.map(n => [n.texto, n.traco])).toEqual([['Rua Professora Albertina Bezerra Ribeiro', false], ['Rua A', true]]);
   });
 
-  it('trecho que não é da prefeitura, e trecho já com o nome no mapa, não aparecem', () => {
+  it('o nome deduzido pela nomear_ruas, o traço da rua das entregas e o trecho já com o nome no mapa não aparecem', () => {
     const doDia = ruasDoDia(ps);
     const kAlb = [...doDia].find(([, r]) => r.texto.includes('Albertina'))![0];
     const linha = reta([L, G], [L, G + 0.001]);
@@ -86,6 +86,13 @@ describe('o nome da rua no mapa, no celular', () => {
     expect(nomes).toEqual([]);
   });
 
+  // 24/11 (033): o traçado vem do próprio mapa, onde ficam as portas; só o nome é da planilha
+  it('a rua das entregas ganha o nome da planilha, sem traço', () => {
+    const doDia = ruasDoDia(ps);
+    const kAlb = [...doDia].find(([, r]) => r.texto.includes('Albertina'))![0];
+    const nomes = nomesNoMapa(doDia, [trecho(kAlb, reta([L, G], [L, G + 0.001]), 'sem_nome', 'entregas')]);
+    expect(nomes.map(n => [n.texto, n.traco])).toEqual([['Rua Professora Albertina Bezerra Ribeiro', false]]);
+  });
 });
 
 describe('npm run nomes-no-mapa: o nome da rua das entregas no traçado do mapa', () => {

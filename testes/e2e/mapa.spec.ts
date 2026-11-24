@@ -1042,6 +1042,52 @@ test.describe('o nome da rua no mapa', () => {
     expect(Math.abs(c.lng + 37.09)).toBeLessThan(1e-4);
   });
 
+  // Dono, 24/11 (033): as ruas que nasceram das entregas estão no mapa com outro nome ou nenhum. O
+  // nome da planilha vai no traçado do mapa onde ficam as portas, que a `npm run nomes-no-mapa` grava
+  // em `linha_no_mapa`; o traçado da própria rua, que sai das portas, nunca é desenhado.
+  test('a rua das entregas ganha o nome da planilha em cima da rua do mapa, sem traço', async ({page, nuvem}) => {
+    const {garantirMapa, verNoMapa} = await import('./apoio');
+    const deitada = (lat: number): [number, number][] => [[lat, -37.0512], [lat, -37.0488]];
+    nuvem.tabelas.ruas = [
+      // a Rua das Flores da rota-d tem entrega em -10.9548, -37.05
+      {nome_chave: 'flores', fonte: 'entregas', linha: [[-10.9548, -37.05]], no_mapa: 'sem_nome', linha_no_mapa: [deitada(-10.95482)]},
+    ];
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-d.xlsx');
+    await garantirMapa(page);
+    await verNoMapa(page, -10.9548, -37.05, 17);
+    const flores = page.locator('.nome-rua').filter({hasText: 'Rua das Flores'});
+    await expect(flores).toHaveCount(1);
+    await expect(page.locator('path.traco-rua'), 'só o nome: o traçado é o do mapa').toHaveCount(0);
+    // em cima da linha do mapa, deitado como ela
+    const ondeEsta = await flores.evaluate(el => { const r = el.getBoundingClientRect(); return {x: r.left + r.width / 2, y: r.top + r.height / 2, largura: r.width, altura: r.height}; });
+    const ondeDevia = await page.evaluate(() => {
+      const m = document.querySelector('#map')!.getBoundingClientRect(), q = (window as any).rotaTeste.pixel(-10.95482, -37.05);
+      return {x: m.left + q.x, y: m.top + q.y};
+    });
+    expect(Math.abs(ondeEsta.x - ondeDevia.x)).toBeLessThan(3);
+    expect(Math.abs(ondeEsta.y - ondeDevia.y)).toBeLessThan(3);
+    expect(ondeEsta.largura).toBeGreaterThan(ondeEsta.altura * 3);
+  });
+
+  test('sem a coluna da 033 na nuvem, os nomes da prefeitura seguem como antes', async ({page, context, nuvem}) => {
+    const {aviso, garantirMapa, verNoMapa} = await import('./apoio');
+    nuvem.tabelas.ruas = [{nome_chave: 'acacias', fonte: 'prefeitura', linha: [[-10.95002, -37.0512], [-10.95002, -37.0488]], no_mapa: 'sem_nome'}];
+    let pedidos = 0;
+    await context.route(/\/rest\/v1\/ruas\?.*linha_no_mapa/, r => {
+      pedidos++;
+      return r.fulfill({status: 400, contentType: 'application/json', headers: {'access-control-allow-origin': '*'},
+        body: JSON.stringify({code: '42703', details: null, hint: null, message: 'column ruas.linha_no_mapa does not exist'})});
+    });
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-d.xlsx');
+    await garantirMapa(page);
+    await expect.poll(() => pedidos, 'o app pediu os nomes das ruas das entregas').toBeGreaterThan(0);
+    await verNoMapa(page, -10.9506, -37.05, 17);
+    await expect(page.locator('.nome-rua').filter({hasText: 'Rua das Acácias'})).toHaveCount(1);
+    await expect(aviso(page)).not.toContainText(/linha_no_mapa|não deu|erro/i);
+  });
+
   // Revisão de 17/10: desfazer a 023 tira a coluna. O app tem de seguir igual, só sem os nomes, e o
   // erro de JavaScript que escapasse a fixture pega.
   test('sem a coluna da 023 na nuvem, o mapa e a rota seguem como sempre, sem nomes e sem aviso', async ({page, context, nuvem}) => {
