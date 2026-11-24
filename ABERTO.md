@@ -154,6 +154,26 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Ruas que faltam e nomes das ruas das entregas (24/11, dono: "colocar os nomes, deixar o melhor possível pros entregadores"): na branch `nomes-das-entregas`
+
+- **Pergunta do dono:** fazer um mapa nosso, a partir do OpenStreetMap, para pôr as ruas que faltam.
+- **Medido (produção, só leitura, 20/09 a 24/11), recusado:** rua que falta no desenho quase não toca
+  entrega. Nenhuma das 6.564 passagens caiu nos 40 trechos da prefeitura que o mapa não tem. Das portas
+  arrumadas à mão, 0,6% ficam a mais de 40 m de rua desenhada; dos pacotes entregues, 0,9%. As 70 ruas
+  que nasceram das entregas estão todas desenhadas, a 1–20 m das portas: o que muda é o nome.
+- **Gameleira, o único lugar:** duas portas (José Pereira dos Santos, 3 visitas; Idalina Leite, 4) a
+  83–200 m de rua desenhada. No satélite há caminhos de terra, mas não dá para dizer qual o carro usa:
+  não foi desenhado nada. O traçado certo vem do teste do caminho, na próxima entrega ali.
+- **Feito, os nomes:** a 033 põe `ruas.linha_no_mapa`. A `npm run nomes-no-mapa -- gravar` passa a pôr,
+  para cada rua das entregas, o pedaço do traçado do próprio mapa onde ficam as portas dela, e o
+  celular escreve ali o nome da planilha, sem traço. Regra contra a porta de esquina: 2 portas na
+  mesma rua do mapa quando o nome é só outra grafia (Izaura, Isaura), 3 e 30% das portas quando é
+  outro nome (Rua Zenza, Rua Josefina Alves). No ensaio com os dados de 24/11: 41 das 70 ruas, em 44
+  trechos. A regra de 17/10 (nome deduzido não entra) continua para os 'motorista'.
+- **Testado:** 9 de unidade e 2 na tela. Sabotagens: 14 nos de unidade e 4 nos da tela, cada uma
+  quebrou o seu teste. Print com o mapa de verdade: a Rua Josefina Alves em cima da "Rua Zenza". Bateria no PR.
+- **Falta, depois do merge:** o dono rodar a 033 no SQL Editor; depois `npm run nomes-no-mapa -- gravar`.
+
 ## Teste do caminho (24/11, dono: "testar se gasta muita bateria, depois revertemos se preciso"): na branch `caminho-teste`
 
 - **Pergunta:** gravar o caminho do motorista, para o mapa aprender com ele, gasta muita bateria?
