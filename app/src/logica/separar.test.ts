@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {describe, expect, it} from 'vitest';
 import XLSX from 'xlsx';
 import {estadoVazio} from './guarda';
-import {adicionarDaPlanilha, juntarDeNovo, juntarEntregas, separarEntregas, separarParada} from './importar';
+import {adicionarDaPlanilha, juntarDeNovo, juntarEntregas, juntarSeparadas, separarEntregas, separarParada} from './importar';
 import {itensDaPlanilha} from './planilha';
 import {chaveDaParada, chaveLugar} from './texto';
 import type {Estado} from './tipos';
@@ -159,5 +159,63 @@ describe('separar as entregas de um mesmo número', () => {
     mudadas2[2].entregue = true;
     expect(juntarEntregas(mudadas2, antes)).toBe(false);
     expect(doNumero.map(p => p.separada)).toEqual([true, true, true]);
+  });
+});
+
+// Dono, 23/11: separou os 15 pacotes de um condomínio que a planilha punha a 21 km, arrumou e
+// entregou um por um, e não havia como juntar. Juntar devolve as separadas do número a uma porta.
+describe('juntar as separadas do mesmo número', () => {
+  const PORTA = {lat: -10.875, lng: -37.0885};
+  const separadas = () => { const e = carregar(); const p = e.paradas[0]; return {e, todas: [p, ...separarParada(e, p)], outra: e.paradas.at(-1)!}; };
+
+  it('juntadas, nenhuma continua separada', () => {
+    const {e, todas} = separadas();
+    juntarSeparadas(e, todas[1]);
+    expect(todas.map(q => !!q.separada)).toEqual([false, false, false, false]);
+  });
+
+  it('todas vão para a posição que ele arrumou numa delas', () => {
+    const {e, todas} = separadas();
+    Object.assign(todas[2], {...PORTA, precisao: 'manual'});
+    expect(juntarSeparadas(e, todas[0]).porta).toBe(todas[2]);
+    for (const q of todas) expect(q).toMatchObject({...PORTA, precisao: 'manual'});
+  });
+
+  it('a porta verificada vale mais que a arrumada', () => {
+    const {e, todas} = separadas();
+    Object.assign(todas[1], {lat: -10.9, lng: -37.1, precisao: 'manual'});
+    Object.assign(todas[3], {...PORTA, precisao: 'confirmado'});
+    juntarSeparadas(e, todas[0]);
+    for (const q of todas) expect(q).toMatchObject(PORTA);
+  });
+
+  it('sem nenhuma posição firme, cada uma fica onde estava', () => {
+    const {e, todas} = separadas();
+    todas[1].lat = -10.951;
+    expect(juntarSeparadas(e, todas[0]).porta).toBeNull();
+    expect(todas[1].lat).toBe(-10.951);
+  });
+
+  it('a entregue não volta: fica separada e no lugar dela', () => {
+    const {e, todas} = separadas();
+    Object.assign(todas[1], {entregue: true, lat: -10.9, lng: -37.1});
+    Object.assign(todas[2], {...PORTA, precisao: 'manual'});
+    juntarSeparadas(e, todas[0]);
+    expect(todas[1]).toMatchObject({separada: true, lat: -10.9});
+  });
+
+  it('não mexe nas entregas de outro endereço', () => {
+    const {e, todas, outra} = separadas();
+    const antes = structuredClone(outra);
+    Object.assign(todas[0], {...PORTA, precisao: 'manual'});
+    juntarSeparadas(e, todas[0]);
+    expect(outra).toEqual(antes);
+  });
+
+  it('com uma separada só no número, não há o que juntar', () => {
+    const {e, todas} = separadas();
+    for (const q of todas.slice(1)) q.entregue = true;
+    expect(juntarSeparadas(e, todas[0]).juntadas).toEqual([]);
+    expect(todas[0].separada).toBe(true);
   });
 });
