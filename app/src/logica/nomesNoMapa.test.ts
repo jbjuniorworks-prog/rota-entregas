@@ -1,4 +1,4 @@
-import {classificar, daCarga, indexar} from '../../../ferramentas/nomes-no-mapa.mjs';
+import {classificar, daCarga, indexar, indexarVias, linhasDoNome, portasDaRua} from '../../../ferramentas/nomes-no-mapa.mjs';
 import {abreviar, emendar, nomesNoMapa, rotulosNaTela, ruasDoDia, type NomeNoMapa, type TrechoDaBase} from './nomesNoMapa';
 import type {Parada} from './tipos';
 
@@ -84,6 +84,69 @@ describe('o nome da rua no mapa, no celular', () => {
     const linha = reta([L, G], [L, G + 0.001]);
     const nomes = nomesNoMapa(doDia, [trecho(kAlb, linha, 'sem_nome', 'motorista'), trecho(kAlb, linha, 'fora', 'entregas'), trecho(kAlb, linha, 'com_nome')]);
     expect(nomes).toEqual([]);
+  });
+
+});
+
+describe('npm run nomes-no-mapa: o nome da rua das entregas no traçado do mapa', () => {
+  // uma rua do mapa deitada, de 437 m; 0,001 grau de longitude são 109 m aqui
+  const deitada = reta([L, G], [L, G + 0.004]);
+  const via = (nome_chave: string | null, fonte = 'osm', linha = deitada) => ({id: 1, fonte, nome_chave, linha});
+  // portas a 11 m ao norte da rua, a 109, 164 e 219 m do começo dela
+  const portas = (n: number, lng0 = G + 0.001): [number, number][] => Array.from({length: n}, (_, i) => [L + 0.0001, lng0 + 0.0005 * i]);
+
+  it('com outro nome no mapa e 3 portas: o nome vai no pedaço das portas, com 40 m de folga de cada lado', () => {
+    const [linha, ...resto] = linhasDoNome('josefina alves', portas(3), indexarVias([via('zenza')]));
+    expect(resto).toEqual([]);
+    expect(linha[0][1]).toBeCloseTo(G + 0.000634, 5);
+    expect(linha[linha.length - 1][1]).toBeCloseTo(G + 0.002366, 5);
+  });
+
+  it('com outro nome no mapa, 2 portas não bastam: podem ser de esquina', () => {
+    expect(linhasDoNome('josefina alves', portas(2), indexarVias([via('zenza')]))).toEqual([]);
+  });
+
+  it('com a mesma rua escrita de outro jeito, 2 portas bastam', () => {
+    expect(linhasDoNome('isaura', portas(2), indexarVias([via('izaura')]))).toHaveLength(1);
+  });
+
+  it('a rua do lado com menos de 30% das portas fica sem o nome', () => {
+    const cruzada = {id: 2, fonte: 'osm', nome_chave: 'canal', linha: reta([L - 0.002, G + 0.0035], [L + 0.002, G + 0.0035])};
+    // 10 portas na rua deitada, a mais de 70 m da cruzada, e 3 junto da cruzada (a 11 m dela, longe da deitada)
+    const naDeitada = Array.from({length: 10}, (_, i): [number, number] => [L + 0.0001, G + 0.0001 + 0.0003 * i]);
+    const naCruzada: [number, number][] = [[L + 0.0006, G + 0.0036], [L + 0.0009, G + 0.0036], [L + 0.0012, G + 0.0036]];
+    const linhas = linhasDoNome('praia de aruanda', [...naDeitada, ...naCruzada], indexarVias([via(null), cruzada]));
+    expect(linhas).toHaveLength(1);
+    expect(linhas[0].every(([lat]) => lat === L)).toBe(true);
+  });
+
+  it('o mapa já mostra esse nome ali: nada a escrever', () => {
+    expect(linhasDoNome('zenza', portas(3), indexarVias([via('zenza')]))).toEqual([]);
+  });
+
+  it('porta a mais de 25 m de rua desenhada não conta', () => {
+    const longe = portas(3).map(([a, b]) => [a + 0.0003, b] as [number, number]);
+    expect(linhasDoNome('josefina alves', longe, indexarVias([via('zenza')]))).toEqual([]);
+  });
+
+  // o nome que a nomear_ruas deu ao trecho não aparece no mapa: para isto, ele é rua sem nome
+  it('o trecho batizado pelas entregas conta como rua desenhada sem nome', () => {
+    expect(linhasDoNome('josefina alves', portas(3), indexarVias([via('josefina alves', 'motorista')]))).toHaveLength(1);
+  });
+
+  it('as portas da rua: uma por lugar, perto do traçado dela, sem a recusada e sem GPS ruim', () => {
+    const rua = {nome_chave: 'rua a', linha: deitada};
+    const p = (chave_lugar: string, lat: number, extra = {}) => ({chave_lugar, rua_chave: 'rua a', lat, lng: G + 0.001, precisao_m: 8, ...extra});
+    const ps = portasDaRua(rua, [
+      p('1', L + 0.0001), p('1', L + 0.0002),
+      // o "Rua A" de outro loteamento
+      p('2', L + 0.01),
+      p('3', L + 0.0001, {recusada: true}),
+      p('4', L + 0.0001, {precisao_m: 80}),
+      p('5', L + 0.0001, {rua_chave: 'rua b'}),
+      p('6', L - 0.0001),
+    ]);
+    expect(ps).toEqual([[L + 0.0001, G + 0.001], [L - 0.0001, G + 0.001]]);
   });
 });
 
