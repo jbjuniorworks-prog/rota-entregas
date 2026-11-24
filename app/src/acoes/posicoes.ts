@@ -79,6 +79,7 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
 // segue a regra de sempre. Os condomínios não entram: ninguém separa apartamento por apartamento.
 // O mesmo para as entregas de complemento diferente do mesmo número, que a planilha não junta
 // (29/10): a que tem porta no seu complemento chega separada, e deixa a porta geral para as outras.
+const MESMA_PORTA = 30;
 export async function separarAsConhecidas(): Promise<number> {
   const c = clienteNuvem();
   if (!c) return 0;
@@ -92,11 +93,19 @@ export async function separarAsConhecidas(): Promise<number> {
   const daSolta = (p: Parada) => { const k = doItem(p, p.texto); return k && k !== geral(p) ? k : null; };
   const chaves = [...new Set([...juntadas.flatMap(proprias), ...soltas.map(daSolta).filter((k): k is string => !!k)])];
   if (!chaves.length) return 0;
-  let marcadas: Set<string>;
-  try { marcadas = new Set((await c.posicoes(chaves)).map(r => r.chave_lugar)); } catch { return 0; }
-  const separar = juntadas.filter(p => proprias(p).some(k => marcadas.has(k)));
+  const gerais = [...new Set([...juntadas, ...soltas].map(geral).filter((k): k is string => !!k))];
+  let portas: Map<string, Ponto>;
+  try { portas = new Map((await c.posicoes([...chaves, ...gerais])).map(r => [r.chave_lugar, r as Ponto])); } catch { return 0; }
+  // A porta do complemento no mesmo lugar que a do endereço não separa nada (dono, 23/11: 21 das 38
+  // portas de complemento do banco; o condomínio arrumado apartamento por apartamento voltava em
+  // pinos separados no mesmo ponto).
+  const separa = (p: Parada, k: string | null) => {
+    const porta = k ? portas.get(k) : undefined, doEndereco = portas.get(geral(p) || '');
+    return !!porta && (!doEndereco || haversine(porta, doEndereco) > MESMA_PORTA);
+  };
+  const separar = juntadas.filter(p => proprias(p).some(k => separa(p, k)));
   for (const p of separar) separarParada(e(), p);
-  const sozinhas = soltas.filter(p => marcadas.has(daSolta(p)!));
+  const sozinhas = soltas.filter(p => separa(p, daSolta(p)));
   for (const p of sozinhas) marcarSeparada(p, cidade);
   if (separar.length || sozinhas.length) loja.mudou();
   return separar.length + new Set(sozinhas.map(geral)).size;

@@ -159,6 +159,31 @@ export function juntarEntregas(mudadas: Parada[], antes: Parada[]): boolean {
   return true;
 }
 
+// "Não tem a função de juntar" (dono, 23/11): separou os 15 pacotes de um condomínio, a planilha
+// punha todos a 21 km, e cada pino ficou para arrumar um por um. Juntar devolve as separadas abertas
+// do mesmo número à porta do endereço: sem o complemento na chave, arrumar uma leva as outras. Todas
+// vão para a posição mais firme que alguma delas tem (a verificada, depois a que ele arrumou); sem
+// nenhuma firme, cada uma fica onde está. A entregue fica como está.
+const FIRMEZA: Partial<Record<Precisao, number>> = {confirmado: 3, manual: 2, lembrado: 1};
+
+export function separadasDoEndereco(e: Estado, p: Parada): Parada[] {
+  const k = chaveLugar(p.texto, p.bairro, e.cidade);
+  if (!k) return [];
+  return e.paradas.filter(q => q.separada && !q.entregue && chaveLugar(q.texto, q.bairro, e.cidade) === k);
+}
+
+export function juntarSeparadas(e: Estado, p: Parada): {juntadas: Parada[]; porta: Parada | null} {
+  const ps = separadasDoEndereco(e, p);
+  if (ps.length < 2) return {juntadas: [], porta: null};
+  const firme = ps.reduce((a, b) => (FIRMEZA[b.precisao] || 0) > (FIRMEZA[a.precisao] || 0) ? b : a);
+  const porta = FIRMEZA[firme.precisao] && firme.lat != null ? firme : null;
+  for (const q of ps) {
+    delete q.separada;
+    if (porta && q !== porta) Object.assign(q, {lat: porta.lat, lng: porta.lng, precisao: porta.precisao, exibido: porta.exibido, fonte: porta.fonte});
+  }
+  return {juntadas: ps, porta};
+}
+
 // O desfazer do "Separar": volta a ser uma parada só, como estava, se nenhuma foi entregue.
 export function juntarDeNovo(e: Estado, p: Parada, antes: Parada, novas: Parada[]): boolean {
   if (p.entregue || novas.some(q => q.entregue)) return false;

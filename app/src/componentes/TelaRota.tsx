@@ -9,6 +9,7 @@ import {numerosDaShopee, paradasDaShopee, textoDasParadas} from '../logica/parad
 import {pinosDoDia} from '../logica/pinos';
 import {previsoes} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
+import {separadasDoEndereco} from '../logica/importar';
 import {mesmoEndereco} from '../logica/texto';
 import {MOTIVOS_DO_MOTORISTA, verificadasDoDia, type PortasDaRota} from '../logica/verificacao';
 import type {Parada, Ponto, RotaArea} from '../logica/tipos';
@@ -112,6 +113,7 @@ function EntregasDoPonto({ps}: {ps: Parada[]}) {
       </div>}
       {g.ps.some(p => loja.ui.xarope === p.id) && <MarcarXarope p={g.ps[0]} />}
       {varias ? <EntregasDoEndereco ps={g.ps} /> : <PacotesDaParada p={g.ps[0]} />}
+      <JuntarSeparadas ps={g.ps} />
     </div>;
   })}</>;
 }
@@ -198,6 +200,15 @@ function PacotesDaParada({p}: {p: Parada}) {
     </details>
     <button className="btn contorno" data-acao="separar" onClick={() => { A.contar('separar'); A.separar(p); }}>Separar os {p.itens.length} pacotes</button>
   </>;
+}
+
+// O caminho de volta do Separar (dono, 23/11: "não tem a função de juntar"): enquanto houver
+// outra separada aberta no mesmo número, ela e as outras voltam a dividir a porta do endereço.
+function JuntarSeparadas({ps}: {ps: Parada[]}) {
+  const p = ps.find(q => q.separada && !q.entregue);
+  const n = p ? separadasDoEndereco(loja.e, p).length : 0;
+  if (!p || n < 2) return null;
+  return <button className="btn contorno" data-acao="juntar" onClick={() => { A.contar('juntar'); A.juntar(p); }}>Juntar as {n} entregas deste endereço</button>;
 }
 
 function CartaoPino({ids}: {ids: string[]}) {
@@ -362,6 +373,7 @@ function CartaoProxima() {
         <button className="btn contorno" onClick={() => A.deixarParaDepois(...pend)}>Depois</button>
       </div>
       {pend.length > 1 ? <EntregasDoEndereco ps={pend} /> : <PacotesDaParada p={alvo} />}
+      <JuntarSeparadas ps={pend} />
     </> : <>
       <div className="info">{pend.length} entregas {mesmoEndereco(pend.map(p => p.texto)) ? 'no mesmo endereço' : 'aqui perto'}:</div>
       <EntregasDoPonto ps={pend} />
