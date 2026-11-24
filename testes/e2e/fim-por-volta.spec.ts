@@ -17,7 +17,7 @@ test('no começo da rota, o fim vem arredondado para o quarto de hora', async ({
   await carregar(page, ROTA_D);
   await paraABase(page);
   await montar(page);
-  await expect(page.locator(FIM)).toHaveText(/^ · fim por volta das? \d{1,2}h(00|15|30|45)?$/);
+  await expect(page.locator(FIM)).toHaveText(/^ · fim pelas? \d{1,2}h(00|15|30|45)?$/);
 });
 
 test('a hora do fim fica forte, na cor do texto, e não quebra a linha do topo', async ({page}) => {
@@ -42,7 +42,7 @@ test('da metade das entregas em diante, o fim volta com o minuto', async ({page}
   await paraABase(page);
   await montar(page);
   for (let n = await entregasFeitas(page); n.feitas * 2 < n.todas; ) {
-    await expect(page.locator(FIM)).toHaveText(/por volta/);
+    await expect(page.locator(FIM)).toHaveText(/fim pelas? /);
     await page.locator('[data-folha="proxima"]').getByRole('button', {name: 'Entreguei', exact: true}).click();
     const antes = n.feitas;
     await expect.poll(async () => (n = await entregasFeitas(page)).feitas).toBeGreaterThan(antes);

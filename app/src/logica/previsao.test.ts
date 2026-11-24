@@ -5,11 +5,11 @@ const as = (h: number, m: number) => new Date(2026, 10, 24, h, m).getTime();
 
 describe('o fim da rota no topo', () => {
   it('antes da metade, a hora vai arredondada para cima quando passa do meio do quarto de hora', () => {
-    expect(textoDoFim(as(13, 55), 1, 80)).toBe('fim por volta das 14h');
+    expect(textoDoFim(as(13, 55), 1, 80)).toBe('fim pelas 14h');
   });
 
   it('antes da metade, a hora vai arredondada para baixo quando está mais perto do quarto de antes', () => {
-    expect(textoDoFim(as(13, 52), 1, 80)).toBe('fim por volta das 13h45');
+    expect(textoDoFim(as(13, 52), 1, 80)).toBe('fim pelas 13h45');
   });
 
   it('na metade das entregas, volta o minuto exato', () => {
@@ -17,10 +17,10 @@ describe('o fim da rota no topo', () => {
   });
 
   it('uma entrega antes da metade, ainda arredondada', () => {
-    expect(textoDoFim(as(13, 55), 39, 80)).toBe('fim por volta das 14h');
+    expect(textoDoFim(as(13, 55), 39, 80)).toBe('fim pelas 14h');
   });
 
-  it('à 1h, "da" e não "das"', () => {
-    expect(textoDoFim(as(1, 2), 0, 10)).toBe('fim por volta da 1h');
+  it('à 1h, "pela" e não "pelas"', () => {
+    expect(textoDoFim(as(1, 2), 0, 10)).toBe('fim pela 1h');
   });
 });
