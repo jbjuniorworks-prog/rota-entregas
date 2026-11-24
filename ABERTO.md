@@ -231,6 +231,20 @@ Fora da lista:
 - **Depende de `paradas-juntas`:** as duas mexem na mesma linha de `TelaRota.tsx`, e esta nasceu dela.
   Mergear a `paradas-juntas` primeiro.
 
+## O fim da rota "por volta das" (24/11, Luan, pelo dono): na branch `fim-por-volta`
+
+- **Pedido:** "que a primeira entrega tenha uma média de tempo que irá finalizar a rota". Isso já
+  existia desde 02/10, o "fim às" do topo, mas em cinza, e ele não via.
+- **Medido (produção, só leitura, 127 rotas, 48 do Luan):** na 1ª entrega, a previsão erra uns 21 min
+  nas rotas dele (28 min em todas). Com 25% feito, 33 min. Na metade, 18 min. Com 75%, 14 min. A conta
+  só pelo ritmo do dia não acerta melhor. As pausas longas é que mais erram.
+- **Mudança:** até a metade das entregas, "fim por volta das 14h", arredondado para 15 min. Da metade
+  em diante, "fim às 13:55". O texto passa a vir forte, na cor do texto. O cálculo não mudou.
+- **Testado:** 5 de unidade e 3 na tela, a 412×915 com a `rota-d`. Sete sabotagens, cada uma quebrou
+  o seu teste: metade com `>`, `floor`, sem arredondar, sempre "das", o texto antigo no topo, sem o
+  estilo forte e a letra grande que quebra a linha. O pior caso ("59 de 120 entregas · fim por volta
+  das 13h45") cabe numa linha. Bateria: tipos, 727 de unidade e 374 e2e. Não visto num celular.
+
 ## A P40 escondida na parada juntada (18/11, vídeo do Luan, Rua Tuta 106): na branch `paradas-juntas`, nada enviado
 
 - **O vídeo (antes das 08:13, sem o áudio ouvido):** dois pinos no mesmo ponto, 6 com "P6" e 7 com
