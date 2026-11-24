@@ -11,7 +11,7 @@ import {TelaInicio} from './componentes/TelaInicio';
 import {TelaRomaneio} from './componentes/TelaRomaneio';
 import {TelaVerificadas} from './componentes/TelaVerificadas';
 import {FolhaRota, SobreOMapa, TopoRota} from './componentes/TelaRota';
-import {loja, useLoja} from './loja';
+import {loja, SEM_ESPACO, useLoja} from './loja';
 import {haversine} from './logica/geo';
 import {rotuloDe} from './logica/rotulo';
 import type {Parada, Ponto} from './logica/tipos';
@@ -67,7 +67,8 @@ function LocalRecebido({ali}: {ali: {lat: number; lng: number}}) {
 
 function Status() {
   const {ui} = useLoja();
-  return <div id="status" className={ui.aviso || ui.posicionando || ui.marcandoLugar || ui.localRecebido || ui.versaoNova || ui.pinosNovos || ui.podeInstalar ? 'on' : ''}>
+  return <div id="status" className={ui.semEspaco || ui.aviso || ui.posicionando || ui.marcandoLugar || ui.localRecebido || ui.versaoNova || ui.pinosNovos || ui.podeInstalar ? 'on' : ''}>
+    {ui.semEspaco && <div className="aviso vermelho" data-sem-espaco>{SEM_ESPACO}</div>}
     {ui.podeInstalar && <div className="instalar" data-instalar>
       <span>Instale o app: fica com ícone na tela inicial, abre em tela cheia, e o Compartilhar do WhatsApp manda os prints direto para cá.</span>
       <span className="botoes"><button className="btn peq pri" onClick={A.instalarApp}>Instalar</button><button className="btn peq" onClick={A.instalarDepois}>Agora não</button></span>
