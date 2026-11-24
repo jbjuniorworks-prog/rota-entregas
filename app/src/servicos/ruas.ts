@@ -40,9 +40,12 @@ export async function matriz(pts: Ponto[]): Promise<MatrizDeRuas> {
   return {...matrizAproximada(pts), porRuas: pts.length <= 1, motivo};
 }
 
+// A linha inteira, rente à rua (dono, 23/11: o traço cortava quarteirão). A simplificada é feita
+// para a rota inteira caber na tela: numa de 46 km, metade dos pontos ficava a mais de 15 m da
+// rua, até 89 m. A inteira dessa rota tinha 1.014 pontos (24 KB).
 export async function linhaDaRota(seq: Ponto[]): Promise<[number, number][] | null> {
   try {
-    const j = await osrm(`route/v1/driving/${coordStr(seq)}?overview=simplified&geometries=geojson`);
+    const j = await osrm(`route/v1/driving/${coordStr(seq)}?overview=full&geometries=geojson`);
     if (j.code === 'Ok') return j.routes[0].geometry.coordinates.map(([lng, lat]: [number, number]) => [+lat.toFixed(5), +lng.toFixed(5)]);
   } catch {}
   return null;
