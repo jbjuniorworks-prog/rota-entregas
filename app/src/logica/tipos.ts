@@ -62,6 +62,8 @@ export interface Parada {
   itens?: ItemDaParada[];
   // separada pelo motorista: a porta dela é guardada com o complemento (`chaveDaParada`)
   separada?: boolean;
+  // o pino da planilha, em metros, das portas do próprio CEP no censo, quando passa de 10 km (longeDoCep.ts)
+  longeDoCep?: number;
 }
 
 export interface ItemDaParada {
