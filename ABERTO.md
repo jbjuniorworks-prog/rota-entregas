@@ -154,6 +154,26 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Teste do caminho (24/11, dono: "testar se gasta muita bateria, depois revertemos se preciso"): na branch `caminho-teste`
+
+- **Pergunta:** gravar o caminho do motorista, para o mapa aprender com ele, gasta muita bateria?
+- **O que o código já diz:** com a Rota aberta, o GPS do app já fica ligado em alta precisão
+  (`seguirMinhaPosicao`). Gravar só guarda o que ele lê, e o gasto a mais deve ser perto de zero. O
+  limite provável são os buracos: com o Waze por cima ou a tela apagada, o navegador costuma não mandar
+  o GPS.
+- **O teste:** Mais → Teste do caminho, desligado de começo. Gravando, guarda no celular um ponto a cada
+  10 s andando ou 1 min parado, e a bateria a cada 5 min (que continua sendo lida desligado, para
+  comparar). A tela mostra, do dia, os pontos, a cobertura, os buracos de mais de 2 min por causa (app
+  escondido, fora da Rota, Rota sem leitura), se o navegador mandou GPS com o app escondido, e a bateria
+  por hora gravando e sem gravar. Nada vai para a nuvem; fica no IndexedDB, um banco por conta.
+- **Testado:** 21 de unidade e 8 na tela, a 412×915, com o GPS e o relógio simulados. Treze sabotagens
+  na regra e nove na ligação, cada uma quebrou o seu teste. Bateria: tipos, 762 de unidade e 394 e2e.
+  Não visto num celular.
+- **Próximo:** o dono liga no celular dele, faz uma rota com o Waze como sempre, e lê a tela do teste.
+  Se o navegador não manda GPS com o app escondido, gravar o caminho de verdade pede um app de Android,
+  e aí sim gasta bateria. Mandar o caminho para a nuvem só depois disso, e com o consentimento dos
+  motoristas.
+
 ## Noite de 23/11 (dono: "revisa o app, faz tudo, sobe o PR"): duas branches commitadas, nada enviado
 
 O push e a abertura de PR pediam confirmação, e o dono pediu para não ser chamado durante a noite.
