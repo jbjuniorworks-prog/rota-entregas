@@ -154,6 +154,78 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Rota do dono de 25/11 conferida antes de sair: uma porta regravada, falta ver na rua; quatro pedidos da rua em quatro branches, nada enviado
+
+- **Recanto Santo Antônio 32A (`49007190|32`):** a porta que valia era a estimativa 5813 de 15/11, posta
+  pelas vizinhas colada no nº 30. Naquele dia o dono passou no nº 30 às 13:37 sem entregar o 32A e o
+  entregou às 14:03 na outra ponta da mesma rua, a 596 m (GPS 3 m, 132 m da parada seguinte: não foi
+  toque atrasado). Com o "sim" do dono, gravada porta de admin no ponto dessa entrega (id 6872, 08:42). A
+  5813 ficou no histórico. Próximo: ver se a entrega de hoje cai ali.
+- **As cinco estimativas de 15/11, medidas:** a do censo (5812) bateu com duas entregas (10 m e 4 m). As
+  quatro pelas vizinhas erraram: 69, 150 e 350 m (o dono arrumou na porta no mesmo dia) e 596 m (esta).
+  Pesa contra fazer o app estimar pelas vizinhas.
+- **Conferido e deixado:** 57 das 71 chaves com porta. As portas a 300 m ou mais do pino da planilha têm
+  marca e entrega que as sustentam, ou foram aprovadas hoje às 08:09. Dos 15 sem porta, os pinos batem
+  com vizinhas, censo ou rua da base. As duas entregas antigas longe do pino (Rua H 100, Avenida Real
+  1100) foram toques em lote do Leudy em 27/09 (4 em 8 s e 7 em 2 min): não valem como porta. Sem dado
+  que decida: Rodovia dos Náufragos 1317.
+- **Rodovia dos Náufragos 88 (P18, `49008093|88`), achado pelos prints do mapa:** o app deixou o pino da
+  planilha, junto do nº 105 da mesma parada. O censo (CEP, salto 1) e a porta verificada do nº 87 ficam a
+  4 m um do outro, a 1 km dali, ao lado do P15 (nº 77). A regra de `discordaDaPorta` (80 m, mesma rua,
+  rodovia não é genérica) parecia levar para o censo; causa não identificada. Nada gravado: sem porta
+  verificada, o cartão continua com "Estou aqui" na rua.
+- **Ideia do dono, nada feito: "sequência de arrumação".** Com a rota pronta, o app indicar as paradas
+  que podem ser arrumadas juntas no carro, na ordem em que se passa ("61/1/60", print do mapa às 09:11).
+  A carga eles mesmos fazem; o app só agrupa. Feito à mão para esta rota (10 conjuntos, agrupamento por
+  distância e ordem do otimizador do app em linha reta). Levantar antes de construir: a ordem real só
+  existe no celular, e o mesmo número de parada pode estar em dois lugares (hoje P8 e P18). O dono deixou
+  para decidir em casa.
+- **Quatro pedidos da rua, feitos em quatro branches a partir da `main` b8e4a23, commit local, nada
+  enviado** ("revisa tudo e pode fazer", dono, 25/11). Cada um com teste que quebrou com o conserto
+  sabotado, e olhado a 412×915 com a `rota-d`:
+  - **`maps-um-pino`:** o "Maps" do cartão do pino levava o trecho de até 9 (feito assim em 16/10 a
+    pedido do dono). Na rua: "continua indo pra 9 pinos, só quero um". Agora vai só ao pino; o trecho
+    fica no link "Maps com as próximas N", embaixo dos botões.
+  - **`porta-errada`:** foto das 11:21, P18 (Náufragos 105 Casa 8, `49009001|105`): o cartão da porta
+    verificada mandava arrumar em Conferir endereços (menu, busca digitada, Estou aqui, pergunta
+    longa). Essa porta veio de um só "Entreguei aqui" do Leudy em 29/09: pela 017, correção e passagem
+    no mesmo ponto já valem como verificada para todos. Agora o cartão tem "Porta errada? Estou aqui",
+    com a pergunta de `podeMexer` curta; na conta admin ela diz que vale para todos (a correção do
+    admin passa na frente na 017). "Entreguei aqui" continua escondido. O aviso de GPS a mais de 3 km
+    mandava procurar "Arrumar o pino", que a porta verificada não tem: agora aponta o "Marcar no mapa".
+  - **`aviso-aproxime`:** foto das 12:39, P24 (`49008578|168` e `49008578|sn`): "Entregas de ruas
+    diferentes neste pino: aproxime o mapa para marcar a porta de cada uma", para duas da mesma
+    travessa, a ~54 m, as duas verificadas. Agora diz a distância e some quando não há porta a marcar.
+  - **`desfazer-porta`:** "às vezes o cliente fala depois que é uma localização errada". Medido em
+    25/11 (6332 correções, 19/09 a 25/11, sem a conta do dono, que tem gravações de script): 286 vezes
+    um motorista mudou em mais de 25 m a porta que o próprio motorista tinha marcado; 82 em até 10 s,
+    56 de 10 s a 2 min, 63 de 2 a 30 min, 70 de 30 min a 1 dia, 15 depois de um dia. Não mede se voltou
+    ao ponto de antes ou foi a um terceiro, e o que foi desfeito nos 10 s já saiu do banco. Agora a
+    porta marcada neste celular hoje se desfaz pelo cartão do pino, da próxima e de Conferir, o dia
+    todo; na entregue, a entrega fica.
+  - **Na bateria inteira da `porta-errada`**, duas falhas que não se repetiram:
+    - **20 "spawn EPERM" do vitest, com os 776 testes passando.** Pelos horários, nenhum outro teste
+      rodava junto (13:10:01 a 13:10:14; o seguinte começou às 13:10:36). Testado de novo 5 vezes a
+      unidade inteira: 3 com dois vitest ao mesmo tempo e 2 com vitest, typecheck e testes de um
+      arquivo juntos. Nenhum erro.
+    - **"o mapa anda junto com ele" estourou o tempo ao abrir a página.** Testado de novo 5 vezes
+      sozinho e 5 com a máquina carregada: 75 de 75 passaram.
+    - A causa das duas não está identificada. Se voltarem, guardar a saída inteira e a hora.
+  - **PRs abertos em 25/11:** #40 (`maps-um-pino`), #41 (`porta-errada`, depois do #40), #42
+    (`aviso-aproxime`), #43 (`desfazer-porta`) e #44 (este registro).
+  - **Item futuro:** "Colar link do mapa" e "Arrumar o pino" também na porta verificada; o novo só tem
+    o "Estou aqui", que é o de quem está na porta.
+- **Quatro entregas ficaram para trás (foto das 13:31):** ADS Rua C 356, P26, P25 e P36, perto do P28
+  (entregue 13:07) e do P29 (13:14). Depois do P29 a entrega seguinte foi a Rua Quatro 200 (13:30, o
+  outro ADS), e a rota passou a mandar voltar. As quatro estavam a 240–450 m do P28 e do P29. A ordem
+  que o app mostrava só existe no celular: não se sabe se a rota pulou as quatro ou se o caminho saiu
+  dela. Nada feito.
+- **Pedido do dono, nada feito: "dar um jeito de guiar melhor pra ir aos pinos".** Medido em 25/11
+  (`uso_dos_botoes`, 16/11 a 25/11, só leitura): o Waze e o Maps quase não são usados. Luan: 0 a 10
+  toques no Waze por dia, para 57 a 135 entregas. Pedro: 0 a 2. Dono: até 6 no Maps e 16 no trecho
+  de 9. Quem guia é o mapa do app. Antes de construir, falta saber o que falhou no P29: se o cartão da
+  próxima mostrava as quatro de baixo ou a Rua Quatro.
+
 ## Ruas que faltam e nomes das ruas das entregas (24/11, dono: "colocar os nomes, deixar o melhor possível pros entregadores"): na branch `nomes-das-entregas`
 
 - **Pergunta do dono:** fazer um mapa nosso, a partir do OpenStreetMap, para pôr as ruas que faltam.
@@ -193,6 +265,23 @@ Fora da lista:
   Se o navegador não manda GPS com o app escondido, gravar o caminho de verdade pede um app de Android,
   e aí sim gasta bateria. Mandar o caminho para a nuvem só depois disso, e com o consentimento dos
   motoristas.
+## Mais dois números com dois clientes numa chave (21/11): separados no banco, falta ver a próxima planilha
+
+- **Chico Mendes, 15 (Areia Branca, CEP genérico):** a disputa do Pedro de 20/11 era de outro cliente. O
+  "Lote 20 quadra 07" o Pedro arrumou e entregou em 06/11 e 20/11 no mesmo ponto. O "Rua M1 Loteamento
+  bot rojão" o dono arrumou e entregou em 15/11, a 276 m dali, e a porta de admin dele valia para os
+  dois. Gravadas portas de admin por complemento (`|lote 20 quadra 07` no ponto do Pedro,
+  `|rua m1 loteamento bot rojao` no do dono). A geral ficou no ponto do dono. As marcas do Pedro de
+  20/11 continuam em "Em conferência": "Definir como porta" ali levaria a geral para o ponto dele.
+- **Avenida Matapoã, 42 (CEP 49008-540), rota do dono de 21/11:** a porta geral (admin, 29/09) é de
+  "depois do quarto quebra mola", 88 m fora da avenida. O "bar de Wellington ou depósito" o Leudy
+  entregou em 27/09 a 16 m do pino da planilha, a 11 m da avenida, e o P11 de hoje ("em frente bar
+  Wellington") tem o pino a 90 m dali. Gravada porta de admin em `49008540|42|bar de wellington ou
+  deposito` no ponto do Leudy. Vale para a próxima planilha lida: a separação por complemento só
+  roda ao ler a planilha.
+- **Olhado e deixado:** Rua J 98 (o Leudy corrigiu a si mesmo em 29/09; a porta fica a 22 m do pino de
+  hoje), Oviêdo Santos 135 e Pantanal 652 (porta do Luan de 30/10 a 725 m e 369 m do pino da planilha,
+  os dois pontos na rua; os dados não desempatam). 38 das 61 chaves da rota não têm nada na base.
 
 ## Noite de 23/11 (dono: "revisa o app, faz tudo, sobe o PR"): duas branches commitadas, nada enviado
 
@@ -275,7 +364,7 @@ ele sai da linha.
 - **Testado:** 1 de unidade e 2 e2e, cada um falhando com o seu conserto desligado, e o teste da auditoria de 20/10 atualizado (ele registrava o "sem aviso"). Bateria:
   723 de unidade e 373 e2e. **Não testado** num celular de verdade com a memória cheia.
 
-## Os pinos do mesmo ponto em V (18/11, print do Luan, pelo dono): na branch `leque-em-v`, nada enviado
+## Os pinos do mesmo ponto em V (18/11, print do Luan, pelo dono): publicado em 18/11 (#31, versão `mwmgl3xs`), falta ver no celular
 
 - **O print:** no zoom máximo, a P6 e a P40, no mesmo ponto, ficavam uma em cima da outra, ligadas
   por uma barra em pé. O dono: "ao invés de deixar assim com uma barra reta, vamos deixar em formato
@@ -301,6 +390,9 @@ ele sai da linha.
   Bateria: tipos, 714 de unidade e 364 de e2e. Print do build no tamanho do celular conferido.
   **Não testado** num celular de verdade.
 - **Limite:** com muitos pinos no mesmo ponto o V cresce. Com 8, os braços têm uns 120 px.
+- **Publicado em 18/11:** #31 mergeado às 15:31 pela conta jbjuniorworks-prog. O run da `main`
+  (`91b1387`, 714 de unidade e 364 e2e) publicou a versão `mwmgl3xs` (15:32). Os 3 testes de
+  `leque.spec.ts` passaram contra o site no ar. Com rota andando, o app só avisa e espera o Atualizar.
 
 ## Pino longe do próprio CEP (23/11, dono: "já é a segunda vez, nem um aviso nem nada"): na branch `longe-do-cep`, nada enviado
 
@@ -315,7 +407,7 @@ ele sai da linha.
 - **Testado:** 10 de unidade (um com o censo de verdade) e 6 e2e. 9 sabotagens, cada uma quebrou o seu
   teste. Bateria: 732 de unidade e 377 e2e. Prints a 412×915. **Não testado** num celular de verdade.
 
-## As paradas do topo são os pinos do mapa (18/11, Luan, pelo dono): na branch `paradas-sao-pinos`, nada enviado
+## As paradas do topo são os pinos do mapa (18/11, Luan, pelo dono): publicado em 18/11 (#30, versão `mwm7vjw4`), falta ver no celular
 
 - **Pedido:** "Luan quer que as paradas que aparecem pra ele sejam a quantidade de pinos no mapa".
 - **Por quê, medido:** na rota dele de 18/11 eram 60 pacotes, 54 entregas, 40 paradas da Shopee e 50
@@ -334,6 +426,10 @@ ele sai da linha.
   desfazer de uma das três entregas do mesmo pino tira o pino da conta. Cada regra desligada quebrou o
   teste dela. Saíram 3 testes da regra antiga (a P9 de duas planilhas, o pacote sem número de parada
   e as 7 paradas da `rota-a`). Não visto num celular de verdade.
+- **Publicado em 18/11:** #29 e #30 mergeados às 11:27 pela conta jbjuniorworks-prog, com o Luan
+  (38/60) e o Pedro (32/132) no meio da rota. O run da `main` (`2050014`, 362 e2e) publicou a versão
+  `mwm7vjw4` (11:28). Com rota andando, o app só avisa e espera o Atualizar. Os 6 testes das duas
+  mudanças passaram contra o site no ar.
 - **Depende de `paradas-juntas`:** as duas mexem na mesma linha de `TelaRota.tsx`, e esta nasceu dela.
   Mergear a `paradas-juntas` primeiro.
 
@@ -354,7 +450,7 @@ ele sai da linha.
   estilo forte e a letra grande que quebra a linha. Bateria: tipos, 727 de unidade e 374 e2e. Não
   visto num celular.
 
-## A P40 escondida na parada juntada (18/11, vídeo do Luan, Rua Tuta 106): na branch `paradas-juntas`, nada enviado
+## A P40 escondida na parada juntada (18/11, vídeo do Luan, Rua Tuta 106): publicado em 18/11 (#29, versão `mwm7vjw4`), falta ver no celular
 
 - **O vídeo (antes das 08:13, sem o áudio ouvido):** dois pinos no mesmo ponto, 6 com "P6" e 7 com
   "P40", os dois "Rua Tuta, 106", perto do mesmo restaurante, com o complemento escrito de dois
@@ -380,6 +476,74 @@ ele sai da linha.
   703 de unidade, tipos e build. Não visto num celular de verdade.
 - **Fora do escopo (item futuro):** depois de separar, as duas recebem o aviso vermelho "porta da
   vizinha", embora sejam o mesmo lugar, com porta verificada.
+
+## Portas pedidas pelo Luan com link do Maps (18/11): as três gravadas, a da Rua J a confirmar na porta
+
+- **"Rua ao lado do Restaurante Rei do Guaiamum, 11, Travessa jangata" (Areia Branca, CEP genérico,
+  P16, 2 pacotes):** o pino da planilha estava a 692 m do ponto que ele mandou. A "Travessa Jagata" da
+  base (OSM) fica a 10 m do ponto, e a Rodovia Ecologista Chico Mendes a 78 m. Gravada porta de admin
+  na chave `r|rodovia ecologista chico mendes rua ao lado do restaurante rei do guaiamum|11|areia
+  branca|aracaju`. A `posicoes_com` responde confirmado.
+
+- **Maria Leda Brito Reis, 416 (Mosqueiro, CEP genérico):** o pino da planilha estava a 4,1 km do
+  ponto que ele mandou. O ponto fica a 9 m da linha da rua na base de ruas (OSM). Gravada porta de
+  admin, como o `npm run portas`, na chave `r|rua maria leda brito reis|416|mosqueiro|aracaju`. A
+  `posicoes_com` responde confirmado. A entrega ainda estava aberta no celular dele: o pino vai ao
+  tocar em Atualizar.
+- **Rua J, 35 (Areia Branca):** o link é o lugar "Areia Branca" do Google, o ponto do bairro, não a
+  casa. Há uma Rua J a 63 m dele e a 480 m do pino da planilha, então o pino estava mesmo longe.
+  Gravada porta de admin no ponto do bairro, a pedido do dono ("pode gravar, ele vai gravar na porta
+  depois"), na chave `r|rodovia ecologista chico mendes rua j|35|areia branca|aracaju`. A
+  `posicoes_com` responde confirmado.
+  - **Para a porta exata:** na porta verificada não há "Entreguei aqui" nem "Arrumar o pino", e a
+    porta de admin vence a marca de motorista. O "Entreguei" do Luan na porta, a mais de 30 m deste
+    ponto, chega em "Em conferência" como disputa. Lá, "Definir como porta" põe a porta no lugar dele.
+
+## Dois clientes numa porta só: Chico Mendes, 100 (18/11, print do Luan na rota): separado no banco em 18/11, falta ver a próxima planilha
+
+- **O que o print mostrou:** a parada 37 da Shopee tem dois pacotes, o "100, por trás do condomínio
+  portal" e o "50A, atrás do condomínio portal". O 50A estava no lugar dele. O 100 estava numa rua
+  transversal, a 919 m dali, com "Endereço verificado".
+- **Por quê:** o CEP é o 49007-000, o genérico da área. Com CEP terminado em 000, a chave é só
+  rua, número e bairro (`chaveLugar`), e o complemento fica fora. A porta verificada do "100" era
+  de outro cliente, na rua transversal: 5 pacotes entregues pelo Pedro em 27/10, 30/10 e 07/11,
+  sempre com o mesmo complemento. É o mesmo padrão do "Chico Mendes, 67" de 26/10, na mesma rodovia.
+- **O que o Luan fez (pelo banco):** tocou em Entreguei no pino verificado (a marca subiu às 09:18:59,
+  com GPS a 2 m dele). O print das 09:23 mostra a entrega aberta de novo, então ele desfez depois do
+  prazo, e a marca ficou (item 4, "Desfazer retira a passagem"). Às 09:38 ele deixou duas correções a
+  919 m, a uns 70 m da porta do 50A, e entregou. As duas nasceram em disputa (030), como devia.
+- **A decisão das 10:01:** a conta de admin definiu a porta do "100" no ponto do Luan. O cliente de
+  hoje fica certo, mas a chave geral passa a valer para o outro também. O próximo pacote da rua
+  transversal vai cair atrás do condomínio, como verificado. Na disputa, o Admin só sabe mover a
+  porta de todos ou apagar a marca. Não há saída para "é outro cliente".
+- **O que já existe:** ao ler a planilha, `separarAsConhecidas` pergunta à nuvem pela chave com
+  complemento também da entrega sozinha. Com porta em `…|100|areia branca|aracaju|por tras do
+  condominio portal`, ela chega separada, e a chave geral fica para os outros.
+- **Separado em 18/11, 10:12, a pedido do dono ("temos que separar já"), sem código:** duas portas
+  de admin, gravadas como o `npm run portas` grava (apaga a correção anterior do admin na chave e
+  insere a nova). A chave com complemento ficou no ponto do Luan, e a chave geral voltou à rua
+  transversal, no ponto da correção do Pedro de 27/10. A única linha apagada foi a correção de admin
+  das 10:01 (id 6190), cujo ponto passou para a chave com complemento. As chaves saíram das funções
+  do app (`chaveLugar`, `chaveDaParada`), e a geral bate com a do pacote de hoje. A `posicoes_com`
+  responde as duas como confirmadas, pelo admin, cada uma no seu ponto. Os 3 testes de
+  `separar.spec.ts` com "chega separada" passaram. Só funciona se o cliente repetir o mesmo
+  complemento.
+  - **10:13:38:** a conta de admin gravou de novo a porta geral no ponto do condomínio (id 6202), 55 s
+    depois. Pelo horário, parece o "Definir como porta" da disputa do Luan, mas o botão não foi
+    confirmado. Ficou como está.
+  - **10:19, a pedido do dono ("tem que separar as duas"):** porta de admin também na chave com o
+    complemento `rua mae alcena casa100`, na rua transversal (id 6206). Os 5 pacotes desse cliente têm o
+    mesmo texto e a chave geral de sempre. A `posicoes_com` responde agora: o complemento do condomínio
+    no condomínio, o da rua transversal na rua transversal, e a chave geral no condomínio. Os dois
+    clientes conhecidos não dependem mais da chave geral, que só vale para um terceiro "100" de outro
+    complemento.
+  - **Falta:** ver a próxima planilha de cada um chegar separada, cada uma na sua porta.
+- **Medido, sem conclusão:** de 4.201 chaves com marca de motorista, 161 têm marcas em dois lugares a
+  mais de 150 m. Comparando só o complemento, não dá para separar "cliente diferente" de "condomínio
+  com apartamentos diferentes", e o próprio 100 saiu como "mesmo cliente", por causa da marca desfeita
+  do Luan. Ainda não se sabe quantos são como este.
+- **Para decidir:** se a disputa ganha a saída "é outro cliente", que gravaria a porta pela chave
+  com complemento sem mexer na geral. Hoje esse conserto precisa de script.
 
 ## O CI que parou a publicação de #20 a #23 (16/11): era o teste, não o app; consertado no teste (#24) e publicado com eles em 16/11
 
