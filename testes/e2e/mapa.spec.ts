@@ -654,8 +654,9 @@ test.describe('agir pelo pino', () => {
   });
 
   // "Tiramos a parte que joga as paradas pro Maps?" (dono, 16/10): desde 02/10 só a lista tinha.
-  // Do pino, o Maps vai até ele e segue a rota, até a letra I.
-  test('o cartão do pino abre no Maps este pino e os seguintes, com o Maps entre o Waze e o Depois', async ({page}) => {
+  // Mas o botão levar o trecho todo atrapalhava: "ao clicar num Maps continua indo pra 9 pinos, só
+  // quero um" (dono, na rua, 25/11). O Maps vai só até o pino; o trecho fica num link à parte.
+  test('o Maps do cartão do pino vai só até este pino, entre o Waze e o Depois', async ({page}) => {
     const {garantirMapa} = await import('./apoio');
     await abrir(page);
     await carregar(page, ROTA_A);
@@ -666,12 +667,29 @@ test.describe('agir pelo pino', () => {
     await page.locator('.pino.alvo').click();
     const maps = page.locator(`${PINO} [data-acao=maps][data-ids="${id}"]`);
     const u = new URL((await maps.getAttribute('href'))!);
+    expect(u.searchParams.get('destination')).toBe(`${lat},${lng}`);
+    expect(u.searchParams.get('waypoints'), 'nenhuma parada no meio').toBeNull();
+    expect(await maps.locator('xpath=..').locator('.btn').evaluateAll(bs => bs.map(b => b.getAttribute('data-acao'))))
+      .toEqual(['waze', 'maps', 'depois']);
+  });
+
+  test('o trecho para o Maps fica num link à parte, que começa neste pino e diz quantas paradas leva', async ({page}) => {
+    const {garantirMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await garantirMapa(page);
+    const {id, lat, lng} = await posicaoDaProxima(page);
+
+    await page.locator('.pino.alvo').click();
+    const trecho = page.locator(`${PINO} [data-acao=maps-varios][data-ids="${id}"]`);
+    const u = new URL((await trecho.getAttribute('href'))!);
     const pontos = [...u.searchParams.get('waypoints')!.split('|'), u.searchParams.get('destination')];
     expect(pontos[0], 'começa neste pino').toBe(`${lat},${lng}`);
     expect(pontos.length).toBeGreaterThan(1);
     expect(pontos.length).toBeLessThanOrEqual(9);
-    expect(await maps.locator('xpath=..').locator('.btn').evaluateAll(bs => bs.map(b => b.getAttribute('data-acao'))))
-      .toEqual(['waze', 'maps', 'depois']);
+    // sem ponto de fim nesta rota: cada ponto do link é uma parada
+    await expect(trecho).toHaveText(`Maps com as próximas ${pontos.length}`);
   });
 
   // Os pinos à vista (acima do cartão, abaixo do topo), cada um com os lugares que junta: entregas

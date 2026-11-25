@@ -55,16 +55,16 @@ test('o toque no Waze e no Maps é contado, sem nada do endereço', async ({page
   await lista(page);
   await page.getByRole('link', {name: /^Abrir as próximas \d+ no Google Maps$/}).click();
   await page.getByRole('link', {name: /^Trecho 1, pontos/}).click();
-  // o cartão do pino: o Maps dele leva o trecho da rota a partir do pino, várias paradas
+  // o cartão do pino: o Maps dele vai só até o pino (25/11), e o trecho a partir dele é outro link
   await page.getByRole('button', {name: 'Voltar ao mapa'}).click();
   await page.locator('.pino.alvo').click();
   await page.locator('[data-folha="pino"] [data-acao="waze"]').first().click();
   await page.locator('[data-folha="pino"] [data-acao="maps"]').first().click();
+  await page.locator('[data-folha="pino"] [data-acao="maps-varios"]').first().click();
 
   const uso = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-uso')!).contas as Record<string, number>);
   expect(uso['waze|']).toBe(2);
-  expect(uso['maps|']).toBe(1);
+  expect(uso['maps|']).toBe(2);
   expect(uso['maps-varios|']).toBe(3);
-  expect(uso['maps|waze'], 'Maps logo depois do Waze').toBe(1);
-  expect(JSON.stringify(uso)).not.toContain('Rua');
+  expect(uso['maps|waze'], 'Maps logo depois do Waze, no cartão da próxima e no do pino').toBe(2);  expect(JSON.stringify(uso)).not.toContain('Rua');
 });

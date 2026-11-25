@@ -123,10 +123,14 @@ function EntregasDoPonto({ps}: {ps: Parada[]}) {
 // cabem numa fileira, como antes do Maps.
 function BotoesDoEndereco({abertas, ids, quantas, noChao}: {abertas: Parada[]; ids: string; quantas: string; noChao: boolean}) {
   const confirmada = abertas[0].precisao === 'confirmado';
-  // O Maps com várias paradas só existia na lista desde 02/10, e o dono deu falta dele (16/10).
-  // Daqui ele vai até este pino e segue a rota. Sem rota, ou fora dela, vai só até o pino, como o Waze.
+  // O Maps com várias paradas só existia na lista desde 02/10, e o dono deu falta dele (16/10). Mas
+  // o botão "Maps" levar o trecho todo também atrapalhava: "ao clicar num Maps continua indo pra 9
+  // pinos, só quero um" (dono, na rua, 25/11). O "Maps" vai só até este pino, como o Waze; o trecho
+  // fica num link à parte, com quantas paradas leva. Sem rota, ou fora dela, não há trecho.
   const R = loja.e.rota;
   const trecho = R && !abertas[0].adiada ? trechoDesde(R.areas.flatMap(a => a.ordem), loja.parada, loja.e.tamTrecho, loja.e.fim, abertas[0].id) : null;
+  // o ponto do fim da rota entra no link, mas não é parada para contar
+  const paradasDoTrecho = trecho ? trecho.filter(x => x.ids.length).length : 0;
   const entregar = <>
     {/* porta confirmada não se marca de novo na rua: o botão ali é toque errado esperando (28/09) */}
     {noChao && !confirmada && <button className="btn ok" data-acao="aqui" data-ids={ids} onClick={() => { A.contar('balao-aqui'); A.entregueAqui(abertas); }}>Entreguei aqui{quantas}</button>}
@@ -139,8 +143,7 @@ function BotoesDoEndereco({abertas, ids, quantas, noChao}: {abertas: Parada[]; i
         para o Waze e o Maps (15/11): se eles vão pelo Waze, redesenhar a nossa linha quando ele
         erra a rua não serve a ninguém; medir antes de construir. */}
     <a className="btn contorno-azul" data-acao="waze" data-ids={ids} href={linkWaze(abertas[0] as Ponto)} onClick={() => A.contar('waze')} target="_blank" rel="noopener">Waze</a>
-    <a className="btn contorno-azul" data-acao="maps" data-ids={ids} data-pontos={trecho && trecho.length > 1 ? trecho.length : 1} onClick={() => A.contar(trecho && trecho.length > 1 ? 'maps-varios' : 'maps')} target="_blank" rel="noopener"
-      href={trecho && trecho.length > 1 ? linkMapsVarios(trecho.map(x => x.alvo)) : linkMaps(abertas[0] as Ponto)}>Maps</a>
+    <a className="btn contorno-azul" data-acao="maps" data-ids={ids} href={linkMaps(abertas[0] as Ponto)} onClick={() => A.contar('maps')} target="_blank" rel="noopener">Maps</a>
     {/* Na porta ele toca no pino, e é ali que procura o Depois (print de 05/10): só o cartão da
         próxima tinha. Adiada, o mesmo lugar traz de volta, que serve de desfazer. */}
     {R && (abertas.some(p => p.adiada)
@@ -151,6 +154,10 @@ function BotoesDoEndereco({abertas, ids, quantas, noChao}: {abertas: Parada[]; i
     {confirmada
       ? <div className="fileira">{entregar}{ir}</div>
       : <><div className="fileira">{entregar}</div><div className="fileira">{ir}</div></>}
+    {trecho && paradasDoTrecho > 1 && <div className="trecho-maps">
+      <a className="link" data-acao="maps-varios" data-ids={ids} data-pontos={trecho.length} href={linkMapsVarios(trecho.map(x => x.alvo))}
+        onClick={() => A.contar('maps-varios')} target="_blank" rel="noopener">Maps com as próximas {paradasDoTrecho}</a>
+    </div>}
     {confirmada && <span className="info">Endereço verificado. Se estiver errado, arrume em Conferir endereços.</span>}
   </div>;
 }
