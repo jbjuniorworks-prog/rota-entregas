@@ -158,7 +158,9 @@ function BotoesDoEndereco({abertas, ids, quantas, noChao}: {abertas: Parada[]; i
       <a className="link" data-acao="maps-varios" data-ids={ids} data-pontos={trecho.length} href={linkMapsVarios(trecho.map(x => x.alvo))}
         onClick={() => A.contar('maps-varios')} target="_blank" rel="noopener">Maps com as próximas {paradasDoTrecho}</a>
     </div>}
-    {confirmada && <span className="info">Endereço verificado. Se estiver errado, arrume em Conferir endereços.</span>}
+    {/* Na porta verificada, o conserto fica no cartão (dono, 25/11): por Conferir endereços eram
+        seis toques e uma busca digitada. A pergunta de podeMexer segura o toque errado. */}
+    {confirmada && <button className="link" data-acao="porta-errada" data-ids={abertas[0].id} onClick={() => { A.contar('porta-errada'); A.estouAqui(abertas[0]); }}>Porta errada? Estou aqui</button>}
   </div>;
 }
 
@@ -390,7 +392,9 @@ function CartaoProxima() {
     </>}
     <AvisosDaRota />
     <div className="secundarios">
-      {alvo.precisao !== 'confirmado' && <button className="link" onClick={() => A.estouAqui(alvo)}>Pino errado? Estou aqui</button>}
+      {alvo.precisao !== 'confirmado'
+        ? <button className="link" onClick={() => A.estouAqui(alvo)}>Pino errado? Estou aqui</button>
+        : <button className="link" data-acao="porta-errada" onClick={() => { A.contar('porta-errada'); A.estouAqui(alvo); }}>Porta errada? Estou aqui</button>}
       {alvo.precisao !== 'confirmado' && <button className="link" data-acao="colar-link" onClick={() => A.colarLinkDoMapa(alvo)}>Colar link do mapa</button>}
       <a className="link" href={linkMaps(alvo as Ponto)} onClick={() => A.contar('maps')} target="_blank" rel="noopener">Google Maps</a>
       <button className="link" data-escolher-maps onClick={A.escolherParaMaps}>Escolher pinos para o Maps</button>

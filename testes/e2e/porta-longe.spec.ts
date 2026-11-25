@@ -81,6 +81,30 @@ test.describe('"Entreguei aqui" longe do pino', () => {
     expect((await estado(page)).paradas.find(p => p.id === alvo.id)).toMatchObject({entregue: false, lat: alvo.lat, lng: alvo.lng, precisao: alvo.precisao});
   });
 
+  // Na porta verificada não há "Arrumar o pino" no cartão (28/09): o aviso mandava procurar um botão
+  // que ali não existe. O caminho de longe é o "Marcar no mapa", em Conferir endereços.
+  test('o "Porta errada? Estou aqui" a mais de 3 km diz o caminho que existe na porta verificada', async ({page, context, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const alvo = await proxima(page);
+    await page.evaluate(id => {
+      const s = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
+      s.paradas.find((x: any) => x.id === id).precisao = 'confirmado';
+      localStorage.setItem('rota-entregas-v2', JSON.stringify(s));
+    }, alvo.id);
+    await page.reload();
+    await abrir(page);
+    await context.setGeolocation(aNorte(alvo, 5000));
+    await page.waitForTimeout(5500);
+    await page.getByRole('button', {name: 'Porta errada? Estou aqui'}).click();
+    await expect(aviso(page)).toContainText('O pino ficou onde estava. Para arrumar daqui, abra Conferir endereços e toque em "Marcar no mapa".');
+    await page.waitForTimeout(1500);
+    expect(enviados(nuvem, 'correcoes')).toEqual([]);
+    expect((await estado(page)).paradas.find(p => p.id === alvo.id)).toMatchObject({lat: alvo.lat, lng: alvo.lng, precisao: 'confirmado'});
+  });
+
   test('o Entreguei com o GPS a mais de 3 km entrega e não manda passagem', async ({page, context, nuvem}) => {
     page.on('dialog', d => d.accept());
     await page.clock.install();

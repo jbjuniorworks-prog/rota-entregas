@@ -14,7 +14,7 @@ import {localDeHoje} from '../logica/localGuardado';
 import type {Parada, PortaAntes, Ponto} from '../logica/tipos';
 import {guarda, loja, MINIMIZADO, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
-import {clienteNuvem} from '../servicos/nuvem';
+import {clienteNuvem, nuvem} from '../servicos/nuvem';
 import {contar, desatualizarRota, e, enviarFila, ESPERA_DA_PORTA, fila, memoria, ui} from './base';
 import {abrir, alturaAgora, irPara, voltar} from './navegacao';
 import {cartaoAoAndar} from '../logica/seguir';
@@ -239,13 +239,17 @@ export const guardarPassagem = (p: Parada) => guardarPassagens([p]);
 // quem confirmou a porta na entrega e depois arruma sem querer tira a confirmação de todo mundo.
 // Cliente que se muda não passa por aqui: o endereço novo é outra chave e chega sem confirmação
 // (lembrete do Luan). Arrumar uma confirmada é só para porta que está errada.
+// Desde 25/11 o "Porta errada? Estou aqui" fica no próprio cartão ("você percebe o trabalho que é
+// pra arrumar um pino?", dono, na rua): antes era só por Conferir endereços, com busca digitada.
+// Esta pergunta é o que separa o toque de propósito do toque errado, e por isso é curta: é lida de
+// capacete. A correção da conta admin passa na frente de todas na nuvem (`posicoes_com`, 017); a
+// de um motorista longe da porta verificada vai para a disputa do Admin.
 export function podeMexer(p: Parada): boolean {
   if (p.precisao !== 'confirmado') return true;
-  return confirm(`Este endereço já está verificado:
+  const admin = nuvem.perfil?.papel === 'admin';
+  return confirm(`Mudar a porta verificada de ${p.texto.split(',').slice(0, 2).join(',')}?
 
-${p.exibido}
-
-Tem certeza que quer arrumar? Faça isso só se a porta estiver errada. Quem administra vai ver a mudança.`);
+${admin ? 'Passa a valer para todos os motoristas.' : 'Quem administra vai ver a mudança.'}`);
 }
 
 // Arrumar é no mapa: de outra tela (a Conferir, o ponto de chegada, a lista), vai para ele, e
@@ -564,8 +568,10 @@ export const longeDemais = (p: Ponto, gps: Ponto) =>
 export const ARRUMAR_DE_LONGE = 'Para arrumar daqui, toque no pino e em "Arrumar o pino".';
 
 function marcarNaPorta(p: Parada, lat: number, lng: number, precisao: number) {
-  // o "Estou aqui" também leva o pino para o GPS: da base, levava para a base
-  if (longeDaPorta(p, {lat, lng})) { status(`${longeDemais(p as Ponto, {lat, lng})} O pino ficou onde estava. ${ARRUMAR_DE_LONGE}`, 8000); return; }
+  // o "Estou aqui" também leva o pino para o GPS: da base, levava para a base. Na porta
+  // verificada o cartão não tem "Arrumar o pino": o caminho de longe é o "Marcar no mapa".
+  const comoArrumar = p.precisao === 'confirmado' ? 'Para arrumar daqui, abra Conferir endereços e toque em "Marcar no mapa".' : ARRUMAR_DE_LONGE;
+  if (longeDaPorta(p, {lat, lng})) { status(`${longeDemais(p as Ponto, {lat, lng})} O pino ficou onde estava. ${comoArrumar}`, 8000); return; }
   const margem = Math.round(precisao);
   if (margem > GPS_PRECISO && !confirm(`O GPS está impreciso agora (±${margem} m). Usar mesmo assim como posição desta entrega?
 

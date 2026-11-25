@@ -1413,13 +1413,9 @@ test.describe('na rua, sem arrumar o que já está certo', () => {
     await expect(page.locator(`${PINO} [data-item="${alvo.id}"] [data-acao]`)).toHaveCount(0);
   });
 
-  test('porta confirmada: sem "Estou aqui" nem "Arrumar" na Rota', async ({page}) => {
-    const {garantirMapa} = await import('./apoio');
-    await abrir(page);
-    await carregar(page, ROTA_A);
-    await montar(page);
+  // a próxima entrega volta confirmada, como vem da nuvem quando o endereço já foi entregue antes
+  async function proximaConfirmada(page) {
     const alvo = await daProxima(page);
-    // a próxima entrega volta confirmada, como vem da nuvem quando o endereço já foi entregue antes
     await page.evaluate(id => {
       const s = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
       Object.assign(s.paradas.find((x: any) => x.id === id), {precisao: 'confirmado', exibido: 'Endereço verificado por 2 motoristas'});
@@ -1427,12 +1423,23 @@ test.describe('na rua, sem arrumar o que já está certo', () => {
     }, alvo.id);
     await page.reload();
     await abrir(page);
+    return alvo;
+  }
+
+  test('porta confirmada: sem "Entreguei aqui" nem "Arrumar" na Rota; o conserto é o "Porta errada?"', async ({page}) => {
+    const {garantirMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    const alvo = await proximaConfirmada(page);
     await expect(page.locator('.proxima [data-confirmada]')).toContainText('Endereço verificado');
     // junto do endereço, acima dos botões: embaixo deles só rolando o cartão, e o Pedro não via (10/10)
     const selo = (await page.locator('.proxima [data-confirmada]').boundingBox())!;
     const botao = (await page.locator('.proxima [data-acao=entregue]').first().boundingBox())!;
     expect(selo.y + selo.height).toBeLessThanOrEqual(botao.y);
-    await expect(page.locator('.proxima').getByRole('button', {name: /Estou aqui/})).toHaveCount(0);
+    // o "Pino errado?" é da porta que ninguém verificou; na verificada, o botão diz o que ela é
+    await expect(page.locator('.proxima').getByRole('button', {name: /Pino errado/})).toHaveCount(0);
+    await expect(page.locator('.proxima [data-acao=porta-errada]')).toHaveText('Porta errada? Estou aqui');
     // e o botão grande é o Entreguei simples: marcar a porta de novo é mexer na confirmada
     await expect(page.locator('.proxima [data-acao=aqui]')).toHaveCount(0);
     await expect(page.locator('.proxima [data-acao=entregue]')).toBeVisible();
@@ -1442,7 +1449,69 @@ test.describe('na rua, sem arrumar o que já está certo', () => {
     const cartao = page.locator(`${PINO} [data-item="${alvo.id}"]`);
     await expect(cartao.locator('[data-acao=entregue]')).toBeVisible();
     await expect(cartao.locator('[data-acao=aqui], [data-acao=arrumar]')).toHaveCount(0);
-    await expect(cartao).toContainText('Se estiver errado, arrume em Conferir endereços');
+    await expect(cartao.locator('[data-acao=porta-errada]')).toHaveText('Porta errada? Estou aqui');
+    await expect(cartao, 'o caminho longo de antes não é mais o que o cartão manda fazer').not.toContainText('arrume em Conferir endereços');
+  });
+
+  // "Você percebe o trabalho que é pra arrumar um pino?" (dono, na rua, 25/11): a porta verificada
+  // errada só se arrumava por Conferir endereços. Agora é o botão do cartão e uma pergunta.
+  test.describe('o "Porta errada? Estou aqui" do cartão do pino', () => {
+    test.use({permissions: ['geolocation'], geolocation: {latitude: 0, longitude: 0, accuracy: 8}});
+
+    // na porta: 30 m ao norte do pino verificado, perto o bastante para o GPS valer como porta
+    async function naPorta(page, context) {
+      const {garantirMapa} = await import('./apoio');
+      await abrir(page);
+      await carregar(page, ROTA_A);
+      await montar(page);
+      const alvo = await proximaConfirmada(page);
+      const gps = {lat: +(alvo.lat + 0.00027).toFixed(6), lng: +alvo.lng.toFixed(6)};
+      await context.setGeolocation({latitude: gps.lat, longitude: gps.lng, accuracy: 8});
+      await garantirMapa(page);
+      await abrirPinoEm(page, alvo.lat, alvo.lng);
+      return {alvo, gps};
+    }
+    const onde = (page, id: string) => page.evaluate(i => {
+      const p = JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.id === i);
+      return {lat: p.lat, lng: p.lng, precisao: p.precisao};
+    }, id);
+
+    test('na conta do motorista: uma pergunta curta, e a porta vai para onde ele está', async ({page, context}) => {
+      const perguntas: string[] = [];
+      page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });
+      const {alvo, gps} = await naPorta(page, context);
+
+      await page.locator(`${PINO} [data-item="${alvo.id}"] [data-acao=porta-errada]`).click();
+      await expect.poll(() => onde(page, alvo.id)).toEqual({lat: gps.lat, lng: gps.lng, precisao: 'manual'});
+      expect(perguntas, 'uma pergunta só, sem a do GPS nem a das vizinhas').toHaveLength(1);
+      expect(perguntas[0]).toMatch(/^Mudar a porta verificada de .+\?/);
+      expect(perguntas[0]).toContain('Quem administra vai ver a mudança.');
+    });
+
+    test('recusando a pergunta, a porta verificada fica onde estava', async ({page, context}) => {
+      page.on('dialog', d => d.dismiss());
+      const {alvo} = await naPorta(page, context);
+
+      await page.locator(`${PINO} [data-item="${alvo.id}"] [data-acao=porta-errada]`).click();
+      await page.waitForTimeout(800);
+      expect(await onde(page, alvo.id)).toEqual({lat: alvo.lat, lng: alvo.lng, precisao: 'confirmado'});
+    });
+
+    test.describe('na conta do admin', () => {
+      test.use({papel: 'admin'});
+
+      test('a pergunta diz que vale para todos, e a correção sobe para a nuvem', async ({page, context, nuvem}) => {
+        const perguntas: string[] = [];
+        page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });
+        const {alvo, gps} = await naPorta(page, context);
+
+        await page.locator(`${PINO} [data-item="${alvo.id}"] [data-acao=porta-errada]`).click();
+        await expect.poll(() => onde(page, alvo.id)).toEqual({lat: gps.lat, lng: gps.lng, precisao: 'manual'});
+        expect(perguntas[0]).toContain('Passa a valer para todos os motoristas.');
+        const correcoes = () => nuvem.pedidos.filter(p => p.caminho === 'correcoes' && p.metodo === 'POST').flatMap(p => p.corpo as Record<string, unknown>[]);
+        await expect.poll(() => correcoes().map(c => [c.lat, c.lng]), {timeout: 20_000}).toContainEqual([gps.lat, gps.lng]);
+      });
+    });
   });
 });
 
