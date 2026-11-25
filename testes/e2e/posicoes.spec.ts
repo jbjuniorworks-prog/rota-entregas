@@ -238,9 +238,9 @@ test.describe('corrigir pela localização do motorista', () => {
     }, RUA_D);
 
     await cartao.getByRole('button', {name: 'Estou aqui'}).click();
-    expect(perguntas.at(-1)).toContain('Este endereço já está verificado');
-    expect(perguntas.at(-1)).toContain('Endereço verificado: 2 entregas feitas aqui');
-    expect(perguntas.at(-1)).toContain('Tem certeza que quer arrumar?');
+    // curta desde 25/11, para ser lida de capacete: o que muda e quem fica sabendo
+    expect(perguntas.at(-1)).toMatch(/^Mudar a porta verificada de .+\?/);
+    expect(perguntas.at(-1)).toContain('Quem administra vai ver a mudança.');
     await page.waitForTimeout(500);
     expect(await onde()).toEqual(antes);
 
