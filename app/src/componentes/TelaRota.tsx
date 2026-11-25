@@ -6,7 +6,7 @@ import {coresDosGrupos, gruposValidos} from '../logica/grupos';
 import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, linkWaze, MAPS_MAX, partesDoEndereco, porPerto, trechoDesde, trechos} from '../logica/otimizacao';
 import {resumoDoDia} from '../logica/diaNovo';
 import {numerosDaShopee, paradasDaShopee, textoDasParadas} from '../logica/paradasDaShopee';
-import {pinosDoDia} from '../logica/pinos';
+import {avisoDeAproximar, pinosDoDia} from '../logica/pinos';
 import {previsoes, textoDoFim} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {separadasDoEndereco} from '../logica/importar';
@@ -88,7 +88,8 @@ export function SobreOMapa() {
 function EntregasDoPonto({ps}: {ps: Parada[]}) {
   const pend = ps.filter(p => !p.entregue);
   const noChao = pend.every(x => haversine(x as Ponto, pend[0] as Ponto) <= RAIO_BLOCO);
-  return <>{!noChao && <div className="info" data-aproxime>Entregas de ruas diferentes neste pino: aproxime o mapa para marcar a porta de cada uma.</div>}
+  const aproxime = avisoDeAproximar(pend);
+  return <>{aproxime && <div className="info" data-aproxime>{aproxime}</div>}
     {agruparPorEndereco(ps).map(g => {
     const abertas = g.ps.filter(p => !p.entregue);
     const ids = g.ps.map(p => p.id).join('+');
