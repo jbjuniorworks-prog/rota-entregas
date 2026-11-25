@@ -203,9 +203,16 @@ Fora da lista:
     ao ponto de antes ou foi a um terceiro, e o que foi desfeito nos 10 s já saiu do banco. Agora a
     porta marcada neste celular hoje se desfaz pelo cartão do pino, da próxima e de Conferir, o dia
     todo; na entregue, a entrega fica.
-  - **Na bateria inteira**, duas falhas que não se repetiram rodando sozinhas: 20 "spawn EPERM" do
-    vitest com outro vitest rodando ao mesmo tempo, e um teste do mapa que estourou o tempo ao abrir a
-    página. Causa não identificada.
+  - **Na bateria inteira da `porta-errada`**, duas falhas que não se repetiram:
+    - **20 "spawn EPERM" do vitest, com os 776 testes passando.** Pelos horários, nenhum outro teste
+      rodava junto (13:10:01 a 13:10:14; o seguinte começou às 13:10:36). Testado de novo 5 vezes a
+      unidade inteira: 3 com dois vitest ao mesmo tempo e 2 com vitest, typecheck e testes de um
+      arquivo juntos. Nenhum erro.
+    - **"o mapa anda junto com ele" estourou o tempo ao abrir a página.** Testado de novo 5 vezes
+      sozinho e 5 com a máquina carregada: 75 de 75 passaram.
+    - A causa das duas não está identificada. Se voltarem, guardar a saída inteira e a hora.
+  - **PRs abertos em 25/11:** #40 (`maps-um-pino`), #41 (`porta-errada`, depois do #40), #42
+    (`aviso-aproxime`), #43 (`desfazer-porta`) e #44 (este registro).
   - **Item futuro:** "Colar link do mapa" e "Arrumar o pino" também na porta verificada; o novo só tem
     o "Estou aqui", que é o de quem está na porta.
 - **Quatro entregas ficaram para trás (foto das 13:31):** ADS Rua C 356, P26, P25 e P36, perto do P28
