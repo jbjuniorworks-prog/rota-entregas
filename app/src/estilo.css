@@ -90,6 +90,8 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
 /* o Maps com o trecho, embaixo dos botões, numa linha só dele */
 .botoes-entrega .trecho-maps{flex:1 1 100%}
 .feita{align-self:center;font-weight:700;color:var(--ok);padding:0 6px}
+/* a porta que ele marcou hoje, com o Desfazer dela, numa linha só embaixo dos botões (25/11) */
+.desfazer-porta{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px}
 /* as entregas de um mesmo endereço, uma por linha */
 .do-endereco summary{display:flex;align-items:center;min-height:40px;font-size:14px;font-weight:700;color:var(--pri);cursor:pointer}
 .sub-entrega{display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--bd);font-size:14px}

@@ -208,6 +208,59 @@ test.describe('corrigir pela localização do motorista', () => {
     await expect(page.getByText(/\b0 para conferir/)).toBeVisible();
     await page.locator('#status').getByRole('button', {name: 'Desfazer'}).click();
     await expect(page.getByText(/\b1 para conferir/)).toBeVisible();
+    // desfeita pelo aviso, o cartão não oferece desfazer de novo
+    await expect(cartao.locator('[data-desfazer-porta]')).toHaveCount(0);
+  });
+
+  // "Às vezes o cliente fala depois que é uma localização errada, e temos o trabalho de arrumar"
+  // (dono, 25/11). O aviso de 10 s já passou e o app foi reaberto: a porta ainda se desfaz pelo
+  // cartão, onde se acha a entrega pelo código do pacote, e sai também da nuvem.
+  test('depois do aviso, com o app reaberto, o cartão desfaz a porta do "Estou aqui", também na nuvem', async ({page, nuvem}) => {
+    const perguntas: string[] = [];
+    page.on('dialog', d => { perguntas.push(d.message()); d.accept(); });
+    const onde = () => page.evaluate(t => {
+      const p = JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.includes(t));
+      return {lat: p.lat, lng: p.lng, precisao: p.precisao, exibido: p.exibido};
+    }, RUA_D);
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    const antes = await onde();
+    await aba(page, '2. Conferir');
+    await page.locator('[data-item]').filter({hasText: RUA_D}).getByRole('button', {name: 'Estou aqui'}).click();
+    await expect(aviso(page)).toContainText('Local corrigido pela sua localização');
+    const correcoes = () => nuvem.pedidos.filter(p => p.caminho === 'correcoes' && p.metodo === 'POST').length;
+    await expect.poll(correcoes, {timeout: 20_000}).toBeGreaterThan(0);
+
+    await page.reload();
+    await abrir(page);
+    await aba(page, '2. Conferir');
+    const cartao = page.locator('[data-item]').filter({hasText: RUA_D});
+    await expect(cartao.locator('[data-desfazer-porta]')).toContainText(/Porta marcada por você às \d\d:\d\d\./);
+    await cartao.getByRole('button', {name: 'Desfazer a porta'}).click();
+    expect(perguntas.at(-1)).toMatch(/^Desfazer a porta que você marcou em Rua D, 49\?/);
+
+    await expect.poll(onde).toEqual(antes);
+    await expect(page.getByText(/\b1 para conferir/)).toBeVisible();
+    await expect(cartao.locator('[data-desfazer-porta]')).toHaveCount(0);
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'correcoes' && p.metodo === 'DELETE').length, {timeout: 20_000}).toBeGreaterThan(0);
+  });
+
+  test('recusando a pergunta do Desfazer a porta, nada muda', async ({page}) => {
+    let aceitar = true;
+    page.on('dialog', d => aceitar ? d.accept() : d.dismiss());
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await aba(page, '2. Conferir');
+    const cartao = page.locator('[data-item]').filter({hasText: RUA_D});
+    await cartao.getByRole('button', {name: 'Estou aqui'}).click();
+    await expect(cartao.locator('[data-desfazer-porta]')).toBeVisible();
+    const depois = await page.evaluate(t => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.includes(t)), RUA_D);
+
+    aceitar = false;
+    await cartao.getByRole('button', {name: 'Desfazer a porta'}).click();
+    await page.waitForTimeout(500);
+    expect(await page.evaluate(t => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.find((x: any) => x.texto.includes(t)), RUA_D)).toEqual(depois);
+    await expect(cartao.locator('[data-desfazer-porta]')).toBeVisible();
   });
 
   // Pedido deles, 28/09: "esse endereço já foi confirmado, tem certeza que deseja arrumar?". A

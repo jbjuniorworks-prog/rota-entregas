@@ -7,7 +7,7 @@ import {loja, useLoja} from '../loja';
 import {rotuloDe} from '../logica/rotulo';
 import {buscarNosDiasAnteriores, type EntregaAntiga} from '../servicos/historico';
 import {nuvem} from '../servicos/nuvem';
-import {AvisoXarope, Cabecalho, hhmm, MarcarXarope, Meta, Sugestao, Tag} from './comuns';
+import {AvisoXarope, Cabecalho, DesfazerPorta, hhmm, MarcarXarope, Meta, Sugestao, Tag} from './comuns';
 
 const precisaConferir = (p: Parada) => DUVIDA.has(p.precisao) || p.precisao === 'pendente' || !!p.sugestao;
 
@@ -141,6 +141,8 @@ function ItemConferir({p, pacotes}: {p: Parada; pacotes?: string[]}) {
       <button className="btn peq" onClick={() => { A.contar('mapa'); A.posicionar(p.id); }}>Marcar no mapa</button>
       <button className="btn peq" onClick={() => { A.contar('editar'); A.editar(p); }}>Editar</button>
     </div>
+    {/* é aqui que se acha a entrega pelo código do pacote quando o cliente liga depois (25/11) */}
+    <DesfazerPorta ps={[p]} />
     {sel && <>{e.areas.length > 1 && <><label>Área</label>
       <select value={p.area} onChange={ev => A.mudar(() => { p.area = ev.target.value; }, true)}>
         {e.areas.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}
