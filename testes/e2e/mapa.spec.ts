@@ -1274,13 +1274,38 @@ test.describe('entreguei aqui, pelo pino', () => {
     const cartao = page.locator(PINO);
     await expect(cartao, 'o caso depende de a próxima estar empilhada com outras').toContainText(/Neste pino: \d+ entregas/);
     await expect(cartao.locator('[data-acao=aqui]')).toHaveCount(0);
-    await expect(cartao.locator('[data-aproxime]')).toContainText('aproxime o mapa');
+    // a distância, que é o que se sabe; "ruas diferentes" era chute (25/11)
+    await expect(cartao.locator('[data-aproxime]')).toHaveText(/^Entregas a (até )?[\d,]+ k?m uma da outra neste pino: aproxime o mapa para marcar a porta de cada uma\.$/);
     // e o "Entreguei" de antes continua lá, com a pergunta que ele sempre fez
     await expect(cartao.locator('[data-acao=entregue]').first()).toBeVisible();
 
     await cartao.getByRole('button', {name: 'Fechar'}).click();
     await abrirPinoDaProxima(page);
     await expect(page.locator(`${PINO} [data-acao=aqui]`).first()).toBeVisible();
+  });
+
+  // O P24 de 25/11 (foto do dono na rua): as duas entregas do pino com porta verificada, e o cartão
+  // mandava aproximar o mapa para marcar a porta de cada uma, que ali não se marca de novo.
+  test('com todas as portas do pino verificadas, o cartão não manda aproximar para marcar porta', async ({page}) => {
+    const {garantirMapa} = await import('./apoio');
+    await abrir(page);
+    await carregar(page, 'testes/planilhas/rota-d.xlsx');
+    await montar(page);
+    await garantirMapa(page);
+    await page.locator('.pino.alvo').click();
+    await expect(page.locator(`${PINO} [data-aproxime]`), 'o caso depende de a pilha ter o aviso antes').toBeVisible();
+    const ids = (await page.locator('.pino.alvo').getAttribute('data-ids'))!.split('+');
+    await page.evaluate(is => {
+      const s = JSON.parse(localStorage.getItem('rota-entregas-v2')!);
+      for (const p of s.paradas) if (is.includes(p.id)) p.precisao = 'confirmado';
+      localStorage.setItem('rota-entregas-v2', JSON.stringify(s));
+    }, ids);
+    await page.reload();
+    await abrir(page);
+    await garantirMapa(page);
+    await page.locator('.pino.alvo').click();
+    await expect(page.locator(PINO), 'a mesma pilha de antes').toContainText(`Neste pino: ${ids.length} entregas`);
+    await expect(page.locator(`${PINO} [data-aproxime]`)).toHaveCount(0);
   });
 });
 

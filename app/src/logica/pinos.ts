@@ -1,4 +1,4 @@
-import {haversine, MESMO_LUGAR} from './geo';
+import {haversine, MESMO_LUGAR, RAIO_BLOCO} from './geo';
 import {mesmaPortaPeloNome, mesmoEndereco} from './texto';
 import type {Parada, Ponto} from './tipos';
 
@@ -63,6 +63,22 @@ export function pinosDoDia(ps: Parada[]): {feitos: number; total: number} {
     else lugares.push([p]);
   }
   return {feitos: lugares.filter(l => l.every(p => p.entregue)).length, total: lugares.length};
+}
+
+// O aviso do cartão de um pino que junta entregas a mais de RAIO_BLOCO uma da primeira (pilha da
+// tela, não do chão): ali o cartão não oferece "Entreguei aqui", que marcaria a porta de uma no
+// lugar da outra, e manda aproximar o mapa. Dizia sempre "ruas diferentes", e no P24 de 25/11 (foto
+// do dono na rua) eram as duas da mesma travessa, a 54 m, e as duas com porta verificada, que não se
+// marca de novo: o cartão mandava fazer o que não deixava. Agora diz a distância, que é o que o app
+// sabe de verdade, e só aparece quando aproximar dá alguma porta para marcar.
+export function avisoDeAproximar(pendentes: Parada[]): string | null {
+  const ps = pendentes.filter((p): p is Parada & Ponto => p.lat != null && p.lng != null);
+  if (ps.length < 2 || ps.every(p => haversine(p, ps[0]) <= RAIO_BLOCO)) return null;
+  if (ps.every(p => p.precisao === 'confirmado')) return null;
+  let maior = 0;
+  for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) maior = Math.max(maior, haversine(ps[i], ps[j]));
+  const distancia = maior >= 1000 ? `${(maior / 1000).toFixed(1).replace('.', ',')} km` : `${Math.round(maior)} m`;
+  return `Entregas a ${ps.length > 2 ? 'até ' : ''}${distancia} uma da outra neste pino: aproxime o mapa para marcar a porta de cada uma.`;
 }
 
 // As separadas que ainda estão no mesmo ponto (acabaram de ser separadas, ninguém arrumou)

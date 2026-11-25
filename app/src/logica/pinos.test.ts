@@ -1,4 +1,4 @@
-import {abrirAsQueSeCobrem, emLeque, empilhar, inclinacao, pinosDoDia, SE_COBREM} from './pinos';
+import {abrirAsQueSeCobrem, avisoDeAproximar, emLeque, empilhar, inclinacao, pinosDoDia, SE_COBREM} from './pinos';
 import type {Parada, Ponto} from './tipos';
 
 const GRAU = 111320;
@@ -242,5 +242,37 @@ describe('os pinos do dia, para o topo', () => {
   it('sem posição não há pino', () => {
     const ps = [parada('com', 'Rua Recanto, 30', 0), parada('sem', 'Rua Recanto, 90', 0, {lat: null, lng: null})];
     expect(pinosDoDia(ps)).toEqual({feitos: 0, total: 1});
+  });
+});
+
+// O P24 de 25/11 (foto do dono na rua): duas entregas da mesma travessa, a 54 m, as duas com porta
+// verificada, e o cartão dizia "Entregas de ruas diferentes neste pino: aproxime o mapa para marcar
+// a porta de cada uma".
+describe('o aviso de aproximar o mapa no cartão do pino', () => {
+  const travessa = (id: string, norte: number, extra: Partial<Parada> = {}) =>
+    parada(id, `Travessa José Teste dos Santos, ${id}`, norte, extra);
+
+  it('com todas as portas verificadas não há porta a marcar, e o aviso não aparece', () => {
+    const ps = [travessa('168', 0, {precisao: 'confirmado'}), travessa('sn', 54, {precisao: 'confirmado'})];
+    expect(avisoDeAproximar(ps)).toBeNull();
+  });
+
+  it('com uma porta a marcar, diz a distância entre as duas, sem falar em ruas diferentes', () => {
+    const ps = [travessa('168', 0, {precisao: 'confirmado'}), travessa('sn', 54)];
+    expect(avisoDeAproximar(ps)).toBe('Entregas a 54 m uma da outra neste pino: aproxime o mapa para marcar a porta de cada uma.');
+  });
+
+  it('no chão, a até 10 m da primeira, não há o que aproximar', () => {
+    expect(avisoDeAproximar([travessa('1', 0), travessa('2', 9)])).toBeNull();
+  });
+
+  it('com três ou mais, diz a maior distância entre duas delas, mesmo que nenhuma seja a primeira', () => {
+    const ps = [travessa('meio', 0), travessa('norte', 40), travessa('sul', -60)];
+    expect(avisoDeAproximar(ps)).toBe('Entregas a até 100 m uma da outra neste pino: aproxime o mapa para marcar a porta de cada uma.');
+  });
+
+  it('de longe, a pilha pode juntar entregas a quilômetros, e a distância sai em km', () => {
+    const ps = [travessa('a', 0), travessa('b', 1240)];
+    expect(avisoDeAproximar(ps)).toContain('a 1,2 km uma da outra');
   });
 });
