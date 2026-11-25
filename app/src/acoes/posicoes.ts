@@ -11,6 +11,7 @@ import {chaveCidade, chaveDaParada, chaveLugar, chaveRua, decompor, linkCurtoDoM
 import {entregaDoEndereco, marcarSeparada, separarParada} from '../logica/importar';
 import {CHAVES} from '../logica/guarda';
 import {localDeHoje} from '../logica/localGuardado';
+import {portaDesfazivel} from '../logica/desfazerPorta';
 import type {Parada, PortaAntes, Ponto} from '../logica/tipos';
 import {guarda, loja, MINIMIZADO, status} from '../loja';
 import {foraDaRegiao} from '../servicos/geocodificacao';
@@ -461,6 +462,8 @@ export async function colarLinkNoLugar() {
   if (ali) await gravarLugar(ali.lat, ali.lng);
 }
 
+// O desfazer de 10 s da escolha entre as posições encontradas (Conferir). Não é porta marcada: fica
+// só neste celular, e por isso não ganhou o Desfazer do cartão de 25/11.
 function prepararDesfazer(p: Parada): () => void {
   const antes = {lat: p.lat, lng: p.lng, precisao: p.precisao, precisaoAntes: p.precisaoAntes, exibido: p.exibido};
   const foto = memoria.fotografar(p);
@@ -476,6 +479,67 @@ function prepararDesfazer(p: Parada): () => void {
     loja.mudou();
     status('Posição anterior de volta.', 3000);
   };
+}
+
+// O que havia antes de o celular mudar a porta, gravado na própria parada: o Desfazer do aviso de
+// 10 s e o do cartão, que vale o dia todo (dono, 25/11: "às vezes o cliente fala depois que é uma
+// localização errada"), são o mesmo. Tirado antes de qualquer `lembrar`: as entregas do mesmo
+// endereço dividem a mesma memória, e a foto tem de ser a de antes do toque.
+function guardarMudanca(p: Parada, porta: Ponto, grupo: string, quando: number) {
+  p.mudanca = {
+    lat: p.lat, lng: p.lng, exibido: p.exibido, precisao: p.precisao, precisaoAntes: p.precisaoAntes, fonte: p.fonte,
+    ...(p.sugestao ? {sugestao: p.sugestao} : {}), porta, memoria: memoria.fotografar(p), quando, grupo,
+  };
+}
+
+// A porta marcada sai da fila, ou da nuvem se já tinha subido, e o pino volta. Sem rede, o pedido
+// de apagar espera na fila como qualquer outro: o desfazer não depende de sinal.
+function voltarDaPorta(p: Parada, a: PortaAntes) {
+  if (a.memoria) {
+    fila.desfazerCorrecao(a.memoria.chave, +a.porta.lat.toFixed(6), +a.porta.lng.toFixed(6));
+    memoria.restaurar(a.memoria);
+  }
+  Object.assign(p, {lat: a.lat, lng: a.lng, exibido: a.exibido, precisao: a.precisao, precisaoAntes: a.precisaoAntes, fonte: a.fonte},
+    a.sugestao ? {sugestao: a.sugestao} : {});
+}
+
+// Volta as entregas que mudaram no mesmo toque desta, as que ainda estão onde o toque pôs.
+function desfazerMudanca(p: Parada): number {
+  const grupo = p.mudanca?.grupo;
+  if (!grupo) return 0;
+  const juntas = e().paradas.filter(q => q.mudanca?.grupo === grupo && portaDesfazivel(q)?.de === 'mudanca');
+  for (const q of juntas) {
+    voltarDaPorta(q, q.mudanca!);
+    delete q.mudanca;
+  }
+  if (!juntas.length) return 0;
+  enviarFila();
+  if (juntas.some(q => q.adiada)) marcarIsoladas(e().paradas);
+  else desatualizarRota();
+  loja.mudou();
+  return juntas.length;
+}
+
+// O Desfazer do cartão (25/11): a porta que este celular marcou hoje volta para onde estava. A
+// entrega fica: o cliente que diz depois que o lugar está errado não desfaz a entrega.
+export function desfazerAPorta(ps: Parada[]) {
+  const vivas = ps.filter(p => portaDesfazivel(p));
+  if (!vivas.length) return;
+  if (!confirm(`Desfazer a porta que você marcou em ${vivas[0].texto.split(',').slice(0, 2).join(',')}?
+
+O pino volta para onde estava antes.`)) return;
+  for (const p of vivas) {
+    const d = portaDesfazivel(p);
+    if (d?.de === 'mudanca') desfazerMudanca(p);
+    else if (d?.de === 'entrega') {
+      desfazerPorta(p);
+      // a verificação que a nuvem deu era desta porta, que saiu
+      delete p.portaVerificada;
+    }
+  }
+  enviarFila();
+  loja.mudou();
+  status('Pino de volta para onde estava antes.', 4000);
 }
 
 const JUNTO_DAQUI = 300;
@@ -533,8 +597,9 @@ Levar as duas para o ponto que você marcou, para virarem uma parada só?`)) {
 
 Levar todas para o ponto novo junto com esta?`)) juntas.push(...irmas);
   const longe = [p, ...juntas].some(x => x.lat != null && x.lng != null && haversine(x as Ponto, {lat, lng}) > MUDOU_MUITO);
-  const desfazers = [p, ...juntas].map(prepararDesfazer);
-  const desfazer = () => desfazers.forEach(f => f());
+  const quando = Date.now();
+  for (const x of [p, ...juntas]) guardarMudanca(x, {lat, lng}, `${quando}-${p.id}`, quando);
+  const desfazer = () => { if (desfazerMudanca(p)) status('Posição anterior de volta.', 3000); };
   let guardou = false;
   for (const x of [p, ...juntas]) {
     delete x.sugestao;
@@ -606,9 +671,10 @@ export function estouAqui(p: Parada) {
 export function portaDaEntrega(ps: Parada[], lat: number, lng: number, precisao: number): {guardou: boolean} {
   const longe = ps.some(x => x.lat != null && x.lng != null && haversine(x as Ponto, {lat, lng}) > MUDOU_MUITO);
   // todas antes de lembrar qualquer uma: as do mesmo endereço dividem a mesma memória
+  const quando = Date.now();
   const antes: PortaAntes[] = ps.map(p => ({
     lat: p.lat, lng: p.lng, exibido: p.exibido, precisao: p.precisao, precisaoAntes: p.precisaoAntes, fonte: p.fonte,
-    ...(p.sugestao ? {sugestao: p.sugestao} : {}), porta: {lat, lng}, memoria: memoria.fotografar(p),
+    ...(p.sugestao ? {sugestao: p.sugestao} : {}), porta: {lat, lng}, memoria: memoria.fotografar(p), quando,
   }));
   let guardou = false;
   ps.forEach((p, i) => {
@@ -635,13 +701,8 @@ export function desfazerPorta(p: Parada) {
   delete p.portaAntes;
   // mexido depois do "aqui" (Arrumar, Estou aqui): é outra decisão dele, e fica
   if (p.lat !== a.porta.lat || p.lng !== a.porta.lng) return;
-  if (a.memoria) {
-    fila.desfazerCorrecao(a.memoria.chave, +a.porta.lat.toFixed(6), +a.porta.lng.toFixed(6));
-    memoria.restaurar(a.memoria);
-    enviarFila();
-  }
-  const {porta: _, memoria: __, sugestao, ...posicao} = a;
-  Object.assign(p, posicao, sugestao ? {sugestao} : {});
+  voltarDaPorta(p, a);
+  if (a.memoria) enviarFila();
   if (p.adiada) marcarIsoladas(e().paradas);
   else desatualizarRota();
 }

@@ -3,6 +3,7 @@ import * as A from '../acoes';
 import {fmtKm} from '../logica/otimizacao';
 import {avisoXarope, MOTIVOS} from '../logica/reclamacoes';
 import {ehComercial, quemMarcou} from '../logica/comerciais';
+import {portaDesfazivel} from '../logica/desfazerPorta';
 import {COR_PRECISAO, DUVIDA, ROTULO} from '../logica/rotulos';
 import type {MotivoReclamacao, Parada} from '../logica/tipos';
 import {faltaNaChave} from '../logica/texto';
@@ -109,6 +110,19 @@ export function LinhaComercial({ps}: {ps: Parada[]}) {
 export const PLANILHAS = '.xlsx,.xls,.ods,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.oasis.opendocument.spreadsheet,text/csv';
 
 export const hhmm = (ms: number) => new Date(ms).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+
+// "Às vezes o cliente fala depois que é uma localização errada" (dono, 25/11): a porta que este
+// celular marcou hoje se desfaz pelo cartão o dia todo, não só nos 10 s do aviso. O botão diz "a
+// porta" porque no cartão da entregue já existe o Desfazer da entrega, e são coisas diferentes.
+// `data-desfazer-porta`, não `data-acao`: na entregue, `data-acao` são os botões de entregar.
+export function DesfazerPorta({ps}: {ps: Parada[]}) {
+  const quando = ps.map(p => portaDesfazivel(p)?.quando).filter((q): q is number => q != null);
+  if (!quando.length) return null;
+  return <div className="desfazer-porta" data-desfazer-porta>
+    <span className="info">Porta marcada por você às {hhmm(Math.max(...quando))}.</span>
+    <button className="link" onClick={() => { A.contar('desfazer-porta'); A.desfazerAPorta(ps); }}>Desfazer a porta</button>
+  </div>;
+}
 
 // Os endereços entregues sem a porta verificada, agrupados pelo motivo (29/10): no Admin, de
 // qualquer rota; no celular, das entregas dele, com os textos falando com ele.

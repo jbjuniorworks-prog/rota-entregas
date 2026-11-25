@@ -19,7 +19,7 @@ import {AvisoDiaNovo} from './AvisoDiaNovo';
 import {rotuloDe} from '../logica/rotulo';
 import {AvisoGaiola} from './AvisoGaiola';
 import {AvisoLongeDoCep} from './AvisoLongeDoCep';
-import {AvisoXarope, BotaoMais, hhmm, Icone, LinhaComercial, MarcarXarope, Meta, PortasExplicadas, Tag} from './comuns';
+import {AvisoXarope, BotaoMais, DesfazerPorta, hhmm, Icone, LinhaComercial, MarcarXarope, Meta, PortasExplicadas, Tag} from './comuns';
 
 const daRota = () => {
   const R = loja.e.rota;
@@ -112,6 +112,7 @@ function EntregasDoPonto({ps}: {ps: Parada[]}) {
         <button className="btn contorno" onClick={() => g.ps.forEach(p => A.marcarEntregue(p, false))}>Desfazer</button>
         <button className="btn contorno" onClick={() => A.abrirXarope(g.ps[0])}>Cliente reclamou</button>
       </div>}
+      <DesfazerPorta ps={g.ps} />
       {g.ps.some(p => loja.ui.xarope === p.id) && <MarcarXarope p={g.ps[0]} />}
       {varias ? <EntregasDoEndereco ps={g.ps} /> : <PacotesDaParada p={g.ps[0]} />}
       <JuntarSeparadas ps={g.ps} />
@@ -375,6 +376,7 @@ function CartaoProxima() {
         {podeAqui && entreguei('btn contorno-ok')}
         <button className="btn contorno" onClick={() => A.deixarParaDepois(...pend)}>Depois</button>
       </div>
+      <DesfazerPorta ps={pend} />
       {pend.length > 1 ? <EntregasDoEndereco ps={pend} /> : <PacotesDaParada p={alvo} />}
       <JuntarSeparadas ps={pend} />
     </> : <>

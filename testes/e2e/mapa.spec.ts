@@ -1251,6 +1251,35 @@ test.describe('entreguei aqui, pelo pino', () => {
     expect(enviados(nuvem, 'observacoes')).toEqual([]);
   });
 
+  // "Às vezes o cliente fala depois que é uma localização errada" (dono, 25/11): a entrega foi feita,
+  // o lugar é que não era a porta. Passado o aviso e com o app reaberto, o cartão desfaz só a porta.
+  test('depois do aviso, com o app reaberto, o cartão desfaz a porta do "Entreguei aqui" e a entrega fica', async ({page, context, nuvem}) => {
+    const {aviso, garantirMapa, verNoMapa} = await import('./apoio');
+    const {ids, antes} = await tocarAqui(page, context, 8);
+    await expect(aviso(page)).toContainText('com a porta marcada aqui (±8 m)');
+    await expect.poll(() => enviados(nuvem, 'correcoes').length, {timeout: 20_000}).toBeGreaterThan(0);
+
+    await page.reload();
+    await abrir(page);
+    await garantirMapa(page);
+    await verNoMapa(page, PORTA.latitude, PORTA.longitude, 18);
+    const chave = await page.evaluate(i => [...document.querySelectorAll('.pino[data-ids]')]
+      .map(el => el.getAttribute('data-ids')!).find(k => k.split('+').includes(i)), ids[0]);
+    await page.locator(`.pino[data-ids="${chave}"]`).click();
+    const cartao = page.locator(`${PINO} [data-item="${ids[0]}"]`);
+    await expect(cartao).toContainText('Entregue');
+    await expect(cartao.locator('[data-desfazer-porta]')).toContainText(/Porta marcada por você às \d\d:\d\d\./);
+    await cartao.getByRole('button', {name: 'Desfazer a porta'}).click();
+
+    // o pino volta ao ponto de antes e a entrega fica. A etiqueta de "longe" não volta: entregue não
+    // entra na conta das isoladas (marcarEntregue), e é ela que a dá.
+    await expect.poll(async () => (await paradas(page, ids)).map(({entregue, lat, lng}) => ({entregue, lat, lng})))
+      .toEqual(antes.map(p => ({entregue: true, lat: p.lat, lng: p.lng})));
+    expect((await paradas(page, ids)).map(p => p.precisao), 'não é mais a porta marcada').not.toContain('manual');
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'correcoes' && p.metodo === 'DELETE').length, {timeout: 20_000}).toBeGreaterThan(0);
+    await expect(page.locator('[data-desfazer-porta]'), 'desfeita, não há mais o que desfazer').toHaveCount(0);
+  });
+
   test('com GPS ruim, entrega mas não mexe no pino nem manda porta para a nuvem', async ({page, context, nuvem}) => {
     const {aviso} = await import('./apoio');
     const {ids, antes} = await tocarAqui(page, context, 200);

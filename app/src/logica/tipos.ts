@@ -50,6 +50,10 @@ export interface Parada {
   comercialOutros?: boolean;
   // como ela estava antes do "Entreguei aqui" levar o pino para a porta
   portaAntes?: PortaAntes;
+  // como ela estava antes de este celular mudar a porta pelo Estou aqui, Arrumar o pino, Colar
+  // link ou Compartilhar: é o Desfazer do cartão, que vale o dia todo (dono, 25/11). `grupo` junta
+  // as entregas que mudaram no mesmo toque, que voltam juntas, como no aviso de 10 s.
+  mudanca?: PortaAntes & {grupo: string};
   // entregue, a nuvem disse depois que a porta ficou verificada (o pino da entregue não se mexe mais)
   portaVerificada?: boolean;
   // A cidade da linha da planilha. O censo e a busca são da cidade de cada entrega: com a de
@@ -87,6 +91,8 @@ export interface PortaAntes {
   // onde o "aqui" pôs o pino: se ele foi mexido de novo depois, o desfazer não passa por cima
   porta: Ponto;
   memoria: FotoDaMemoria | null;
+  // quando a porta foi marcada: o Desfazer do cartão vale só no mesmo dia. Falta nas de antes de 25/11.
+  quando?: number;
 }
 
 export type MotivoReclamacao = 'jogado' | 'vizinho';
