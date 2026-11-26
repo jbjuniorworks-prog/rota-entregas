@@ -226,7 +226,8 @@ export default function Mapa() {
     const m = mapa.current!, fundo = camadaFundo.current!, camadaP = camadaPinos.current!;
     const comLocal = e.paradas.filter(p => p.lat != null && p.lng != null);
     const limites: [number, number][] = comLocal.filter(p => !p.entregue).map(p => [p.lat!, p.lng!]);
-    if (e.inicio) limites.push([e.inicio.lat, e.inicio.lng]);
+    // A saída é o GPS de quando a rota foi montada (dono, 26/11: "o ponto de saída sempre será nosso GPS,
+    // que fica marcando no mapa"): sem pino próprio e fora do enquadramento, que já segue a bolinha do GPS.
     if (e.fim) limites.push([e.fim.lat, e.fim.lng]);
     const marcasAdmin = ui.tela === 'admin' && ui.marcas ? ui.marcas : null;
     const escolhendo = ui.tela === 'rota' && ui.folha === 'escolher';
@@ -372,7 +373,6 @@ export default function Mapa() {
       if (sigFundo !== fundoFeito.current) {
         fundoFeito.current = sigFundo;
         fundo.clearLayers();
-        if (e.inicio) L.marker([e.inicio.lat, e.inicio.lng], {icon: icone('S', '#111827')}).bindPopup('Saída: ' + esc(e.inicio.exibido)).addTo(fundo);
         if (e.fim) L.marker([e.fim.lat, e.fim.lng], {icon: icone('F', '#111827')}).bindPopup('Terminar perto de: ' + esc(e.fim.exibido)).addTo(fundo);
         if (e.rota) for (const ra of e.rota.areas) if (ra.linha) L.polyline(ra.linha, {color: loja.area(ra.id).cor, weight: 4, opacity: .75}).addTo(fundo);
         if (marcasAdmin) for (const x of marcasAdmin.pontos) {

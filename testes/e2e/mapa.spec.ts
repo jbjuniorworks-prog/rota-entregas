@@ -1766,3 +1766,18 @@ test.describe('duas entregas no mesmo pino, de endereços diferentes', () => {
     expect(onde.travessa.lat).toBeCloseTo(AO_LADO[0], 5);
   });
 });
+
+// Dono, 26/11: "parar de ficar botando o ponto de saída, atrapalha; o ponto de saída sempre será
+// nosso GPS, que fica marcando no mapa". A saída continua guardada para a rota; só não tem pino.
+test.describe('o ponto de saída', () => {
+  test.use({viewport: {width: 412, height: 915}, permissions: ['geolocation'], geolocation: {latitude: -10.9605, longitude: -37.0455, accuracy: 10}});
+  test('a rota sai do GPS, e o mapa mostra só a bolinha do GPS, sem pino de saída', async ({page}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).inicio?.lat), 'a premissa: a saída foi guardada')
+      .toBeCloseTo(-10.9605, 3);
+    await expect(page.locator('.leaflet-marker-icon:has(.eu)')).toHaveCount(1);
+    await expect(page.locator('#map .leaflet-marker-icon .pino').filter({hasText: /^S$/})).toHaveCount(0);
+  });
+});
