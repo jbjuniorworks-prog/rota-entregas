@@ -75,10 +75,55 @@ test('acha nos dias anteriores, com a hora e o ponto onde ele marcou a entrega',
   await expect(antiga).toContainText('Rua das Acácias, 77, Bairro Norte');
   await expect(antiga).toContainText('Pacote BRTESTH0077');
   await expect(antiga.locator('[data-entregue]')).toHaveText('Entregue em 28/09 às 14:32');
-  const ver = antiga.getByRole('link', {name: 'Ver onde marcou a entrega'});
-  await expect(ver).toHaveAttribute('href', /query=-10\.9601,-37\.0602$/);
+  await expect(antiga.getByRole('button', {name: 'Ver no mapa'})).toBeVisible();
   // o motorista só vê as dele: o nome não diz nada
   await expect(antiga.locator('[data-motorista]')).toHaveCount(0);
+});
+
+// Dono, 26/11: "o conferir precisa ter como ver no mapa e editar, igual numa rota; queria colocar
+// cliente xarope e não conseguia". Antes, só um link para o Google Maps.
+test.describe('a entrega de outro dia, no mapa do app', () => {
+  test.use({viewport: {width: 412, height: 915}});
+  const POSTs = (nuvem: NuvemFalsa, tabela: string) => nuvem.pedidos.filter(p => p.metodo === 'POST' && p.caminho === tabela)
+    .flatMap(p => Array.isArray(p.corpo) ? p.corpo : [p.corpo]);
+
+  async function abrirNoMapa(page, nuvem: NuvemFalsa) {
+    entregasAntigas(nuvem);
+    await abrir(page);
+    await menu(page, 'Procurar uma entrega');
+    await page.getByLabel('Buscar').fill('acacias 77');
+    await page.locator('[data-dias-anteriores]').click();
+    await page.locator('[data-antiga]').getByRole('button', {name: 'Ver no mapa'}).click();
+    await expect(page.locator('[data-folha="antiga"]')).toBeVisible();
+    await page.waitForFunction(() => !!(window as any).rotaTeste);
+  }
+
+  test('"Ver no mapa" abre o mapa do app no ponto onde a entrega foi marcada', async ({page, nuvem}) => {
+    await abrirNoMapa(page, nuvem);
+    await expect(page.locator('#map')).toBeVisible();
+    await expect(page.locator('.cabecalho .titulo')).toHaveText('Rua das Acácias, 77');
+    await expect.poll(() => page.evaluate(() => (window as any).rotaTeste.centro()), {timeout: 10_000})
+      .toEqual({lat: -10.9601, lng: -37.0602});
+  });
+
+  test('"Marcar a porta no mapa": o toque no mapa vai para a nuvem como a marcação do motorista, pela chave', async ({page, nuvem}) => {
+    page.on('dialog', d => d.accept());
+    await abrirNoMapa(page, nuvem);
+    await page.getByRole('button', {name: 'Marcar a porta no mapa'}).click();
+    await expect(page.locator('[data-armado]')).toContainText('Toque no mapa, no lugar certo de Rua das Acácias, 77');
+    await page.evaluate(() => (window as any).rotaTeste.clicarMapa(-10.9603, -37.0604));
+    await expect(page.locator('#status')).toContainText('Porta marcada.');
+    await expect.poll(() => POSTs(nuvem, 'correcoes'), {timeout: 20_000}).toEqual([{chave_lugar: 'k77', lat: -10.9603, lng: -37.0604}]);
+  });
+
+  test('"Cliente xarope" vai para a nuvem pela chave do endereço, e o Desfazer tira', async ({page, nuvem}) => {
+    await abrirNoMapa(page, nuvem);
+    await page.locator('[data-folha="antiga"] [data-marcar-xarope]').getByRole('button', {name: /deixar com vizinho/}).click();
+    await expect(page.locator('#status')).toContainText('Cliente xarope marcado');
+    await expect.poll(() => POSTs(nuvem, 'reclamacoes'), {timeout: 20_000}).toEqual([expect.objectContaining({chave_lugar: 'k77', motivo: 'vizinho'})]);
+    await page.locator('#status').getByRole('button', {name: 'Desfazer'}).click();
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'reclamacoes' && p.metodo === 'DELETE').length, {timeout: 20_000}).toBe(1);
+  });
 });
 
 test('sem rota no celular, o menu leva à mesma busca', async ({page, nuvem}) => {

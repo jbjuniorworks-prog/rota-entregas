@@ -11,6 +11,7 @@ import {TelaInicio} from './componentes/TelaInicio';
 import {TelaRomaneio} from './componentes/TelaRomaneio';
 import {TelaCaminho} from './componentes/TelaCaminho';
 import {TelaVerificadas} from './componentes/TelaVerificadas';
+import {CartaoAntiga, TopoAntiga} from './componentes/TelaAntiga';
 import {FolhaRota, SobreOMapa, TopoRota} from './componentes/TelaRota';
 import {loja, SEM_ESPACO, useLoja} from './loja';
 import {haversine} from './logica/geo';
@@ -108,13 +109,14 @@ function App() {
     <TelaEntrar />
     <div id="status" className={'flutua' + (ui.aviso ? ' on' : '')}>{ui.aviso}</div>
   </>;
-  const comMapa = ui.tela === 'rota' || ui.tela === 'admin';
+  const comMapa = ui.tela === 'rota' || ui.tela === 'admin' || ui.tela === 'antiga';
   if (comMapa) jaTeveMapa.current = true;
   const folha = ui.tela === 'rota' ? ` folha-${ui.pino ? 'pino' : ui.folha}` : '';
   return <div id="app" className={`tela-${ui.tela}${folha}`}>
     <div className="cima">
       {ui.tela === 'rota' && <TopoRota />}
       {ui.tela === 'admin' && <Cabecalho titulo="Admin" />}
+      {ui.tela === 'antiga' && <TopoAntiga />}
       <Status />
     </div>
     {jaTeveMapa.current && <div className="mapwrap" hidden={!comMapa}>
@@ -130,6 +132,7 @@ function App() {
       {ui.tela === 'verificadas' && <TelaVerificadas />}
       {ui.tela === 'romaneio' && <TelaRomaneio />}
       {ui.tela === 'caminho' && <TelaCaminho />}
+      {ui.tela === 'antiga' && <CartaoAntiga />}
       {ui.tela === 'admin' && <Suspense fallback={<div className="info">Abrindo…</div>}><TelaAdmin /></Suspense>}
     </div>
     {ui.menu && <MenuMais />}

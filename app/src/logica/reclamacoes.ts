@@ -41,6 +41,11 @@ export function unidadeDoCliente(texto: string): string {
 export function chaveCliente(texto: string, bairro: string | undefined, cidade: string): string | null {
   const lugar = chaveLugar(texto, bairro, cidade);
   if (!lugar) return null;
+  return clienteDoLugar(lugar, texto);
+}
+
+// Com a chave do lugar já gravada (a do pacote de outro dia), o apartamento vem do texto.
+export function clienteDoLugar(lugar: string, texto: string): string {
   const unidade = unidadeDoCliente(texto);
   return unidade ? lugar + '#' + unidade : lugar;
 }

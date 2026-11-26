@@ -228,7 +228,8 @@ export default function Mapa() {
     const limites: [number, number][] = comLocal.filter(p => !p.entregue).map(p => [p.lat!, p.lng!]);
     if (e.inicio) limites.push([e.inicio.lat, e.inicio.lng]);
     if (e.fim) limites.push([e.fim.lat, e.fim.lng]);
-    const marcasAdmin = ui.tela === 'admin' && ui.marcas ? ui.marcas : null;
+    // as marcas do Admin, e o ponto da entrega de outro dia (TelaAntiga)
+    const marcasAdmin = (ui.tela === 'admin' || ui.tela === 'antiga') && ui.marcas ? ui.marcas : null;
     const escolhendo = ui.tela === 'rota' && ui.folha === 'escolher';
     const escolhidas = escolhendo ? escolhidasValidas(ui.escolhidas, loja.parada) : [];
     const grupos = circulando ? gruposValidos(ui.grupos, loja.parada) : [];

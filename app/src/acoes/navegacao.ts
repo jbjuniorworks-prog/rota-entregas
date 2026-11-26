@@ -31,7 +31,7 @@ function aplicar(p: Passo) {
   // sair do mapa (ou cobri-lo com a lista) desarma o "toque no mapa"; ir para ele é justamente
   // como se arruma um pino
   if (p.tela !== 'rota' || p.folha === 'lista') ui.posicionando = null;
-  if (p.tela !== 'admin') ui.marcandoLugar = null;
+  if (p.tela !== 'admin' && p.tela !== 'antiga') ui.marcandoLugar = null;
   // saiu da escolha dos pinos (voltar, Sair): a próxima vez começa do zero
   if (p.tela !== 'rota' || p.folha !== 'escolher') ui.escolhidas = [];
   // e dos grupos circulados: sair sem montar a rota é desistir deles
