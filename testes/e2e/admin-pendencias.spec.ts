@@ -101,9 +101,9 @@ for (const [tamanho, viewport] of [['celular', {width: 412, height: 915}], ['com
       await expect(cartao(page).locator('.kpi-sub button')).toHaveText(['1 decisão']);
       await expect(cartao(page).locator('[data-incompleto]')).toHaveText('; sem o painel do dia, o total está incompleto');
       await expect(resumo(page)).toContainText('Pelo menos 1 esperando você: 1 decisão. O painel do dia não carregou: paradas sem local e rotas para conferir não foram contadas.');
-      const decidir = secao(page, '📌 Precisa de você');
+      const decidir = secao(page, 'Precisa de você');
       await decidir.locator('> summary').click();
-      await cartao(page).locator('[data-ir="📌 Precisa de você"]').click();
+      await cartao(page).locator('[data-ir="Precisa de você"]').click();
       await expect(decidir).toHaveAttribute('open');
       await expect(decidir.locator('[data-lugar="49000300|20"]')).toBeVisible();
     });
@@ -195,10 +195,10 @@ for (const [tamanho, viewport] of [['celular', {width: 412, height: 915}], ['com
       await expect(conferir.locator('> summary')).toBeInViewport();
       await expect(conferir.locator('[data-para-conferir="r-pedro"]')).toBeVisible();
 
-      const decidir = secao(page, '📌 Precisa de você');
+      const decidir = secao(page, 'Precisa de você');
       await decidir.locator('> summary').click();
       await expect(decidir).not.toHaveAttribute('open');
-      await cartao(page).locator('[data-ir="📌 Precisa de você"]').click();
+      await cartao(page).locator('[data-ir="Precisa de você"]').click();
       await expect(decidir).toHaveAttribute('open');
       await expect(decidir.locator('> summary')).toBeInViewport();
     });
@@ -297,12 +297,12 @@ for (const [tamanho, viewport] of [['celular', {width: 412, height: 915}], ['com
       await abrir(page);
       await menu(page, /^Admin/);
       await expect(secao(page, 'Rotas para conferir')).toHaveAttribute('open');
-      const vazia = secao(page, '📌 Precisa de você');
-      await expect(vazia.locator('> summary')).toHaveText('📌 Precisa de você (0)');
+      const vazia = secao(page, 'Precisa de você');
+      await expect(vazia.locator('> summary')).toHaveText('Precisa de você (0)');
       await expect(vazia).not.toHaveAttribute('open');
-      await expect(secao(page, '🆕 Marcadas pelos motoristas nos últimos 7 dias')).not.toHaveAttribute('open');
+      await expect(secao(page, 'Marcadas pelos motoristas nos últimos 7 dias')).not.toHaveAttribute('open');
       const ordem = await page.locator('[data-pendencias] > details').evaluateAll(ds => ds.map(d => d.getAttribute('data-secao')));
-      expect(ordem).toEqual(['Rotas para conferir', '📌 Precisa de você']);
+      expect(ordem).toEqual(['Rotas para conferir', 'Precisa de você']);
     });
   });
 }

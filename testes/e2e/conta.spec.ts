@@ -79,7 +79,7 @@ test.describe('administrador', () => {
     await rota.getByRole('button', {name: 'Ver no mapa'}).click();
     await expect(page.locator('.leaflet-marker-icon')).toHaveCount(2);
 
-    const lugar = page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${CHAVE}"]`);
+    const lugar = page.locator(`[data-secao="Precisa de você"] [data-lugar="${CHAVE}"]`);
     await expect(lugar).toContainText('Rua B, 20');
     await expect(lugar).toContainText('Sugestão');
     await expect(lugar.locator('[data-marcacao="Luan"]')).toContainText('✓ a que vale');
@@ -156,7 +156,7 @@ test.describe('administrador', () => {
     await page.route('**/rest/v1/rotas**', async r => { await new Promise(ok => setTimeout(ok, 4000)); await r.fallback(); });
     await abrir(page);
     await menu(page, /^Admin/);
-    await expect(page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${CHAVE}"]`)).toContainText('Rua B, 20', {timeout: 3000});
+    await expect(page.locator(`[data-secao="Precisa de você"] [data-lugar="${CHAVE}"]`)).toContainText('Rua B, 20', {timeout: 3000});
     await expect(page.locator('[data-rota="r1"]')).toHaveCount(0);
     await expect(page.locator('[data-rota="r1"]')).toContainText('Luan · 1/2 entregues', {timeout: 10_000});
   });
@@ -402,7 +402,7 @@ test.describe('administrador', () => {
     await expect(linhas.nth(1)).toContainText('Luan · 3 endereço(s)');
     const doPedro = linhas.nth(0);
     // a seção começa fechada desde 08/11: é para conferir quando ele quiser
-    await page.locator('[data-secao="🆕 Marcadas pelos motoristas nos últimos 7 dias"] > summary').click();
+    await page.locator('[data-secao="Marcadas pelos motoristas nos últimos 7 dias"] > summary').click();
     await doPedro.locator('summary', {hasText: 'Ver a lista (1050)'}).click();
     await expect(doPedro.locator('[data-lugar]')).toHaveCount(20);
     await doPedro.getByRole('button', {name: 'Mostrar mais 20 de 1030'}).click();
@@ -426,7 +426,7 @@ test.describe('administrador', () => {
     await abrir(page);
     await menu(page, /^Admin/);
     const doPedro = page.locator('[data-marcadas-de="Pedro"]');
-    await page.locator('[data-secao="🆕 Marcadas pelos motoristas nos últimos 7 dias"] > summary').click();
+    await page.locator('[data-secao="Marcadas pelos motoristas nos últimos 7 dias"] > summary').click();
     await doPedro.locator('summary', {hasText: 'Ver a lista (4)'}).click();
     await expect(doPedro.locator('[data-lugar="49000100|1"] .orig')).toHaveText('Rua Muito Entregue, 1');
     await expect(doPedro.locator('[data-lugar="49000100|2"] .orig')).toHaveText('Rua Pouco Entregue, 2');
@@ -468,7 +468,7 @@ test.describe('administrador', () => {
       };
       nuvem.rpc = {posicoes: [{chave_lugar: K, lat: -10.92, lng: -37.06, situacao: 'sugestao', motoristas: 1, entregas: 0, fonte: 'correcao', minha: false}]};
     };
-    const cartao = (page: any) => page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${K}"]`);
+    const cartao = (page: any) => page.locator(`[data-secao="Precisa de você"] [data-lugar="${K}"]`);
     const gravarAvisos = (page: any) => page.addInitScript(() => {
       const vistos: string[] = (window as any).__avisos = [];
       new MutationObserver(() => {
@@ -558,10 +558,10 @@ test.describe('administrador', () => {
       await expect(page.getByRole('button', {name: 'Buscando…'})).toBeDisabled();
       await page.locator('summary', {hasText: /^Motoristas/}).click();
       await page.locator('[data-motorista="César"]').getByRole('button', {name: 'Encerrar conferência'}).click();
-      await expect(page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${B}"]`)).toBeVisible();
+      await expect(page.locator(`[data-secao="Precisa de você"] [data-lugar="${B}"]`)).toBeVisible();
       primeira.abrir();
       await page.waitForTimeout(800);
-      await expect(page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${B}"]`)).toBeVisible();
+      await expect(page.locator(`[data-secao="Precisa de você"] [data-lugar="${B}"]`)).toBeVisible();
       await expect(page.locator(`[data-lugar="${K}"]`)).toHaveCount(0);
       await expect(page.getByRole('button', {name: '↻ Atualizar'})).toBeEnabled();
     });
@@ -813,14 +813,14 @@ test.describe('administrador', () => {
       await expect(page.locator('.menu').getByRole('button', {name: /^Admin/}).locator('[data-selo]')).toHaveText('1');
       await page.locator('.menu').getByRole('button', {name: /^Admin/}).click();
       await expect(page.locator('[data-resumo]')).toContainText('1 esperando você: 1 decisão.');
-      await expect(page.locator('[data-resumo]')).toContainText('🆕 1 marcação(ões) nova(s) desde');
+      await expect(page.locator('[data-resumo]')).toContainText('1 marcação(ões) nova(s) desde');
 
       // na ordem da tela: primeiro o que espera decisão, depois o que chegou, e o resto por último
       const secoes = await page.locator('#painel details > summary').allInnerTexts();
-      expect(secoes.slice(0, 2)).toEqual(['📌 Precisa de você (1)', '🆕 Marcadas pelos motoristas nos últimos 7 dias (1)']);
+      expect(secoes.slice(0, 2)).toEqual(['Precisa de você (1)', 'Marcadas pelos motoristas nos últimos 7 dias (1)']);
       expect(secoes.indexOf('Marcações mais antigas (1)')).toBeGreaterThan(secoes.findIndex(s => s.startsWith('Rotas')));
 
-      const decidir = page.locator(`[data-secao="📌 Precisa de você"] [data-lugar="${DECIDIR}"]`);
+      const decidir = page.locator(`[data-secao="Precisa de você"] [data-lugar="${DECIDIR}"]`);
       await expect(decidir).toContainText('Só Luan marcou, e ninguém entregou nesse ponto ainda.');
       await expect(decidir.getByRole('button', {name: 'Confirmar'})).toBeVisible();
       await expect(decidir).not.toContainText('novo');
@@ -828,9 +828,9 @@ test.describe('administrador', () => {
       // uma linha por motorista; a lista dele abre de 20 em 20
       const doPedro = page.locator('[data-marcadas-de="Pedro"]');
       await expect(doPedro).toContainText('Pedro · 1 endereço(s) · 1 novo(s)');
-      await page.locator('[data-secao="🆕 Marcadas pelos motoristas nos últimos 7 dias"] > summary').click();
+      await page.locator('[data-secao="Marcadas pelos motoristas nos últimos 7 dias"] > summary').click();
       await doPedro.locator('summary', {hasText: 'Ver a lista (1)'}).click();
-      const porta = page.locator(`[data-secao="🆕 Marcadas pelos motoristas nos últimos 7 dias"] [data-lugar="${PORTA}"]`);
+      const porta = page.locator(`[data-secao="Marcadas pelos motoristas nos últimos 7 dias"] [data-lugar="${PORTA}"]`);
       await expect(porta).toContainText('Confirmada na porta, com a entrega');
       await expect(porta).toContainText('novo');
       // a antiga existe, mas guardada: não disputa a vista com o que é de hoje
@@ -841,7 +841,7 @@ test.describe('administrador', () => {
       await menu(page, /^Admin/);
       await expect(page.locator('[data-resumo]')).toContainText('Nada novo desde');
       await expect(doPedro).not.toContainText('novo');
-      await page.locator('[data-secao="🆕 Marcadas pelos motoristas nos últimos 7 dias"] > summary').click();
+      await page.locator('[data-secao="Marcadas pelos motoristas nos últimos 7 dias"] > summary').click();
       await doPedro.locator('summary', {hasText: 'Ver a lista (1)'}).click();
       await expect(porta).toBeVisible();
       await expect(porta).not.toContainText('novo');
