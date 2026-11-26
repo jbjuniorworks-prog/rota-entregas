@@ -324,13 +324,19 @@ A entrega continua registrada, mas a posição dela não vale para ninguém.`)) 
       : (varias ? `Apagadas as ${varias}: não valem para ninguém.` : 'Apagada: não vale para ninguém.'), 4000);
     recarregar();
   };
-  // grava a marcação de quem administra no ponto dele, como o "Marcar como admin": vence a contagem
+  // Grava a marcação de quem administra no ponto da marca, como o "Marcar como admin": vence a
+  // contagem. E tira da conferência o que o motorista marcou no endereço, como o Separar: na Rua
+  // Três, 123 (24/11) eram duas marcas a 249 m uma da outra, a outra continuava em disputa com a
+  // porta nova, o cartão voltava igual e cada toque trocava a porta de lado (6 vezes até 25/11).
   const definir = async (g: MotoristaEmConferencia, i: ItemEmConferencia) => {
     if (!confirm(`Definir a posição que ${g.nome} marcou como a porta de ${i.endereco}?
 
-Ela passa a valer para todos os motoristas, como marcação sua.`)) return;
-    const feito = await correr('def' + g.id + i.chave_lugar, async () => { await Adm.confirmarPosicao(i.chave_lugar, i.lat, i.lng); return true; },
-      'Porta definida: vale para todos os motoristas.');
+Ela passa a valer para todos os motoristas, como marcação sua. As outras marcas de ${g.nome} neste endereço saem da conferência.`)) return;
+    const feito = await correr('def' + g.id + i.chave_lugar, async () => {
+      await Adm.confirmarPosicao(i.chave_lugar, i.lat, i.lng);
+      await Adm.decidirMarcas(g.id, [i.chave_lugar], false);
+      return true;
+    }, 'Porta definida: vale para todos os motoristas.');
     if (feito) recarregar();
   };
   // Outra entrada do mesmo número (dono, 21/11: Chico Mendes 100 e 15, Matapoã 42): a marca dele
