@@ -154,6 +154,32 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Quatro pedidos da rua de 26/11 (duas fotos do dono, "pode seguir"): em quatro branches, nada enviado
+
+Cada um com teste que quebrou com o conserto sabotado. Os quatro juntos com o `definir-limpa`
+(branch local `combinacao-26-11`, só para teste): tipos, 794 de unidade e 413 e2e.
+
+- **`sem-ponto-de-saida`:** "parar de ficar botando o ponto de saída, atrapalha; o ponto de saída
+  sempre será nosso GPS". Sai o pino "S" do mapa e o ponto do enquadramento; a saída continua guardada
+  para a rota e para o "Voltar ao ponto de saída".
+- **`linha-do-que-falta`** (montado em cima do `sem-ponto-de-saida`, que entra antes): foto do mapa
+  com a linha passando nos pinos feitos, "sempre ao próximo". A linha da área é um traço só; agora é
+  cortada no ponto mais perto de cada parada, na ordem da rota, procurando para a frente (rua de ida e
+  volta), e fica só o trecho que chega a uma que falta (`logica/linhaQueFalta.ts`). A deixada para
+  depois conta como feita. Sem a saída do GPS, a linha já começa na primeira parada: só da segunda
+  entrega em diante um trecho some. Limite: o corte é pelo ponto mais perto, não pelos trechos que o
+  serviço de ruas devolve; não visto com uma rota de verdade no celular.
+- **`fechar-aviso`:** print do resumo da leitura parado em cima do mapa. Toda mensagem tem "×" (44 px)
+  que a tira, com o Desfazer junto. Nome "Tirar a mensagem": um teste do mapa acha o "Fechar" do
+  cartão pelo nome. Arrastar para o lado ficou fora ("ou só fechar, acho que é só").
+- **`encerrar-com-sobras`:** "mesmo que tenha pinos que ficaram pra depois, normalmente é ocorrência,
+  tem que ter a opção finalizar a rota". O cartão de fim com sobras ganhou o "Encerrar a rota", e o
+  Mais o tem sempre que há rota (a ocorrência que ninguém deixou para depois segura o cartão na
+  próxima). Os dois perguntam antes, dizendo quantas ficam sem entregar. Substitui a regra de 16/11
+  (sem Encerrar com sobras), e o teste dela.
+- **Item futuro:** guardar onde cada trecho começa quando o serviço de ruas devolve a linha, em vez de
+  procurar o ponto mais perto.
+
 ## O "Definir esta posição como porta" que não resolvia (25/11, print do Admin, dono: "pq não consigo definir essa posição?"): na branch `definir-limpa`
 
 - **Rua Três, 123, Matapoã (`49008141|123`), medido na produção (só leitura):** em 24/11 Pedro marcou
