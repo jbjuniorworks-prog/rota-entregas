@@ -1,5 +1,5 @@
 import type {Page} from '@playwright/test';
-import {abrir, carregar, montar, test, expect} from './apoio';
+import {abrir, carregar, menu, montar, test, expect} from './apoio';
 
 // "Finalizei a última entrega, o app fica nisso mesmo, não finaliza nada; aí temos que resetar a
 // rota?" (dono, 16/11). O fim da rota encerra com um toque, e a de ontem toda feita sai sozinha.
@@ -59,8 +59,12 @@ test.describe('o fim da rota e o dia seguinte', () => {
     expect(await paradas(page)).toBe(4);
   });
 
-  test('com entrega deixada para depois, a sequência acaba mas a rota não: sem Encerrar', async ({page}) => {
-    page.on('dialog', d => d.accept());
+  // Até 26/11 o cartão ficava nisso, sem Encerrar. Dono: o que sobra costuma ser ocorrência, "tem
+  // que ter a opção de finalizar a rota mesmo assim, pra não só esperar infinito".
+  test('com entrega deixada para depois, Encerrar pergunta quantas faltam; cancelar mantém, confirmar limpa', async ({page}) => {
+    const perguntas: string[] = [];
+    let aceitar = true;
+    page.on('dialog', d => { perguntas.push(d.message()); return aceitar ? d.accept() : d.dismiss(); });
     await page.clock.install({time: ONTEM});
     await abrir(page);
     await carregar(page, ROTA_F);
@@ -69,7 +73,37 @@ test.describe('o fim da rota e o dia seguinte', () => {
     await proxima.getByRole('button', {name: 'Depois'}).click();
     for (let i = 0; i < 20 && !(await fim.isVisible()); i++) await proxima.locator('[data-acao="entregue"]').first().click();
     await expect(fim).toContainText('Sequência concluída. Falta(m) 3 deixada(s) para depois, na lista.');
-    await expect(fim.getByRole('button', {name: 'Encerrar a rota'})).toHaveCount(0);
+    const encerrar = fim.getByRole('button', {name: 'Encerrar a rota'});
+    await expect(encerrar).toBeInViewport({ratio: 1});
+
+    aceitar = false;
+    perguntas.length = 0;
+    await encerrar.click();
+    await expect.poll(() => perguntas).toEqual([expect.stringContaining('Faltam 3 entregas. Encerrar a rota mesmo assim?')]);
+    await expect(fim).toBeVisible();
+    expect(await paradas(page), 'cancelar não apaga nada').toBe(4);
+
+    aceitar = true;
+    await encerrar.click();
+    await telaDeComeco(page);
+    expect(await paradas(page)).toBe(0);
+    await page.locator('#status').getByRole('button', {name: 'Desfazer'}).click();
+    await expect(page.locator('[data-folha="fim"]')).toContainText('Falta(m) 3 deixada(s) para depois');
+  });
+
+  // A ocorrência que ninguém deixou para depois segue como próxima, e o cartão de fim não chega.
+  test('no meio da sequência, o Mais encerra a rota, depois de dizer quantas faltam', async ({page}) => {
+    const perguntas: string[] = [];
+    page.on('dialog', d => { perguntas.push(d.message()); return d.accept(); });
+    await page.clock.install({time: ONTEM});
+    await abrir(page);
+    await carregar(page, ROTA_F);
+    await montar(page);
+    await expect(page.locator('[data-folha="proxima"]')).toBeVisible();
+    await menu(page, 'Encerrar a rota');
+    await telaDeComeco(page);
+    expect(perguntas).toEqual([expect.stringContaining('Faltam 4 entregas. Encerrar a rota mesmo assim?')]);
+    expect(await paradas(page)).toBe(0);
   });
 
   test('no dia seguinte, a rota de ontem toda feita sai sozinha ao abrir o app, com Desfazer', async ({page}) => {
