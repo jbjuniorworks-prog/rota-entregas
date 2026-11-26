@@ -7,7 +7,7 @@ import {loja, useLoja} from '../loja';
 import {rotuloDe} from '../logica/rotulo';
 import {buscarNosDiasAnteriores, type EntregaAntiga} from '../servicos/historico';
 import {nuvem} from '../servicos/nuvem';
-import {AvisoXarope, Cabecalho, DesfazerPorta, hhmm, MarcarXarope, Meta, Sugestao, Tag} from './comuns';
+import {AvisoXarope, Cabecalho, ComentariosDoLugar, DesfazerPorta, hhmm, MarcarXarope, Meta, Sugestao, Tag} from './comuns';
 
 const precisaConferir = (p: Parada) => DUVIDA.has(p.precisao) || p.precisao === 'pendente' || !!p.sugestao;
 
@@ -135,6 +135,7 @@ function ItemConferir({p, pacotes}: {p: Parada; pacotes?: string[]}) {
       </span>
     </button>
     <AvisoXarope p={p} />
+    <ComentariosDoLugar p={p} />
     <Sugestao p={p} />
     <div className="linha">
       {p.lat != null && <button className="btn peq" onClick={() => { A.contar('ver'); A.focar(p.id); }}>Ver no mapa</button>}

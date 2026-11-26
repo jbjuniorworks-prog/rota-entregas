@@ -10,6 +10,7 @@ export * from './versao';
 export * from './instalar';
 export * from './nomesNoMapa';
 export * from './antiga';
+export * from './comentarios';
 export * from './aviso';
 export * from './gaiola';
 export * from './reorganizar';

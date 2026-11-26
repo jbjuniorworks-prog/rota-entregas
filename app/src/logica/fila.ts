@@ -3,6 +3,7 @@ import type {ItemPlanilha} from './planilha';
 import type {PosicaoCompartilhada} from './compartilhadas';
 import type {ComercialDaNuvem, DesejoComercial} from './comerciais';
 import type {ReclamacaoDaNuvem} from './reclamacoes';
+import type {ComentarioDaNuvem} from './comentarios';
 import type {EventoBusca} from './telemetria';
 import {chaveLugar} from './texto';
 import type {MotivoReclamacao} from './tipos';
@@ -32,7 +33,9 @@ export type Operacao =
   | {tipo: 'registro'; rota: string; semRuas: string | null; itens: ItemRegistro[]}
   | {tipo: 'uso'; dia: string; linhas: LinhaDeUso[]}
   | {tipo: 'reclamacao'; chave: string; motivo: MotivoReclamacao}
-  | {tipo: 'tirarReclamacao'; chave: string; motivo: MotivoReclamacao};
+  | {tipo: 'tirarReclamacao'; chave: string; motivo: MotivoReclamacao}
+  // o texto inteiro, nunca a mudança: reenviado, dá no mesmo; vazio apaga (034)
+  | {tipo: 'comentario'; chave: string; texto: string};
 
 export interface ItemRegistro {
   tn: string;
@@ -77,6 +80,8 @@ export interface ClienteNuvem {
   inserirReclamacao(chave: string, motivo: MotivoReclamacao): Promise<void>;
   tirarReclamacao(chave: string, motivo: MotivoReclamacao): Promise<void>;
   reclamacoes(chaves: string[]): Promise<ReclamacaoDaNuvem[]>;
+  comentar(chave: string, texto: string): Promise<void>;
+  comentarios(chaves: string[]): Promise<ComentarioDaNuvem[]>;
   marcarComercial(chave: string): Promise<void>;
   // `todas`: o admin tirando a marca de todos; senão, só a de quem manda
   tirarComercial(chave: string, todas: boolean): Promise<void>;
@@ -152,6 +157,8 @@ export function criarFila(g: Guarda, novoUuid: () => string = () => crypto.rando
         await c.inserirReclamacao(op.chave, op.motivo);
       } else if (op.tipo === 'tirarReclamacao') {
         await c.tirarReclamacao(op.chave, op.motivo);
+      } else if (op.tipo === 'comentario') {
+        await c.comentar(op.chave, op.texto);
       } else {
         await c.apagarCorrecao(op.chave, op.lat, op.lng);
       }

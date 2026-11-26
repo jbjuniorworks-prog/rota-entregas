@@ -45,6 +45,10 @@ export interface Parada {
   sugestao?: {lat: number; lng: number; distancia: number | null};
   // "cliente xarope": já reclamou de pacote jogado ou deixado com vizinho (018)
   reclamacoes?: Reclamacao[];
+  // comentários do lugar (034), de todos os motoristas, sem o nome; e o seu, escrito ou apagado
+  // neste aparelho (texto vazio = apagado), que vale até a fila mandar
+  comentarios?: Comentario[];
+  comentarioMeu?: {texto: string; quando: string};
   // pino comercial (031): ele marcou / outro motorista marcou. O `comercial` de cima é o do Meli.
   comercialMeu?: boolean;
   comercialOutros?: boolean;
@@ -96,6 +100,13 @@ export interface PortaAntes {
 }
 
 export type MotivoReclamacao = 'jogado' | 'vizinho';
+
+export interface Comentario {
+  id: number;
+  texto: string;
+  quando: string;
+  minha: boolean;
+}
 
 export interface Reclamacao {
   motivo: MotivoReclamacao;

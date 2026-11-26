@@ -190,6 +190,9 @@ textarea{min-height:140px;resize:vertical}
 .velho{opacity:.45}
 .etiqueta{font-size:13px;font-weight:600;background:#e5e7eb;color:#374151;border-radius:99px;padding:3px 10px}
 .marcar-xarope{padding:8px;border-radius:10px;background:#f3f4f6}
+.comentarios{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.comentario{display:flex;flex-wrap:wrap;gap:0 12px;align-items:baseline;font-size:14px;background:#fef9c3;border-radius:8px;padding:4px 8px}
+.editar-comentario{align-self:stretch;display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:10px;background:#f3f4f6}
 /* o "Comercial" do cartão do pino (07/11): pequeno, logo abaixo do endereço; ligado, cheio */
 .comercial-linha{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:4px}
 .pilula{flex-shrink:0;border:0;border-radius:99px;padding:6px 12px;min-height:40px;font:inherit;font-size:13px;font-weight:700;background:#fff;color:var(--tx);box-shadow:inset 0 0 0 2px #d1d5db;cursor:pointer}

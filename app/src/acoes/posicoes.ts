@@ -1,5 +1,6 @@
 ﻿import {aplicarCompartilhadas, separarAsQueMovem} from '../logica/compartilhadas';
 import {aplicarReclamacoes, chaveCliente} from '../logica/reclamacoes';
+import {aplicarComentarios} from '../logica/comentarios';
 import {aplicarComerciais} from '../logica/comerciais';
 import {haversine, longeDaPorta, marcarIsoladas, noPino, passaDaPorta} from '../logica/geo';
 import type {Operacao} from '../logica/fila';
@@ -67,6 +68,18 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
       if (!valeAinda()) return vazia();
       const tocadas = new Set(todas.filter(k => revisaoComercial(k) !== antes.get(k)));
       aplicarComerciais(e().paradas, r, clienteDe, fila.comerciais(), new Set(todas), tocadas);
+    }
+  } catch {}
+  if (!valeAinda()) return vazia();
+  // Os comentários do lugar (034), pela mesma chave do xarope. Por último: posta antes do comercial,
+  // ela atrasava aquela consulta, e o teste do envio preso em A → B → A (comercial.spec) falhou 3 de 3.
+  // Separada: sem a 034 rodada ela falha calada. As entregues entram: o comentário serve a quem volta lá.
+  try {
+    const clientes = [...new Set(e().paradas.map(clienteDe).filter((k): k is string => !!k))];
+    if (clientes.length) {
+      const r = await medidor.medir('banco', () => c.comentarios(clientes));
+      if (!valeAinda()) return vazia();
+      aplicarComentarios(e().paradas, r, clienteDe);
     }
   } catch {}
   if (!valeAinda()) return vazia();
