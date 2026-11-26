@@ -213,6 +213,10 @@ details summary{font-weight:600;cursor:pointer;padding:8px 0}
 #app.tela-rota .cima>#status{position:absolute;left:0;right:0;top:100%}
 #status{flex:none;background:#111827;color:#fff;padding:10px 14px;font-size:14px;display:none;white-space:pre-line}
 #status.on{display:block}
+#status .aviso-linha{display:flex;align-items:flex-start;gap:8px}
+#status .aviso-linha>span{flex:1;min-width:0}
+#status .fechar-aviso{flex:none;width:44px;height:44px;margin:-10px -12px -10px 0;border:0;background:transparent;color:#fff;font-size:26px;line-height:1;cursor:pointer}
+#status .fechar-aviso::before{content:'\00d7'}
 #status .armado,#status .versao-nova,#status .pinos-novos,#status .instalar{display:flex;align-items:center;gap:8px;justify-content:space-between}
 #status .instalar .botoes{display:flex;gap:6px;flex-shrink:0}
 #status.flutua{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));border-radius:12px;padding:12px 14px;z-index:1000}
