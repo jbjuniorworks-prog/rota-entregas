@@ -3,7 +3,7 @@
 Para não ter que reconstruir de memória a cada conversa. Curto de propósito: o **porquê** de cada
 decisão está na mensagem do commit que a fez, não aqui.
 
-Atualizado em 16/11/2026.
+Atualizado em 25/11/2026.
 
 ## O que vem agora
 
@@ -154,13 +154,39 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Rota do dono de 25/11 conferida antes de sair: uma porta regravada, falta ver na rua; quatro pedidos da rua em quatro branches, nada enviado
+## O "Definir esta posição como porta" que não resolvia (25/11, print do Admin, dono: "pq não consigo definir essa posição?"): na branch `definir-limpa`
+
+- **Rua Três, 123, Matapoã (`49008141|123`), medido na produção (só leitura):** em 24/11 Pedro marcou
+  a porta em dois pontos a 249 m um do outro, às 09:26 e às 09:28, e entregou às 09:38 no segundo. As
+  duas marcas nasceram em disputa (030). O Definir grava a porta de admin no ponto que o cartão mostra
+  (a marca pendente mais nova longe da porta), mas não decide as marcas do motorista: a outra ficava a
+  249 m da porta nova, continuava em disputa, e o cartão voltava com a mesma hora (a da marca mais nova,
+  não a da mostrada) e os mesmos "249 m". Cada toque trocou a porta de lado: 6 vezes (24/11 09:29,
+  09:30, 09:30, 12:04, 17:54; 25/11 20:58). Desde as 20:58 de 25/11 vale o primeiro ponto (09:26). A
+  `posicoes_com` já conta só a correção mais nova de cada motorista; a disputa olha todas as pendentes.
+- **Conserto:** depois de gravar a porta, o Definir chama `decidir_marcas(..., aprovar = false)` para o
+  motorista e o endereço, como o "Separar como outra porta" já fazia: as marcas pendentes do motorista ali saem
+  e as passagens pendentes ficam recusadas. A porta de admin vence a contagem, então nada que valia
+  deixa de valer. A pergunta passa a dizer isso. Só no app, sem migração.
+- **Limites:** as duas chamadas não são uma transação. Se a segunda falhar, o cartão volta como antes,
+  com o erro na tela. Como no Separar, um lugar com nome pendente do motorista no ponto de uma dessas
+  marcas também sai (só acontece com motorista em conferência).
+- **Mais dois endereços com o mesmo jeito**, só com passagens: Luan no `49004024|455` (447 m) e Pedro no
+  `49007222|12` (89 m).
+- **Testado (local):** 1 e2e novo, com uma nuvem falsa que faz a conta da 030; o cartão some depois de
+  um toque. Sem a linha do conserto, o cartão volta (1 em vez de 0). O teste da disputa que já existia
+  foi ajustado para a chamada nova. Bateria no PR.
+- **Falta:** o dono decidir qual dos dois pontos é a porta da Rua Três, 123 (a última marca e a entrega
+  de Pedro foram no segundo; o pino da planilha de 28/09 ficava a ~40 m dele) e apagar a disputa no
+  Admin. **Item futuro:** o cartão mostrar a hora da marca que ele mostra.
+
+## Rota do dono de 25/11 conferida antes de sair: uma porta regravada e confirmada na entrega; quatro pedidos da rua publicados em 25/11 (#40 a #43, versão `mwweyc8t`), falta ver no celular
 
 - **Recanto Santo Antônio 32A (`49007190|32`):** a porta que valia era a estimativa 5813 de 15/11, posta
   pelas vizinhas colada no nº 30. Naquele dia o dono passou no nº 30 às 13:37 sem entregar o 32A e o
   entregou às 14:03 na outra ponta da mesma rua, a 596 m (GPS 3 m, 132 m da parada seguinte: não foi
   toque atrasado). Com o "sim" do dono, gravada porta de admin no ponto dessa entrega (id 6872, 08:42). A
-  5813 ficou no histórico. Próximo: ver se a entrega de hoje cai ali.
+  5813 ficou no histórico. **Confirmada:** a entrega de 25/11 foi às 17:44, a 2 m dessa porta.
 - **As cinco estimativas de 15/11, medidas:** a do censo (5812) bateu com duas entregas (10 m e 4 m). As
   quatro pelas vizinhas erraram: 69, 150 e 350 m (o dono arrumou na porta no mesmo dia) e 596 m (esta).
   Pesa contra fazer o app estimar pelas vizinhas.
@@ -173,15 +199,17 @@ Fora da lista:
   planilha, junto do nº 105 da mesma parada. O censo (CEP, salto 1) e a porta verificada do nº 87 ficam a
   4 m um do outro, a 1 km dali, ao lado do P15 (nº 77). A regra de `discordaDaPorta` (80 m, mesma rua,
   rodovia não é genérica) parecia levar para o censo; causa não identificada. Nada gravado: sem porta
-  verificada, o cartão continua com "Estou aqui" na rua.
+  verificada, o cartão continua com "Estou aqui" na rua. **Resolvido na rua:** o pino da planilha estava
+  certo. O dono marcou a porta nele às 11:28 (conta admin) e entregou ali às 11:38. A suspeita do censo
+  e do P15 não valia.
 - **Ideia do dono, nada feito: "sequência de arrumação".** Com a rota pronta, o app indicar as paradas
   que podem ser arrumadas juntas no carro, na ordem em que se passa ("61/1/60", print do mapa às 09:11).
   A carga eles mesmos fazem; o app só agrupa. Feito à mão para esta rota (10 conjuntos, agrupamento por
   distância e ordem do otimizador do app em linha reta). Levantar antes de construir: a ordem real só
   existe no celular, e o mesmo número de parada pode estar em dois lugares (hoje P8 e P18). O dono deixou
   para decidir em casa.
-- **Quatro pedidos da rua, feitos em quatro branches a partir da `main` b8e4a23, commit local, nada
-  enviado** ("revisa tudo e pode fazer", dono, 25/11). Cada um com teste que quebrou com o conserto
+- **Quatro pedidos da rua, feitos em quatro branches a partir da `main` b8e4a23, publicados no mesmo
+  dia** ("revisa tudo e pode fazer", dono, 25/11). Cada um com teste que quebrou com o conserto
   sabotado, e olhado a 412×915 com a `rota-d`:
   - **`maps-um-pino`:** o "Maps" do cartão do pino levava o trecho de até 9 (feito assim em 16/10 a
     pedido do dono). Na rua: "continua indo pra 9 pinos, só quero um". Agora vai só ao pino; o trecho
@@ -213,6 +241,11 @@ Fora da lista:
     - A causa das duas não está identificada. Se voltarem, guardar a saída inteira e a hora.
   - **PRs abertos em 25/11:** #40 (`maps-um-pino`), #41 (`porta-errada`, depois do #40), #42
     (`aviso-aproxime`), #43 (`desfazer-porta`) e #44 (este registro).
+  - **Publicados em 25/11:** merge dos cinco nessa ordem, das 14:39 às 14:43, a pedido do dono durante a
+    rota ("faça os merge, que estou nas entregas"). A versão `mwweyc8t` foi ao ar às 14:44 (execução
+    45667746755 da `main`, testar e publicar). Conferidos o `versao.json` publicado e os quatro textos
+    novos no JS publicado. O celular do dono mostrou a versão nova às 15:23 (foto do P5). Falta ver na
+    rua: o "Desfazer a porta", o "Porta errada? Estou aqui" e o aviso com a distância.
   - **Item futuro:** "Colar link do mapa" e "Arrumar o pino" também na porta verificada; o novo só tem
     o "Estou aqui", que é o de quem está na porta.
 - **Quatro entregas ficaram para trás (foto das 13:31):** ADS Rua C 356, P26, P25 e P36, perto do P28
