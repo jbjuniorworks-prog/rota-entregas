@@ -140,7 +140,11 @@ function ItemConferir({p, pacotes}: {p: Parada; pacotes?: string[]}) {
       <button className="btn peq" onClick={() => { A.contar('aqui'); A.estouAqui(p); }}>Estou aqui</button>
       <button className="btn peq" onClick={() => { A.contar('mapa'); A.posicionar(p.id); }}>Marcar no mapa</button>
       <button className="btn peq" onClick={() => { A.contar('editar'); A.editar(p); }}>Editar</button>
+      {/* dono, 26/11: "queria colocar cliente xarope e não conseguia". Ficava dentro do cartão aberto,
+          que só abre tocando no endereço; agora fica com os outros botões */}
+      <button className="btn peq" data-acao="xarope" aria-expanded={ui.xarope === p.id} onClick={() => { A.contar('xarope-conferir'); A.abrirXarope(p); }}>Cliente xarope</button>
     </div>
+    {ui.xarope === p.id && <MarcarXarope p={p} />}
     {/* é aqui que se acha a entrega pelo código do pacote quando o cliente liga depois (25/11) */}
     <DesfazerPorta ps={[p]} />
     {sel && <>{e.areas.length > 1 && <><label>Área</label>
@@ -149,7 +153,6 @@ function ItemConferir({p, pacotes}: {p: Parada; pacotes?: string[]}) {
       </select></>}
       {/* Longe dos botões de todo dia: um toque errado numa rota de 83 apaga uma parada, e
           ninguém percebe até ela não aparecer. Aqui só chega quem abriu o cartão de propósito. */}
-      <MarcarXarope p={p} />
       {p.candidatos && p.candidatos.length > 1 && <div className="cands"><div className="info">Outras posições encontradas:</div>
         {p.candidatos.map((c, k) => <button key={k} onClick={() => A.escolherCandidato(p, k)}><Tag p={c} /><br />{c.exibido}</button>)}
       </div>}
