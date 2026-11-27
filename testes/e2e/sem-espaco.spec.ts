@@ -15,7 +15,7 @@ test.describe('o celular sem espaço para guardar', () => {
     await page.evaluate(() => {
       Storage.prototype.setItem = function () { throw new DOMException('cheio', 'QuotaExceededError'); };
     });
-    await page.locator('[data-folha="proxima"]').getByRole('button', {name: /^Entreguei$/}).click();
+    await page.locator('[data-folha="proxima"] [data-acao="entregue"]').first().click();
     await expect(page.locator('[data-sem-espaco]')).toContainText('O celular não conseguiu guardar a rota');
   });
 
@@ -24,7 +24,7 @@ test.describe('o celular sem espaço para guardar', () => {
     await abrir(page);
     await carregar(page, ROTA_B);
     await montar(page);
-    await page.locator('[data-folha="proxima"]').getByRole('button', {name: /^Entreguei$/}).click();
+    await page.locator('[data-folha="proxima"] [data-acao="entregue"]').first().click();
     await expect(aviso(page)).toContainText('Entregue');
     await expect(page.locator('[data-sem-espaco]')).toHaveCount(0);
   });

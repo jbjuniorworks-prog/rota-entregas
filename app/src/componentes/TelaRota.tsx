@@ -390,9 +390,14 @@ function CartaoProxima() {
         : entreguei('btn ok grande-btn')}
       <div className="tres">
         <a className="btn contorno-azul" href={linkWaze(alvo as Ponto)} onClick={() => A.contar('waze')} target="_blank" rel="noopener">Waze</a>
-        {podeAqui && entreguei('btn contorno-ok')}
         <button className="btn contorno" onClick={() => A.deixarParaDepois(...pend)}>Depois</button>
       </div>
+      {/* Um botão de entregar só (dono, 26/11: "cada um só aparecer na hora que precisa"). Quem já
+          sabe que entregou na portaria ou ao vizinho tem esta saída antes do toque; depois do
+          Entreguei aqui, a mensagem traz o "Não foi na porta". */}
+      {podeAqui && <div className="secundarios"><button className="link" data-acao="entregue" data-sem-porta
+        onClick={() => { A.contar('entregar-sem-porta'); return pend.length > 1 ? A.entregarTodas(pend) : A.marcarEntregue(alvo, true); }}>
+        Entregar{pend.length > 1 ? ` as ${pend.length}` : ''} sem marcar a porta</button></div>}
       <DesfazerPorta ps={pend} />
       {pend.length > 1 ? <EntregasDoEndereco ps={pend} /> : <PacotesDaParada p={alvo} />}
       <JuntarSeparadas ps={pend} />

@@ -93,7 +93,8 @@ function Status() {
     {/* Dono, 26/11: o resumo da leitura ficava parado em cima do mapa, sem prazo para sumir. O "×"
         fecha qualquer mensagem; o símbolo vem do CSS, para não entrar no texto da mensagem. */}
     {ui.aviso && <div className="aviso-linha" data-aviso>
-      <span>{ui.aviso}{ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>Desfazer</button></>}</span>
+      <span>{ui.aviso}{ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>Desfazer</button></>}
+        {ui.extra && <> <button className="btn peq" data-extra style={{marginLeft: 8}} onClick={ui.extra.fazer}>{ui.extra.rotulo}</button></>}</span>
       <button className="fechar-aviso" aria-label="Tirar a mensagem" data-fechar-aviso onClick={() => status('')} />
     </div>}
   </div>;

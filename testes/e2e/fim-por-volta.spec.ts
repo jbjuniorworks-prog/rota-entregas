@@ -43,7 +43,7 @@ test('da metade das entregas em diante, o fim volta com o minuto', async ({page}
   await montar(page);
   for (let n = await entregasFeitas(page); n.feitas * 2 < n.todas; ) {
     await expect(page.locator(FIM)).toHaveText(/fim pelas? /);
-    await page.locator('[data-folha="proxima"]').getByRole('button', {name: 'Entreguei', exact: true}).click();
+    await page.locator('[data-folha="proxima"] [data-acao="entregue"]').first().click();
     const antes = n.feitas;
     await expect.poll(async () => (n = await entregasFeitas(page)).feitas).toBeGreaterThan(antes);
   }
