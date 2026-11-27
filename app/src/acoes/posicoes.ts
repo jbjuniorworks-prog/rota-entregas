@@ -301,13 +301,13 @@ async function gravarLugar(lat: number, lng: number) {
   ui.marcandoLugar = null;
   loja.mudou(false);
   if (!alvo) return;
-  if (!confirm(`Gravar este ponto como a porta de ${alvo.endereco}?\n\nPassa a valer para todos os motoristas, na frente das entregas e das marcações de antes.`)) {
+  if (!confirm(alvo.pergunta || `Gravar este ponto como a porta de ${alvo.endereco}?\n\nPassa a valer para todos os motoristas, na frente das entregas e das marcações de antes.`)) {
     status('Nada gravado.', 3000);
     return;
   }
   try {
     await alvo.gravar(+lat.toFixed(6), +lng.toFixed(6));
-    status('Porta gravada: vale para todos os motoristas. Os celulares recebem ao abrir o app ou voltar para ele.', 6000);
+    status(alvo.feito || 'Porta gravada: vale para todos os motoristas. Os celulares recebem ao abrir o app ou voltar para ele.', 6000);
   } catch (err) {
     status('Não gravou: ' + (err as Error).message, 6000);
   }

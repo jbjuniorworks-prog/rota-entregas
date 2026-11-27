@@ -239,7 +239,8 @@ export default function Mapa() {
     // A saída é o GPS de quando a rota foi montada (dono, 26/11: "o ponto de saída sempre será nosso GPS,
     // que fica marcando no mapa"): sem pino próprio e fora do enquadramento, que já segue a bolinha do GPS.
     if (e.fim) limites.push([e.fim.lat, e.fim.lng]);
-    const marcasAdmin = ui.tela === 'admin' && ui.marcas ? ui.marcas : null;
+    // as marcas do Admin, e o ponto da entrega de outro dia (TelaAntiga)
+    const marcasAdmin = (ui.tela === 'admin' || ui.tela === 'antiga') && ui.marcas ? ui.marcas : null;
     const escolhendo = ui.tela === 'rota' && ui.folha === 'escolher';
     const escolhidas = escolhendo ? escolhidasValidas(ui.escolhidas, loja.parada) : [];
     const grupos = circulando ? gruposValidos(ui.grupos, loja.parada) : [];
