@@ -41,6 +41,22 @@ describe('a linha só até a próxima', () => {
     expect(t[0]).toHaveLength(31);
   });
 
+  // a rota refeita depois de uma entrega fora da ordem: a linha sai da entregue (-37.06), e as
+  // entregues antes dela ficaram longe, a uns 1,1 km ao norte, no fim da rua (dono, 27/11)
+  const longe = (lng: number): ParadaDaLinha => ({lat: -10.94, lng, feita: true});
+  const refeita = [longe(-37.041), longe(-37.0405), parada(-37.06, true), parada(-37.055), parada(-37.05)];
+
+  test('refeita fora da ordem, com o começo da linha guardado: leva até a próxima, mesmo com as de antes perto do fim dela', () => {
+    // a 50 m da rua, dentro do limite: só o começo guardado diz que elas não são deste traço
+    const pertoDoFim = (lng: number): ParadaDaLinha => ({lat: -10.9495, lng, feita: true});
+    const r = [pertoDoFim(-37.041), pertoDoFim(-37.0405), ...refeita.slice(2)];
+    expect(linhaAteAProxima(linha, r, 2).map(lngs)).toEqual([[-37.06, -37.055]]);
+  });
+
+  test('refeita fora da ordem, sem o começo guardado (rota de antes desta versão): as de fora da linha não puxam o corte', () => {
+    expect(linhaAteAProxima(linha, refeita).map(lngs)).toEqual([[-37.06, -37.055]]);
+  });
+
   test('sem paradas, nenhuma linha', () => {
     expect(linhaAteAProxima(linha, [])).toEqual([]);
   });

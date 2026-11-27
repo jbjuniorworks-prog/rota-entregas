@@ -45,10 +45,18 @@ export function voltarOrdem(p: Parada): boolean {
 }
 
 let pedindo = false;
+// Sem a resposta, a área fica sem linha. Esperar a próxima entrega deixava o mapa sem caminho
+// justo no trecho em que ele mais precisa (dono, 27/11: "a rota sumiu, sem eu fazer nada"): tenta
+// de novo sozinho. O serviço de ruas é de graça e pede calma: uma tentativa a cada 20 s basta.
+export const DE_NOVO = 20_000;
+let deNovo: ReturnType<typeof setTimeout> | undefined;
 
-// Pede as linhas que ficaram para depois. Roda a cada entrega e quando a rede volta.
+// Pede as linhas que ficaram para depois. Roda a cada entrega, quando a rede volta e, faltando
+// alguma, a cada DE_NOVO.
 export async function pedirLinhas() {
   if (pedindo) return;
+  clearTimeout(deNovo);
+  deNovo = undefined;
   pedindo = true;
   try {
     for (;;) {
@@ -56,8 +64,8 @@ export async function pedirLinhas() {
       if (!area || !f) return;
       if (e().rota !== f.rota) { semLinha.delete(area); continue; }
       const linha = await linhaDaRota(f.pontos);
-      // sem rede: fica para a próxima entrega, ou para quando a rede voltar
-      if (!linha) return;
+      // sem rede, ou o serviço não respondeu: tenta de novo daqui a pouco
+      if (!linha) { deNovo = setTimeout(() => void pedirLinhas(), DE_NOVO); return; }
       // a ordem mudou de novo enquanto esperava: a volta seguinte pede a nova
       if (semLinha.get(area) !== f || e().rota !== f.rota) continue;
       const ra = f.rota.areas.find(a => a.id === area);

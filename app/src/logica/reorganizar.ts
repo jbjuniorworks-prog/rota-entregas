@@ -86,7 +86,7 @@ export function reorganizarDaqui(e: Estado, feita: Parada, tempoMs = TEMPO_DA_CO
     daOrdem.filter(x => falta(x.id)).reduce((s, x) => s + (ps[x.id]?.[campo] || 0), 0);
   const area = (campo: keyof Perna) => soma(pernas, campo) - soma(e.pernas, campo);
   const doFim = (campo: keyof Perna) => t.fim ? (fim?.[campo] || 0) - (R.fim?.[campo] || 0) : 0;
-  const nova: RotaArea = {...ra, ordem, linha: null, dur: ra.dur + area('dur'), dist: ra.dist + area('dist')};
+  const nova: RotaArea = {...ra, ordem, linha: null, linhaDesde: prontas.length, dur: ra.dur + area('dur'), dist: ra.dist + area('dist')};
   const rota: Rota = {
     ...R,
     areas: R.areas.map((x, i) => i === k ? nova : x),

@@ -14,8 +14,12 @@ export interface ParadaDaLinha extends Ponto {
 // O serviço de ruas encosta a parada na rua: o corte cai a poucos metros dela. Uma rua de ida e
 // volta passa duas vezes perto do mesmo ponto; vale a primeira passagem depois do corte de antes.
 const PERTO_M = 30;
+// Parada que a linha não chega nem perto não é deste traço (a rota guarda onde ele começa, em
+// linhaDesde, mas a que já estava no celular antes desta versão não): ela não puxa o corte. Puxando, o
+// corte ia parar perto do fim e a linha sumia inteira (dono, 27/11: "a rota sumiu, só ir entregando").
+const FORA_DA_LINHA_M = 150;
 
-function corte(linha: [number, number][], p: Ponto, de: number): number {
+function corte(linha: [number, number][], p: Ponto, de: number, sempre = false): number {
   let melhor = de, menor = Infinity;
   for (let i = de; i < linha.length; i++) {
     const d = haversine({lat: linha[i][0], lng: linha[i][1]}, p);
@@ -23,18 +27,19 @@ function corte(linha: [number, number][], p: Ponto, de: number): number {
     // já passou perto e está se afastando: é esta a passagem
     else if (menor <= PERTO_M && d > 2 * PERTO_M) break;
   }
-  return melhor;
+  return sempre || menor <= FORA_DA_LINHA_M ? melhor : de;
 }
 
 // O pedaço da linha até a próxima: do corte da parada de antes (ou do começo) ao corte da primeira
 // que falta. `paradas` na ordem da rota. Dono, 27/11, com a mesma foto: "pra onde vou exatamente? tem
 // vários lados pintados". Com a rota inteira que falta desenhada, a linha saía para mais de um lado de
 // onde ele estava; ele escolheu ver só o caminho até a próxima.
-export function linhaAteAProxima(linha: [number, number][], paradas: ParadaDaLinha[]): [number, number][][] {
-  const k = paradas.findIndex(p => !p.feita);
+// `desde`: as paradas antes dela não estão no traço (linhaDesde).
+export function linhaAteAProxima(linha: [number, number][], paradas: ParadaDaLinha[], desde = 0): [number, number][][] {
+  const k = paradas.findIndex((p, i) => i >= desde && !p.feita);
   if (linha.length < 2 || k < 0) return [];
   let de = 0, ate = 0;
-  for (let i = 0; i <= k; i++) { de = ate; ate = corte(linha, paradas[i], ate); }
+  for (let i = desde; i <= k; i++) { de = ate; ate = corte(linha, paradas[i], ate, i === k); }
   const t = linha.slice(de, ate + 1);
   return t.length >= 2 ? [t] : [];
 }

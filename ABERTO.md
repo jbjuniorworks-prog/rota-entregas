@@ -169,6 +169,18 @@ Fora da lista:
   entrega não há linha.
 - Testado: unidade e e2e quebram com cada sabotagem (sem o GPS; sem a primeira passagem; linha até o
   fim). Tipos, 805 de unidade e 428 e2e. Não visto no celular.
+- **GPS ligado em todas as telas** (dono: "pode deixar ativo o GPS o tempo todo, testamos deixando
+  gravando e não come bateria"). Ele só ficava na Rota. Com a localização já liberada, fica ligado em
+  qualquer tela (`main.tsx`); sem ela, só a Rota pede, para o app não abrir perguntando. O app
+  escondido (Waze, tela apagada) continua sem GPS: isso é do navegador, como o teste do caminho mostra.
+- **A linha que sumia** (dono, 10:15, foto com 14 de 53 e "no app: #19": "a rota sumiu, sem eu fazer
+  nada, só ir entregando"). Causa achada no código e reproduzida no e2e (a linha do celular não vai
+  para a nuvem, então o caso da foto não foi refeito): depois de uma entrega fora da ordem, a linha
+  nova sai da entregue, mas o corte ainda passava pelas entregues de antes, que não estão no traço, e
+  o corte ia parar perto do fim. Conserto: a área guarda onde a linha começa (`linhaDesde`), e parada a
+  mais de 150 m do traço não puxa o corte (para a rota que já estava no celular). E o pedido da linha
+  nova, que antes só se repetia na próxima entrega, tenta de novo a cada 20 s.
+- Testado: tipos, 808 de unidade e 431 e2e; cada conserto quebra o seu teste quando desligado.
 
 ## Um botão de entregar no cartão da próxima (27/11, dono: "cada um só aparecer na hora que precisa"): publicado em 27/11 (#55, versão `mwye8i1b`)
 

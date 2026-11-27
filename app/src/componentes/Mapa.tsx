@@ -399,7 +399,7 @@ export default function Mapa() {
     // anda com ele, numa camada só dela, para não redesenhar o resto do fundo a cada leitura.
     const euNaLinha = ui.tela === 'rota' && ui.euAqui && ui.euAqui.precisao <= LINHA_COM_GPS_ATE_M ? ui.euAqui : null;
     const sigLinha = [
-      e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0)).join('|'),
+      e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0) + ':' + (ra.linhaDesde ?? 0)).join('|'),
       // a linha some trecho a trecho, a cada entrega
       e.rota && e.rota.areas.map(ra => ra.ordem.map(id => feitaNaLinha(id) ? 1 : 0).join('')).join('|'),
       e.areas.map(a => a.id + a.cor).join(','),
@@ -412,9 +412,10 @@ export default function Mapa() {
       camadaR.clearLayers();
       // só a área da próxima (a do cartão): as outras não são o caminho de agora
       if (e.rota && alvo) for (const ra of e.rota.areas) if (ra.linha && ra.ordem.includes(alvo.id)) {
-        const paradas = ra.ordem.map(loja.parada).filter((p): p is NonNullable<typeof p> => p?.lat != null && p.lng != null)
-          .map(p => ({lat: p.lat!, lng: p.lng!, feita: feitaNaLinha(p.id)}));
-        for (const t of aPartirDeMim(linhaAteAProxima(ra.linha, paradas), euNaLinha)) {
+        const comLugar = (id: string) => { const p = loja.parada(id); return p?.lat != null && p.lng != null; };
+        const paradas = ra.ordem.filter(comLugar).map(id => { const p = loja.parada(id)!; return {lat: p.lat!, lng: p.lng!, feita: feitaNaLinha(id)}; });
+        const desde = ra.ordem.slice(0, ra.linhaDesde ?? 0).filter(comLugar).length;
+        for (const t of aPartirDeMim(linhaAteAProxima(ra.linha, paradas, desde), euNaLinha)) {
           L.polyline(t, {color: loja.area(ra.id).cor, weight: 4, opacity: .75, className: 'linha-da-rota'}).addTo(camadaR);
         }
       }
