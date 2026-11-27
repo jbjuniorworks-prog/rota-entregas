@@ -154,7 +154,26 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## O cartão do pino que fechava na chegada (27/11, dono na rota: "fui finalizar uma entrega que estava na minha frente, apareceu a Rua Dionísio 208 e foi marcada lá"): na branch `cartao-que-chega`
+## A faixa da próxima curva (27/11, dono: "pode ir", depois do caminho refeito; foto do Google Maps com "↰ 30 m, Av. Principal; depois, ↱"): na branch `faixa-da-curva`
+
+- Quando a próxima muda, o app pede ao serviço de ruas o caminho de onde ele está até ela, com as manobras
+  (`steps=true`). Esse caminho passa a ser a linha desenhada até a próxima, para a faixa e a linha não
+  discordarem. Fora dela, o caminho refeito (#57) também traz as manobras.
+- A faixa, em cima do mapa: seta, distância até a curva, a rua (ou a frase, sem nome no mapa), e
+  "Depois, ↱" quando a seguinte vem a até 150 m. A curva conta como feita a 25 m dela, ou quando ele já
+  anda para a seguinte. Na chegada, "Chegando".
+- A mensagem de baixo do topo (Entregue, Desfazer) cobria a faixa: as duas ficam agora num bloco só, uma
+  embaixo da outra, e o +/- do mapa desce.
+- Dois defeitos achados pelo teste antes de subir: o pedido só saía numa leitura nova do GPS (parado na porta,
+  o celular pode não mandar); e a resposta da parada de antes, chegando depois da entrega, era jogada fora
+  sem pedir a da nova. Agora a troca da próxima pede na hora, e a resposta descartada pede a seguinte.
+- Pedidos ao serviço de ruas: um por parada, mais os de caminho refeito. Para dois motoristas, umas 150 por
+  dia; o servidor gratuito pede no máximo um por segundo.
+- Testado: 10 de unidade (o "1000 m" que devia ser "1,0 km" foi pego aqui) e 1 e2e (sem a faixa, quebra; sem
+  pedir de novo, quebra). Tipos, 828 de unidade e 435 e2e. Prints a 412×915 com e sem a mensagem. Não visto no
+  celular, e as manobras de verdade do serviço de ruas nas ruas de Aracaju não foram vistas.
+
+## O cartão do pino que fechava na chegada (27/11, dono na rota: "fui finalizar uma entrega que estava na minha frente, apareceu a Rua Dionísio 208 e foi marcada lá"): publicado em 27/11 (#58)
 
 - Lido na nuvem (só leitura): a entrega do P33 (Recanto Santo Antônio 32A) estava certa; a Rua João
   Dionízio 208 (seq 65, a anterior na ordem) não ficou como entregue nem com porta marcada (desfeita, ou

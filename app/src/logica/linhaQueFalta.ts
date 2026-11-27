@@ -81,6 +81,15 @@ export interface CaminhoDaProxima {
   trecho: [number, number][] | null;
 }
 
+// só quem é a próxima, sem cortar linha: roda a cada mudança da loja
+export function proximaDaRota(rota: Rota, parada: (id: string) => Parada | undefined): string | null {
+  for (const ra of rota.areas) for (const id of ra.ordem) {
+    const p = parada(id);
+    if (p?.lat != null && p.lng != null && !p.entregue && !p.adiada) return id;
+  }
+  return null;
+}
+
 export function caminhoDaProxima(rota: Rota, parada: (id: string) => Parada | undefined): CaminhoDaProxima | null {
   const comLugar = (id: string) => { const p = parada(id); return p?.lat != null && p.lng != null; };
   const feita = (id: string) => { const p = parada(id); return !!(p?.entregue || p?.adiada); };

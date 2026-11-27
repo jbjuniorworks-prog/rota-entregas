@@ -12,7 +12,7 @@ import {TelaRomaneio} from './componentes/TelaRomaneio';
 import {TelaCaminho} from './componentes/TelaCaminho';
 import {TelaVerificadas} from './componentes/TelaVerificadas';
 import {CartaoAntiga, TopoAntiga} from './componentes/TelaAntiga';
-import {FolhaRota, SobreOMapa, TopoRota} from './componentes/TelaRota';
+import {FaixaDaCurva, FolhaRota, SobreOMapa, TopoRota} from './componentes/TelaRota';
 import {loja, SEM_ESPACO, status, useLoja} from './loja';
 import {haversine} from './logica/geo';
 import {rotuloDe} from './logica/rotulo';
@@ -137,7 +137,12 @@ function App() {
       {ui.tela === 'rota' && <TopoRota />}
       {ui.tela === 'admin' && <Cabecalho titulo="Admin" />}
       {ui.tela === 'antiga' && <TopoAntiga />}
-      <Status />
+      {/* a mensagem e a faixa da curva, uma embaixo da outra: a mensagem cobria a seta e os metros
+          logo depois de cada entrega */}
+      <div className="sob-o-topo">
+        <Status />
+        {ui.tela === 'rota' && <FaixaDaCurva />}
+      </div>
     </div>
     {jaTeveMapa.current && <div className="mapwrap" hidden={!comMapa}>
       <EscudoDoMapa><Suspense fallback={null}>{carregaMapa && <Mapa />}</Suspense></EscudoDoMapa>

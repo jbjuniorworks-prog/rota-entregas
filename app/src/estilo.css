@@ -46,6 +46,15 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
 
 /* por cima do mapa */
 #btnEu[aria-pressed="true"]{background:var(--pri);color:#fff}
+/* a faixa da próxima curva: escura como a do Google Maps, para ler no sol; o +/- desce para baixo dela */
+.faixa{margin:0 72px 0 12px;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:2px 12px;padding:10px 14px;border-radius:14px;background:#0f3b2c;color:#fff;box-shadow:0 2px 8px rgba(17,24,39,.3);pointer-events:none}
+.faixa .seta{font-size:40px;line-height:1;font-weight:700}
+.faixa .metros{font-size:22px;font-weight:800;line-height:1.1}
+.faixa .rua{font-size:18px;font-weight:700;line-height:1.2;overflow-wrap:anywhere}
+.faixa .frase{font-size:14px;opacity:.85}
+.faixa .depois{grid-column:1/-1;font-size:15px;font-weight:600;opacity:.9}
+#app:has(.faixa) .leaflet-top.leaflet-left{top:110px}
+#app:has(#status.on):has(.faixa) .leaflet-top.leaflet-left{top:190px}
 #btnEu{position:absolute;right:12px;top:12px;z-index:500;width:48px;height:48px;border-radius:50%;border:0;background:#fff;color:var(--tx);display:grid;place-items:center;box-shadow:0 2px 8px rgba(17,24,39,.2);cursor:pointer;padding:0}
 
 /* o cartão de baixo */
@@ -214,7 +223,9 @@ details summary{font-weight:600;cursor:pointer;padding:8px 0}
 .cima{flex:none;position:relative;z-index:1100}
 /* na Rota, o aviso fica por cima do mapa: no fluxo, cada aviso empurrava o mapa 40 px para baixo e
    de volta. Nas outras telas ele fica no fluxo, para não cobrir o voltar do cabeçalho. */
-#app.tela-rota .cima>#status{position:absolute;left:0;right:0;top:100%}
+#app.tela-rota .sob-o-topo{position:absolute;left:0;right:0;top:100%;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+#app.tela-rota .sob-o-topo>#status{pointer-events:auto}
+#app.tela-rota .sob-o-topo>#status:not(.on)+.faixa{margin-top:12px}
 #status{flex:none;background:#111827;color:#fff;padding:10px 14px;font-size:14px;display:none;white-space:pre-line}
 #status.on{display:block}
 #status .aviso-linha{display:flex;align-items:flex-start;gap:8px}

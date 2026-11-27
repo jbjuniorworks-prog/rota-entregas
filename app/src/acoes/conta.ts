@@ -8,6 +8,7 @@ import {buscarDeNovoOsNomesTortos, conferirComOCensoAoAbrir, processarCompartilh
 import {avisoCompartilhadas, conferirVerificadas, consultarCompartilhadas, oferecerLocalGuardado, verPinosNovos} from './posicoes';
 import {virarODia} from './rota';
 import {iniciarCaminho} from './caminho';
+import {vigiarAProxima} from './desvio';
 import {saiuDaTela, verVersao} from './versao';
 
 // de quanto em quanto o topo pergunta pelas portas das entregas feitas (conferirVerificadas)
@@ -62,6 +63,7 @@ async function assumirODia(): Promise<boolean> {
 export async function iniciar() {
   iniciarNavegacao();
   iniciarCaminho();
+  vigiarAProxima();
   usarRegiao(e().regiao || null);
   await iniciarNuvem();
   await assumirODia();
