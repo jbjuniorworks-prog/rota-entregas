@@ -154,6 +154,36 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
+## Conferir com mapa, xarope à vista, comentário no pino e sem emojis (26/11, noite): em quatro branches, nada enviado; a 034 espera o dono
+
+Decidido pelo dono (perguntas de 26/11): as duas telas do Conferir; comentário para todos os
+motoristas; texto curto sobre o lugar, sem telefone. Os nove branches de 26/11 juntos (branch local
+`combinacao-26-11b`, só para teste): tipos, 803 de unidade e 421 e2e.
+
+- **`xarope-no-conferir`:** "queria colocar cliente xarope e não conseguia". No Conferir ele existia,
+  mas só no cartão aberto tocando no endereço. Agora é um botão ao lado do Editar.
+- **`procurar-com-mapa`:** a entrega de outro dia (busca dos dias anteriores, também sem rota) tinha só
+  um link do Google Maps. "Ver no mapa" abre uma tela nova com o mapa do app no ponto dela, "Marcar a
+  porta no mapa" (correção de motorista pela chave, pela fila) e o cliente xarope (pela chave com o
+  apartamento). Não tem "Estou aqui": a tela não liga o GPS.
+- **`comentario-no-pino`** (montado em cima do `procurar-com-mapa`, que entra antes): a 034 cria
+  `comentarios` e três funções (`comentar`, `apagar_comentario` só do admin, `comentarios_dos_lugares`
+  sem o nome de quem escreveu). Até 120 letras; o banco e o app recusam o que parece telefone, e o CEP
+  (8 dígitos) cai junto, limite conhecido. Um por motorista e endereço, pela chave do xarope. Aparece no
+  cartão do pino, da próxima (só leitura: os botões têm de caber em 384×760) e no Conferir. A 018 tinha
+  decidido não guardar texto livre sobre cliente; o dono escolheu texto curto sobre o lugar.
+  - Testada num Postgres 17 descartável, com o mínimo do Supabase: 14 checagens, a migração rodada duas
+    vezes, e sem a regra do telefone o teste dela falha. Não rodada no Supabase de verdade.
+  - O teste do comercial A → B → A passou a falhar 3 de 3 com a leitura nova: um registro mostrou a
+    sessão nova de A mandando os dois desejos antes do "online" do teste, o que está certo. O teste
+    agora afirma que um desejo só sai mandado pela sessão nova; desligar a checagem de conta depois do
+    envio (`enviarComerciais`) ainda o quebra.
+  - **Falta:** o dono rodar a `034_comentarios.sql` no SQL Editor. Sem ela o app não mostra nada e o
+    comentário escrito fica na fila esperando.
+- **`sem-emojis`:** "tira os emojis". Saíram dos botões do xarope, dos títulos e contadores do Admin e do
+  botão da senha (agora "Ver"/"Ocultar"). Ficaram o ✓ e o ⏸ dos pinos e as bolinhas de cor das áreas no
+  texto copiado para o WhatsApp.
+
 ## Quatro pedidos da rua de 26/11 (duas fotos do dono, "pode seguir"): em quatro branches, nada enviado
 
 Cada um com teste que quebrou com o conserto sabotado. Os quatro juntos com o `definir-limpa`
