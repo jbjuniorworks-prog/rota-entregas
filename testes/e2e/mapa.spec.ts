@@ -1397,10 +1397,25 @@ test.describe('o que os outros motoristas já sabem do endereço', () => {
     await aba(page, '2. Conferir');
     const a101 = page.locator('[data-item]').filter({hasText: 'Bloco A ap 101'});
     const b202 = page.locator('[data-item]').filter({hasText: 'Bloco B ap 202'});
-    await a101.locator('.topo').click();
+    await a101.locator('[data-acao="xarope"]').click();
     await a101.locator('[data-marcar-xarope]').getByRole('button', {name: /deixar com vizinho/}).click();
     await expect(a101.locator('[data-xarope]')).toContainText('Cliente xarope');
     await expect(b202.locator('[data-xarope]')).toHaveCount(0);
+    await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'reclamacoes' && p.metodo === 'POST').length, {timeout: 20_000}).toBe(1);
+  });
+
+  // Dono, 26/11: "queria colocar cliente xarope e não conseguia". No Conferir ele só aparecia com o
+  // cartão aberto, tocando no endereço, que ninguém sabia que abria.
+  test('no Conferir, o "Cliente xarope" está nos botões do endereço, sem abrir o cartão, e vai para a nuvem', async ({page, nuvem}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await aba(page, '2. Conferir');
+    const item = page.locator('[data-item]').filter({hasText: 'Bloco A ap 101'});
+    await expect(item.locator('.topo')).toHaveAttribute('aria-expanded', 'false');
+    await item.getByRole('button', {name: 'Cliente xarope'}).click();
+    await item.locator('[data-marcar-xarope]').getByRole('button', {name: /deixar com vizinho/}).click();
+    await expect(page.locator('#status')).toContainText('Cliente xarope marcado');
+    await expect(item.locator('[data-xarope]')).toContainText('Cliente xarope');
     await expect.poll(() => nuvem.pedidos.filter(p => p.caminho === 'reclamacoes' && p.metodo === 'POST').length, {timeout: 20_000}).toBe(1);
   });
 
