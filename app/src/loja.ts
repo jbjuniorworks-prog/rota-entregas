@@ -60,6 +60,8 @@ export interface Ui {
   xarope: string | null;
   // a entrega de outro dia aberta no mapa, pela busca do Conferir (dono, 26/11)
   antiga: EntregaAntiga | null;
+  // a entrega com o campo do comentário aberto (034)
+  comentando: string | null;
   // versão publicada mais nova que a que está rodando, com rota andando: a barra de atualizar
   versaoNova: {id: string; quando: string} | null;
   // portas verificadas na nuvem depois da rota montada, que levariam pinos para outro lugar: a
@@ -89,7 +91,7 @@ const ui: Ui = {
   tela: estado.paradas.length ? 'rota' : 'inicio', folha: 'proxima', escolhidas: [], grupos: [], pino: null, menu: false,
   // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
   posicionando: null, marcandoLugar: null, localRecebido: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
-  euAqui: null, irParaMim: 0, seguindo: true, cartaoDesde: null, esperandoAdmin: 0, xarope: null, antiga: null, versaoNova: null, pinosNovos: null, nomesNoMapa: [], podeInstalar: false,
+  euAqui: null, irParaMim: 0, seguindo: true, cartaoDesde: null, esperandoAdmin: 0, xarope: null, antiga: null, comentando: null, versaoNova: null, pinosNovos: null, nomesNoMapa: [], podeInstalar: false,
   minimizado: lerMinimizado(), semEspaco: false,
 };
 

@@ -182,6 +182,19 @@ export function clienteNuvem(): ClienteNuvem | null {
       }
       return saida;
     },
+    async comentar(chave, texto) {
+      const {error} = await s.rpc('comentar', {chave, texto_: texto});
+      if (error) throw erro(error);
+    },
+    async comentarios(chaves) {
+      const saida = [];
+      for (let i = 0; i < chaves.length; i += 400) {
+        const {data, error} = await s.rpc('comentarios_dos_lugares', {chaves: chaves.slice(i, i + 400)});
+        if (error) throw erro(error);
+        saida.push(...(data || []));
+      }
+      return saida;
+    },
     async marcarComercial(chave) {
       const {error} = await s.from('comerciais').upsert({chave_lugar: chave}, {onConflict: 'chave_lugar,motorista_id', ignoreDuplicates: true})
         .setHeader('Authorization', 'Bearer ' + token);
