@@ -44,6 +44,8 @@ export interface Ui {
   enquadrar: number;
   focar: {id: string; vez: number} | null;
   desfazer: (() => void) | null;
+  // uma segunda ação ao lado do Desfazer (26/11: "Não foi na porta", que tira só a porta)
+  extra: {rotulo: string; fazer: () => void} | null;
   marcas: {pontos: Marca[]; vez: number} | null;
   // Onde o motorista está, e para onde está apontado. O mapa mostrava os pinos e não mostrava
   // ele: sem se ver no meio deles não dá para saber para que lado sair da esquina.
@@ -92,7 +94,7 @@ let geracao = 0;
 const ui: Ui = {
   tela: estado.paradas.length ? 'rota' : 'inicio', folha: 'proxima', escolhidas: [], grupos: [], pino: null, menu: false,
   // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
-  posicionando: null, marcandoLugar: null, localRecebido: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, marcas: null,
+  posicionando: null, marcandoLugar: null, localRecebido: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, extra: null, marcas: null,
   euAqui: null, irParaMim: 0, seguindo: true, cartaoDesde: null, esperandoAdmin: 0, xarope: null, antiga: null, paradaAntiga: null, comentando: null, versaoNova: null, pinosNovos: null, nomesNoMapa: [], podeInstalar: false,
   minimizado: lerMinimizado(), semEspaco: false,
 };
@@ -135,11 +137,12 @@ export const loja = {
 };
 
 let temporizador: ReturnType<typeof setTimeout> | undefined;
-export function status(msg: string, ms?: number, desfazer: (() => void) | null = null) {
+export function status(msg: string, ms?: number, desfazer: (() => void) | null = null, extra: Ui['extra'] = null) {
   ui.aviso = msg;
   ui.desfazer = desfazer;
+  ui.extra = extra;
   clearTimeout(temporizador);
-  if (msg && ms) temporizador = setTimeout(() => { if (ui.aviso === msg) { ui.aviso = ''; ui.desfazer = null; avisar(); } }, ms);
+  if (msg && ms) temporizador = setTimeout(() => { if (ui.aviso === msg) { ui.aviso = ''; ui.desfazer = null; ui.extra = null; avisar(); } }, ms);
   avisar();
 }
 

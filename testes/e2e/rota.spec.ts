@@ -11,7 +11,8 @@ const feitas = async (page: Page) => Number((await page.locator('.resumo b').inn
 // Entrega a próxima até o cartão ser de duas ou mais entregas no mesmo endereço.
 async function ateUmEnderecoComVarias(page: Page) {
   const cartao = page.locator('.proxima');
-  const todas = cartao.getByRole('button', {name: /^Entreguei as \d+$/});
+  // a entrega de todas sem marcar a porta: o botão, na porta verificada; o link, na que falta verificar (26/11)
+  const todas = cartao.getByRole('button', {name: /^(Entreguei as \d+|Entregar as \d+ sem marcar a porta)$/});
   for (let i = 0; i < 15 && !(await todas.count()); i++) {
     await cartao.locator('[data-acao="entregue"]').first().click();
     await page.waitForTimeout(250);
@@ -75,7 +76,7 @@ test.describe('com GPS', () => {
     await expect(aviso(page)).toContainText('2 entrega(s) marcada(s) aqui');
     await expect(page.locator('.resumo')).toContainText(`${antes + 2} de 10 entregas`);
 
-    await page.locator('.proxima').getByRole('button', {name: 'Entreguei', exact: true}).click();
+    await page.locator('.proxima [data-acao="entregue"]').first().click();
     await expect(page.locator('.resumo')).toContainText(`${antes + 3} de 10 entregas`);
   });
 

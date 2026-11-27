@@ -15,7 +15,7 @@ import {linhaDaRota, matriz} from '../servicos/ruas';
 import {contar, desatualizarRota, e, enviarFila, fila, memoria, ui} from './base';
 import {abrir, irPara, telaBase} from './navegacao';
 import {pedirLinhas, SEGUE_DAQUI, seguirDaqui, voltarOrdem} from './reorganizar';
-import {ARRUMAR_DE_LONGE, comMinhaPosicao, consultarCompartilhadas, desfazerPorta, GPS_PASSAGEM, guardarPassagem, guardarPassagens, longeDemais, portaDaEntrega} from './posicoes';
+import {ARRUMAR_DE_LONGE, comMinhaPosicao, consultarCompartilhadas, desfazerPorta, GPS_PASSAGEM, guardarPassagem, guardarPassagens, longeDemais, naoFoiNaPorta, portaDaEntrega} from './posicoes';
 import {registrarComoFicou} from './registro';
 
 // Quando vale a posição que o mapa já vem seguindo, em vez de pedir uma nova ao GPS.
@@ -216,7 +216,7 @@ ${alvo.length} entrega(s), ${pacotes} pacote(s).`)) return;
       : ` ${faltaNaChave(vivas[0].texto)}, a porta vale só para hoje.`) + daqui, 10000, () => {
       // desfazer a entrega volta a porta junto (desfazerPorta, em marcarEntregue)
       status(desfeita('Desfeito: a entrega voltou para a lista e o pino para onde estava.', desfazerEntrega()), 4000);
-    });
+    }, {rotulo: 'Não foi na porta', fazer: () => naoFoiNaPorta(vivas)});
   }, motivo => soEntregue(`Não consegui o GPS: ${motivo}`), `Entregue${quantas}. Marcando a porta pelo GPS…${daqui}`);
 }
 

@@ -545,6 +545,21 @@ export function desfazerAPorta(ps: Parada[]) {
   if (!confirm(`Desfazer a porta que você marcou em ${vivas[0].texto.split(',').slice(0, 2).join(',')}?
 
 O pino volta para onde estava antes.`)) return;
+  voltarPortas(vivas);
+  status('Pino de volta para onde estava antes.', 4000);
+}
+
+// "Não foi na porta" (26/11): logo depois do Entreguei aqui, na mensagem. O toque já diz o que ele
+// quer: sem pergunta. A entrega fica; só a porta sai, como no "Desfazer a porta".
+export function naoFoiNaPorta(ps: Parada[]) {
+  const vivas = ps.filter(p => portaDesfazivel(p));
+  if (!vivas.length) return;
+  contar('nao-foi-na-porta');
+  voltarPortas(vivas);
+  status('Entregue, sem marcar a porta: o pino voltou para onde estava.', 4000);
+}
+
+function voltarPortas(vivas: Parada[]) {
   for (const p of vivas) {
     const d = portaDesfazivel(p);
     if (d?.de === 'mudanca') desfazerMudanca(p);
@@ -556,7 +571,6 @@ O pino volta para onde estava antes.`)) return;
   }
   enviarFila();
   loja.mudou();
-  status('Pino de volta para onde estava antes.', 4000);
 }
 
 const JUNTO_DAQUI = 300;

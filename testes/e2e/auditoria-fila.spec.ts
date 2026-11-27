@@ -250,7 +250,7 @@ test('com a memória do navegador cheia, a entrega some ao reabrir, mas a faixa 
       return original.call(this, k, v);
     };
   });
-  await page.locator('.proxima').getByRole('button', {name: 'Entreguei', exact: true}).click();
+  await page.locator('.proxima [data-acao="entregue"]').first().click();
   await expect(page.locator('.resumo')).toContainText('1 de 10 entregas');
   await expect(aviso(page)).toContainText('Entregue.');
   await expect(page.locator('[data-sem-espaco]')).toContainText('O celular não conseguiu guardar a rota');

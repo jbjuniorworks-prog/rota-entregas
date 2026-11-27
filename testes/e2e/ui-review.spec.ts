@@ -63,7 +63,7 @@ for (const tela of [{width: 384, height: 760}, {width: 412, height: 915}]) {
       await carregar(page, ROTA_GRANDE);
       await montar(page);
       expect(await mapaVisivel(page), 'parte da tela com o mapa').toBeGreaterThan(0.55);
-      for (const s of ['.proxima .endereco', '.proxima [data-acao="aqui"]', '.proxima .tres [data-acao="entregue"]']) {
+      for (const s of ['.proxima .endereco', '.proxima [data-acao="aqui"]', '.proxima .tres .btn']) {
         const b = await caixa(page, s);
         expect(b.y >= 0 && b.y + b.height <= tela.height, `${s} tem de caber na tela sem rolar`).toBe(true);
       }
