@@ -320,7 +320,12 @@ function CartaoProxima() {
           para amanhã, sem ter de achar o Resetar no Mais. O botão logo abaixo do resumo: depois dos
           links das portas, saía do cartão em 412×915 */}
       {falta
-        ? <div className="grande">Sequência concluída. Falta(m) {falta}, na lista.</div>
+        ? <>
+          <div className="grande">Sequência concluída. Falta(m) {falta}, na lista.</div>
+          {/* dono, 26/11: o que sobra costuma ser ocorrência; sem o botão, o cartão esperava para sempre */}
+          <button className="btn pri" data-encerrar onClick={() => { A.contar('encerrar-com-sobras'); A.encerrarComSobras(); }}>Encerrar a rota</button>
+          <div className="info">As que faltam ficam como não entregues. Limpa o celular para a rota de amanhã.</div>
+        </>
         : <>
           <div className="grande">Rota finalizada</div>
           <ResumoDoDia />

@@ -331,6 +331,14 @@ export function resetar() {
   status('Rota resetada. Carregue a planilha, o PDF ou os prints. Dá para desfazer nos próximos 10 minutos.', 7000);
 }
 
+// Com entrega por fazer (dono, 26/11): o que sobra no fim costuma ser ocorrência e não vai fechar,
+// e esperar não acabava a rota. Encerra do mesmo jeito, depois de dizer quantas ficam.
+export function encerrarComSobras() {
+  const faltam = e().paradas.filter(p => !p.entregue).length;
+  if (faltam && !confirm(`${faltam === 1 ? 'Falta 1 entrega' : `Faltam ${faltam} entregas`}. Encerrar a rota mesmo assim?\n\nElas ficam como não entregues. Dá para desfazer logo depois.`)) return;
+  encerrarRota();
+}
+
 // "Encerrar a rota" do cartão de fim e "Começar do zero" do dia seguinte: o reset, sem a pergunta
 // do Mais, porque a rota acabou; o Desfazer fica no aviso pelo mesmo prazo do backup.
 export function encerrarRota(msg = 'Rota encerrada. O celular está pronto para a rota de amanhã.') {

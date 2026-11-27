@@ -35,6 +35,8 @@ export function MenuMais() {
       {/* o teste de 24/11: gravando, o nome diz, para ninguém esquecer ligado */}
       {item(A.gravandoCaminho() ? 'Teste do caminho (gravando)' : 'Teste do caminho', () => A.abrir({tela: 'caminho'}))}
       {e.rota && item('Copiar a rota para o WhatsApp', A.copiarRota)}
+      {/* com a ocorrência ainda na sequência, o cartão de fim não chega: daqui encerra a qualquer hora */}
+      {e.rota && item('Encerrar a rota', () => { A.contar('encerrar-mais'); A.encerrarComSobras(); })}
       {comParadas && item('Ler mais uma planilha ou endereços', () => A.abrir({tela: 'inicio'}))}
       {comParadas && item('Resetar a rota', A.resetar, 'perigo')}
       {!comParadas && backupRecente(guarda) && item('Desfazer o último reset', A.desfazerReset)}
