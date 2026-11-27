@@ -154,7 +154,18 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Um botão de entregar no cartão da próxima (27/11, dono: "cada um só aparecer na hora que precisa"): na branch `um-botao-de-entregar`
+## A linha da rota começa no entregador (27/11, foto do dono ao vivo: "a linha continua atrás de onde estou, atrapalha mais que ajuda"): na branch `linha-a-partir-de-mim`
+
+- A linha até a próxima começava na última entrega feita, mesmo depois de ele já ter saído dali.
+  Agora, na Rota, com GPS de até 30 m e o entregador a até 40 m da linha, ela começa no ponto da
+  linha mais perto dele (`aPartirDeMim` em `logica/linhaQueFalta.ts`). Longe da linha, fica como antes.
+- Só o trecho até a próxima é cortado. Numa rua de ida e volta vale a primeira passagem, como no corte
+  das paradas: a volta continua desenhada.
+- A linha foi para uma camada própria e é redesenhada a cada ~1 m andado, sem refazer os pinos.
+- Testado: 3 de unidade e 1 e2e novos, cada um quebrando com a sua sabotagem (sem o GPS; sem a
+  primeira passagem). Tipos, 806 de unidade e 428 e2e. Não visto no celular.
+
+## Um botão de entregar no cartão da próxima (27/11, dono: "cada um só aparecer na hora que precisa"): publicado em 27/11 (#55, versão `mwye8i1b`)
 
 - Na porta por verificar, o cartão tinha "Entreguei aqui" grande e "Entreguei" pequeno na fileira do
   Waze. Agora o botão é só o "Entreguei aqui" (mesma regra `podeAqui`); a fileira fica com Waze e Depois.

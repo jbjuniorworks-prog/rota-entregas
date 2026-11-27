@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, pausaDoSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
-import {linhaQueFalta} from '../logica/linhaQueFalta';
+import {aPartirDeMim, linhaQueFalta} from '../logica/linhaQueFalta';
 import {emendar, rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
 import {abrirAsQueSeCobrem, emLeque, empilhar, inclinacao} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
@@ -15,6 +15,8 @@ import {numerosDaShopee} from '../logica/paradasDaShopee';
 import {passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
 import {loja, useLoja} from '../loja';
 
+// acima disso o GPS pode estar na rua do lado: a linha não é cortada por ele
+const LINHA_COM_GPS_ATE_M = 30;
 // entregue, ou deixada para depois: a linha da rota não precisa mais levar até ela
 const feitaNaLinha = (id: string) => { const p = loja.parada(id); return !!(p?.entregue || p?.adiada); };
 
@@ -121,6 +123,7 @@ export default function Mapa() {
   const div = useRef<HTMLDivElement>(null);
   const mapa = useRef<L.Map | null>(null);
   const camadaFundo = useRef<L.LayerGroup | null>(null);
+  const camadaLinha = useRef<L.LayerGroup | null>(null);
   const camadaPinos = useRef<L.LayerGroup | null>(null);
   const camadaEu = useRef<L.LayerGroup | null>(null);
   const camadaLacos = useRef<L.LayerGroup | null>(null);
@@ -132,6 +135,7 @@ export default function Mapa() {
   const pinos = useRef<Record<string, NoMapa>>({});
   const desenhado = useRef('');
   const fundoFeito = useRef('');
+  const linhaFeita = useRef('');
   const enquadrado = useRef(0);
   const focado = useRef(0);
   const marcado = useRef(0);
@@ -150,6 +154,7 @@ export default function Mapa() {
     // o trecho que o mapa não tem vai por baixo da linha da rota, como as ruas do mapa
     m.createPane('tracos').style.zIndex = '350';
     camadaTracos.current = L.layerGroup().addTo(m);
+    camadaLinha.current = L.layerGroup().addTo(m);
     camadaFundo.current = L.layerGroup().addTo(m);
     camadaLeque.current = L.layerGroup().addTo(m);
     camadaPinos.current = L.layerGroup().addTo(m);
@@ -210,7 +215,7 @@ export default function Mapa() {
       // os traços da linha da rota que estão desenhados
       linhaDaRota: () => {
         const tracos: [number, number][][] = [];
-        camadaFundo.current?.eachLayer(l => { if (l instanceof L.Polyline && l.options.className === 'linha-da-rota') tracos.push((l.getLatLngs() as L.LatLng[]).map(q => [q.lat, q.lng])); });
+        camadaLinha.current?.eachLayer(l => { if (l instanceof L.Polyline) tracos.push((l.getLatLngs() as L.LatLng[]).map(q => [q.lat, q.lng])); });
         return tracos;
       },
     };
@@ -377,9 +382,6 @@ export default function Mapa() {
       const sigFundo = [
         e.inicio && [e.inicio.lat, e.inicio.lng, e.inicio.exibido].join(','),
         e.fim && [e.fim.lat, e.fim.lng, e.fim.exibido].join(','),
-        e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0)).join('|'),
-        // a linha some trecho a trecho, a cada entrega
-        e.rota && e.rota.areas.map(ra => ra.ordem.map(id => feitaNaLinha(id) ? 1 : 0).join('')).join('|'),
         e.areas.map(a => a.id + a.cor).join(','),
         marcasAdmin ? 'admin' + marcasAdmin.vez : '',
       ].join('#');
@@ -387,15 +389,31 @@ export default function Mapa() {
         fundoFeito.current = sigFundo;
         fundo.clearLayers();
         if (e.fim) L.marker([e.fim.lat, e.fim.lng], {icon: icone('F', '#111827')}).bindPopup('Terminar perto de: ' + esc(e.fim.exibido)).addTo(fundo);
-        if (e.rota) for (const ra of e.rota.areas) if (ra.linha) {
-          const paradas = ra.ordem.map(loja.parada).filter((p): p is NonNullable<typeof p> => p?.lat != null && p.lng != null)
-            .map(p => ({lat: p.lat!, lng: p.lng!, feita: feitaNaLinha(p.id)}));
-          for (const t of linhaQueFalta(ra.linha, paradas, !!ra.tempos?.fim)) {
-            L.polyline(t, {color: loja.area(ra.id).cor, weight: 4, opacity: .75, className: 'linha-da-rota'}).addTo(fundo);
-          }
-        }
         if (marcasAdmin) for (const x of marcasAdmin.pontos) {
           L.marker([x.lat, x.lng], {icon: icone(x.rotulo, x.cor), zIndexOffset: 1000}).bindPopup(esc(x.texto)).addTo(fundo);
+        }
+      }
+    }
+
+    // Na Rota, com GPS bom, a linha começa no entregador (aPartirDeMim): ela anda com ele, numa
+    // camada só dela, para não redesenhar o resto do fundo a cada leitura.
+    const euNaLinha = ui.tela === 'rota' && ui.euAqui && ui.euAqui.precisao <= LINHA_COM_GPS_ATE_M ? ui.euAqui : null;
+    const sigLinha = [
+      e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0)).join('|'),
+      // a linha some trecho a trecho, a cada entrega
+      e.rota && e.rota.areas.map(ra => ra.ordem.map(id => feitaNaLinha(id) ? 1 : 0).join('')).join('|'),
+      e.areas.map(a => a.id + a.cor).join(','),
+      euNaLinha ? euNaLinha.lat.toFixed(5) + ',' + euNaLinha.lng.toFixed(5) : '',
+    ].join('#');
+    if (sigLinha !== linhaFeita.current) {
+      linhaFeita.current = sigLinha;
+      const camadaR = camadaLinha.current!;
+      camadaR.clearLayers();
+      if (e.rota) for (const ra of e.rota.areas) if (ra.linha) {
+        const paradas = ra.ordem.map(loja.parada).filter((p): p is NonNullable<typeof p> => p?.lat != null && p.lng != null)
+          .map(p => ({lat: p.lat!, lng: p.lng!, feita: feitaNaLinha(p.id)}));
+        for (const t of aPartirDeMim(linhaQueFalta(ra.linha, paradas, !!ra.tempos?.fim), euNaLinha)) {
+          L.polyline(t, {color: loja.area(ra.id).cor, weight: 4, opacity: .75, className: 'linha-da-rota'}).addTo(camadaR);
         }
       }
     }

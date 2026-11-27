@@ -44,3 +44,32 @@ export function linhaQueFalta(linha: [number, number][], paradas: ParadaDaLinha[
   }
   return juntos.map(t => linha.slice(t.de, t.ate + 1)).filter(t => t.length >= 2);
 }
+
+// Dono, 27/11, com a foto do mapa ao vivo: "a linha continua atrás de onde estou, atrapalha mais que
+// ajuda". O trecho até a próxima começa na última feita; com o GPS em cima dele, começa no entregador.
+// Longe da linha (outro caminho, GPS ruim), ela fica como está: cortar num lugar errado engana mais.
+const NA_LINHA_M = 40;
+
+// o ponto do segmento a-b mais perto de p, e a distância até ele, num plano local (poucos metros)
+function noSegmento(a: [number, number], b: [number, number], p: Ponto): {d: number; q: [number, number]} {
+  const kx = 111320 * Math.cos(p.lat * Math.PI / 180), ky = 110540;
+  const ax = (a[1] - p.lng) * kx, ay = (a[0] - p.lat) * ky, dx = (b[1] - a[1]) * kx, dy = (b[0] - a[0]) * ky;
+  const l2 = dx * dx + dy * dy;
+  const t = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+  const x = ax + t * dx, y = ay + t * dy;
+  return {d: Math.hypot(x, y), q: [p.lat + y / ky, p.lng + x / kx]};
+}
+
+export function aPartirDeMim(trechos: [number, number][][], eu: Ponto | null): [number, number][][] {
+  if (!eu || !trechos.length) return trechos;
+  const [t, ...resto] = trechos;
+  let melhor = -1, menor = Infinity, q: [number, number] = t[0];
+  for (let i = 0; i < t.length - 1; i++) {
+    const s = noSegmento(t[i], t[i + 1], eu);
+    if (s.d < menor) { menor = s.d; melhor = i; q = s.q; }
+    // como no corte: numa rua de ida e volta, vale a primeira passagem
+    else if (menor <= NA_LINHA_M && s.d > 2 * NA_LINHA_M) break;
+  }
+  if (menor > NA_LINHA_M) return trechos;
+  return [[q, ...t.slice(melhor + 1)], ...resto];
+}

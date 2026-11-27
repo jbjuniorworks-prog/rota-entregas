@@ -1852,3 +1852,47 @@ test.describe('a linha da rota só do que falta', () => {
     await expect.poll(() => tracos(page)).toEqual([]);
   });
 });
+
+// Dono, 27/11, foto do mapa ao vivo: "a linha continua atrás de onde estou, atrapalha mais que ajuda".
+test.describe('a linha da rota começa no entregador', () => {
+  test.use({viewport: {width: 412, height: 915}, permissions: ['geolocation'], geolocation: {latitude: 0, longitude: 0, accuracy: 8}});
+  const metros = (a: {lat: number; lng: number}, b: {lat: number; lng: number}) =>
+    111320 * Math.hypot(a.lat - b.lat, (a.lng - b.lng) * Math.cos(a.lat * Math.PI / 180));
+  const tracos = (page): Promise<[number, number][][]> => page.evaluate(() => (window as any).rotaTeste.linhaDaRota());
+
+  test('no meio do caminho até a próxima, o trecho que ficou para trás sai do mapa', async ({page, context}) => {
+    // o serviço de ruas de mentira devolve a linha reta pelos pontos pedidos
+    await context.route('**://router.project-osrm.org/**', r => {
+      const url = new URL(r.request().url());
+      const pts = url.pathname.split('/').pop()!.split(';').map(s => { const [lng, lat] = s.split(',').map(Number); return {lat, lng}; });
+      if (url.pathname.includes('/table/')) {
+        const distances = pts.map(a => pts.map(b => metros(a, b)));
+        return r.fulfill({json: {code: 'Ok', distances, durations: distances.map(l => l.map(m => m / 10))}});
+      }
+      return r.fulfill({json: {code: 'Ok', routes: [{geometry: {coordinates: pts.map(p => [p.lng, p.lat])}}]}});
+    });
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await page.waitForFunction(() => !!(window as any).rotaTeste);
+    await expect.poll(async () => (await tracos(page)).length, 'a premissa: há linha').toBe(1);
+    const resumo = await page.locator('.resumo').innerText();
+    await page.locator('[data-folha="proxima"] [data-acao="entregue"]').first().click();
+    await expect(page.locator('.resumo')).not.toHaveText(resumo);
+    const e = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!));
+    const ordem: string[] = e.rota.areas.flatMap((a: any) => a.ordem);
+    const parada = (id: string) => e.paradas.find((p: any) => p.id === id);
+    const de = parada(ordem.find(id => parada(id).entregue)!);
+    const ate = parada(ordem.find(id => !parada(id).entregue)!);
+    expect(metros(de, ate), 'a premissa: um caminho de verdade entre as duas').toBeGreaterThan(100);
+    const meio = {lat: (de.lat + ate.lat) / 2, lng: (de.lng + ate.lng) / 2};
+    const [inicio] = (await tracos(page))[0];
+    expect(metros({lat: inicio[0], lng: inicio[1]}, de), 'a premissa: antes, a linha sai da entregue').toBeLessThan(2);
+
+    await context.setGeolocation({latitude: meio.lat, longitude: meio.lng, accuracy: 8});
+    await expect.poll(async () => { const [[la, ln]] = (await tracos(page))[0]; return metros({lat: la, lng: ln}, meio); },
+      'a linha começa onde o GPS está').toBeLessThan(2);
+    const [linha] = await tracos(page);
+    expect(Math.min(...linha.map(([la, ln]) => metros({lat: la, lng: ln}, ate))), 'e segue pela próxima, como antes').toBeLessThan(2);
+  });
+});

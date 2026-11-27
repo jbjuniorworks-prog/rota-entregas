@@ -1,4 +1,4 @@
-import {linhaQueFalta, type ParadaDaLinha} from './linhaQueFalta';
+import {aPartirDeMim, linhaQueFalta, type ParadaDaLinha} from './linhaQueFalta';
 
 // Uma rua reta, de oeste para leste, com um ponto a cada ~55 m (0,0005 grau).
 const rua = (de: number, ate: number, lat = -10.95): [number, number][] => {
@@ -49,5 +49,32 @@ describe('a linha só do que falta', () => {
 
   test('sem paradas, a linha fica como veio', () => {
     expect(linhaQueFalta(linha, [], false)).toEqual([linha]);
+  });
+});
+
+describe('a linha começa onde o entregador está', () => {
+  // dois trechos: até a próxima (-37.06 a -37.05) e um depois de uma feita fora da ordem
+  const trechos = [rua(-37.06, -37.05), rua(-37.045, -37.04)];
+  const eu = (lng: number, lat = -10.95) => ({lat, lng});
+
+  test('no meio do trecho até a próxima: o que ficou para trás sai, o resto fica igual', () => {
+    const [t, outro] = aPartirDeMim(trechos, eu(-37.0573, -10.9501));
+    expect(t[0][0]).toBeCloseTo(-10.95, 6);
+    expect(t[0][1]).toBeCloseTo(-37.0573, 6);
+    expect(t.slice(1)).toEqual(trechos[0].filter(([, lng]) => lng > -37.0573));
+    expect(outro).toEqual(trechos[1]);
+  });
+
+  test('longe da linha, ou sem GPS: a linha fica como está', () => {
+    expect(aPartirDeMim(trechos, eu(-37.0573, -10.9506))).toEqual(trechos);
+    expect(aPartirDeMim(trechos, null)).toEqual(trechos);
+  });
+
+  test('rua sem saída de ida e volta: no começo da ida, a volta continua desenhada', () => {
+    const ida = rua(-37.06, -37.05);
+    const t = [[...ida, ...ida.slice(0, -1).reverse()]];
+    const [r] = aPartirDeMim(t as [number, number][][], eu(-37.0588));
+    expect(r[r.length - 1][1]).toBe(-37.06);
+    expect(Math.max(...r.map(([, lng]) => lng))).toBe(-37.05);
   });
 });
