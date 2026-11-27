@@ -36,7 +36,7 @@ export function TelaCaminho() {
   return <>
     <Cabecalho titulo="Teste do caminho" sub="Fica só neste celular. Nada vai para a nuvem." />
     <div className="corpo" data-caminho>
-      <div className="info">Com a Rota aberta, o GPS do app já fica ligado. Gravando, o app guarda neste celular o caminho que
+      <div className="info">Com a localização liberada, o GPS do app já fica ligado. Gravando, o app guarda neste celular o caminho que
         o GPS lê, e a bateria a cada 5 minutos. Serve para ver quanto da rota o caminho cobre e quanta bateria vai embora.</div>
       <button className={`btn ${gravando ? 'contorno' : 'pri'} grande-btn`} data-gravar onClick={A.trocarCaminho}>
         {gravando ? 'Parar de gravar' : 'Gravar meu caminho'}</button>

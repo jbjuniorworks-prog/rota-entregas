@@ -73,6 +73,8 @@ export interface Ui {
   pinosNovos: {resultados: PosicaoCompartilhada[]; entregas: number} | null;
   // o nome das ruas do dia onde o mapa mostra outro ou nenhum, e os trechos que ele não desenha
   nomesNoMapa: NomeNoMapa[];
+  // o caminho até a próxima refeito de onde ele está, porque saiu da linha (acoes/desvio.ts)
+  desvio: {para: string; linha: [number, number][]} | null;
   // o Chrome avisou que dá para instalar, e ele não pediu para deixar para depois
   podeInstalar: boolean;
   // o cartão da próxima reduzido a uma linha, e o mapa com quase a tela toda (pedido de 03/10)
@@ -95,7 +97,7 @@ const ui: Ui = {
   tela: estado.paradas.length ? 'rota' : 'inicio', folha: 'proxima', escolhidas: [], grupos: [], pino: null, menu: false,
   // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
   posicionando: null, marcandoLugar: null, localRecebido: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, extra: null, marcas: null,
-  euAqui: null, irParaMim: 0, seguindo: true, cartaoDesde: null, esperandoAdmin: 0, xarope: null, antiga: null, paradaAntiga: null, comentando: null, versaoNova: null, pinosNovos: null, nomesNoMapa: [], podeInstalar: false,
+  euAqui: null, irParaMim: 0, seguindo: true, cartaoDesde: null, esperandoAdmin: 0, xarope: null, antiga: null, paradaAntiga: null, comentando: null, versaoNova: null, pinosNovos: null, nomesNoMapa: [], desvio: null, podeInstalar: false,
   minimizado: lerMinimizado(), semEspaco: false,
 };
 

@@ -70,7 +70,9 @@ test.describe('o teste do caminho', () => {
     await rotaAberta(page);
     await ligar(page);
     const saiu: string[] = [];
-    page.on('request', r => saiu.push(r.url() + ' ' + (r.postData() || '')));
+    // O serviço de ruas recebe o ponto de agora quando ele sai da linha até a próxima (acoes/desvio.ts),
+    // gravando ou não, como já recebia a saída da rota. O que este teste guarda é o caminho gravado.
+    page.on('request', r => { if (!r.url().includes('router.project-osrm.org')) saiu.push(r.url() + ' ' + (r.postData() || '')); });
     await andarUmPouco(page, context);
     await page.clock.fastForward(5 * 60_000);
     await verOTeste(page);

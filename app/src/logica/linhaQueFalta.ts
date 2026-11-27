@@ -1,5 +1,5 @@
 import {haversine} from './geo';
-import type {Ponto} from './tipos';
+import type {Parada, Ponto, Rota} from './tipos';
 
 // Dono, 26/11, com a foto do mapa na rua: "pinos que foram feitos não precisam mais estar com
 // caminhos, sempre ao próximo". A linha de uma área é um traço só, do começo ao fim, sem dizer onde
@@ -71,4 +71,36 @@ export function aPartirDeMim(trechos: [number, number][][], eu: Ponto | null): [
   }
   if (menor > NA_LINHA_M) return trechos;
   return [[q, ...t.slice(melhor + 1)], ...resto];
+}
+
+// A próxima parada da rota e o caminho até ela, pela linha da área: o mesmo que o cartão da próxima
+// mostra (a primeira por fazer, na ordem das áreas). `trecho` é null quando a área está sem linha.
+export interface CaminhoDaProxima {
+  id: string;
+  area: string;
+  trecho: [number, number][] | null;
+}
+
+export function caminhoDaProxima(rota: Rota, parada: (id: string) => Parada | undefined): CaminhoDaProxima | null {
+  const comLugar = (id: string) => { const p = parada(id); return p?.lat != null && p.lng != null; };
+  const feita = (id: string) => { const p = parada(id); return !!(p?.entregue || p?.adiada); };
+  for (const ra of rota.areas) {
+    const ids = ra.ordem.filter(comLugar);
+    const id = ids.find(x => !feita(x));
+    if (!id) continue;
+    if (!ra.linha) return {id, area: ra.id, trecho: null};
+    const desde = ra.ordem.slice(0, ra.linhaDesde ?? 0).filter(comLugar).length;
+    const paradas = ids.map(x => { const p = parada(x)!; return {lat: p.lat!, lng: p.lng!, feita: feita(x)}; });
+    const [t] = linhaAteAProxima(ra.linha, paradas, desde);
+    return {id, area: ra.id, trecho: t ?? null};
+  }
+  return null;
+}
+
+// a distância de p até a linha, em metros
+export function distanciaDaLinha(t: [number, number][], p: Ponto): number {
+  if (t.length === 1) return noSegmento(t[0], t[0], p).d;
+  let menor = Infinity;
+  for (let i = 0; i < t.length - 1; i++) menor = Math.min(menor, noSegmento(t[i], t[i + 1], p).d);
+  return menor;
 }
