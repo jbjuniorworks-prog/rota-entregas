@@ -12,7 +12,7 @@ import {TelaRomaneio} from './componentes/TelaRomaneio';
 import {TelaCaminho} from './componentes/TelaCaminho';
 import {TelaVerificadas} from './componentes/TelaVerificadas';
 import {FolhaRota, SobreOMapa, TopoRota} from './componentes/TelaRota';
-import {loja, SEM_ESPACO, useLoja} from './loja';
+import {loja, SEM_ESPACO, status, useLoja} from './loja';
 import {haversine} from './logica/geo';
 import {rotuloDe} from './logica/rotulo';
 import type {Parada, Ponto} from './logica/tipos';
@@ -88,8 +88,13 @@ function Status() {
       <span>Toque no mapa, no lugar certo de {ui.marcandoLugar.endereco}.</span>
       <button className="btn peq" data-acao="colar-link" onClick={A.colarLinkNoLugar}>Colar link do mapa</button>
       <button className="btn peq" onClick={A.pararDeMarcarLugar}>Cancelar</button>
-    </div>}{ui.aviso}
-    {ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>Desfazer</button></>}
+    </div>}
+    {/* Dono, 26/11: o resumo da leitura ficava parado em cima do mapa, sem prazo para sumir. O "×"
+        fecha qualquer mensagem; o símbolo vem do CSS, para não entrar no texto da mensagem. */}
+    {ui.aviso && <div className="aviso-linha" data-aviso>
+      <span>{ui.aviso}{ui.desfazer && <> <button className="btn peq" style={{marginLeft: 8}} onClick={ui.desfazer}>Desfazer</button></>}</span>
+      <button className="fechar-aviso" aria-label="Tirar a mensagem" data-fechar-aviso onClick={() => status('')} />
+    </div>}
   </div>;
 }
 
