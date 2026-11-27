@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, pausaDoSeguir, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
-import {aPartirDeMim, linhaAteAProxima} from '../logica/linhaQueFalta';
+import {aPartirDeMim, caminhoDaProxima} from '../logica/linhaQueFalta';
 import {emendar, rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
 import {abrirAsQueSeCobrem, emLeque, empilhar, inclinacao} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
@@ -404,20 +404,18 @@ export default function Mapa() {
       e.rota && e.rota.areas.map(ra => ra.ordem.map(id => feitaNaLinha(id) ? 1 : 0).join('')).join('|'),
       e.areas.map(a => a.id + a.cor).join(','),
       alvo ? alvo.id : '',
+      ui.desvio ? ui.desvio.para + ':' + ui.desvio.linha.length + ':' + ui.desvio.linha[0].join(',') : '',
       euNaLinha ? euNaLinha.lat.toFixed(5) + ',' + euNaLinha.lng.toFixed(5) : '',
     ].join('#');
     if (sigLinha !== linhaFeita.current) {
       linhaFeita.current = sigLinha;
       const camadaR = camadaLinha.current!;
       camadaR.clearLayers();
-      // só a área da próxima (a do cartão): as outras não são o caminho de agora
-      if (e.rota && alvo) for (const ra of e.rota.areas) if (ra.linha && ra.ordem.includes(alvo.id)) {
-        const comLugar = (id: string) => { const p = loja.parada(id); return p?.lat != null && p.lng != null; };
-        const paradas = ra.ordem.filter(comLugar).map(id => { const p = loja.parada(id)!; return {lat: p.lat!, lng: p.lng!, feita: feitaNaLinha(id)}; });
-        const desde = ra.ordem.slice(0, ra.linhaDesde ?? 0).filter(comLugar).length;
-        for (const t of aPartirDeMim(linhaAteAProxima(ra.linha, paradas, desde), euNaLinha)) {
-          L.polyline(t, {color: loja.area(ra.id).cor, weight: 4, opacity: .75, className: 'linha-da-rota'}).addTo(camadaR);
-        }
+      // só até a próxima (a do cartão); se ele saiu da linha, o caminho refeito de onde ele está
+      const c = e.rota && alvo ? caminhoDaProxima(e.rota, loja.parada) : null;
+      const trecho = c && (ui.desvio?.para === c.id ? ui.desvio.linha : c.trecho);
+      if (c && trecho) for (const t of aPartirDeMim([trecho], euNaLinha)) {
+        L.polyline(t, {color: loja.area(c.area).cor, weight: 4, opacity: .75, className: 'linha-da-rota'}).addTo(camadaR);
       }
     }
 

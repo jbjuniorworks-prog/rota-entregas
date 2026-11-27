@@ -154,7 +154,22 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## A linha da rota começa no entregador (27/11, foto do dono ao vivo: "a linha continua atrás de onde estou, atrapalha mais que ajuda"): na branch `linha-a-partir-de-mim`
+## Caminho refeito quando ele sai da linha (27/11, dono, com a foto do Google Maps: "se conseguimos deixar o mapa se adaptando à nossa movimentação, paramos de usar o Maps e o Waze; pode fazer o que for preciso"): na branch `refazer-caminho`
+
+- Fora da linha até a próxima por mais de 50 m, durante 10 s, com GPS de até 30 m e a mais de 80 m
+  da parada: o app pede ao serviço de ruas o caminho de onde ele está até a próxima, e desenha esse no
+  lugar (`logica/desvio.ts`, `acoes/desvio.ts`). Vale até a próxima mudar.
+- No máximo um pedido a cada 20 s, e só com a Rota na frente: o Admin aberto no computador, longe de
+  tudo, pediria o dia inteiro.
+- O ponto de agora vai para o serviço de ruas (gratuito, `router.project-osrm.org`) a cada caminho
+  refeito, como a saída da rota já ia. O caminho gravado do teste do caminho continua só no celular; o
+  teste "nada do caminho vai para a rede" passou a deixar de fora só esse serviço, e diz por quê.
+- Conta `caminho-refeito` em `uso_dos_botoes`: ler em alguns dias quantas vezes por rota.
+- Testado: 7 de unidade da decisão (sem a espera e os 10 s, 4 quebram) e 1 e2e (sem a vigia, quebra).
+  Tipos, 815 de unidade e 432 e2e. Não visto no celular.
+- Falta, na ordem combinada: a faixa da próxima curva; o mapa girando com o rumo.
+
+## A linha da rota começa no entregador (27/11, foto do dono ao vivo: "a linha continua atrás de onde estou, atrapalha mais que ajuda"): publicado em 27/11 (#56)
 
 - A linha até a próxima começava na última entrega feita, mesmo depois de ele já ter saído dali.
   Agora, na Rota, com GPS de até 30 m e o entregador a até 40 m da linha, ela começa no ponto da

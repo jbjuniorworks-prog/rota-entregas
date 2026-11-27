@@ -22,6 +22,7 @@ import {abrir, alturaAgora, irPara, voltar} from './navegacao';
 import {cartaoAoAndar} from '../logica/seguir';
 import {avisarPerto} from './aviso';
 import {anotarNoCaminho, marcarNoCaminho} from './caminho';
+import {vigiarCaminho} from './desvio';
 import {revisaoComercial} from './comerciais';
 
 export async function consultarCompartilhadas(): Promise<{confirmadas: number; sugestoes: number; minhas: number; lembradasVerificadas: number; xaropes: number}> {
@@ -756,6 +757,7 @@ export function seguirMinhaPosicao(): () => void {
     };
     avisarPerto(ui.euAqui, avisadas);
     anotarNoCaminho(ui.euAqui);
+    vigiarCaminho();
     // Com o cartão de um pino aberto o seguir pausa; longe de onde abriu, ele já foi embora: fecha
     // e o mapa volta para ele. Não com o seguir desligado por ele, nem com o toque no mapa armado.
     if (ui.pino && ui.tela === 'rota' && ui.seguindo && !ui.posicionando) {
