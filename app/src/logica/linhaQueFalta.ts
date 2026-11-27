@@ -4,7 +4,7 @@ import type {Ponto} from './tipos';
 // Dono, 26/11, com a foto do mapa na rua: "pinos que foram feitos não precisam mais estar com
 // caminhos, sempre ao próximo". A linha de uma área é um traço só, do começo ao fim, sem dizer onde
 // acaba cada trecho. Aqui ela é cortada no ponto mais perto de cada parada, na ordem da rota, e fica
-// só o trecho que chega a uma parada que ainda falta.
+// só o trecho até a próxima que falta.
 
 export interface ParadaDaLinha extends Ponto {
   // entregue, ou deixada para depois: a linha não precisa levar até ela
@@ -26,23 +26,17 @@ function corte(linha: [number, number][], p: Ponto, de: number): number {
   return melhor;
 }
 
-// Os pedaços da linha a desenhar. `paradas` na ordem da rota; `comFim` quando o traço segue até o
-// ponto de chegada depois da última, e esse trecho fica enquanto alguma faltar.
-export function linhaQueFalta(linha: [number, number][], paradas: ParadaDaLinha[], comFim: boolean): [number, number][][] {
-  if (linha.length < 2 || !paradas.length) return [linha];
-  const cortes = [0];
-  for (const p of paradas) cortes.push(corte(linha, p, cortes[cortes.length - 1]));
-  const trechos: {de: number; ate: number}[] = paradas.map((p, k) => p.feita ? null : {de: cortes[k], ate: cortes[k + 1]})
-    .filter((t): t is {de: number; ate: number} => !!t);
-  if (comFim && paradas.some(p => !p.feita)) trechos.push({de: cortes[cortes.length - 1], ate: linha.length - 1});
-  // trechos seguidos viram um traço só
-  const juntos: {de: number; ate: number}[] = [];
-  for (const t of trechos) {
-    const ultimo = juntos[juntos.length - 1];
-    if (ultimo && ultimo.ate === t.de) ultimo.ate = t.ate;
-    else juntos.push({...t});
-  }
-  return juntos.map(t => linha.slice(t.de, t.ate + 1)).filter(t => t.length >= 2);
+// O pedaço da linha até a próxima: do corte da parada de antes (ou do começo) ao corte da primeira
+// que falta. `paradas` na ordem da rota. Dono, 27/11, com a mesma foto: "pra onde vou exatamente? tem
+// vários lados pintados". Com a rota inteira que falta desenhada, a linha saía para mais de um lado de
+// onde ele estava; ele escolheu ver só o caminho até a próxima.
+export function linhaAteAProxima(linha: [number, number][], paradas: ParadaDaLinha[]): [number, number][][] {
+  const k = paradas.findIndex(p => !p.feita);
+  if (linha.length < 2 || k < 0) return [];
+  let de = 0, ate = 0;
+  for (let i = 0; i <= k; i++) { de = ate; ate = corte(linha, paradas[i], ate); }
+  const t = linha.slice(de, ate + 1);
+  return t.length >= 2 ? [t] : [];
 }
 
 // Dono, 27/11, com a foto do mapa ao vivo: "a linha continua atrás de onde estou, atrapalha mais que

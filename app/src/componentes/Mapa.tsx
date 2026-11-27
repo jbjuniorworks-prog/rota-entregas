@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, pausaDoSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
-import {aPartirDeMim, linhaQueFalta} from '../logica/linhaQueFalta';
+import {aPartirDeMim, linhaAteAProxima} from '../logica/linhaQueFalta';
 import {emendar, rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
 import {abrirAsQueSeCobrem, emLeque, empilhar, inclinacao} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
@@ -395,24 +395,26 @@ export default function Mapa() {
       }
     }
 
-    // Na Rota, com GPS bom, a linha começa no entregador (aPartirDeMim): ela anda com ele, numa
-    // camada só dela, para não redesenhar o resto do fundo a cada leitura.
+    // A linha vai só até a próxima. Na Rota, com GPS bom, ela começa no entregador (aPartirDeMim) e
+    // anda com ele, numa camada só dela, para não redesenhar o resto do fundo a cada leitura.
     const euNaLinha = ui.tela === 'rota' && ui.euAqui && ui.euAqui.precisao <= LINHA_COM_GPS_ATE_M ? ui.euAqui : null;
     const sigLinha = [
       e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0)).join('|'),
       // a linha some trecho a trecho, a cada entrega
       e.rota && e.rota.areas.map(ra => ra.ordem.map(id => feitaNaLinha(id) ? 1 : 0).join('')).join('|'),
       e.areas.map(a => a.id + a.cor).join(','),
+      alvo ? alvo.id : '',
       euNaLinha ? euNaLinha.lat.toFixed(5) + ',' + euNaLinha.lng.toFixed(5) : '',
     ].join('#');
     if (sigLinha !== linhaFeita.current) {
       linhaFeita.current = sigLinha;
       const camadaR = camadaLinha.current!;
       camadaR.clearLayers();
-      if (e.rota) for (const ra of e.rota.areas) if (ra.linha) {
+      // só a área da próxima (a do cartão): as outras não são o caminho de agora
+      if (e.rota && alvo) for (const ra of e.rota.areas) if (ra.linha && ra.ordem.includes(alvo.id)) {
         const paradas = ra.ordem.map(loja.parada).filter((p): p is NonNullable<typeof p> => p?.lat != null && p.lng != null)
           .map(p => ({lat: p.lat!, lng: p.lng!, feita: feitaNaLinha(p.id)}));
-        for (const t of aPartirDeMim(linhaQueFalta(ra.linha, paradas, !!ra.tempos?.fim), euNaLinha)) {
+        for (const t of aPartirDeMim(linhaAteAProxima(ra.linha, paradas), euNaLinha)) {
           L.polyline(t, {color: loja.area(ra.id).cor, weight: 4, opacity: .75, className: 'linha-da-rota'}).addTo(camadaR);
         }
       }

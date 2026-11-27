@@ -162,8 +162,13 @@ Fora da lista:
 - Só o trecho até a próxima é cortado. Numa rua de ida e volta vale a primeira passagem, como no corte
   das paradas: a volta continua desenhada.
 - A linha foi para uma camada própria e é redesenhada a cada ~1 m andado, sem refazer os pinos.
-- Testado: 3 de unidade e 1 e2e novos, cada um quebrando com a sua sabotagem (sem o GPS; sem a
-  primeira passagem). Tipos, 806 de unidade e 428 e2e. Não visto no celular.
+- Na mesma foto, o dono: "pra onde vou exatamente? tem vários lados pintados". A linha desenhava a rota
+  inteira que faltava e saía para mais de um lado dele. Ele escolheu (entre só a próxima, a próxima forte
+  com o resto apagado ou tracejado) ver **só o caminho até a próxima** (`linhaAteAProxima`, que tomou o
+  lugar de `linhaQueFalta`), e só na área dela. Sem GPS, a rota sai da primeira parada: até a primeira
+  entrega não há linha.
+- Testado: unidade e e2e quebram com cada sabotagem (sem o GPS; sem a primeira passagem; linha até o
+  fim). Tipos, 805 de unidade e 428 e2e. Não visto no celular.
 
 ## Um botão de entregar no cartão da próxima (27/11, dono: "cada um só aparecer na hora que precisa"): publicado em 27/11 (#55, versão `mwye8i1b`)
 
