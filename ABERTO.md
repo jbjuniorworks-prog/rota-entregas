@@ -154,7 +154,22 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Caminho refeito quando ele sai da linha (27/11, dono, com a foto do Google Maps: "se conseguimos deixar o mapa se adaptando à nossa movimentação, paramos de usar o Maps e o Waze; pode fazer o que for preciso"): na branch `refazer-caminho`
+## O cartão do pino que fechava na chegada (27/11, dono na rota: "fui finalizar uma entrega que estava na minha frente, apareceu a Rua Dionísio 208 e foi marcada lá"): na branch `cartao-que-chega`
+
+- Lido na nuvem (só leitura): a entrega do P33 (Recanto Santo Antônio 32A) estava certa; a Rua João
+  Dionízio 208 (seq 65, a anterior na ordem) não ficou como entregue nem com porta marcada (desfeita, ou
+  ainda na fila do celular). Nenhuma outra parada a menos de 400 m do P33: não foi pino empilhado.
+- Causa provável, pelo código: o cartão de um pino aberto fecha quando ele anda 50 m de onde abriu (Pedro,
+  07/11, que entregou e saiu com o cartão aberto). Quem abre o cartão chegando e anda até a porta também
+  anda 50 m: o cartão fechava e o da próxima, a 208, aparecia debaixo do dedo.
+- Conserto: chegando perto do pino do cartão (mais perto que ao abrir, ou a menos de 50 m), com entrega
+  por fazer nele, o cartão fica. E por 1 s depois de o cartão trocar sozinho, os botões de entregar da
+  próxima não fazem nada.
+- Testado: 3 de unidade e 2 e2e novos, cada um quebrando com a sua sabotagem. Tipos, 818 de unidade e
+  434 e2e. Não visto no celular.
+- Fica de fora: a confirmação ao entregar uma parada longe do GPS, proposta ao dono; não pedida ainda.
+
+## Caminho refeito quando ele sai da linha (27/11, dono, com a foto do Google Maps: "se conseguimos deixar o mapa se adaptando à nossa movimentação, paramos de usar o Maps e o Waze; pode fazer o que for preciso"): publicado em 27/11 (#57)
 
 - Fora da linha até a próxima por mais de 50 m, durante 10 s, com GPS de até 30 m e a mais de 80 m
   da parada: o app pede ao serviço de ruas o caminho de onde ele está até a próxima, e desenha esse no

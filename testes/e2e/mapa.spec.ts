@@ -315,6 +315,61 @@ test.describe('o mapa anda junto com ele', () => {
     await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
   });
 
+  // Dono, 27/11: abriu o cartão do P33 vindo de longe e andou até a porta; o cartão fechou sozinho, o
+  // da próxima apareceu debaixo do dedo, e o Entreguei caiu na Rua João Dionízio 208, a 600 m dali.
+  const pinoDoAlvo = async (page) => {
+    const e = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!));
+    const ordem: string[] = e.rota.areas.flatMap((a: any) => a.ordem);
+    const p = e.paradas.find((x: any) => x.id === ordem.find(id => !e.paradas.find((y: any) => y.id === id).entregue));
+    return {lat: p.lat, lng: p.lng};
+  };
+  const metrosAte = (a: {latitude: number; longitude: number}, b: {lat: number; lng: number}) =>
+    111320 * Math.hypot(a.latitude - b.lat, (a.longitude - b.lng) * Math.cos(b.lat * Math.PI / 180));
+  // a fração f do caminho de NA_ROTA até o ponto (f negativa: para o lado oposto)
+  const rumo = (b: {lat: number; lng: number}, f: number) =>
+    ({...NA_ROTA, latitude: NA_ROTA.latitude + (b.lat - NA_ROTA.latitude) * f, longitude: NA_ROTA.longitude + (b.lng - NA_ROTA.longitude) * f});
+
+  test('com o cartão do pino aberto, andando até o pino, o cartão fica', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    const pino = await pinoDoAlvo(page);
+    // ele vem de 300 m ao sul do pino, de 30 em 30 m, devagar, até 20 m da porta
+    const vindo = (m: number) => ({...NA_ROTA, latitude: pino.lat - m / 111320, longitude: pino.lng});
+    await andarAte(context, vindo(300));
+    await page.waitForTimeout(500);
+    // daqui o pino fica fora da tela: o cartão vem da lista, que abre na próxima
+    await lista(page);
+    await page.locator('[data-folha="lista"] .parada .txt').first().click();
+    await expect(page.locator(PINO)).toBeVisible();
+    for (let m = 270; m >= 20; m -= 30) {
+      await context.setGeolocation(vindo(m));
+      await page.waitForTimeout(300);
+    }
+    await page.waitForTimeout(1200);
+    await expect(page.locator(PINO), 'chegando na porta, o cartão continua o do pino').toBeVisible();
+  });
+
+  test('o cartão do pino fechou sozinho: o toque logo em seguida não entrega a próxima que apareceu', async ({page, context}) => {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await expect.poll(() => doMeio(page), {timeout: 10_000}).toBeLessThan(4);
+    const pino = await pinoDoAlvo(page);
+    const entregues = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!).paradas.filter((p: any) => p.entregue).length);
+    await page.locator('.pino.alvo').click({force: true});
+    await expect(page.locator(PINO)).toBeVisible();
+    await context.setGeolocation(rumo(pino, -60 / metrosAte(NA_ROTA, pino)));
+    await expect(page.locator(PINO), 'indo embora, o cartão fecha').toHaveCount(0);
+    await page.locator('[data-folha="proxima"] .grande-btn').click();
+    await page.waitForTimeout(800);
+    expect(await entregues(), 'o toque que já vinha não entregou').toBe(0);
+    await page.waitForTimeout(400);
+    await page.locator('[data-folha="proxima"] .grande-btn').click();
+    await expect.poll(entregues, 'passado o segundo, o toque entrega').toBe(1);
+  });
+
   // Era uma armadilha: com o cartão aberto, a mira acesa desligava o seguir no primeiro toque, e o
   // segundo centrava uma vez só.
   test('com o cartão do pino aberto, um toque na mira fecha o cartão, vai até ele e volta a seguir', async ({page, context}) => {

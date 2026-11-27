@@ -39,8 +39,13 @@ export const SAIR_DO_CARTAO_M = 50;
 // `desde` é onde ele estava ao abrir o cartão; nulo enquanto não houve leitura boa, e a primeira
 // boa vira o ponto de partida. Leitura com margem acima da do seguir não conta: parado na porta,
 // um GPS ruim "anda" dezenas de metros.
-export function cartaoAoAndar(desde: Ponto | null, eu: Ponto & {precisao: number}): {desde: Ponto | null; fechar: boolean} {
+// `pino`, o lugar do cartão. Chegando nele, o cartão fica (dono, 27/11): abriu o cartão do P33
+// vindo de longe, andou até a porta, o cartão fechou sozinho e o da próxima apareceu debaixo do
+// dedo; o Entreguei caiu na Rua João Dionízio 208, a 600 m dali. Fecha só quem está indo embora.
+export function cartaoAoAndar(desde: Ponto | null, eu: Ponto & {precisao: number}, pino: Ponto | null = null): {desde: Ponto | null; fechar: boolean} {
   if (eu.precisao > SEGUIR_ATE_M) return {desde, fechar: false};
   if (!desde) return {desde: {lat: eu.lat, lng: eu.lng}, fechar: false};
-  return {desde, fechar: haversine(desde, eu) >= SAIR_DO_CARTAO_M};
+  if (haversine(desde, eu) < SAIR_DO_CARTAO_M) return {desde, fechar: false};
+  if (pino && (haversine(eu, pino) < SAIR_DO_CARTAO_M || haversine(eu, pino) < haversine(desde, pino))) return {desde, fechar: false};
+  return {desde, fechar: true};
 }
