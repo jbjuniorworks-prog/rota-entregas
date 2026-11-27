@@ -154,7 +154,34 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Conferir com mapa, xarope à vista, comentário no pino e sem emojis (26/11, noite): em quatro branches, nada enviado; a 034 espera o dono
+## Um botão de entregar no cartão da próxima (27/11, dono: "cada um só aparecer na hora que precisa"): na branch `um-botao-de-entregar`
+
+- Na porta por verificar, o cartão tinha "Entreguei aqui" grande e "Entreguei" pequeno na fileira do
+  Waze. Agora o botão é só o "Entreguei aqui" (mesma regra `podeAqui`); a fileira fica com Waze e Depois.
+- A saída para quem entregou perto, mas não na porta (portaria, vizinho, cliente na rua), veio da
+  revisão que o dono colou: o link "Entregar sem marcar a porta" embaixo da fileira, e, depois do
+  Entreguei aqui, o "Não foi na porta" ao lado do Desfazer, que tira só a porta.
+- Medido antes (`uso_dos_botoes`, 16/11 a 27/11): Entreguei aqui 302/92/118 e Entreguei do cartão do
+  pino 405/138/168 (Pedro, Luan, dono). Não separa a escolha de não marcar: o Entreguei pequeno da
+  próxima não era contado. Agora conta `entregar-sem-porta` e `nao-foi-na-porta`: ler em alguns dias.
+- Testado: 3 e2e novos, que quebram sem a mudança; os testes que clicavam o Entreguei pequeno pelo nome
+  passaram a usar a ação de entregar do cartão. Tipos, 803 de unidade e 427 e2e. Não visto no celular.
+- O cartão do pino (lista de endereços de um ponto) ficou como estava: um passo de cada vez.
+
+## Publicação de #45 a #54 (26/11, dono: "pode mergear")
+
+- Os dez PRs entraram na `main` entre 26/11 21:2x e 21:4x; a versão `mwy9m12t` foi ao ar às 21:50
+  (execução 45918997847, testar e publicar). Conferidos o `versao.json` e os textos novos no JS
+  publicado, os pedaços do Admin e do mapa incluídos.
+- O #50 falhou no CI no teste do comercial A → B → A, o que o #53 conserta; entrou por último, com a
+  branch atualizada, e passou. O `conta.spec.ts:899` falhou uma vez e passou na repetição: causa não
+  investigada.
+- A 034 foi rodada pelo dono em 27/11. Conferido só lendo: `comentarios_dos_lugares` responde e a tabela
+  existe, vazia.
+- Rua Três, 123: o dono apagou a disputa em 27/11. A porta ficou no primeiro ponto (09:26); a entrega do
+  Pedro foi no segundo.
+
+## Conferir com mapa, xarope à vista, comentário no pino e sem emojis (26/11, noite): publicado em 26/11 (#50 a #54, versão `mwy9m12t`); 034 rodada em 27/11
 
 Decidido pelo dono (perguntas de 26/11): as duas telas do Conferir; comentário para todos os
 motoristas; texto curto sobre o lugar, sem telefone. Os nove branches de 26/11 juntos (branch local
@@ -192,7 +219,7 @@ motoristas; texto curto sobre o lugar, sem telefone. Os nove branches de 26/11 j
   dá: as ferramentas só têm a chave de serviço, que não cria tabela, e o CLI do Supabase deste computador
   não abre ("Could not create process"). Senha do banco não se pede pelo chat. Fica para o SQL Editor.
 
-## Quatro pedidos da rua de 26/11 (duas fotos do dono, "pode seguir"): em quatro branches, nada enviado
+## Quatro pedidos da rua de 26/11 (duas fotos do dono, "pode seguir"): publicado em 26/11 (#46 a #49, versão `mwy9m12t`)
 
 Cada um com teste que quebrou com o conserto sabotado. Os quatro juntos com o `definir-limpa`
 (branch local `combinacao-26-11`, só para teste): tipos, 794 de unidade e 413 e2e.
@@ -218,7 +245,7 @@ Cada um com teste que quebrou com o conserto sabotado. Os quatro juntos com o `d
 - **Item futuro:** guardar onde cada trecho começa quando o serviço de ruas devolve a linha, em vez de
   procurar o ponto mais perto.
 
-## O "Definir esta posição como porta" que não resolvia (25/11, print do Admin, dono: "pq não consigo definir essa posição?"): na branch `definir-limpa`
+## O "Definir esta posição como porta" que não resolvia (25/11, print do Admin, dono: "pq não consigo definir essa posição?"): publicado em 26/11 (#45, versão `mwy9m12t`)
 
 - **Rua Três, 123, Matapoã (`49008141|123`), medido na produção (só leitura):** em 24/11 Pedro marcou
   a porta em dois pontos a 249 m um do outro, às 09:26 e às 09:28, e entregou às 09:38 no segundo. As
