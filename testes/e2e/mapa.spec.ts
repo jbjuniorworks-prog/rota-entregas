@@ -1781,3 +1781,59 @@ test.describe('o ponto de saída', () => {
     await expect(page.locator('#map .leaflet-marker-icon .pino').filter({hasText: /^S$/})).toHaveCount(0);
   });
 });
+
+// Dono, 26/11, foto do mapa na rua: "pinos que foram feitos não precisam mais estar com caminhos,
+// sempre ao próximo". O serviço de ruas de mentira devolve a linha passando pelos pontos pedidos.
+test.describe('a linha da rota só do que falta', () => {
+  test.use({viewport: {width: 412, height: 915}});
+  const metros = (a: {lat: number; lng: number}, b: {lat: number; lng: number}) =>
+    111320 * Math.hypot(a.lat - b.lat, (a.lng - b.lng) * Math.cos(a.lat * Math.PI / 180));
+  const tracos = (page): Promise<[number, number][][]> => page.evaluate(() => (window as any).rotaTeste.linhaDaRota());
+
+  test('entregues as primeiras, a linha começa na última delas e vai à próxima; toda feita, não há linha', async ({page, context}) => {
+    page.on('dialog', d => d.accept());
+    await context.route('**://router.project-osrm.org/**', r => {
+      const url = new URL(r.request().url());
+      const pts = url.pathname.split('/').pop()!.split(';').map(s => { const [lng, lat] = s.split(',').map(Number); return {lat, lng}; });
+      if (url.pathname.includes('/table/')) {
+        const distances = pts.map(a => pts.map(b => metros(a, b)));
+        return r.fulfill({json: {code: 'Ok', distances, durations: distances.map(l => l.map(m => m / 10))}});
+      }
+      return r.fulfill({json: {code: 'Ok', routes: [{geometry: {coordinates: pts.map(p => [p.lng, p.lat])}}]}});
+    });
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await page.waitForFunction(() => !!(window as any).rotaTeste);
+    const estado = () => page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!));
+    const e0 = await estado();
+    const ordem: string[] = e0.rota.areas.flatMap((a: any) => a.ordem);
+    const posicao = (e: any, id: string) => e.paradas.find((p: any) => p.id === id);
+    const antes = await tracos(page);
+    expect(antes, 'a premissa: montada com o serviço de ruas, há linha').toHaveLength(1);
+    const pontosAntes = antes[0].length;
+
+    // sem GPS a linha já começa na primeira: é a segunda entregue que tira um trecho
+    for (let i = 0; i < 2; i++) {
+      const resumo = await page.locator('.resumo').innerText();
+      await page.locator('[data-folha="proxima"] [data-acao="entregue"]').first().click();
+      await expect(page.locator('.resumo')).not.toHaveText(resumo);
+    }
+    await expect.poll(async () => (await tracos(page)).flat().length).toBeLessThan(pontosAntes);
+    const e1 = await estado();
+    const feitas = ordem.filter(id => posicao(e1, id).entregue);
+    const ultimaFeita = posicao(e1, feitas[feitas.length - 1]);
+    const depois = await tracos(page);
+    expect(depois).toHaveLength(1);
+    const [lat, lng] = depois[0][0];
+    expect(metros({lat, lng}, ultimaFeita), 'a linha sai da última entregue').toBeLessThan(2);
+    // nenhum ponto da linha passa nas outras entregues
+    for (const id of feitas.slice(0, -1)) for (const [la, ln] of depois[0]) expect(metros({lat: la, lng: ln}, posicao(e1, id))).toBeGreaterThan(2);
+
+    for (let i = 0; i < 30 && await page.locator('[data-folha="proxima"]').isVisible(); i++) {
+      await page.locator('[data-folha="proxima"] [data-acao="entregue"]').first().click();
+    }
+    await expect(page.locator('[data-folha="fim"]')).toBeVisible();
+    await expect.poll(() => tracos(page)).toEqual([]);
+  });
+});
