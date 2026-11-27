@@ -183,6 +183,14 @@ motoristas; texto curto sobre o lugar, sem telefone. Os nove branches de 26/11 j
 - **`sem-emojis`:** "tira os emojis". Saíram dos botões do xarope, dos títulos e contadores do Admin e do
   botão da senha (agora "Ver"/"Ocultar"). Ficaram o ✓ e o ⏸ dos pinos e as bolinhas de cor das áreas no
   texto copiado para o WhatsApp.
+- **`antiga-como-na-rota`** (montado em cima do `comentario-no-pino`, que entra antes): "aparecer igual
+  como se estivesse em rota: entregou errado, cliente xarope, comentário". A entrega antiga vira uma
+  parada só daquela tela, com a chave do cliente fixa (`Parada.chaveCliente`); o aviso e os botões do
+  xarope e o comentário da rota servem nela. Ao abrir, lê da nuvem o xarope e os comentários do
+  endereço. "Porta errada? Estou aqui" pega uma leitura do GPS. Com os dez juntos: 803 de unidade e 424 e2e.
+- **A 034 não rodou:** o dono pediu (fora do computador) que eu rodasse o que fosse preciso. Daqui não
+  dá: as ferramentas só têm a chave de serviço, que não cria tabela, e o CLI do Supabase deste computador
+  não abre ("Could not create process"). Senha do banco não se pede pelo chat. Fica para o SQL Editor.
 
 ## Quatro pedidos da rua de 26/11 (duas fotos do dono, "pode seguir"): em quatro branches, nada enviado
 
