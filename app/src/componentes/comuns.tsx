@@ -1,5 +1,6 @@
-import type {ReactNode} from 'react';
+import {useState, type ReactNode} from 'react';
 import * as A from '../acoes';
+import {comentariosDe, problemaDoComentario, TAMANHO_DO_COMENTARIO} from '../logica/comentarios';
 import {fmtKm} from '../logica/otimizacao';
 import {avisoXarope, MOTIVOS} from '../logica/reclamacoes';
 import {ehComercial, quemMarcou} from '../logica/comerciais';
@@ -72,6 +73,44 @@ export function Sugestao({p}: {p: Parada}) {
 export function AvisoXarope({p}: {p: Parada}) {
   const t = avisoXarope(p.reclamacoes);
   return t ? <div className="aviso xarope" data-xarope>{t}</div> : null;
+}
+
+// Comentário no pino (034, dono 26/11: "casa da filha", "número da casa ao lado é 500"). O dos
+// outros motoristas sai sem o nome; o seu dá para trocar e apagar. Texto sobre o lugar: o app e o
+// banco recusam o que parece telefone.
+// `escrever`: no cartão da próxima não, para os botões de entregar caberem sem rolar (384×760);
+// lá o comentário aparece, e se escreve no cartão do pino ou no Conferir.
+export function ComentariosDoLugar({p, escrever = true}: {p: Parada; escrever?: boolean}) {
+  const {meu, outros} = comentariosDe(p);
+  const aberto = loja.ui.comentando === p.id;
+  const admin = nuvem.perfil?.papel === 'admin';
+  return <div className="comentarios" data-comentarios>
+    {outros.map(c => <div key={c.id} className="comentario" data-comentario>
+      <span>Comentário: {c.texto}</span>
+      {admin && <button className="link" onClick={() => A.apagarComentarioDeOutro(p, c)}>Apagar</button>}
+    </div>)}
+    {meu && !aberto && <div className="comentario" data-comentario data-meu>
+      <span>Seu comentário: {meu.texto}</span>
+      {escrever && <button className="link" onClick={() => A.abrirComentario(p)}>Trocar</button>}
+      {escrever && <button className="link" onClick={() => A.apagarMeuComentario(p)}>Apagar</button>}
+    </div>}
+    {escrever && (aberto ? <EditarComentario p={p} inicial={meu?.texto || ''} />
+      : !meu && <button className="link" data-comentar onClick={() => A.abrirComentario(p)}>Comentar o lugar</button>)}
+  </div>;
+}
+
+function EditarComentario({p, inicial}: {p: Parada; inicial: string}) {
+  const [texto, setTexto] = useState(inicial);
+  const problema = texto.trim() ? problemaDoComentario(texto) : null;
+  return <div className="editar-comentario">
+    <input aria-label="Comentário do lugar" autoFocus maxLength={TAMANHO_DO_COMENTARIO} value={texto} onChange={ev => setTexto(ev.target.value)}
+      placeholder="Ex.: casa da filha, nº ao lado é 500" />
+    <div className="info">{problema || `Sobre o lugar, para o próximo motorista. ${texto.trim().length}/${TAMANHO_DO_COMENTARIO}.`}</div>
+    <div className="linha">
+      <button className="btn peq pri" disabled={!!problema || !texto.trim()} onClick={() => A.salvarComentario(p, texto)}>Salvar</button>
+      <button className="btn peq" onClick={() => A.abrirComentario(p)}>Cancelar</button>
+    </div>
+  </div>;
 }
 
 // Pedido de 28/09: a reclamação costuma chegar depois da entrega, então isto aparece também

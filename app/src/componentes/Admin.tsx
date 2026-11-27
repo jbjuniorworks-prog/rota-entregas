@@ -164,7 +164,7 @@ export function TelaAdmin() {
               : esperando ? <><b>{esperando} esperando você:</b> {pendencias!.map(contar).join(', ')}.</>
                 : 'Nada esperando você.'}
           {visto != null && (t.novas
-            ? ` 🆕 ${t.novas} marcação(ões) nova(s) desde ${dataHora(new Date(visto).toISOString())}.`
+            ? ` ${t.novas} marcação(ões) nova(s) desde ${dataHora(new Date(visto).toISOString())}.`
             : ` Nada novo desde ${dataHora(new Date(visto).toISOString())}.`)}
         </div>}
         {/* o que pede ação primeiro: o "Precisa de você" vazio vai para depois das que têm o que fazer */}
@@ -193,7 +193,7 @@ export function TelaAdmin() {
 
 const de = (a: number, b: number) => <>{a}<small> de {b}</small></>;
 
-const SECAO_DECIDIR = '📌 Precisa de você';
+const SECAO_DECIDIR = 'Precisa de você';
 interface Pendencia {secao: string; n: number; um: string; varios: string}
 const contar = (p: Pendencia) => `${p.n} ${p.n === 1 ? p.um : p.varios}`;
 
@@ -324,13 +324,19 @@ A entrega continua registrada, mas a posição dela não vale para ninguém.`)) 
       : (varias ? `Apagadas as ${varias}: não valem para ninguém.` : 'Apagada: não vale para ninguém.'), 4000);
     recarregar();
   };
-  // grava a marcação de quem administra no ponto dele, como o "Marcar como admin": vence a contagem
+  // Grava a marcação de quem administra no ponto da marca, como o "Marcar como admin": vence a
+  // contagem. E tira da conferência o que o motorista marcou no endereço, como o Separar: na Rua
+  // Três, 123 (24/11) eram duas marcas a 249 m uma da outra, a outra continuava em disputa com a
+  // porta nova, o cartão voltava igual e cada toque trocava a porta de lado (6 vezes até 25/11).
   const definir = async (g: MotoristaEmConferencia, i: ItemEmConferencia) => {
     if (!confirm(`Definir a posição que ${g.nome} marcou como a porta de ${i.endereco}?
 
-Ela passa a valer para todos os motoristas, como marcação sua.`)) return;
-    const feito = await correr('def' + g.id + i.chave_lugar, async () => { await Adm.confirmarPosicao(i.chave_lugar, i.lat, i.lng); return true; },
-      'Porta definida: vale para todos os motoristas.');
+Ela passa a valer para todos os motoristas, como marcação sua. As outras marcas de ${g.nome} neste endereço saem da conferência.`)) return;
+    const feito = await correr('def' + g.id + i.chave_lugar, async () => {
+      await Adm.confirmarPosicao(i.chave_lugar, i.lat, i.lng);
+      await Adm.decidirMarcas(g.id, [i.chave_lugar], false);
+      return true;
+    }, 'Porta definida: vale para todos os motoristas.');
     if (feito) recarregar();
   };
   // Outra entrada do mesmo número (dono, 21/11: Chico Mendes 100 e 15, Matapoã 42): a marca dele
@@ -520,8 +526,8 @@ function BaseDeRuas() {
     {typeof estado === 'object' && <div className="aviso" data-erro-base>Não consegui contar a base de ruas: {estado.erro}{' '}
       <button className="link" onClick={ver}>Tentar de novo</button></div>}
     {c && <>
-      <div className="info">🛣️ {c.ruas_com_nome} ruas com nome · {c.trechos_sem_nome} trechos ainda sem nome{c.trechos_nossos ? ` · ${c.trechos_nossos} nomeados pelas entregas de vocês` : ''}</div>
-      <div className="info">📍 {c.passagens} entregas marcadas na porta, em {c.lugares} endereços · {c.lugares_confirmados} já com posição confirmada</div>
+      <div className="info">{c.ruas_com_nome} ruas com nome · {c.trechos_sem_nome} trechos ainda sem nome{c.trechos_nossos ? ` · ${c.trechos_nossos} nomeados pelas entregas de vocês` : ''}</div>
+      <div className="info">{c.passagens} entregas marcadas na porta, em {c.lugares} endereços · {c.lugares_confirmados} já com posição confirmada</div>
       <div className="linha">
         <button className="btn" onClick={nomear} disabled={fazendo('nomear')}>{fazendo('nomear') ? 'Nomeando…' : 'Nomear ruas com as entregas'}</button>
         <button className="btn" onClick={criar} disabled={fazendo('criar')}>{fazendo('criar') ? 'Desenhando…' : 'Criar rua que falta no mapa'}</button>
@@ -574,7 +580,7 @@ Daqui em diante, o que a pessoa marcar ou entregar só vale para os outros depoi
     <summary>Motoristas ({lista.filter(m => m.papel === 'motorista').length})</summary>
     {lista.map(m => <div className="item" key={m.id} data-motorista={m.nome}>
       <div className="txt"><b>{m.nome}</b>{m.papel === 'admin' ? ' · administrador' : ''}
-        <div className="achado">{m.ativo ? '🟢 ativo' : '⛔ desativado'}</div>
+        <div className="achado">{m.ativo ? 'ativo' : 'desativado'}</div>
         {m.papel === 'motorista' && m.conferir && <span className="tag" style={{background: '#ea580c'}}>em conferência</span>}</div>
       <div className="linha">
         {/* sem a 022 rodada o perfil não traz o campo, e o botão não aparece */}
@@ -785,8 +791,8 @@ function MarcadasPorMotorista({lista, visto, ...doLugar}: {lista: Adm.LugarCorri
   const grupos = [...por.values()].sort((a, b) => b.lugares.length - a.lugares.length || a.nome.localeCompare(b.nome));
   // fechada ao abrir (revisão de 08/11): é para conferir quando ele quiser, e aberta empurrava as
   // pendências para fora da tela
-  return <details data-secao="🆕 Marcadas pelos motoristas nos últimos 7 dias">
-    <summary>🆕 Marcadas pelos motoristas nos últimos 7 dias ({lista.length})</summary>
+  return <details data-secao="Marcadas pelos motoristas nos últimos 7 dias">
+    <summary>Marcadas pelos motoristas nos últimos 7 dias ({lista.length})</summary>
     {!lista.length && <div className="info">Nenhuma porta marcada nos últimos 7 dias.</div>}
     {lista.length > 0 && <div className="info">Cada marcação já vale ou vira sugestão sozinha; o que pede decisão está em Precisa de você.</div>}
     {grupos.map(g => <div className="item" key={g.id} data-marcadas-de={g.nome}>

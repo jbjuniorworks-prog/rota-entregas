@@ -1,5 +1,6 @@
 ﻿import {aplicarCompartilhadas, separarAsQueMovem} from '../logica/compartilhadas';
 import {aplicarReclamacoes, chaveCliente} from '../logica/reclamacoes';
+import {aplicarComentarios} from '../logica/comentarios';
 import {aplicarComerciais} from '../logica/comerciais';
 import {haversine, longeDaPorta, marcarIsoladas, noPino, passaDaPorta} from '../logica/geo';
 import type {Operacao} from '../logica/fila';
@@ -67,6 +68,18 @@ export async function consultarCompartilhadas(): Promise<{confirmadas: number; s
       if (!valeAinda()) return vazia();
       const tocadas = new Set(todas.filter(k => revisaoComercial(k) !== antes.get(k)));
       aplicarComerciais(e().paradas, r, clienteDe, fila.comerciais(), new Set(todas), tocadas);
+    }
+  } catch {}
+  if (!valeAinda()) return vazia();
+  // Os comentários do lugar (034), pela mesma chave do xarope. Por último: posta antes do comercial,
+  // ela atrasava aquela consulta, e o teste do envio preso em A → B → A (comercial.spec) falhou 3 de 3.
+  // Separada: sem a 034 rodada ela falha calada. As entregues entram: o comentário serve a quem volta lá.
+  try {
+    const clientes = [...new Set(e().paradas.map(clienteDe).filter((k): k is string => !!k))];
+    if (clientes.length) {
+      const r = await medidor.medir('banco', () => c.comentarios(clientes));
+      if (!valeAinda()) return vazia();
+      aplicarComentarios(e().paradas, r, clienteDe);
     }
   } catch {}
   if (!valeAinda()) return vazia();
@@ -301,13 +314,13 @@ async function gravarLugar(lat: number, lng: number) {
   ui.marcandoLugar = null;
   loja.mudou(false);
   if (!alvo) return;
-  if (!confirm(`Gravar este ponto como a porta de ${alvo.endereco}?\n\nPassa a valer para todos os motoristas, na frente das entregas e das marcações de antes.`)) {
+  if (!confirm(alvo.pergunta || `Gravar este ponto como a porta de ${alvo.endereco}?\n\nPassa a valer para todos os motoristas, na frente das entregas e das marcações de antes.`)) {
     status('Nada gravado.', 3000);
     return;
   }
   try {
     await alvo.gravar(+lat.toFixed(6), +lng.toFixed(6));
-    status('Porta gravada: vale para todos os motoristas. Os celulares recebem ao abrir o app ou voltar para ele.', 6000);
+    status(alvo.feito || 'Porta gravada: vale para todos os motoristas. Os celulares recebem ao abrir o app ou voltar para ele.', 6000);
   } catch (err) {
     status('Não gravou: ' + (err as Error).message, 6000);
   }

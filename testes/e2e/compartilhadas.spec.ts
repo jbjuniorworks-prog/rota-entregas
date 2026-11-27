@@ -127,7 +127,7 @@ test.describe('correções compartilhadas @nuvem', () => {
     await expect(aviso(adm)).toContainText('Marcação apagada.');
     expect(await correcoesDe(B.id)).toHaveLength(0);
     // só a do Teste A, e ninguém entregou ali: sugestão, que pede decisão
-    const precisa = doTesteA(adm.locator('[data-secao="📌 Precisa de você"]'));
+    const precisa = doTesteA(adm.locator('[data-secao="Precisa de você"]'));
     await expect(precisa).toContainText('Sugestão');
 
     await precisa.locator('[data-marcacao="Teste A"]').getByRole('button', {name: 'Confirmar'}).click();

@@ -19,7 +19,7 @@ import {AvisoDiaNovo} from './AvisoDiaNovo';
 import {rotuloDe} from '../logica/rotulo';
 import {AvisoGaiola} from './AvisoGaiola';
 import {AvisoLongeDoCep} from './AvisoLongeDoCep';
-import {AvisoXarope, BotaoMais, DesfazerPorta, hhmm, Icone, LinhaComercial, MarcarXarope, Meta, PortasExplicadas, Tag} from './comuns';
+import {AvisoXarope, BotaoMais, ComentariosDoLugar, DesfazerPorta, hhmm, Icone, LinhaComercial, MarcarXarope, Meta, PortasExplicadas, Tag} from './comuns';
 
 const daRota = () => {
   const R = loja.e.rota;
@@ -106,6 +106,7 @@ function EntregasDoPonto({ps}: {ps: Parada[]}) {
           {(DUVIDA.has(g.ps[0].precisao) || QUASE.has(g.ps[0].precisao)) && <Tag p={g.ps[0]} />}
           <LinhaComercial ps={g.ps} />
           <AvisoXarope p={g.ps.find(p => p.reclamacoes?.length) || g.ps[0]} />
+          <ComentariosDoLugar p={g.ps[0]} />
         </div>
       </div>
       {abertas.length > 0 ? <BotoesDoEndereco abertas={abertas} ids={ids} quantas={quantas} noChao={noChao} /> : <div className="botoes-entrega">
@@ -320,7 +321,12 @@ function CartaoProxima() {
           para amanhã, sem ter de achar o Resetar no Mais. O botão logo abaixo do resumo: depois dos
           links das portas, saía do cartão em 412×915 */}
       {falta
-        ? <div className="grande">Sequência concluída. Falta(m) {falta}, na lista.</div>
+        ? <>
+          <div className="grande">Sequência concluída. Falta(m) {falta}, na lista.</div>
+          {/* dono, 26/11: o que sobra costuma ser ocorrência; sem o botão, o cartão esperava para sempre */}
+          <button className="btn pri" data-encerrar onClick={() => { A.contar('encerrar-com-sobras'); A.encerrarComSobras(); }}>Encerrar a rota</button>
+          <div className="info">As que faltam ficam como não entregues. Limpa o celular para a rota de amanhã.</div>
+        </>
         : <>
           <div className="grande">Rota finalizada</div>
           <ResumoDoDia />
@@ -376,6 +382,7 @@ function CartaoProxima() {
       </div>
     </div>
     <AvisoXarope p={pend.find(x => x.reclamacoes?.length) || alvo} />
+    {umEndereco && <ComentariosDoLugar p={alvo} escrever={false} />}
     {umEndereco ? <>
       {/* na porta confirmada o botão grande é o Entreguei simples: ela não se marca de novo na rua */}
       {podeAqui

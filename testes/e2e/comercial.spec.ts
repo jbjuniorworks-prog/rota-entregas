@@ -440,7 +440,13 @@ test.describe('pino comercial: o cliente de uma entrada antiga não volta a vale
     expect(Object.values(desejos), 'os dois desejos de A estão de volta').toEqual(['marcar', 'marcar']);
     preso.soltar();
     await page.waitForTimeout(1500);
-    expect(await pendentesDe(page), 'a resposta antiga não tira nenhum desejo de A').toEqual(desejos);
+    // Um desejo só sai da lista mandado pela sessão nova de A. Ela pode já ter mandado nessa espera
+    // (26/11: com a consulta dos comentários, a volta dela chega antes do "online" abaixo); o que não
+    // pode é a resposta antiga tirar um desejo que ninguém mandou.
+    const agora = await pendentesDe(page) || {};
+    const mandadoPelaNova = (k: string) => s.pedidos.some((x: any) => x.sessao !== antiga && x.quem === EU && x.metodo === 'POST'
+      && ([] as any[]).concat(x.corpo).some(l => l?.chave_lugar === k));
+    for (const k of Object.keys(desejos)) expect(k in agora || mandadoPelaNova(k), `a resposta antiga não tira o desejo de ${k}`).toBe(true);
     expect(s.pedidos.filter((x: any) => x.sessao === antiga).length, 'o cliente antigo não manda mais nada').toBe(1);
     await page.evaluate(() => window.dispatchEvent(new Event('online')));
     await expect.poll(() => s.marcas.filter((m: any) => m.de === EU).length, {timeout: 20_000}).toBe(2);

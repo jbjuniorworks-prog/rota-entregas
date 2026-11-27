@@ -9,6 +9,8 @@ import {nuvem} from './nuvem';
 
 export interface EntregaAntiga {
   codigo: string | null;
+  // a chave do endereço: a porta e o cliente xarope se marcam por ela
+  chave: string | null;
   endereco: string;
   bairro: string | null;
   dia: string;
@@ -48,7 +50,7 @@ export async function buscarNosDiasAnteriores(busca: string, deHoje: Set<string>
   return achadas.map(p => {
     const porta = p.entregue_em && p.chave_lugar ? portas.get(`${p.chave_lugar}|${p.rotas.motorista_id}|${diaLocal(p.entregue_em)}`) : undefined;
     return {
-      codigo: p.spx_tn, endereco: p.endereco, bairro: p.bairro, dia: p.rotas.dia, entregueEm: p.entregue_em,
+      codigo: p.spx_tn, chave: p.chave_lugar || null, endereco: p.endereco, bairro: p.bairro, dia: p.rotas.dia, entregueEm: p.entregue_em,
       motorista: p.rotas.perfis?.nome || null,
       ponto: porta ? {...porta, daEntrega: true} : p.lat != null ? {lat: p.lat, lng: p.lng, daEntrega: false} : null,
     };

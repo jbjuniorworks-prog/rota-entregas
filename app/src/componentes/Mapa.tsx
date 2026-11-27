@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, pausaDoSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
+import {linhaQueFalta} from '../logica/linhaQueFalta';
 import {emendar, rotulosNaTela, type NomeNoMapa} from '../logica/nomesNoMapa';
 import {abrirAsQueSeCobrem, emLeque, empilhar, inclinacao} from '../logica/pinos';
 import {ondeNaRota, rotuloDe} from '../logica/rotulo';
@@ -13,6 +14,9 @@ import {longeDoProprioCep} from '../logica/longeDoCep';
 import {numerosDaShopee} from '../logica/paradasDaShopee';
 import {passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
 import {loja, useLoja} from '../loja';
+
+// entregue, ou deixada para depois: a linha da rota não precisa mais levar até ela
+const feitaNaLinha = (id: string) => { const p = loja.parada(id); return !!(p?.entregue || p?.adiada); };
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]!));
 
@@ -203,6 +207,12 @@ export default function Mapa() {
       tamanho: () => { const s = m.getSize(); return {largura: s.x, altura: s.y}; },
       // onde um ponto cai no mapa, para o teste desenhar em volta dele com o mouse
       pixel: (lat: number, lng: number) => { const p = m.latLngToContainerPoint([lat, lng]); return {x: p.x, y: p.y}; },
+      // os traços da linha da rota que estão desenhados
+      linhaDaRota: () => {
+        const tracos: [number, number][][] = [];
+        camadaFundo.current?.eachLayer(l => { if (l instanceof L.Polyline && l.options.className === 'linha-da-rota') tracos.push((l.getLatLngs() as L.LatLng[]).map(q => [q.lat, q.lng])); });
+        return tracos;
+      },
     };
     (window as any).rotaTeste = daqui;
     // O cartão de baixo muda de altura (o de um pino é mais baixo que o da próxima, minimizar,
@@ -226,9 +236,11 @@ export default function Mapa() {
     const m = mapa.current!, fundo = camadaFundo.current!, camadaP = camadaPinos.current!;
     const comLocal = e.paradas.filter(p => p.lat != null && p.lng != null);
     const limites: [number, number][] = comLocal.filter(p => !p.entregue).map(p => [p.lat!, p.lng!]);
-    if (e.inicio) limites.push([e.inicio.lat, e.inicio.lng]);
+    // A saída é o GPS de quando a rota foi montada (dono, 26/11: "o ponto de saída sempre será nosso GPS,
+    // que fica marcando no mapa"): sem pino próprio e fora do enquadramento, que já segue a bolinha do GPS.
     if (e.fim) limites.push([e.fim.lat, e.fim.lng]);
-    const marcasAdmin = ui.tela === 'admin' && ui.marcas ? ui.marcas : null;
+    // as marcas do Admin, e o ponto da entrega de outro dia (TelaAntiga)
+    const marcasAdmin = (ui.tela === 'admin' || ui.tela === 'antiga') && ui.marcas ? ui.marcas : null;
     const escolhendo = ui.tela === 'rota' && ui.folha === 'escolher';
     const escolhidas = escolhendo ? escolhidasValidas(ui.escolhidas, loja.parada) : [];
     const grupos = circulando ? gruposValidos(ui.grupos, loja.parada) : [];
@@ -366,15 +378,22 @@ export default function Mapa() {
         e.inicio && [e.inicio.lat, e.inicio.lng, e.inicio.exibido].join(','),
         e.fim && [e.fim.lat, e.fim.lng, e.fim.exibido].join(','),
         e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0)).join('|'),
+        // a linha some trecho a trecho, a cada entrega
+        e.rota && e.rota.areas.map(ra => ra.ordem.map(id => feitaNaLinha(id) ? 1 : 0).join('')).join('|'),
         e.areas.map(a => a.id + a.cor).join(','),
         marcasAdmin ? 'admin' + marcasAdmin.vez : '',
       ].join('#');
       if (sigFundo !== fundoFeito.current) {
         fundoFeito.current = sigFundo;
         fundo.clearLayers();
-        if (e.inicio) L.marker([e.inicio.lat, e.inicio.lng], {icon: icone('S', '#111827')}).bindPopup('Saída: ' + esc(e.inicio.exibido)).addTo(fundo);
         if (e.fim) L.marker([e.fim.lat, e.fim.lng], {icon: icone('F', '#111827')}).bindPopup('Terminar perto de: ' + esc(e.fim.exibido)).addTo(fundo);
-        if (e.rota) for (const ra of e.rota.areas) if (ra.linha) L.polyline(ra.linha, {color: loja.area(ra.id).cor, weight: 4, opacity: .75}).addTo(fundo);
+        if (e.rota) for (const ra of e.rota.areas) if (ra.linha) {
+          const paradas = ra.ordem.map(loja.parada).filter((p): p is NonNullable<typeof p> => p?.lat != null && p.lng != null)
+            .map(p => ({lat: p.lat!, lng: p.lng!, feita: feitaNaLinha(p.id)}));
+          for (const t of linhaQueFalta(ra.linha, paradas, !!ra.tempos?.fim)) {
+            L.polyline(t, {color: loja.area(ra.id).cor, weight: 4, opacity: .75, className: 'linha-da-rota'}).addTo(fundo);
+          }
+        }
         if (marcasAdmin) for (const x of marcasAdmin.pontos) {
           L.marker([x.lat, x.lng], {icon: icone(x.rotulo, x.cor), zIndexOffset: 1000}).bindPopup(esc(x.texto)).addTo(fundo);
         }

@@ -7,7 +7,7 @@ import {loja, useLoja} from '../loja';
 import {rotuloDe} from '../logica/rotulo';
 import {buscarNosDiasAnteriores, type EntregaAntiga} from '../servicos/historico';
 import {nuvem} from '../servicos/nuvem';
-import {AvisoXarope, Cabecalho, DesfazerPorta, hhmm, MarcarXarope, Meta, Sugestao, Tag} from './comuns';
+import {AvisoXarope, Cabecalho, ComentariosDoLugar, DesfazerPorta, hhmm, MarcarXarope, Meta, Sugestao, Tag} from './comuns';
 
 const precisaConferir = (p: Parada) => DUVIDA.has(p.precisao) || p.precisao === 'pendente' || !!p.sugestao;
 
@@ -111,8 +111,9 @@ function DiasAnteriores({busca}: {busca: string}) {
         ? <span className="feita" data-entregue>Entregue em {quando(x.entregueEm)}</span>
         : <span className="achado">Rota de {diaCurto(x.dia)}, não marcada como entregue</span>}
       {admin && x.motorista && <span className="achado" data-motorista>Motorista: {x.motorista}</span>}
-      {x.ponto && <a className="btn peq" href={`https://www.google.com/maps/search/?api=1&query=${x.ponto.lat},${x.ponto.lng}`} target="_blank" rel="noopener">
-        {x.ponto.daEntrega ? 'Ver onde marcou a entrega' : 'Ver a posição da planilha'}</a>}
+      {/* dono, 26/11: "ver no mapa e editar, igual numa rota". No mapa do app, com a porta e o
+          cliente xarope a um toque; o link do Google ficava fora do app e não arrumava nada */}
+      {x.ponto && <button className="btn peq" data-acao="ver-antiga" onClick={() => A.abrirAntiga(x)}>Ver no mapa</button>}
     </div>)}
   </div>;
 }
@@ -134,6 +135,7 @@ function ItemConferir({p, pacotes}: {p: Parada; pacotes?: string[]}) {
       </span>
     </button>
     <AvisoXarope p={p} />
+    <ComentariosDoLugar p={p} />
     <Sugestao p={p} />
     <div className="linha">
       {p.lat != null && <button className="btn peq" onClick={() => { A.contar('ver'); A.focar(p.id); }}>Ver no mapa</button>}
