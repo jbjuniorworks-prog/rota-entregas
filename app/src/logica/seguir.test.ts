@@ -1,5 +1,5 @@
-import {describe, expect, it} from 'vitest';
-import {cartaoAoAndar, MOVER_M, passoDoSeguir, SAIR_DO_CARTAO_M, SEGUIR_ATE_M, type Leitura} from './seguir';
+import {describe, expect, it, test} from 'vitest';
+import {cartaoAoAndar, MOVER_M, olharAFrente, passoDoSeguir, SAIR_DO_CARTAO_M, SEGUIR_ATE_M, type Leitura} from './seguir';
 
 // 0,0001 grau de latitude são uns 11 m
 const A: Leitura = {lat: -10.96, lng: -37.05, quando: 0};
@@ -79,5 +79,23 @@ describe('o cartão do pino aberto, com ele andando', () => {
   it('leitura com margem maior que a do seguir não fecha, nem vira o ponto de partida', () => {
     expect(cartaoAoAndar(A, em(300, SEGUIR_ATE_M + 1))).toEqual({desde: A, fechar: false});
     expect(cartaoAoAndar(null, em(0, SEGUIR_ATE_M + 1))).toEqual({desde: null, fechar: false});
+  });
+});
+
+// Dono, 27/11: "olhar pra frente acho interessante, vamos testar"
+describe('olhar à frente', () => {
+  test('parado, sem rumo: ele no meio', () => {
+    expect(olharAFrente(null, 412, 600)).toEqual({x: 0, y: 0});
+  });
+
+  test('indo para o norte, o meio fica acima dele; para o leste, à direita', () => {
+    expect(olharAFrente(0, 412, 600)).toEqual({x: 0, y: -168});
+    expect(olharAFrente(90, 412, 600)).toEqual({x: 124, y: 0});
+    expect(olharAFrente(180, 412, 600)).toEqual({x: 0, y: 168});
+  });
+
+  test('o rumo tremendo uns graus não mexe o mapa', () => {
+    expect(olharAFrente(83, 412, 600)).toEqual(olharAFrente(90, 412, 600));
+    expect(olharAFrente(97, 412, 600)).toEqual(olharAFrente(90, 412, 600));
   });
 });
