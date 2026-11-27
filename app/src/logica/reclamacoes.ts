@@ -5,8 +5,8 @@ import type {MotivoReclamacao, Parada, Reclamacao} from './tipos';
 // vizinho, e o próximo que for lá tem de saber antes de chegar. Motivo fechado, sem texto livre.
 
 export const MOTIVOS: Record<MotivoReclamacao, {marcar: string; reclamou: string; fazer: string}> = {
-  jogado: {marcar: '📦 Reclamou de pacote jogado', reclamou: 'de pacote jogado', fazer: 'entregue em mãos'},
-  vizinho: {marcar: '🏠 Reclamou de deixar com vizinho', reclamou: 'de deixar com vizinho', fazer: 'não deixe com vizinho'},
+  jogado: {marcar: 'Reclamou de pacote jogado', reclamou: 'de pacote jogado', fazer: 'entregue em mãos'},
+  vizinho: {marcar: 'Reclamou de deixar com vizinho', reclamou: 'de deixar com vizinho', fazer: 'não deixe com vizinho'},
 };
 
 export interface ReclamacaoDaNuvem {

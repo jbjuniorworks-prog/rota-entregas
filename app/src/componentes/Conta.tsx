@@ -34,7 +34,7 @@ export function TelaEntrar() {
     <label htmlFor="loginSenha">Senha</label>
     <div className="senha">
       <input type={verSenha ? 'text' : 'password'} id="loginSenha" autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={senha} onChange={ev => setSenha(ev.target.value)} />
-      <button type="button" className="olho" aria-label={verSenha ? 'Esconder senha' : 'Mostrar senha'} aria-pressed={verSenha} onClick={() => setVerSenha(!verSenha)}>{verSenha ? '🙈' : '👁️'}</button>
+      <button type="button" className="olho" aria-label={verSenha ? 'Esconder senha' : 'Mostrar senha'} aria-pressed={verSenha} onClick={() => setVerSenha(!verSenha)}>{verSenha ? 'Ocultar' : 'Ver'}</button>
     </div>
     <div className="linha"><button className="btn pri" type="submit">Entrar</button></div>
     {nuvem.semServidor && <div className="aviso">Sem conexão com o servidor. Para entrar pela primeira vez, precisa de internet.</div>}

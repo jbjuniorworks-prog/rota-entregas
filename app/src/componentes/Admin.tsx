@@ -164,7 +164,7 @@ export function TelaAdmin() {
               : esperando ? <><b>{esperando} esperando você:</b> {pendencias!.map(contar).join(', ')}.</>
                 : 'Nada esperando você.'}
           {visto != null && (t.novas
-            ? ` 🆕 ${t.novas} marcação(ões) nova(s) desde ${dataHora(new Date(visto).toISOString())}.`
+            ? ` ${t.novas} marcação(ões) nova(s) desde ${dataHora(new Date(visto).toISOString())}.`
             : ` Nada novo desde ${dataHora(new Date(visto).toISOString())}.`)}
         </div>}
         {/* o que pede ação primeiro: o "Precisa de você" vazio vai para depois das que têm o que fazer */}
@@ -193,7 +193,7 @@ export function TelaAdmin() {
 
 const de = (a: number, b: number) => <>{a}<small> de {b}</small></>;
 
-const SECAO_DECIDIR = '📌 Precisa de você';
+const SECAO_DECIDIR = 'Precisa de você';
 interface Pendencia {secao: string; n: number; um: string; varios: string}
 const contar = (p: Pendencia) => `${p.n} ${p.n === 1 ? p.um : p.varios}`;
 
@@ -526,8 +526,8 @@ function BaseDeRuas() {
     {typeof estado === 'object' && <div className="aviso" data-erro-base>Não consegui contar a base de ruas: {estado.erro}{' '}
       <button className="link" onClick={ver}>Tentar de novo</button></div>}
     {c && <>
-      <div className="info">🛣️ {c.ruas_com_nome} ruas com nome · {c.trechos_sem_nome} trechos ainda sem nome{c.trechos_nossos ? ` · ${c.trechos_nossos} nomeados pelas entregas de vocês` : ''}</div>
-      <div className="info">📍 {c.passagens} entregas marcadas na porta, em {c.lugares} endereços · {c.lugares_confirmados} já com posição confirmada</div>
+      <div className="info">{c.ruas_com_nome} ruas com nome · {c.trechos_sem_nome} trechos ainda sem nome{c.trechos_nossos ? ` · ${c.trechos_nossos} nomeados pelas entregas de vocês` : ''}</div>
+      <div className="info">{c.passagens} entregas marcadas na porta, em {c.lugares} endereços · {c.lugares_confirmados} já com posição confirmada</div>
       <div className="linha">
         <button className="btn" onClick={nomear} disabled={fazendo('nomear')}>{fazendo('nomear') ? 'Nomeando…' : 'Nomear ruas com as entregas'}</button>
         <button className="btn" onClick={criar} disabled={fazendo('criar')}>{fazendo('criar') ? 'Desenhando…' : 'Criar rua que falta no mapa'}</button>
@@ -580,7 +580,7 @@ Daqui em diante, o que a pessoa marcar ou entregar só vale para os outros depoi
     <summary>Motoristas ({lista.filter(m => m.papel === 'motorista').length})</summary>
     {lista.map(m => <div className="item" key={m.id} data-motorista={m.nome}>
       <div className="txt"><b>{m.nome}</b>{m.papel === 'admin' ? ' · administrador' : ''}
-        <div className="achado">{m.ativo ? '🟢 ativo' : '⛔ desativado'}</div>
+        <div className="achado">{m.ativo ? 'ativo' : 'desativado'}</div>
         {m.papel === 'motorista' && m.conferir && <span className="tag" style={{background: '#ea580c'}}>em conferência</span>}</div>
       <div className="linha">
         {/* sem a 022 rodada o perfil não traz o campo, e o botão não aparece */}
@@ -791,8 +791,8 @@ function MarcadasPorMotorista({lista, visto, ...doLugar}: {lista: Adm.LugarCorri
   const grupos = [...por.values()].sort((a, b) => b.lugares.length - a.lugares.length || a.nome.localeCompare(b.nome));
   // fechada ao abrir (revisão de 08/11): é para conferir quando ele quiser, e aberta empurrava as
   // pendências para fora da tela
-  return <details data-secao="🆕 Marcadas pelos motoristas nos últimos 7 dias">
-    <summary>🆕 Marcadas pelos motoristas nos últimos 7 dias ({lista.length})</summary>
+  return <details data-secao="Marcadas pelos motoristas nos últimos 7 dias">
+    <summary>Marcadas pelos motoristas nos últimos 7 dias ({lista.length})</summary>
     {!lista.length && <div className="info">Nenhuma porta marcada nos últimos 7 dias.</div>}
     {lista.length > 0 && <div className="info">Cada marcação já vale ou vira sugestão sozinha; o que pede decisão está em Precisa de você.</div>}
     {grupos.map(g => <div className="item" key={g.id} data-marcadas-de={g.nome}>

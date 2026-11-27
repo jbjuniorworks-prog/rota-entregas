@@ -1,4 +1,4 @@
-import {aplicarReclamacoes, avisoXarope, chaveCliente, type ReclamacaoDaNuvem} from './reclamacoes';
+import {aplicarReclamacoes, avisoXarope, chaveCliente, MOTIVOS, type ReclamacaoDaNuvem} from './reclamacoes';
 import type {Parada} from './tipos';
 
 let n = 0;
@@ -65,4 +65,9 @@ describe('cliente xarope', () => {
     expect(avisoXarope([{motivo: 'jogado', quando: '', minha: false}, {motivo: 'vizinho', quando: '', minha: true}]))
       .toBe('Cliente xarope: alguém que comprou neste endereço já reclamou de pacote jogado e de deixar com vizinho — entregue em mãos, não deixe com vizinho.');
   });
+});
+
+// Dono, 26/11: "tira os emojis". Os botões do cliente xarope começavam com um.
+test('os botões do cliente xarope são só texto, sem emoji', () => {
+  for (const m of Object.values(MOTIVOS)) expect(m.marcar).not.toMatch(/\p{Extended_Pictographic}/u);
 });
