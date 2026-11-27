@@ -1,4 +1,5 @@
 import {matrizAproximada, type Matriz} from '../logica/otimizacao';
+import {manobrasDoServico, type Manobra} from '../logica/manobras';
 import type {Ponto} from '../logica/tipos';
 import {buscarJson, espacado} from './rede';
 
@@ -43,6 +44,18 @@ export async function matriz(pts: Ponto[]): Promise<MatrizDeRuas> {
 // A linha inteira, rente à rua (dono, 23/11: o traço cortava quarteirão). A simplificada é feita
 // para a rota inteira caber na tela: numa de 46 km, metade dos pontos ficava a mais de 15 m da
 // rua, até 89 m. A inteira dessa rota tinha 1.014 pontos (24 KB).
+// O caminho de um ponto a outro com as manobras (logica/manobras.ts): a faixa da próxima curva.
+export async function caminhoComManobras(seq: Ponto[]): Promise<{linha: [number, number][]; manobras: Manobra[]} | null> {
+  try {
+    const j = await osrm(`route/v1/driving/${coordStr(seq)}?overview=full&geometries=geojson&steps=true`);
+    if (j.code === 'Ok') {
+      const r = j.routes[0];
+      return {linha: r.geometry.coordinates.map(([lng, lat]: [number, number]) => [+lat.toFixed(5), +lng.toFixed(5)]), manobras: manobrasDoServico(r)};
+    }
+  } catch {}
+  return null;
+}
+
 export async function linhaDaRota(seq: Ponto[]): Promise<[number, number][] | null> {
   try {
     const j = await osrm(`route/v1/driving/${coordStr(seq)}?overview=full&geometries=geojson`);

@@ -7,6 +7,8 @@ import {agruparPorEndereco, blocos, fmtKm, fmtMin, linkMaps, linkMapsVarios, lin
 import {resumoDoDia} from '../logica/diaNovo';
 import {numerosDaShopee, paradasDaShopee, textoDasParadas} from '../logica/paradasDaShopee';
 import {avisoDeAproximar, pinosDoDia} from '../logica/pinos';
+import {caminhoDaProxima} from '../logica/linhaQueFalta';
+import {manobraDaVez, metrosLegiveis, textoDaManobra} from '../logica/manobras';
 import {previsoes, textoDoFim} from '../logica/previsao';
 import {DUVIDA, QUASE} from '../logica/rotulos';
 import {separadasDoEndereco} from '../logica/importar';
@@ -75,6 +77,26 @@ export function TopoRota() {
 }
 
 // Por cima do mapa, só a mira: o "para conferir" foi para o botão Mais (03/10).
+// A faixa da próxima curva, em cima do mapa (dono, 27/11, com a foto do Google Maps). Só a curva da
+// vez até a próxima parada, e a seguinte quando vem logo depois.
+export function FaixaDaCurva() {
+  const {e, ui} = useLoja();
+  const m = ui.manobras, eu = ui.euAqui;
+  if (!m || !eu || !e.rota || caminhoDaProxima(e.rota, loja.parada)?.id !== m.para) return null;
+  const v = manobraDaVez(m.lista, m.passadas, eu);
+  if (!v) return null;
+  const t = textoDaManobra(v.agora);
+  return <div className="faixa" data-faixa role="status">
+    <div className="seta" aria-hidden>{t.seta}</div>
+    <div className="txt">
+      <div className="metros" data-metros>{metrosLegiveis(v.metros)}</div>
+      <div className="rua" data-frase>{v.agora.rua && v.agora.tipo !== 'arrive' ? v.agora.rua : t.frase}</div>
+      {v.agora.rua && v.agora.tipo !== 'arrive' && <div className="frase">{t.frase}</div>}
+    </div>
+    {v.depois && <div className="depois" data-depois>Depois, <span aria-hidden>{textoDaManobra(v.depois).seta}</span></div>}
+  </div>;
+}
+
 export function SobreOMapa() {
   const {ui} = useLoja();
   // azul enquanto o mapa anda junto com ele; apagada, ele desligou ou algo aberto pausa o seguir,

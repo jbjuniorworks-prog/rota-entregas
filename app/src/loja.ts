@@ -2,6 +2,7 @@ import {useSyncExternalStore} from 'react';
 import {carregarEstado, guardaEm, salvarEstado} from './logica/guarda';
 import type {PosicaoCompartilhada} from './logica/compartilhadas';
 import type {Grupo} from './logica/grupos';
+import type {Manobra} from './logica/manobras';
 import type {NomeNoMapa} from './logica/nomesNoMapa';
 import type {Estado, Parada} from './logica/tipos';
 import type {EntregaAntiga} from './servicos/historico';
@@ -77,6 +78,8 @@ export interface Ui {
   nomesNoMapa: NomeNoMapa[];
   // o caminho até a próxima refeito de onde ele está, porque saiu da linha (acoes/desvio.ts)
   desvio: {para: string; linha: [number, number][]} | null;
+  // as curvas desse caminho, e quantas ele já fez (a faixa da próxima curva)
+  manobras: {para: string; lista: Manobra[]; passadas: number} | null;
   // o Chrome avisou que dá para instalar, e ele não pediu para deixar para depois
   podeInstalar: boolean;
   // o cartão da próxima reduzido a uma linha, e o mapa com quase a tela toda (pedido de 03/10)
@@ -99,7 +102,7 @@ const ui: Ui = {
   tela: estado.paradas.length ? 'rota' : 'inicio', folha: 'proxima', escolhidas: [], grupos: [], pino: null, menu: false,
   // a Conferir que se abre pelo aviso do mapa é a das paradas que precisam dele
   posicionando: null, marcandoLugar: null, localRecebido: null, selecionada: null, soDuvidas: true, ocupado: false, aviso: '', enquadrar: 1, focar: null, desfazer: null, extra: null, marcas: null,
-  euAqui: null, irParaMim: 0, seguindo: true, cartaoDesde: null, cartaoTrocouEm: 0, esperandoAdmin: 0, xarope: null, antiga: null, paradaAntiga: null, comentando: null, versaoNova: null, pinosNovos: null, nomesNoMapa: [], desvio: null, podeInstalar: false,
+  euAqui: null, irParaMim: 0, seguindo: true, cartaoDesde: null, cartaoTrocouEm: 0, esperandoAdmin: 0, xarope: null, antiga: null, paradaAntiga: null, comentando: null, versaoNova: null, pinosNovos: null, nomesNoMapa: [], desvio: null, manobras: null, podeInstalar: false,
   minimizado: lerMinimizado(), semEspaco: false,
 };
 
@@ -149,6 +152,9 @@ export function status(msg: string, ms?: number, desfazer: (() => void) | null =
   if (msg && ms) temporizador = setTimeout(() => { if (ui.aviso === msg) { ui.aviso = ''; ui.desfazer = null; ui.extra = null; avisar(); } }, ms);
   avisar();
 }
+
+// para quem precisa reagir a qualquer mudança fora da tela (acoes/desvio.ts)
+export const ouvirMudancas = (f: () => void) => { ouvintes.add(f); return () => { ouvintes.delete(f); }; };
 
 export function useLoja() {
   useSyncExternalStore(f => { ouvintes.add(f); return () => ouvintes.delete(f); }, () => versao);

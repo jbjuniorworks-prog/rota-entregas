@@ -20,7 +20,7 @@ test('fora da linha por mais de 10 s, o caminho até a próxima sai de onde ele 
       const distances = pts.map(a => pts.map(b => metros(a, b)));
       return r.fulfill({json: {code: 'Ok', distances, durations: distances.map(l => l.map(m => m / 10))}});
     }
-    pedidos.push(url.pathname);
+    pedidos.push(pts[0].lat.toFixed(5) + ',' + pts[0].lng.toFixed(5));
     return r.fulfill({json: {code: 'Ok', routes: [{geometry: {coordinates: pts.map(p => [p.lng, p.lat])}}]}});
   });
   await page.clock.install();
@@ -53,5 +53,7 @@ test('fora da linha por mais de 10 s, o caminho até a próxima sai de onde ele 
   const [t] = await tracos(page);
   const [la, ln] = t[t.length - 1];
   expect(metros({lat: la, lng: ln}, ate), 'e vai até a próxima').toBeLessThan(2);
-  expect(pedidos.length - antes, 'um pedido só, não um por leitura').toBe(1);
+  // os pedidos que saíram de onde ele estava, fora da linha
+  const deFora = pedidos.slice(antes).filter(p => { const [la, ln] = p.split(',').map(Number); return metros({lat: la, lng: ln}, fora) < 50; });
+  expect(deFora.length, 'um pedido só, não um por leitura').toBe(1);
 });
