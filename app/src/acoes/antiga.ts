@@ -6,7 +6,7 @@ import type {EntregaAntiga} from '../servicos/historico';
 import {clienteNuvem, nuvem} from '../servicos/nuvem';
 import {contar, enviarFila, fila, ui} from './base';
 import {abrir} from './navegacao';
-import {marcarLugar} from './posicoes';
+import {comMinhaPosicao, marcarLugar} from './posicoes';
 
 // A entrega de outro dia achada na busca do Conferir (dono, 26/11: "o conferir precisa ter como
 // ver no mapa e editar, igual numa rota"; e depois "aparecer igual como se estivesse em rota:
@@ -72,11 +72,10 @@ export function estouNaPortaDaAntiga() {
   if (!x?.chave || !navigator.geolocation) return;
   const chave = x.chave;
   contar('antiga-aqui');
-  status('Pegando a sua posição…');
-  navigator.geolocation.getCurrentPosition(pos => {
-    const {latitude: lat, longitude: lng, accuracy} = pos.coords;
+  // com o GPS ligado em todas as telas, a leitura de agora já está aqui (como no "Estou aqui")
+  comMinhaPosicao((lat, lng, accuracy) => {
     if (!confirm(`Marcar onde você está (GPS de ${Math.round(accuracy)} m) como a porta de ${x.endereco}?\n\n${aviso()}`)) { status('Nada gravado.', 3000); return; }
     gravarPorta(x, chave, +lat.toFixed(6), +lng.toFixed(6));
     status('Porta marcada onde você está. Vai para a nuvem assim que houver internet.', 6000);
-  }, () => status('Não consegui a sua posição. Use "Marcar no mapa".', 6000), {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
+  }, () => status('Não consegui a sua posição. Use "Marcar no mapa".', 6000), 'Pegando a sua posição…');
 }

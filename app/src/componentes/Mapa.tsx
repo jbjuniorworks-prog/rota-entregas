@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, pausaDoSeguir, seguirMinhaPosicao, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
+import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, pausaDoSeguir, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
 import {aPartirDeMim, linhaAteAProxima} from '../logica/linhaQueFalta';
@@ -546,13 +546,6 @@ export default function Mapa() {
 
   // uma busca por planilha nova: a ação não repete o que já pediu
   useEffect(() => { if (ui.tela === 'rota') buscarNomesDasRuas(); }, [e.paradas.length, ui.tela]);
-
-  // Só segue a posição na Rota, que é a tela que ele olha dirigindo: no Admin o GPS não fica
-  // ligado à toa.
-  useEffect(() => {
-    if (ui.tela !== 'rota') return;
-    return seguirMinhaPosicao();
-  }, [ui.tela]);
 
   useEffect(() => {
     const m = mapa.current;
