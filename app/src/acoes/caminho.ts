@@ -81,6 +81,8 @@ export function trocarCaminho() {
     return;
   }
   ultimo = undefined;
+  // o GPS fica ligado em todas as telas: a posição de agora é o primeiro ponto, sem esperar ele andar
+  if (gravando && loja.ui.euAqui) anotarNoCaminho(loja.ui.euAqui);
   // a leitura na troca separa o tempo gravando do tempo sem gravar
   lerBateria();
   ligarBateria();

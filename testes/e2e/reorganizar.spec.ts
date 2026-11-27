@@ -105,3 +105,64 @@ test.describe('a rota segue da entrega feita fora da ordem', () => {
       .toEqual([+daVisita.lat.toFixed(5), +daVisita.lng.toFixed(5)]);
   });
 });
+
+// Dono, 27/11, na rota: "a rota sumiu, sem eu fazer nada, só ir entregando".
+test.describe('a linha não some depois da entrega fora da ordem', () => {
+  test.use({viewport: {width: 412, height: 915}});
+  const tracos = (page: Page): Promise<[number, number][][]> => page.evaluate(() => (window as any).rotaTeste.linhaDaRota());
+
+  // o serviço de ruas de mentira; `falhar` recusa os pedidos de linha enquanto for verdade
+  async function servico(context: any, falhar: () => boolean) {
+    await context.route('**://router.project-osrm.org/**', (r: any) => {
+      const url = new URL(r.request().url());
+      const pts = url.pathname.split('/').pop()!.split(';').map(s => { const [lng, lat] = s.split(',').map(Number); return {lat, lng}; });
+      if (url.pathname.includes('/table/')) {
+        const distances = pts.map(a => pts.map(b => metros(a, b)));
+        return r.fulfill({json: {code: 'Ok', distances, durations: distances.map(l => l.map(m => m / 10))}});
+      }
+      if (falhar()) return r.fulfill({status: 503, body: ''});
+      return r.fulfill({json: {code: 'Ok', routes: [{geometry: {coordinates: pts.map(p => [p.lng, p.lat])}}]}});
+    });
+  }
+
+  async function entregarDuasEPular(page: Page) {
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await page.waitForFunction(() => !!(window as any).rotaTeste);
+    for (let i = 0; i < 2; i++) {
+      const resumo = await page.locator('.resumo').innerText();
+      await cartao(page).locator('[data-acao="entregue"]').first().click();
+      await expect(page.locator('.resumo')).not.toHaveText(resumo);
+    }
+    const e0 = await estado(page);
+    const ultima = parada(e0, ordemDe(e0)[ordemDe(e0).length - 1]);
+    await entregarNaLista(page, ultima.id);
+    await expect(aviso(page)).toContainText(SEGUE);
+    await paraABase(page);
+  }
+
+  test('com as primeiras entregues na ordem e uma fora dela, a linha nova leva até a próxima', async ({page, context}) => {
+    await servico(context, () => false);
+    await entregarDuasEPular(page);
+    await expect.poll(async () => (await estado(page)).rota.areas[0].linha?.length ?? 0, 'a premissa: a linha nova chegou').toBeGreaterThan(1);
+    const e = await estado(page);
+    const nova = proxima(e);
+    await expect.poll(async () => (await tracos(page)).length, 'há linha no mapa').toBe(1);
+    const [t] = await tracos(page);
+    const [la, ln] = t[t.length - 1];
+    expect(metros({lat: la, lng: ln}, nova), 'e ela acaba na próxima').toBeLessThan(2);
+  });
+
+  test('o serviço de ruas sem responder: a linha volta sozinha, sem esperar outra entrega', async ({page, context}) => {
+    let falhar = false;
+    await servico(context, () => falhar);
+    await page.clock.install();
+    falhar = true;
+    await entregarDuasEPular(page);
+    await expect.poll(async () => (await tracos(page)).length, 'a premissa: sem resposta, sem linha').toBe(0);
+    falhar = false;
+    await page.clock.fastForward(25_000);
+    await expect.poll(async () => (await tracos(page)).length).toBe(1);
+  });
+});

@@ -119,6 +119,15 @@ describe('a rota segue da entrega feita fora da ordem', () => {
     expect(reorganizarDaqui(e, p(e, 'f'))).not.toBeNull();
   });
 
+  it('a linha nova sai da entregue: a rota guarda que as feitas antes dela ficam fora do traço', async () => {
+    const e = await montado();
+    entregar(e, 'a', 'b');
+    const r = reorganizarDaqui(e, p(e, 'f'))!;
+    expect(r.rota.areas[0].ordem.slice(0, 3)).toEqual(['a', 'b', 'f']);
+    expect(r.rota.areas[0].linhaDesde).toBe(2);
+    expect(r.pontos[0].lat).toBe(sul(6));
+  });
+
   it('a separada depois de montar vai junto com a sua visita', async () => {
     const e = await montado();
     e.paradas.push(parada('c2', sul(3)));

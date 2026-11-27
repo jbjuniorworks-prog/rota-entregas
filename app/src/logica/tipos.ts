@@ -155,6 +155,9 @@ export interface RotaArea {
   dur: number;
   dist: number;
   linha: [number, number][] | null;
+  // a linha refeita depois de uma entrega fora da ordem sai dela: as de antes, em ordem[0..linhaDesde),
+  // não estão no traço
+  linhaDesde?: number;
   tempos?: TemposDaArea;
 }
 

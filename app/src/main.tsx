@@ -110,6 +110,20 @@ function App() {
   useEffect(() => { A.iniciar(); }, []);
   // o mapa vem depois da primeira pintura: abrir o app não espera o Leaflet
   useEffect(() => { depoisDeAparecer(() => setCarregaMapa(true)); }, []);
+  // Dono, 27/11: "pode deixar ativo o GPS o tempo todo, testamos deixando gravando e não come
+  // bateria". O GPS ficava só na Rota: voltando da Conferir ou do Mais, a bolinha, a linha a partir
+  // dele e o Entreguei aqui esperavam o GPS pegar de novo. Com a localização já liberada, ele fica
+  // ligado em qualquer tela; sem ela, só a Rota pede, como antes, para o app não abrir perguntando.
+  const [gpsLiberado, setGpsLiberado] = useState(false);
+  useEffect(() => {
+    navigator.permissions?.query({name: 'geolocation'}).then(s => {
+      const ver = () => setGpsLiberado(s.state === 'granted');
+      ver();
+      s.onchange = ver;
+    }).catch(() => {});
+  }, []);
+  const gpsLigado = gpsLiberado || ui.tela === 'rota';
+  useEffect(() => gpsLigado ? A.seguirMinhaPosicao() : undefined, [gpsLigado]);
   const pf = nuvem.perfil;
   if ((!nuvem.sessao && !nuvem.lembrada) || (nuvem.sessao && pf && !pf.ativo)) return <>
     <TelaEntrar />

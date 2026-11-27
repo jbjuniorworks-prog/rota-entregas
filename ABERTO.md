@@ -154,7 +154,35 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Um botão de entregar no cartão da próxima (27/11, dono: "cada um só aparecer na hora que precisa"): na branch `um-botao-de-entregar`
+## A linha da rota começa no entregador (27/11, foto do dono ao vivo: "a linha continua atrás de onde estou, atrapalha mais que ajuda"): na branch `linha-a-partir-de-mim`
+
+- A linha até a próxima começava na última entrega feita, mesmo depois de ele já ter saído dali.
+  Agora, na Rota, com GPS de até 30 m e o entregador a até 40 m da linha, ela começa no ponto da
+  linha mais perto dele (`aPartirDeMim` em `logica/linhaQueFalta.ts`). Longe da linha, fica como antes.
+- Só o trecho até a próxima é cortado. Numa rua de ida e volta vale a primeira passagem, como no corte
+  das paradas: a volta continua desenhada.
+- A linha foi para uma camada própria e é redesenhada a cada ~1 m andado, sem refazer os pinos.
+- Na mesma foto, o dono: "pra onde vou exatamente? tem vários lados pintados". A linha desenhava a rota
+  inteira que faltava e saía para mais de um lado dele. Ele escolheu (entre só a próxima, a próxima forte
+  com o resto apagado ou tracejado) ver **só o caminho até a próxima** (`linhaAteAProxima`, que tomou o
+  lugar de `linhaQueFalta`), e só na área dela. Sem GPS, a rota sai da primeira parada: até a primeira
+  entrega não há linha.
+- Testado: unidade e e2e quebram com cada sabotagem (sem o GPS; sem a primeira passagem; linha até o
+  fim). Tipos, 805 de unidade e 428 e2e. Não visto no celular.
+- **GPS ligado em todas as telas** (dono: "pode deixar ativo o GPS o tempo todo, testamos deixando
+  gravando e não come bateria"). Ele só ficava na Rota. Com a localização já liberada, fica ligado em
+  qualquer tela (`main.tsx`); sem ela, só a Rota pede, para o app não abrir perguntando. O app
+  escondido (Waze, tela apagada) continua sem GPS: isso é do navegador, como o teste do caminho mostra.
+- **A linha que sumia** (dono, 10:15, foto com 14 de 53 e "no app: #19": "a rota sumiu, sem eu fazer
+  nada, só ir entregando"). Causa achada no código e reproduzida no e2e (a linha do celular não vai
+  para a nuvem, então o caso da foto não foi refeito): depois de uma entrega fora da ordem, a linha
+  nova sai da entregue, mas o corte ainda passava pelas entregues de antes, que não estão no traço, e
+  o corte ia parar perto do fim. Conserto: a área guarda onde a linha começa (`linhaDesde`), e parada a
+  mais de 150 m do traço não puxa o corte (para a rota que já estava no celular). E o pedido da linha
+  nova, que antes só se repetia na próxima entrega, tenta de novo a cada 20 s.
+- Testado: tipos, 808 de unidade e 431 e2e; cada conserto quebra o seu teste quando desligado.
+
+## Um botão de entregar no cartão da próxima (27/11, dono: "cada um só aparecer na hora que precisa"): publicado em 27/11 (#55, versão `mwye8i1b`)
 
 - Na porta por verificar, o cartão tinha "Entreguei aqui" grande e "Entreguei" pequeno na fileira do
   Waze. Agora o botão é só o "Entreguei aqui" (mesma regra `podeAqui`); a fileira fica com Waze e Depois.
