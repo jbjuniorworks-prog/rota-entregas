@@ -59,6 +59,23 @@ describe('o cartão do pino aberto, com ele andando', () => {
     expect(cartaoAoAndar(A, em(SAIR_DO_CARTAO_M + 1)).fechar).toBe(true);
   });
 
+  // Dono, 27/11: abriu o cartão do pino vindo de longe e andou até a porta; o cartão fechou e o
+  // Entreguei caiu na próxima, a 600 m dali
+  it('andando 200 m na direção do pino do cartão, não fecha', () => {
+    const pino = {lat: A.lat + 250 / 111320, lng: A.lng};
+    expect(cartaoAoAndar(A, em(200), pino).fechar).toBe(false);
+  });
+
+  it('chegou no pino depois de passar dele um pouco, não fecha', () => {
+    const pino = {lat: A.lat + 100 / 111320, lng: A.lng};
+    expect(cartaoAoAndar(A, em(130), pino).fechar).toBe(false);
+  });
+
+  it('indo embora do pino, fecha como antes', () => {
+    const pino = {lat: A.lat - 20 / 111320, lng: A.lng};
+    expect(cartaoAoAndar(A, em(SAIR_DO_CARTAO_M + 1), pino).fechar).toBe(true);
+  });
+
   it('leitura com margem maior que a do seguir não fecha, nem vira o ponto de partida', () => {
     expect(cartaoAoAndar(A, em(300, SEGUIR_ATE_M + 1))).toEqual({desde: A, fechar: false});
     expect(cartaoAoAndar(null, em(0, SEGUIR_ATE_M + 1))).toEqual({desde: null, fechar: false});

@@ -745,6 +745,11 @@ export function desfazerPorta(p: Parada) {
 // gira sozinha na esquina é pior do que seta nenhuma.
 const ANDANDO = 0.8;
 
+// Um toque começado no cartão do pino que fechou sozinho não pode entregar a próxima que apareceu no
+// lugar. Um segundo cobre o toque que já estava a caminho.
+export const TOQUE_PERDIDO_MS = 1000;
+export const cartaoAcabouDeTrocar = () => Date.now() - ui.cartaoTrocouEm < TOQUE_PERDIDO_MS;
+
 export function seguirMinhaPosicao(): () => void {
   if (!navigator.geolocation) return () => {};
   const avisadas = new Set<string>();
@@ -761,9 +766,11 @@ export function seguirMinhaPosicao(): () => void {
     // Com o cartão de um pino aberto o seguir pausa; longe de onde abriu, ele já foi embora: fecha
     // e o mapa volta para ele. Não com o seguir desligado por ele, nem com o toque no mapa armado.
     if (ui.pino && ui.tela === 'rota' && ui.seguindo && !ui.posicionando) {
-      const r = cartaoAoAndar(ui.cartaoDesde, ui.euAqui);
+      // o lugar do cartão conta só com entrega por fazer nele: entregue, quem anda já está indo embora
+      const p = ui.pino.map(id => loja.parada(id)).find(x => x && !x.entregue && x.lat != null && x.lng != null);
+      const r = cartaoAoAndar(ui.cartaoDesde, ui.euAqui, p ? {lat: p.lat!, lng: p.lng!} : null);
       ui.cartaoDesde = r.desde;
-      if (r.fechar) { irPara('rota'); return; }
+      if (r.fechar) { ui.cartaoTrocouEm = Date.now(); irPara('rota'); return; }
     }
     loja.mudou(false);
   }, () => {}, {enableHighAccuracy: true, maximumAge: 5000, timeout: 20000});

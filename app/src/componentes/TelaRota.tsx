@@ -356,7 +356,10 @@ function CartaoProxima() {
   const vizinhas = porPerto(e.paradas, alvo as Ponto, agora.b);
   const perna = e.pernas[agora.b[0]];
   const podeAqui = alvo.precisao !== 'confirmado' && pend.every(x => haversine(x as Ponto, alvo as Ponto) <= RAIO_BLOCO);
-  const entreguei = (classe: string) => <button className={classe} data-acao="entregue" onClick={() => pend.length > 1 ? A.entregarTodas(pend) : A.marcarEntregue(alvo, true)}>Entreguei{pend.length > 1 ? ` as ${pend.length}` : ''}</button>;
+  // O cartão da próxima pode ter acabado de aparecer sozinho, no lugar do cartão de um pino: o toque
+  // que ia para o outro não entrega esta (TOQUE_PERDIDO_MS).
+  const tocar = (fazer: () => void) => () => { if (!A.cartaoAcabouDeTrocar()) fazer(); };
+  const entreguei = (classe: string) => <button className={classe} data-acao="entregue" onClick={tocar(() => pend.length > 1 ? A.entregarTodas(pend) : A.marcarEntregue(alvo, true))}>Entreguei{pend.length > 1 ? ` as ${pend.length}` : ''}</button>;
   // O mapa é a maior parte da tela (pedido de 03/10, com o print do Pedro): acima dos botões fica
   // só o que ele lê antes de tocar. Os avisos da rota e o resto vêm depois, rolando o cartão.
   return <div className="folha proxima" data-folha="proxima">
@@ -386,7 +389,7 @@ function CartaoProxima() {
     {umEndereco ? <>
       {/* na porta confirmada o botão grande é o Entreguei simples: ela não se marca de novo na rua */}
       {podeAqui
-        ? <button className="btn ok grande-btn" data-acao="aqui" onClick={() => { A.contar('balao-aqui'); A.entregueAqui(pend); }}>Entreguei aqui{pend.length > 1 ? ` as ${pend.length}` : ''}</button>
+        ? <button className="btn ok grande-btn" data-acao="aqui" onClick={tocar(() => { A.contar('balao-aqui'); A.entregueAqui(pend); })}>Entreguei aqui{pend.length > 1 ? ` as ${pend.length}` : ''}</button>
         : entreguei('btn ok grande-btn')}
       <div className="tres">
         <a className="btn contorno-azul" href={linkWaze(alvo as Ponto)} onClick={() => A.contar('waze')} target="_blank" rel="noopener">Waze</a>
@@ -396,7 +399,7 @@ function CartaoProxima() {
           sabe que entregou na portaria ou ao vizinho tem esta saída antes do toque; depois do
           Entreguei aqui, a mensagem traz o "Não foi na porta". */}
       {podeAqui && <div className="secundarios"><button className="link" data-acao="entregue" data-sem-porta
-        onClick={() => { A.contar('entregar-sem-porta'); return pend.length > 1 ? A.entregarTodas(pend) : A.marcarEntregue(alvo, true); }}>
+        onClick={tocar(() => { A.contar('entregar-sem-porta'); return pend.length > 1 ? A.entregarTodas(pend) : A.marcarEntregue(alvo, true); })}>
         Entregar{pend.length > 1 ? ` as ${pend.length}` : ''} sem marcar a porta</button></div>}
       <DesfazerPorta ps={pend} />
       {pend.length > 1 ? <EntregasDoEndereco ps={pend} /> : <PacotesDaParada p={alvo} />}
