@@ -49,3 +49,16 @@ export function cartaoAoAndar(desde: Ponto | null, eu: Ponto & {precisao: number
   if (pino && (haversine(eu, pino) < SAIR_DO_CARTAO_M || haversine(eu, pino) < haversine(desde, pino))) return {desde, fechar: false};
   return {desde, fechar: true};
 }
+
+// Olhar à frente (dono, 27/11: "olhar pra frente acho interessante, vamos testar"). Andando, o meio
+// do mapa fica adiante dele, na direção em que ele vai: ele fica mais para a borda de trás e a tela
+// mostra mais do caminho. O mapa continua com o norte para cima. Parado não há rumo: ele fica no
+// meio, como antes. O rumo vai em passos de 15°, para o mapa não tremer a cada leitura.
+export const A_FRENTE_LARGURA = 0.3;
+export const A_FRENTE_ALTURA = 0.28;
+export function olharAFrente(rumo: number | null, largura: number, altura: number): {x: number; y: number} {
+  if (rumo == null || !Number.isFinite(rumo)) return {x: 0, y: 0};
+  const r = Math.round(rumo / 15) * 15 * Math.PI / 180;
+  // na tela, y cresce para baixo: indo para o norte, o meio fica acima dele
+  return {x: Math.round(Math.sin(r) * A_FRENTE_LARGURA * largura) || 0, y: Math.round(-Math.cos(r) * A_FRENTE_ALTURA * altura) || 0};
+}

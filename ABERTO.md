@@ -154,7 +154,18 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## A faixa da próxima curva (27/11, dono: "pode ir", depois do caminho refeito; foto do Google Maps com "↰ 30 m, Av. Principal; depois, ↱"): na branch `faixa-da-curva`
+## Olhar à frente (27/11, dono: "olhar pra frente acho interessante, vamos testar"): na branch `olhar-a-frente`
+
+- Escolhido no lugar do mapa girando, que pedia um complemento no Leaflet e refazer o que calcula posição na
+  tela (leque em V, nomes das ruas, circular, toque no mapa, empilhar).
+- Andando, com rumo, o meio do mapa fica adiante dele: 28% da altura acima, indo para o norte; 30% da largura
+  à direita, indo para o leste (`olharAFrente`, em `logica/seguir.ts`). O rumo vai em passos de 15°. O norte
+  continua para cima. Parado, o rumo é o último que o GPS deu andando (como a seta da bolinha): o mapa fica
+  como estava; sem rumo nenhum, ele no meio, como antes.
+- Testado: 3 de unidade e 1 e2e com um GPS de mentira que manda rumo e velocidade (o do navegador de teste
+  não manda); sem o deslocamento, o e2e quebra. Tipos, 831 de unidade e 436 e2e. Não visto no celular.
+
+## A faixa da próxima curva (27/11, dono: "pode ir", depois do caminho refeito; foto do Google Maps com "↰ 30 m, Av. Principal; depois, ↱"): publicado em 27/11 (#59)
 
 - Quando a próxima muda, o app pede ao serviço de ruas o caminho de onde ele está até ela, com as manobras
   (`steps=true`). Esse caminho passa a ser a linha desenhada até a próxima, para a faixa e a linha não
