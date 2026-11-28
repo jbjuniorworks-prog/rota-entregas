@@ -179,3 +179,20 @@ test('o crédito do mapa e o + e o − ficam à vista, por cima de tudo', async 
   }
   await expect(page.locator('.leaflet-control-attribution')).toContainText('OpenStreetMap');
 });
+
+// Dono, 28/11, com print: "continua com bug, consigo arrastar para o lado". O mapa girado cresce até a
+// diagonal da área dele, e a página inteira passava a ser mais larga que a tela: arrastando, o app ia
+// para o lado e sobrava um vão cinza.
+test('com o mapa girado, a página não fica mais larga que a tela nem rola para o lado', async ({page}) => {
+  await andandoParaOLeste(page);
+  await expect.poll(() => giroDoMapa(page)).toBe(-90);
+  await page.waitForTimeout(800);
+  const medida = () => page.evaluate(() => {
+    const raiz = document.scrollingElement!;
+    window.scrollTo(300, 300);
+    for (const el of [document.body, document.getElementById('app')!, document.querySelector('.mapwrap')!.parentElement!]) { el.scrollLeft = 300; el.scrollTop = 300; }
+    const app = document.getElementById('app')!.getBoundingClientRect();
+    return {largura: raiz.scrollWidth - innerWidth, altura: raiz.scrollHeight - innerHeight, x: scrollX, y: scrollY, appEsquerda: Math.round(app.left), appTopo: Math.round(app.top)};
+  });
+  expect(await medida()).toEqual({largura: 0, altura: 0, x: 0, y: 0, appEsquerda: 0, appTopo: 0});
+});
