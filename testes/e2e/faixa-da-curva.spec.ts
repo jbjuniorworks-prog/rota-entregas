@@ -1,5 +1,5 @@
 import type {Page} from '@playwright/test';
-import {abrir, carregar, expect, montar, test, ROTA_A} from './apoio';
+import {abrir, carregar, expect, menu, montar, test, ROTA_A} from './apoio';
 
 // Dono, 27/11, com a foto do Google Maps na rua: "↰ 30 m, Av. Principal; depois, ↱". A faixa da
 // próxima curva, em cima do mapa, com o caminho até a próxima que o serviço de ruas devolve.
@@ -9,7 +9,8 @@ const metros = (a: {lat: number; lng: number}, b: {lat: number; lng: number}) =>
   111320 * Math.hypot(a.lat - b.lat, (a.lng - b.lng) * Math.cos(a.lat * Math.PI / 180));
 const faixa = (page: Page) => page.locator('[data-faixa]');
 
-test('a faixa mostra a curva até a próxima e, feita a curva, a chegada', async ({page, context}) => {
+// Abre a rota, põe ele na porta da primeira, entrega, e espera a faixa até a segunda.
+async function comAFaixa(page: Page, context: any) {
   // O serviço de ruas de mentira: no pedido com as manobras, o caminho vai do primeiro ponto ao
   // segundo com uma curva à esquerda no meio, na Av. Principal.
   let curva = {lat: 0, lng: 0};
@@ -43,6 +44,12 @@ test('a faixa mostra a curva até a próxima e, feita a curva, a chegada', async
   await page.locator('[data-folha="proxima"] [data-acao="entregue"]').first().click();
   await expect(page.locator('.resumo')).not.toHaveText(resumo);
   await expect(faixa(page)).toBeVisible();
+  return {de, ate, curva: () => curva};
+}
+
+test('a faixa mostra a curva até a próxima e, feita a curva, a chegada', async ({page, context}) => {
+  const {de, ate, curva: c} = await comAFaixa(page, context);
+  const curva = c();
   expect(metros(curva, {lat: (de.lat + ate.lat) / 2, lng: (de.lng + ate.lng) / 2}), 'o caminho pedido saiu de onde ele está').toBeLessThan(5);
   await expect(faixa(page).locator('[data-frase]')).toHaveText('Av. Principal');
   await expect(faixa(page)).toContainText('Vire à esquerda');
@@ -52,4 +59,14 @@ test('a faixa mostra a curva até a próxima e, feita a curva, a chegada', async
   // fez a curva: a da vez é a chegada
   await context.setGeolocation({latitude: curva.lat, longitude: curva.lng, accuracy: 8});
   await expect(faixa(page).locator('[data-frase]')).toHaveText('Chegando');
+});
+
+// Pedro, pelo dono, 28/11: "gostaria que desse para ativar e desativar aquele guia por cima do mapa".
+test('o guia das curvas esconde e volta pelo Mais, e a escolha fica no celular', async ({page, context}) => {
+  await comAFaixa(page, context);
+  await menu(page, 'Esconder o guia das curvas');
+  await expect(faixa(page)).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem('rota-entregas-guia-das-curvas'))).toBe('false');
+  await menu(page, 'Mostrar o guia das curvas');
+  await expect(faixa(page)).toBeVisible();
 });

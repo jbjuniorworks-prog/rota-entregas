@@ -32,6 +32,7 @@ export function MenuMais() {
       {/* a lista do Admin, só com as rotas dele (Luan, pelo dono, 15/11) */}
       {nuvem.sessao && item('Minhas portas verificadas', () => { A.contar('minhas-portas'); A.abrir({tela: 'verificadas'}); })}
       {item(A.somLigado() ? 'Desligar o som perto do pino' : 'Ligar o som perto do pino', A.trocarSom)}
+      {item(A.guiaLigado() ? 'Esconder o guia das curvas' : 'Mostrar o guia das curvas', A.trocarGuia)}
       {/* o teste de 24/11: gravando, o nome diz, para ninguém esquecer ligado */}
       {item(A.gravandoCaminho() ? 'Teste do caminho (gravando)' : 'Teste do caminho', () => A.abrir({tela: 'caminho'}))}
       {e.rota && item('Copiar a rota para o WhatsApp', A.copiarRota)}

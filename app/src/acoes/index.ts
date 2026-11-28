@@ -16,3 +16,4 @@ export * from './gaiola';
 export * from './reorganizar';
 export * from './romaneio';
 export * from './caminho';
+export {guiaLigado, trocarGuia} from './desvio';

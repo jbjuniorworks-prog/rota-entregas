@@ -1,13 +1,28 @@
 import {devoRefazer, ENTRE_PEDIDOS_MS, GPS_BOM_M, vigiaNova} from '../logica/desvio';
 import {caminhoDaProxima, proximaDaRota} from '../logica/linhaQueFalta';
 import {manobraDaVez} from '../logica/manobras';
-import {loja, ouvirMudancas} from '../loja';
+import {CHAVES} from '../logica/guarda';
+import {guarda, loja, ouvirMudancas, status} from '../loja';
 import {caminhoComManobras} from '../servicos/ruas';
 import {contar, e, ui} from './base';
 
 // O caminho até a próxima, de onde ele está, com as curvas (logica/desvio.ts, logica/manobras.ts).
 // Pedido uma vez por parada, quando ela vira a próxima, e de novo quando ele sai da linha. Vale até a
 // próxima mudar: entregue ela, o seguinte é pedido.
+// O guia das curvas, em cima do mapa (FaixaDaCurva), liga e desliga no Mais, para este celular
+// (Pedro, pelo dono, 28/11: "gostaria que desse para ativar e desativar aquele guia por cima do
+// mapa"). Desligado, só a faixa some: o caminho até a próxima continua sendo pedido, porque é a
+// linha desenhada.
+export const guiaLigado = () => guarda.ler<boolean>(CHAVES.guiaDasCurvas, true) !== false;
+
+export function trocarGuia() {
+  const ligar = !guiaLigado();
+  guarda.gravar(CHAVES.guiaDasCurvas, ligar);
+  contar(ligar ? 'guia-ligar' : 'guia-desligar');
+  status(ligar ? 'Guia das curvas ligado.' : 'Guia das curvas desligado. Para ligar de novo: Mais.', 4000);
+  loja.mudou(false);
+}
+
 let vigia = vigiaNova();
 let pedindo = false;
 const tentouEm = new Map<string, number>();

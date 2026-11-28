@@ -154,7 +154,16 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Olhar à frente (27/11, dono: "olhar pra frente acho interessante, vamos testar"): na branch `olhar-a-frente`
+## Guia das curvas liga e desliga (28/11, Pedro, pelo dono: "gostaria que desse para ativar e desativar aquele guia por cima do mapa, vamos aprimorando"): na branch `guia-liga-desliga`
+
+- No Mais: "Esconder o guia das curvas" / "Mostrar o guia das curvas", como o som perto do pino. Vale para
+  este celular e conta, ligado de começo. Desligado, só a faixa some: o caminho até a próxima continua sendo
+  pedido, porque é a linha do mapa.
+- Conta `guia-ligar` e `guia-desligar` em `uso_dos_botoes`.
+- Testado: 1 e2e (esconde, a escolha fica guardada, volta); sem a checagem na faixa, quebra. Tipos, 831 de
+  unidade e 437 e2e, já junto com o #60. Não visto no celular.
+
+## Olhar à frente (27/11, dono: "olhar pra frente acho interessante, vamos testar"): publicado em 28/11 (#60)
 
 - Escolhido no lugar do mapa girando, que pedia um complemento no Leaflet e refazer o que calcula posição na
   tela (leque em V, nomes das ruas, circular, toque no mapa, empilhar).
