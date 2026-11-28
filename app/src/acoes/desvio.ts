@@ -23,6 +23,17 @@ export function trocarGuia() {
   loja.mudou(false);
 }
 
+// O mapa girando com o caminho (Mapa.tsx), também nos Ajustes deste celular, ligado de começo.
+export const mapaGira = () => guarda.ler<boolean>(CHAVES.mapaGira, true) !== false;
+
+export function trocarGiro() {
+  const ligar = !mapaGira();
+  guarda.gravar(CHAVES.mapaGira, ligar);
+  contar(ligar ? 'giro-ligar' : 'giro-desligar');
+  status(ligar ? 'O mapa gira com o caminho.' : 'O mapa fica com o norte para cima.', 4000);
+  loja.mudou(false);
+}
+
 let vigia = vigiaNova();
 let pedindo = false;
 const tentouEm = new Map<string, number>();

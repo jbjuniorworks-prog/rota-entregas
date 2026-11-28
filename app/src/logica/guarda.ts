@@ -40,6 +40,7 @@ export const CHAVES = {
   gaiola: 'rota-entregas-gaiola',
   caminho: 'rota-entregas-caminho',
   guiaDasCurvas: 'rota-entregas-guia-das-curvas',
+  mapaGira: 'rota-entregas-mapa-gira',
 } as const;
 
 // Cada conta tem o seu dia no aparelho (auditoria da fila, 20/10). As chaves de sempre guardam só

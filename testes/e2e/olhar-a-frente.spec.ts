@@ -1,5 +1,5 @@
 import type {Page} from '@playwright/test';
-import {abrir, carregar, expect, montar, test, ROTA_A} from './apoio';
+import {abrir, carregar, expect, menu, montar, paraABase, test, ROTA_A} from './apoio';
 
 // Dono, 27/11: "olhar pra frente acho interessante, vamos testar". Andando, o mapa mostra mais do
 // caminho adiante: ele fica para a borda de trás, e o mapa continua com o norte para cima.
@@ -36,6 +36,10 @@ const ondeEle = (page: Page) => page.evaluate(() => {
 test('andando para o norte ele fica embaixo do meio; para o leste, à esquerda; sem rumo, no meio', async ({page}) => {
   await abrir(page);
   await carregar(page, ROTA_A);
+  // o norte para cima: o mapa girando (giro.spec.ts) desligado nos Ajustes
+  await menu(page, 'Ajustes deste celular');
+  await page.locator('[data-chave="giro"]').click();
+  await paraABase(page);
   await gps(page, P.lat, P.lng, null, null);
   await montar(page);
   await expect(page.locator('#btnEu')).toHaveAttribute('aria-pressed', 'true');

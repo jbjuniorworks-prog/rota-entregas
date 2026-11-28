@@ -154,7 +154,29 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## O Mais organizado (28/11, dono: "é bom organizar esse Mais, cheio de coisa"): na branch `organizar-o-mais`
+## O mapa gira com o caminho (28/11, dono: "e se ao invés do mapa se movimentar, nossa visão que se adaptasse ao caminho?", com a foto da faixa "↖ vire levemente à esquerda" e a linha descendo na tela): na branch `mapa-gira`
+
+- O dono escolheu "o caminho sempre para cima" (no lugar de só enquadrar o caminho com o zoom) e fazer o giro
+  no próprio app (no lugar do leaflet-rotate, que é GPL-3.0).
+- Gira só navegando: seguindo, na Rota, sem cartão de pino, sem o toque no mapa armado, e com rumo (andando).
+  O elemento do mapa gira inteiro e cresce até a diagonal da área, para os cantos não ficarem vazios; o
+  Leaflet não sabe do giro (`aplicarGiro`, em Mapa.tsx; `proximoGiro`, em `logica/giro.ts`). O rumo muda o
+  giro a partir de 10°, pelo caminho curto, animado em 0,6 s.
+- Os pinos giram de volta em volta da ponta e ficam em pé; a bolinha gira junto e a seta aponta para cima;
+  os nomes das ruas seguem as ruas e viram quando ficariam de cabeça para baixo (`anguloLegivel`); os balões
+  "P11" somem enquanto gira (ficariam tortos em relação ao pino).
+- Arrastar com um dedo fica desligado enquanto gira (o arrasto andaria torto); a pinça é em volta do meio e
+  funciona. Para olhar em volta: tocar num pino (o cartão abre e o norte volta) ou na mira.
+- Com o giro, "adiante" é para cima: ele fica 28% da altura abaixo do meio.
+- O + e o − e o crédito do OpenStreetMap saíram de dentro do mapa, para não girarem. Dois defeitos vistos só
+  no print, antes de subir: a camada nova herdava o fundo cinza do Leaflet e cobria o mapa; e o z-index dela
+  punha o crédito (que a licença dos mapas pede) atrás da borda do cartão. Há teste para o crédito agora.
+- Chave "Mapa gira com o caminho" em Ajustes deste celular, ligada de começo; conta `giro-ligar`/`giro-desligar`.
+- Testado: 6 de unidade e 4 e2e com um GPS de mentira que manda rumo (sem o giro, sem os pinos em pé, com os
+  controles dentro do mapa e com o z-index de volta, cada um quebra o seu). Tipos, 837 de unidade e 443 e2e.
+  Prints a 412×915. Não visto no celular: a animação, o desempenho do mapa maior e o rumo do GPS de verdade.
+
+## O Mais organizado (28/11, dono: "é bom organizar esse Mais, cheio de coisa"): publicado em 28/11 (#62)
 
 - Eram 14 itens soltos. Agora em grupos: "Rota de hoje" (conferir, refazer, copiar para o WhatsApp, ler mais
   uma planilha, encerrar), "Antes de sair" (romaneio, ponto de chegada, áreas e horários) e "Meu" (minhas
