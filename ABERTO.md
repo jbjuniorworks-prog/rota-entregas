@@ -163,6 +163,18 @@ Fora da lista:
   de uma leitura do GPS à seguinte. Os nomes das ruas só se redesenham quando o giro assenta.
 - Testado: 4 de unidade da suavização e 2 e2e (uma virada de 6° gira; o andar não pula). Sem o limite novo e
   sem a animação do andar, cada um quebra. Tipos, 841 de unidade e 445 e2e. Se ficou suave, só na rua.
+- Depois (dono: "tanto a rotação quanto as linhas sumindo, quanto mais suave melhor"): a bolinha virou um
+  marcador só, que desliza até a leitura nova em 0,9 s (salto de mais de 150 m vai direto); a linha é desenhada
+  uma vez por trecho e cortada a cada quadro onde a bolinha está; o mapa anda animado também com o norte para
+  cima. Bolinha, corte e mapa andam juntos: ela fica parada no lugar dela na tela.
+- E, na rua, com foto: "ao clicar em outro pino buga". Reproduzido: com o mapa girado (160°), o toque abria o
+  cartão do pino certo, mas o norte voltava girando em volta do meio e o pino tocado ia para fora da tela. Agora
+  o norte volta já centrado no pino tocado.
+- Fica como está: os nomes que vêm desenhados no mapa (OpenStreetMap, em imagem) giram junto e podem ficar de
+  cabeça para baixo; só os nossos (os brancos, das ruas das entregas) se viram. Consertar pediria outro mapa.
+- Testado depois: 1 e2e do corte deslizando e 1 do toque no pino girado; sem o deslize e sem centrar no pino,
+  cada um quebra (o do pino só quebrou com o giro de 160° da reprodução; com 90°, passava sem o conserto).
+  Tipos, 841 de unidade e 447 e2e.
 
 ## O mapa gira com o caminho (28/11, dono: "e se ao invés do mapa se movimentar, nossa visão que se adaptasse ao caminho?", com a foto da faixa "↖ vire levemente à esquerda" e a linha descendo na tela): publicado em 28/11 (#63)
 

@@ -76,17 +76,64 @@ test('uma virada pequena, de 6°, já gira, sem esperar juntar 10°', async ({pa
   await expect.poll(() => giroDoMapa(page)).toBe(-96);
 });
 
-test('girando, o mapa anda junto animado, sem pular a cada leitura do GPS', async ({page}) => {
+test('girando, o mapa anda junto aos poucos, e ele fica no lugar dele na tela', async ({page}) => {
   await andandoParaOLeste(page);
   await expect.poll(() => giroDoMapa(page)).toBe(-90);
   // onde ele fica quando o mapa assenta: no meio, 28% da altura abaixo
   const longeDoLugar = async () => { const e = await ondeEle(page); return Math.hypot(e.x, e.y - 0.28); };
   await expect.poll(longeDoLugar).toBeLessThan(0.01);
+  // um pino do mapa, que não desliza sozinho: é o mapa andando que o leva
+  const pino = () => page.locator('#map .em-pe').first().evaluate(el => { const r = el.getBoundingClientRect(); return {x: r.left, y: r.top}; });
+  const antes = await pino();
   await page.waitForTimeout(4000);
   await gps(page, P.lat, P.lng + 80 / 109300, 90, 10);
-  await page.waitForTimeout(80);
-  expect(await longeDoLugar(), 'logo depois da leitura, o mapa ainda está indo: não pulou').toBeGreaterThan(0.02);
-  await expect.poll(longeDoLugar, 'e chega').toBeLessThan(0.01);
+  await page.waitForTimeout(250);
+  const noMeio = await pino();
+  expect(await longeDoLugar(), 'deslizando, ele continua no lugar dele').toBeLessThan(0.02);
+  await page.waitForTimeout(1200);
+  const depois = await pino();
+  const andou = (a: {x: number; y: number}) => Math.hypot(a.x - antes.x, a.y - antes.y);
+  expect(andou(depois), 'a premissa: o mapa andou').toBeGreaterThan(20);
+  expect(andou(noMeio), 'no meio do deslize, o mapa andou só uma parte: não pulou').toBeLessThan(andou(depois) * 0.8);
+  expect(andou(noMeio)).toBeGreaterThan(0);
+  expect(await longeDoLugar()).toBeLessThan(0.01);
+});
+
+// Dono, 28/11: "ao clicar em outro pino buga". Com o mapa girado, o toque abria o cartão certo, mas o
+// norte voltava girando em volta do meio da tela e o pino tocado ia parar fora dela.
+test('tocando num pino com o mapa girado, o cartão abre nele e o pino fica à vista', async ({page}) => {
+  // como na reprodução: indo quase para o sul (160°), perto da 6ª parada
+  await abrir(page);
+  await carregar(page, ROTA_A);
+  const e = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!));
+  const perto = e.paradas[5];
+  await gps(page, perto.lat - 0.0003, perto.lng, null, null);
+  await montar(page);
+  await page.waitForTimeout(3000);
+  await gps(page, perto.lat - 0.0001, perto.lng, 160, 8);
+  await expect.poll(() => giroDoMapa(page)).toBe(-160);
+  await page.waitForTimeout(800);
+  // um pino visível, longe do meio, que não é ele
+  const alvo = await page.evaluate(() => {
+    const area = document.querySelector('.mapwrap')!.getBoundingClientRect();
+    const pinos = [...document.querySelectorAll('#map .leaflet-marker-icon .pino')].map(p => {
+      const r = p.getBoundingClientRect();
+      return {ids: (p as HTMLElement).dataset.ids!, x: r.left + r.width / 2, y: r.top + r.height / 2};
+    }).filter(p => p.x > area.left && p.x < area.right && p.y > area.top + 60 && p.y < area.bottom);
+    pinos.sort((a, b) => Math.hypot(b.x - (area.left + area.width / 2), b.y - (area.top + area.height / 2)) - Math.hypot(a.x - (area.left + area.width / 2), a.y - (area.top + area.height / 2)));
+    return pinos[0];
+  });
+  expect(alvo, 'a premissa: um pino à vista').toBeTruthy();
+  await page.mouse.click(alvo.x, alvo.y);
+  await expect(page.locator('[data-folha="pino"]')).toBeVisible();
+  await expect(page.locator('[data-folha="pino"] [data-item]').first()).toHaveAttribute('data-item', alvo.ids.split('+')[0]);
+  await expect.poll(() => giroDoMapa(page)).toBe(0);
+  // o pino tocado continua na tela, acima do cartão
+  const onde = await page.evaluate(ids => {
+    const p = document.querySelector(`#map .pino[data-ids="${ids}"]`)!.getBoundingClientRect(), area = document.querySelector('.mapwrap')!.getBoundingClientRect();
+    return {dentro: p.top >= area.top && p.bottom <= area.bottom && p.left >= area.left && p.right <= area.right};
+  }, alvo.ids);
+  expect(onde.dentro, 'o pino tocado à vista').toBe(true);
 });
 
 test('abrindo o cartão de um pino, o norte volta para cima', async ({page}) => {

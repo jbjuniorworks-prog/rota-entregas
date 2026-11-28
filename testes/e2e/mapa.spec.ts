@@ -1953,4 +1953,42 @@ test.describe('a linha da rota começa no entregador', () => {
     const [la, ln] = linha[linha.length - 1];
     expect(metros({lat: la, lng: ln}, ate), 'e acaba na próxima: o resto da rota não é desenhado').toBeLessThan(2);
   });
+
+  // Dono, 28/11: "tanto a rotação quanto as linhas sumindo, quanto mais suave melhor". A linha era
+  // cortada aos pulos, a cada leitura do GPS; agora o corte desliza com a bolinha até a leitura nova.
+  test('andando uns metros, a linha vai sumindo aos poucos atrás dele, não aos pulos', async ({page, context}) => {
+    await context.route('**://router.project-osrm.org/**', r => {
+      const url = new URL(r.request().url());
+      const pts = url.pathname.split('/').pop()!.split(';').map(s => { const [lng, lat] = s.split(',').map(Number); return {lat, lng}; });
+      if (url.pathname.includes('/table/')) {
+        const distances = pts.map(a => pts.map(b => metros(a, b)));
+        return r.fulfill({json: {code: 'Ok', distances, durations: distances.map(l => l.map(m => m / 10))}});
+      }
+      return r.fulfill({json: {code: 'Ok', routes: [{geometry: {coordinates: pts.map(p => [p.lng, p.lat])}}]}});
+    });
+    await abrir(page);
+    await carregar(page, ROTA_A);
+    await montar(page);
+    await page.waitForFunction(() => !!(window as any).rotaTeste);
+    const e = await page.evaluate(() => JSON.parse(localStorage.getItem('rota-entregas-v2')!));
+    const ordem: string[] = e.rota.areas.flatMap((a: any) => a.ordem);
+    const de = e.paradas.find((p: any) => p.id === ordem[0]), ate = e.paradas.find((p: any) => p.id === ordem[1]);
+    const ponto = (m: number) => { const f = m / metros(de, ate); return {lat: de.lat + (ate.lat - de.lat) * f, lng: de.lng + (ate.lng - de.lng) * f}; };
+    await context.setGeolocation({latitude: de.lat, longitude: de.lng, accuracy: 8});
+    const resumo = await page.locator('.resumo').innerText();
+    await page.locator('[data-folha="proxima"] [data-acao="entregue"]').first().click();
+    await expect(page.locator('.resumo')).not.toHaveText(resumo);
+    const comeco = async () => { const [t] = await tracos(page); return t ? {lat: t[0][0], lng: t[0][1]} : null; };
+    const a100 = ponto(100), a160 = ponto(160);
+    await context.setGeolocation({latitude: a100.lat, longitude: a100.lng, accuracy: 8});
+    await expect.poll(async () => metros((await comeco())!, a100), 'a premissa: a linha começa nele').toBeLessThan(2);
+    await page.waitForTimeout(1500);
+    // 60 m adiante: no meio do deslize, o corte está entre os dois pontos
+    await context.setGeolocation({latitude: a160.lat, longitude: a160.lng, accuracy: 8});
+    await page.waitForTimeout(350);
+    const meio = (await comeco())!;
+    expect(metros(meio, a100), 'já saiu de onde estava').toBeGreaterThan(5);
+    expect(metros(meio, a160), 'e ainda não chegou: não pulou').toBeGreaterThan(5);
+    await expect.poll(async () => metros((await comeco())!, a160)).toBeLessThan(2);
+  });
 });
