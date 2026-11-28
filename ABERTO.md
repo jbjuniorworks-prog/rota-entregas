@@ -154,7 +154,16 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## A faixa da próxima curva (27/11, dono: "pode ir", depois do caminho refeito; foto do Google Maps com "↰ 30 m, Av. Principal; depois, ↱"): na branch `faixa-da-curva`
+## Guia das curvas liga e desliga (28/11, Pedro, pelo dono: "gostaria que desse para ativar e desativar aquele guia por cima do mapa, vamos aprimorando"): na branch `guia-liga-desliga`
+
+- No Mais: "Esconder o guia das curvas" / "Mostrar o guia das curvas", como o som perto do pino. Vale para
+  este celular e conta, ligado de começo. Desligado, só a faixa some: o caminho até a próxima continua sendo
+  pedido, porque é a linha do mapa.
+- Conta `guia-ligar` e `guia-desligar` em `uso_dos_botoes`.
+- Testado: 1 e2e (esconde, a escolha fica guardada, volta); sem a checagem na faixa, quebra. Tipos, 828 de
+  unidade e 436 e2e. Não visto no celular.
+
+## A faixa da próxima curva (27/11, dono: "pode ir", depois do caminho refeito; foto do Google Maps com "↰ 30 m, Av. Principal; depois, ↱"): publicado em 27/11 (#59)
 
 - Quando a próxima muda, o app pede ao serviço de ruas o caminho de onde ele está até ela, com as manobras
   (`steps=true`). Esse caminho passa a ser a linha desenhada até a próxima, para a faixa e a linha não
