@@ -63,3 +63,24 @@ export function TelaAreas() {
     </div>
   </>;
 }
+
+// O que liga e desliga só neste celular (dono, 28/11: "é bom organizar esse Mais, cheio de coisa").
+// Moravam no Mais como "Desligar o som...", "Esconder o guia...": o texto do item trocava a cada
+// toque e não dizia como estava. Aqui cada um é uma chave que mostra se está ligado.
+export function TelaCelular() {
+  useLoja();
+  const chave = (dado: string, rotulo: string, sub: string, ligado: boolean, trocar: () => void) =>
+    <button className="chave" role="switch" aria-checked={ligado} data-chave={dado} onClick={trocar}>
+      <span className="txt"><b>{rotulo}</b><span className="sub">{sub}</span></span>
+      <span className="botao-chave" aria-hidden />
+    </button>;
+  return <>
+    <Cabecalho titulo="Ajustes deste celular" sub="Valem só para este celular." />
+    <div className="corpo">
+      {chave('som', 'Som perto do pino', 'Um toque ao chegar perto de uma entrega.', A.somLigado(), A.trocarSom)}
+      {chave('guia', 'Guia das curvas', 'A faixa com a próxima curva, em cima do mapa.', A.guiaLigado(), A.trocarGuia)}
+      <button className="item-menu" onClick={() => A.abrir({tela: 'caminho'})}>
+        {A.gravandoCaminho() ? 'Teste do caminho (gravando)' : 'Teste do caminho'}</button>
+    </div>
+  </>;
+}

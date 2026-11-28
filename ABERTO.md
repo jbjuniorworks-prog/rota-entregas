@@ -154,7 +154,18 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## Guia das curvas liga e desliga (28/11, Pedro, pelo dono: "gostaria que desse para ativar e desativar aquele guia por cima do mapa, vamos aprimorando"): na branch `guia-liga-desliga`
+## O Mais organizado (28/11, dono: "é bom organizar esse Mais, cheio de coisa"): na branch `organizar-o-mais`
+
+- Eram 14 itens soltos. Agora em grupos: "Rota de hoje" (conferir, refazer, copiar para o WhatsApp, ler mais
+  uma planilha, encerrar), "Antes de sair" (romaneio, ponto de chegada, áreas e horários) e "Meu" (minhas
+  portas verificadas, ajustes, Admin). O reset vem por último, separado por uma linha.
+- O dono escolheu, entre só pôr títulos e tirar os liga/desliga do Mais, a segunda: som perto do pino, guia das
+  curvas e teste do caminho foram para a tela "Ajustes deste celular", com chaves que mostram se está ligado.
+  Gravando o caminho, o item diz "(gravando o caminho)", como antes dizia no Mais.
+- Testado: 2 e2e novos (os grupos e a ordem; a chave mostra e troca) e os de som, guia e teste do caminho
+  passaram a chegar pela tela nova. Tipos, 831 de unidade e 439 e2e. Prints a 412×915. Não visto no celular.
+
+## Guia das curvas liga e desliga (28/11, Pedro, pelo dono: "gostaria que desse para ativar e desativar aquele guia por cima do mapa, vamos aprimorando"): publicado em 28/11 (#61); a partir do #62, em Mais > Ajustes deste celular
 
 - No Mais: "Esconder o guia das curvas" / "Mostrar o guia das curvas", como o som perto do pino. Vale para
   este celular e conta, ligado de começo. Desligado, só a faixa some: o caminho até a próxima continua sendo

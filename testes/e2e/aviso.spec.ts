@@ -56,7 +56,8 @@ test.describe('o toque perto do pino', () => {
     await abrir(page);
     await carregar(page, ROTA_A);
     await montar(page);
-    await menu(page, 'Desligar o som perto do pino');
+    await menu(page, 'Ajustes deste celular');
+    await page.locator('[data-chave="som"]').click();
     await expect(page.locator('#status')).toContainText('Som perto do pino desligado.');
 
     const perto = aNorteDe(await umPino(page), 20);

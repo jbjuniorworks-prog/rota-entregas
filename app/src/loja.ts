@@ -8,7 +8,7 @@ import type {Estado, Parada} from './logica/tipos';
 import type {EntregaAntiga} from './servicos/historico';
 
 // Uma tela por vez, e o mapa só nas que trabalham nele: a Rota e o Admin.
-export type Tela = 'inicio' | 'rota' | 'conferir' | 'saida' | 'areas' | 'admin' | 'verificadas' | 'romaneio' | 'caminho' | 'antiga';
+export type Tela = 'inicio' | 'rota' | 'conferir' | 'saida' | 'areas' | 'admin' | 'verificadas' | 'romaneio' | 'caminho' | 'antiga' | 'celular';
 
 export interface Marca {
   lat: number;

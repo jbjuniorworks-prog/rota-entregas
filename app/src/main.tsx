@@ -5,7 +5,7 @@ import * as A from './acoes';
 import {Cabecalho} from './componentes/comuns';
 import {TelaEntrar} from './componentes/Conta';
 import {MenuMais} from './componentes/MenuMais';
-import {TelaAreas, TelaSaida} from './componentes/TelaAjustes';
+import {TelaAreas, TelaCelular, TelaSaida} from './componentes/TelaAjustes';
 import {TelaConferir} from './componentes/TelaConferir';
 import {TelaInicio} from './componentes/TelaInicio';
 import {TelaRomaneio} from './componentes/TelaRomaneio';
@@ -157,6 +157,7 @@ function App() {
       {ui.tela === 'verificadas' && <TelaVerificadas />}
       {ui.tela === 'romaneio' && <TelaRomaneio />}
       {ui.tela === 'caminho' && <TelaCaminho />}
+      {ui.tela === 'celular' && <TelaCelular />}
       {ui.tela === 'antiga' && <CartaoAntiga />}
       {ui.tela === 'admin' && <Suspense fallback={<div className="info">Abrindo…</div>}><TelaAdmin /></Suspense>}
     </div>
