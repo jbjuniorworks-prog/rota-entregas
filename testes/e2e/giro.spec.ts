@@ -66,6 +66,29 @@ test('andando para o leste, o mapa gira 90° para o caminho ficar para cima, e e
   await expect.poll(() => page.evaluate(() => (window as any).rotaTeste.zoomAtual())).toBe(z0 - 1);
 });
 
+// Dono, 28/11: "parece que vira dando umas pancadas". O giro mudava de 10 em 10 graus, cada leitura
+// do GPS recomeçava a animação, e o mapa pulava de lugar a cada leitura.
+test('uma virada pequena, de 6°, já gira, sem esperar juntar 10°', async ({page}) => {
+  await andandoParaOLeste(page);
+  await expect.poll(() => giroDoMapa(page)).toBe(-90);
+  await page.waitForTimeout(4000);
+  await gps(page, P.lat - 4 / 111320, P.lng + 80 / 109300, 96, 10);
+  await expect.poll(() => giroDoMapa(page)).toBe(-96);
+});
+
+test('girando, o mapa anda junto animado, sem pular a cada leitura do GPS', async ({page}) => {
+  await andandoParaOLeste(page);
+  await expect.poll(() => giroDoMapa(page)).toBe(-90);
+  // onde ele fica quando o mapa assenta: no meio, 28% da altura abaixo
+  const longeDoLugar = async () => { const e = await ondeEle(page); return Math.hypot(e.x, e.y - 0.28); };
+  await expect.poll(longeDoLugar).toBeLessThan(0.01);
+  await page.waitForTimeout(4000);
+  await gps(page, P.lat, P.lng + 80 / 109300, 90, 10);
+  await page.waitForTimeout(80);
+  expect(await longeDoLugar(), 'logo depois da leitura, o mapa ainda está indo: não pulou').toBeGreaterThan(0.02);
+  await expect.poll(longeDoLugar, 'e chega').toBeLessThan(0.01);
+});
+
 test('abrindo o cartão de um pino, o norte volta para cima', async ({page}) => {
   await andandoParaOLeste(page);
   await expect.poll(() => giroDoMapa(page)).toBe(-90);

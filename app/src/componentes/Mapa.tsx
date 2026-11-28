@@ -12,7 +12,7 @@ import {DUVIDA, QUASE} from '../logica/rotulos';
 import {ehComercial} from '../logica/comerciais';
 import {longeDoProprioCep} from '../logica/longeDoCep';
 import {numerosDaShopee} from '../logica/paradasDaShopee';
-import {anguloLegivel, proximoGiro} from '../logica/giro';
+import {anguloLegivel, inicioDoGiro, proximoGiro, suavizarGiro} from '../logica/giro';
 import {A_FRENTE_ALTURA, olharAFrente, passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
 import {loja, useLoja} from '../loja';
 
@@ -50,6 +50,8 @@ const POR_BAIXO = -500;
 const ZOOM_DO_FOCO = 17;
 // a distância de quando o mapa começa a segui-lo: a do "onde estou" de antes, que o Pedro usava
 const ZOOM_DE_MIM = 17;
+// o GPS do celular manda uma leitura por segundo, mais ou menos
+const ANDAR_GIRANDO_S = 0.9;
 
 // Seguindo (pedidos de 02/10 e 03/10): ele fica no meio do mapa, de perto, e o mapa vai junto
 // quando ele anda. Mostrar ele e a próxima juntos afastava o mapa a cidade inteira enquanto a
@@ -119,24 +121,46 @@ function meioDoSeguir(m: L.Map, eu: {lat: number; lng: number; rumo: number | nu
 // Por isso só gira no modo de navegar (seguindo, sem cartão de pino, sem tocar no mapa para marcar),
 // e arrastar com um dedo fica desligado: o arrasto andaria torto. A pinça é em volta do meio, e o
 // meio não muda com o giro.
+// O giro na tela anda atrás do destino quadro a quadro (suavizarGiro); `naTela` é o desenhado agora.
+const animacao = {naTela: null as number | null, alvo: null as number | null, quadro: 0, antes: 0};
+
+function pintarGiro(el: HTMLElement, angulo: number) {
+  el.style.transform = `rotate(${-angulo}deg)`;
+  el.style.setProperty('--desgiro', angulo + 'deg');
+}
+
 function aplicarGiro(m: L.Map, giro: number | null) {
   const el = m.getContainer(), pai = el.parentElement!;
   if (giro == null) {
+    // sair do giro é na hora: quem tocou num pino precisa do mapa certo para o próximo toque
+    cancelAnimationFrame(animacao.quadro);
+    Object.assign(animacao, {naTela: null, alvo: null, quadro: 0});
     if (!el.classList.contains('girando')) return;
     el.classList.remove('girando');
     for (const k of ['width', 'height', 'left', 'top', 'right', 'bottom', 'transform', '--desgiro']) el.style.removeProperty(k);
     m.dragging.enable();
-  } else {
-    const w = pai.clientWidth, h = pai.clientHeight, d = Math.ceil(Math.hypot(w, h));
-    el.classList.add('girando');
-    Object.assign(el.style, {width: d + 'px', height: d + 'px', left: (w - d) / 2 + 'px', top: (h - d) / 2 + 'px', right: 'auto', bottom: 'auto', transform: `rotate(${-giro}deg)`});
-    el.style.setProperty('--desgiro', giro + 'deg');
-    m.dragging.disable();
+    if (giroDosNomes !== 0) { giroDosNomes = 0; m.fire('moveend'); }
+    return;
   }
-  if (giroDosNomes !== (giro ?? 0)) {
-    giroDosNomes = giro ?? 0;
-    m.fire('moveend');
-  }
+  const w = pai.clientWidth, h = pai.clientHeight, d = Math.ceil(Math.hypot(w, h));
+  el.classList.add('girando');
+  Object.assign(el.style, {width: d + 'px', height: d + 'px', left: (w - d) / 2 + 'px', top: (h - d) / 2 + 'px', right: 'auto', bottom: 'auto'});
+  m.dragging.disable();
+  animacao.alvo = giro;
+  if (animacao.naTela == null) { animacao.naTela = inicioDoGiro(giro); pintarGiro(el, animacao.naTela); }
+  if (animacao.quadro) return;
+  animacao.antes = performance.now();
+  const passo = (t: number) => {
+    if (animacao.alvo == null || animacao.naTela == null) { animacao.quadro = 0; return; }
+    animacao.naTela = suavizarGiro(animacao.naTela, animacao.alvo, t - animacao.antes);
+    animacao.antes = t;
+    pintarGiro(el, animacao.naTela);
+    if (animacao.naTela !== animacao.alvo) { animacao.quadro = requestAnimationFrame(passo); return; }
+    animacao.quadro = 0;
+    // os nomes das ruas, que custam para desenhar, só quando o giro assentou
+    if (giroDosNomes !== animacao.naTela) { giroDosNomes = animacao.naTela; m.fire('moveend'); }
+  };
+  animacao.quadro = requestAnimationFrame(passo);
 }
 
 // A bolinha de "você está aqui", com a seta do rumo quando ele está andando.
@@ -549,7 +573,9 @@ export default function Mapa() {
       suspeita.current = null;
       if (!ancora) { const z = Math.max(m.getZoom(), ZOOM_DE_MIM); m.setView(meioDoSeguir(m, eu!, z, giro.current), z, {animate: false}); }
       else if (voltou) m.setView(meioDoSeguir(m, eu!, m.getZoom(), giro.current), m.getZoom());
-      else m.panTo(meioDoSeguir(m, eu!, m.getZoom(), giro.current), {animate: false});
+      // Girando, o andar também é animado, no tempo de uma leitura do GPS à seguinte: o pulo a cada
+      // leitura, no mapa girado, era mais um tranco (28/11).
+      else m.panTo(meioDoSeguir(m, eu!, m.getZoom(), giro.current), giro.current != null ? {animate: true, duration: ANDAR_GIRANDO_S, easeLinearity: 1} : {animate: false});
     } else if (pediuEu && eu) m.setView([eu.lat, eu.lng], Math.max(m.getZoom(), ZOOM_DE_MIM));
   });
 
