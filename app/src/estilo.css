@@ -6,7 +6,9 @@ html,body,#raiz{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Sego
 #painel{flex:1;min-height:0;overflow:auto;background:var(--card)}
 
 /* As telas com mapa: a Rota (o mapa e o cartão de baixo) e o Admin. */
-.mapwrap{position:relative;flex:1;min-height:0}
+/* overflow: o mapa girado cresce até a diagonal da área (aplicarGiro); sem cortar, a página inteira ficava
+   mais larga que a tela e arrastava para o lado (dono, 28/11, com print) */
+.mapwrap{position:relative;flex:1;min-height:0;overflow:hidden}
 #map,.semmapa{position:absolute;inset:0;background:#dde3ea}
 .semmapa{display:grid;place-content:center;justify-items:center;gap:10px;padding:16px;text-align:center;font-size:14px;color:var(--mut)}
 #app.tela-rota #painel{flex:none;max-height:52vh;border-radius:18px 18px 0 0;box-shadow:0 -6px 20px rgba(17,24,39,.12);margin-top:-14px;position:relative;z-index:500}

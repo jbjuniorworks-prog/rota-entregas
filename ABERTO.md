@@ -154,7 +154,16 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## O giro suave (28/11, dono, depois de ver na rua: "ficou bom, só não está suave, parece que vira dando umas pancadas"): na branch `giro-suave`
+## A página que arrastava para o lado com o mapa girado (28/11, dono, com print: "continua com bug, consigo arrastar para o lado"): na branch `giro-sem-arrastar-a-pagina`
+
+- Publicado no #63 e no #64: o mapa girado cresce até a diagonal da área (aplicarGiro), e o contêiner dele não
+  cortava o que passava. A página ficava 147 px mais larga que a tela (412 px), e arrastando o app ia para o lado,
+  com um vão cinza. Conserto: `.mapwrap{overflow:hidden}`.
+- Até ele chegar, o contorno é desligar "Mapa gira com o caminho" em Mais > Ajustes deste celular.
+- Testado: 1 e2e (girado, a página não fica mais larga nem mais alta que a tela, e não rola); sem o conserto,
+  quebra com 147 px a mais. Tipos, 841 de unidade e 448 e2e. Os testes do giro não viam: mediam o mapa, não a página.
+
+## O giro suave (28/11, dono, depois de ver na rua: "ficou bom, só não está suave, parece que vira dando umas pancadas"): publicado em 28/11 (#64)
 
 - Causas, pelo código: o giro mudava de 10 em 10 graus; cada leitura do GPS reiniciava uma animação de CSS de
   0,6 s; e o mapa pulava de lugar a cada leitura, sem animação, o que no mapa girado parecia mais um tranco.
