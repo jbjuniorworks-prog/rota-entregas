@@ -79,6 +79,7 @@ export function TelaCelular() {
     <div className="corpo">
       {chave('som', 'Som perto do pino', 'Um toque ao chegar perto de uma entrega.', A.somLigado(), A.trocarSom)}
       {chave('guia', 'Guia das curvas', 'A faixa com a próxima curva, em cima do mapa.', A.guiaLigado(), A.trocarGuia)}
+      {chave('giro', 'Mapa gira com o caminho', 'Andando, o caminho fica sempre para cima. Parado ou tocando no mapa, volta o norte.', A.mapaGira(), A.trocarGiro)}
       <button className="item-menu" onClick={() => A.abrir({tela: 'caminho'})}>
         {A.gravandoCaminho() ? 'Teste do caminho (gravando)' : 'Teste do caminho'}</button>
     </div>

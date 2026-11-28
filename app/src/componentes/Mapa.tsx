@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {abrir, buscarNomesDasRuas, fecharLaco, pararDeSeguir, pausaDoSeguir, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
+import {abrir, buscarNomesDasRuas, fecharLaco, mapaGira, pararDeSeguir, pausaDoSeguir, tocarParaEscolher, tocouNoMapa, trocar, voltar} from '../acoes';
 import {escolhidasValidas, letraDoPino} from '../logica/escolha';
 import {coresDosGrupos, gruposValidos, type Grupo} from '../logica/grupos';
 import {aPartirDeMim, caminhoDaProxima} from '../logica/linhaQueFalta';
@@ -12,7 +12,8 @@ import {DUVIDA, QUASE} from '../logica/rotulos';
 import {ehComercial} from '../logica/comerciais';
 import {longeDoProprioCep} from '../logica/longeDoCep';
 import {numerosDaShopee} from '../logica/paradasDaShopee';
-import {olharAFrente, passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
+import {anguloLegivel, proximoGiro} from '../logica/giro';
+import {A_FRENTE_ALTURA, olharAFrente, passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
 import {loja, useLoja} from '../loja';
 
 // acima disso o GPS pode estar na rua do lado: a linha não é cortada por ele
@@ -30,9 +31,10 @@ function icone(texto: string, cor: string, apagado = false, borda = '', ids = ''
   // Inclinado no leque (logica/pinos.ts): gira em volta da ponta, e o número desgira para ser lido
   const numero = giro ? ` style="transform:rotate(${(/\bcomercial\b/.test(borda) ? 0 : 45) - giro}deg)"` : '';
   const pino = `<div class="pino ${borda}"${ids ? ` data-ids="${esc(ids)}"` : ''} style="${fundo};opacity:${apagado ? .4 : 1}"><span${numero}>${esc(texto)}</span></div>`;
+  // em pé: com o mapa girado, o pino gira de volta em volta da ponta (giro.ts)
   return L.divIcon({
     className: '', iconSize: [30, 30], iconAnchor: [15, 30],
-    html: giro ? `<div class="inclinado" style="transform:rotate(${giro}deg)">${pino}</div>` : pino,
+    html: `<div class="em-pe">${giro ? `<div class="inclinado" style="transform:rotate(${giro}deg)">${pino}</div>` : pino}</div>`,
   });
 }
 
@@ -80,6 +82,9 @@ function larguraDoNome(texto: string): number {
 // os pedaços emendados, refeitos só quando chegam nomes novos
 let emendados: {de: NomeNoMapa[] | null; ruas: ReturnType<typeof emendar>} = {de: null, ruas: []};
 
+// quanto o mapa está girado agora (aplicarGiro): os nomes das ruas não ficam de cabeça para baixo
+let giroDosNomes = 0;
+
 function desenharNomes(m: L.Map, camada: L.LayerGroup) {
   camada.clearLayers();
   const nomes = loja.ui.tela === 'rota' ? loja.ui.nomesNoMapa : [];
@@ -89,16 +94,49 @@ function desenharNomes(m: L.Map, camada: L.LayerGroup) {
   const itens = emendados.ruas.map(n => ({texto: n.texto, pixels: n.linha.map(q => m.latLngToContainerPoint(q))}));
   for (const r of rotulosNaTela(itens, {largura: s.x, altura: s.y}, larguraDoNome)) {
     L.marker(m.containerPointToLatLng([r.x, r.y]), {
-      icon: L.divIcon({className: '', iconSize: [0, 0], html: `<div class="nome-rua" style="transform:translate(-50%,-50%) rotate(${r.angulo.toFixed(1)}deg)">${esc(r.texto)}</div>`}),
+      icon: L.divIcon({className: '', iconSize: [0, 0], html: `<div class="nome-rua" style="transform:translate(-50%,-50%) rotate(${anguloLegivel(r.angulo, giroDosNomes).toFixed(1)}deg)">${esc(r.texto)}</div>`}),
       interactive: false, keyboard: false, zIndexOffset: -1000,
     }).addTo(camada);
   }
 }
 
 // O meio do mapa seguindo ele: adiante, na direção em que ele anda (olharAFrente, em seguir.ts).
-function meioDoSeguir(m: L.Map, eu: {lat: number; lng: number; rumo: number | null}, z: number): L.LatLng {
-  const t = m.getSize(), d = olharAFrente(eu.rumo, t.x, t.y);
+// Com o mapa girado, adiante é para cima na tela: o meio vai na direção do giro, pela altura que se vê.
+function meioDoSeguir(m: L.Map, eu: {lat: number; lng: number; rumo: number | null}, z: number, giro: number | null = null): L.LatLng {
+  let d: {x: number; y: number};
+  if (giro != null) {
+    const h = m.getContainer().parentElement!.clientHeight * A_FRENTE_ALTURA, r = giro * Math.PI / 180;
+    d = {x: Math.sin(r) * h, y: -Math.cos(r) * h};
+  } else {
+    const t = m.getSize();
+    d = olharAFrente(eu.rumo, t.x, t.y);
+  }
   return m.unproject(m.project([eu.lat, eu.lng], z).add([d.x, d.y]), z);
+}
+
+// O mapa girado (dono, 28/11: "o caminho sempre para cima"). O elemento do mapa gira inteiro e
+// cresce até a diagonal da área dele, para os cantos não ficarem vazios; o Leaflet não sabe do giro.
+// Por isso só gira no modo de navegar (seguindo, sem cartão de pino, sem tocar no mapa para marcar),
+// e arrastar com um dedo fica desligado: o arrasto andaria torto. A pinça é em volta do meio, e o
+// meio não muda com o giro.
+function aplicarGiro(m: L.Map, giro: number | null) {
+  const el = m.getContainer(), pai = el.parentElement!;
+  if (giro == null) {
+    if (!el.classList.contains('girando')) return;
+    el.classList.remove('girando');
+    for (const k of ['width', 'height', 'left', 'top', 'right', 'bottom', 'transform', '--desgiro']) el.style.removeProperty(k);
+    m.dragging.enable();
+  } else {
+    const w = pai.clientWidth, h = pai.clientHeight, d = Math.ceil(Math.hypot(w, h));
+    el.classList.add('girando');
+    Object.assign(el.style, {width: d + 'px', height: d + 'px', left: (w - d) / 2 + 'px', top: (h - d) / 2 + 'px', right: 'auto', bottom: 'auto', transform: `rotate(${-giro}deg)`});
+    el.style.setProperty('--desgiro', giro + 'deg');
+    m.dragging.disable();
+  }
+  if (giroDosNomes !== (giro ?? 0)) {
+    giroDosNomes = giro ?? 0;
+    m.fire('moveend');
+  }
 }
 
 // A bolinha de "você está aqui", com a seta do rumo quando ele está andando.
@@ -142,6 +180,7 @@ export default function Mapa() {
   const desenhado = useRef('');
   const fundoFeito = useRef('');
   const linhaFeita = useRef('');
+  const giro = useRef<number | null>(null);
   const enquadrado = useRef(0);
   const focado = useRef(0);
   const marcado = useRef(0);
@@ -167,6 +206,11 @@ export default function Mapa() {
     camadaLacos.current = L.layerGroup().addTo(m);
     camadaNomes.current = L.layerGroup().addTo(m);
     m.on('zoomend moveend', () => desenharNomes(m, camadaNomes.current!));
+    // O + e o − e o crédito do mapa ficam fora do elemento que gira, no lugar de sempre.
+    const fora = document.createElement('div');
+    fora.className = 'controles-do-mapa leaflet-container' + (m.getContainer().classList.contains('leaflet-touch') ? ' leaflet-touch' : '');
+    m.getContainer().parentElement!.appendChild(fora);
+    fora.appendChild(m.getContainer().querySelector('.leaflet-control-container')!);
     // Tocar fora dos pinos: com o "toque no mapa" armado, é o lugar da entrega; com o cartão de
     // um pino aberto, fecha ele, que nem o voltar.
     m.on('click', ev => {
@@ -191,7 +235,7 @@ export default function Mapa() {
       const eu = loja.ui.euAqui;
       // no meio da animação de zoom do fim da pinça, o `moveend` dela é que volta
       if (dedos.current.size || !eu || !seguirAgora() || (m as any)._animatingZoom) return;
-      const meio = meioDoSeguir(m, eu, m.getZoom());
+      const meio = meioDoSeguir(m, eu, m.getZoom(), giro.current);
       if (m.latLngToContainerPoint(meio).distanceTo(m.getSize().divideBy(2)) < 2) return;
       seguido.current = {lat: eu.lat, lng: eu.lng, quando: eu.quando};
       m.setView(meio, m.getZoom(), {animate: false});
@@ -230,12 +274,17 @@ export default function Mapa() {
     // O cartão de baixo muda de altura (o de um pino é mais baixo que o da próxima, minimizar,
     // endereço de três linhas): o Leaflet só sabe do tamanho novo se for avisado, e sem isso
     // deixava cinza a faixa que o mapa ganhou (print do Pedro, 03/10). Escondido, não há tamanho.
-    const tamanho = new ResizeObserver(() => { if (div.current?.offsetWidth) m.invalidateSize(); });
+    const tamanho = new ResizeObserver(() => {
+      if (giro.current != null) aplicarGiro(m, giro.current);
+      if (div.current?.offsetWidth) m.invalidateSize();
+    });
     tamanho.observe(div.current!);
+    tamanho.observe(div.current!.parentElement!);
     // Fechar e reabrir o mapa monta outro: sem tirar este daqui, o teste continuava mandando
     // ordem para um mapa já morto e elas sumiam sem erro nenhum.
     return () => {
       tamanho.disconnect();
+      fora.remove();
       el.removeEventListener('pointerdown', desce, true);
       document.removeEventListener('pointerup', sobe, true);
       document.removeEventListener('pointercancel', sobe, true);
@@ -450,6 +499,11 @@ export default function Mapa() {
     m.options.touchZoom = m.options.scrollWheelZoom = m.options.doubleClickZoom = emVolta;
     // seguindo, o arrasto não continua deslizando depois do dedo sair: o mapa volta para ele
     m.options.inertia = !seguir;
+    // gira só navegando: seguindo, andando (o GPS dá o rumo) e com a chave ligada nos Ajustes
+    const girar = seguir && mapaGira() && eu?.rumo != null && !ui.marcandoLugar;
+    const giroAntes = giro.current;
+    giro.current = girar ? proximoGiro(giro.current, eu!.rumo) : null;
+    if (giro.current !== giroAntes) aplicarGiro(m, giro.current);
     const voltou = seguir && !seguia.current;
     seguia.current = seguir;
     const pediuEu = ui.irParaMim !== irMim.current;
@@ -465,7 +519,7 @@ export default function Mapa() {
       suspeita.current = passo.suspeita;
     }
     // com dedo na tela, o mapa é da mão: a leitura do GPS espera, e o soltar é que volta para ele
-    const querSeguir = seguir && !dedos.current.size && (!ancora || voltou || passo?.passo === 'mover');
+    const querSeguir = seguir && !dedos.current.size && (!ancora || voltou || passo?.passo === 'mover' || giro.current !== giroAntes);
     const querFocar = !!ui.focar && ui.focar.vez !== focado.current;
     const querAdmin = !!marcasAdmin && marcasAdmin.vez !== marcado.current;
     // O passo de cada leitura não confere o tamanho: o cartão que muda de altura já avisa o mapa
@@ -493,9 +547,9 @@ export default function Mapa() {
       // é o mais previsível; se os passinhos ficarem feios no celular, testar uma animação curta.
       seguido.current = {lat: eu!.lat, lng: eu!.lng, quando: eu!.quando};
       suspeita.current = null;
-      if (!ancora) { const z = Math.max(m.getZoom(), ZOOM_DE_MIM); m.setView(meioDoSeguir(m, eu!, z), z, {animate: false}); }
-      else if (voltou) m.setView(meioDoSeguir(m, eu!, m.getZoom()), m.getZoom());
-      else m.panTo(meioDoSeguir(m, eu!, m.getZoom()), {animate: false});
+      if (!ancora) { const z = Math.max(m.getZoom(), ZOOM_DE_MIM); m.setView(meioDoSeguir(m, eu!, z, giro.current), z, {animate: false}); }
+      else if (voltou) m.setView(meioDoSeguir(m, eu!, m.getZoom(), giro.current), m.getZoom());
+      else m.panTo(meioDoSeguir(m, eu!, m.getZoom(), giro.current), {animate: false});
     } else if (pediuEu && eu) m.setView([eu.lat, eu.lng], Math.max(m.getZoom(), ZOOM_DE_MIM));
   });
 
