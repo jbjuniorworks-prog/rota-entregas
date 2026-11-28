@@ -160,8 +160,19 @@ Fora da lista:
   este celular e conta, ligado de começo. Desligado, só a faixa some: o caminho até a próxima continua sendo
   pedido, porque é a linha do mapa.
 - Conta `guia-ligar` e `guia-desligar` em `uso_dos_botoes`.
-- Testado: 1 e2e (esconde, a escolha fica guardada, volta); sem a checagem na faixa, quebra. Tipos, 828 de
-  unidade e 436 e2e. Não visto no celular.
+- Testado: 1 e2e (esconde, a escolha fica guardada, volta); sem a checagem na faixa, quebra. Tipos, 831 de
+  unidade e 437 e2e, já junto com o #60. Não visto no celular.
+
+## Olhar à frente (27/11, dono: "olhar pra frente acho interessante, vamos testar"): publicado em 28/11 (#60)
+
+- Escolhido no lugar do mapa girando, que pedia um complemento no Leaflet e refazer o que calcula posição na
+  tela (leque em V, nomes das ruas, circular, toque no mapa, empilhar).
+- Andando, com rumo, o meio do mapa fica adiante dele: 28% da altura acima, indo para o norte; 30% da largura
+  à direita, indo para o leste (`olharAFrente`, em `logica/seguir.ts`). O rumo vai em passos de 15°. O norte
+  continua para cima. Parado, o rumo é o último que o GPS deu andando (como a seta da bolinha): o mapa fica
+  como estava; sem rumo nenhum, ele no meio, como antes.
+- Testado: 3 de unidade e 1 e2e com um GPS de mentira que manda rumo e velocidade (o do navegador de teste
+  não manda); sem o deslocamento, o e2e quebra. Tipos, 831 de unidade e 436 e2e. Não visto no celular.
 
 ## A faixa da próxima curva (27/11, dono: "pode ir", depois do caminho refeito; foto do Google Maps com "↰ 30 m, Av. Principal; depois, ↱"): publicado em 27/11 (#59)
 

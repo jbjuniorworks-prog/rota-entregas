@@ -12,7 +12,7 @@ import {DUVIDA, QUASE} from '../logica/rotulos';
 import {ehComercial} from '../logica/comerciais';
 import {longeDoProprioCep} from '../logica/longeDoCep';
 import {numerosDaShopee} from '../logica/paradasDaShopee';
-import {passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
+import {olharAFrente, passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
 import {loja, useLoja} from '../loja';
 
 // acima disso o GPS pode estar na rua do lado: a linha não é cortada por ele
@@ -93,6 +93,12 @@ function desenharNomes(m: L.Map, camada: L.LayerGroup) {
       interactive: false, keyboard: false, zIndexOffset: -1000,
     }).addTo(camada);
   }
+}
+
+// O meio do mapa seguindo ele: adiante, na direção em que ele anda (olharAFrente, em seguir.ts).
+function meioDoSeguir(m: L.Map, eu: {lat: number; lng: number; rumo: number | null}, z: number): L.LatLng {
+  const t = m.getSize(), d = olharAFrente(eu.rumo, t.x, t.y);
+  return m.unproject(m.project([eu.lat, eu.lng], z).add([d.x, d.y]), z);
 }
 
 // A bolinha de "você está aqui", com a seta do rumo quando ele está andando.
@@ -185,9 +191,10 @@ export default function Mapa() {
       const eu = loja.ui.euAqui;
       // no meio da animação de zoom do fim da pinça, o `moveend` dela é que volta
       if (dedos.current.size || !eu || !seguirAgora() || (m as any)._animatingZoom) return;
-      if (m.latLngToContainerPoint([eu.lat, eu.lng]).distanceTo(m.getSize().divideBy(2)) < 2) return;
+      const meio = meioDoSeguir(m, eu, m.getZoom());
+      if (m.latLngToContainerPoint(meio).distanceTo(m.getSize().divideBy(2)) < 2) return;
       seguido.current = {lat: eu.lat, lng: eu.lng, quando: eu.quando};
-      m.setView([eu.lat, eu.lng], m.getZoom(), {animate: false});
+      m.setView(meio, m.getZoom(), {animate: false});
     };
     const el = m.getContainer();
     const desce = (ev: PointerEvent) => { dedos.current.add(ev.pointerId); };
@@ -486,9 +493,9 @@ export default function Mapa() {
       // é o mais previsível; se os passinhos ficarem feios no celular, testar uma animação curta.
       seguido.current = {lat: eu!.lat, lng: eu!.lng, quando: eu!.quando};
       suspeita.current = null;
-      if (!ancora) m.setView([eu!.lat, eu!.lng], Math.max(m.getZoom(), ZOOM_DE_MIM), {animate: false});
-      else if (voltou) m.setView([eu!.lat, eu!.lng], m.getZoom());
-      else m.panTo([eu!.lat, eu!.lng], {animate: false});
+      if (!ancora) { const z = Math.max(m.getZoom(), ZOOM_DE_MIM); m.setView(meioDoSeguir(m, eu!, z), z, {animate: false}); }
+      else if (voltou) m.setView(meioDoSeguir(m, eu!, m.getZoom()), m.getZoom());
+      else m.panTo(meioDoSeguir(m, eu!, m.getZoom()), {animate: false});
     } else if (pediuEu && eu) m.setView([eu.lat, eu.lng], Math.max(m.getZoom(), ZOOM_DE_MIM));
   });
 
