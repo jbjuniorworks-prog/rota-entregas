@@ -1,5 +1,5 @@
 import type {Page} from '@playwright/test';
-import {abrir, carregar, expect, menu, montar, test, ROTA_A} from './apoio';
+import {abrir, carregar, expect, menu, montar, paraABase, test, ROTA_A} from './apoio';
 
 // Dono, 27/11, com a foto do Google Maps na rua: "↰ 30 m, Av. Principal; depois, ↱". A faixa da
 // próxima curva, em cima do mapa, com o caminho até a próxima que o serviço de ruas devolve.
@@ -64,9 +64,14 @@ test('a faixa mostra a curva até a próxima e, feita a curva, a chegada', async
 // Pedro, pelo dono, 28/11: "gostaria que desse para ativar e desativar aquele guia por cima do mapa".
 test('o guia das curvas esconde e volta pelo Mais, e a escolha fica no celular', async ({page, context}) => {
   await comAFaixa(page, context);
-  await menu(page, 'Esconder o guia das curvas');
+  await menu(page, 'Ajustes deste celular');
+  await page.locator('[data-chave="guia"]').click();
+  await expect(page.locator('[data-chave="guia"]')).toHaveAttribute('aria-checked', 'false');
+  await paraABase(page);
   await expect(faixa(page)).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('rota-entregas-guia-das-curvas'))).toBe('false');
-  await menu(page, 'Mostrar o guia das curvas');
+  await menu(page, 'Ajustes deste celular');
+  await page.locator('[data-chave="guia"]').click();
+  await paraABase(page);
   await expect(faixa(page)).toBeVisible();
 });

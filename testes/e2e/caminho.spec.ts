@@ -22,7 +22,8 @@ test.describe('o teste do caminho', () => {
   }
 
   async function ligar(page: Page) {
-    await menu(page, 'Teste do caminho');
+    await menu(page, 'Ajustes deste celular');
+    await page.getByRole('button', {name: 'Teste do caminho'}).click();
     await page.locator('[data-gravar]').click();
     await expect(page.locator('[data-gravando]')).toBeVisible();
     await garantirMapa(page);
@@ -39,7 +40,8 @@ test.describe('o teste do caminho', () => {
   }
 
   async function verOTeste(page: Page) {
-    await menu(page, 'Teste do caminho');
+    await menu(page, /^Ajustes deste celular/);
+    await page.getByRole('button', {name: /^Teste do caminho/}).click();
     await expect(page.locator('[data-caminho]')).toBeVisible();
   }
 
@@ -63,7 +65,7 @@ test.describe('o teste do caminho', () => {
     await ligar(page);
     await paraABase(page);
     await page.getByRole('button', {name: 'Mais', exact: true}).click();
-    await expect(page.locator('.menu').getByRole('button', {name: 'Teste do caminho (gravando)'})).toBeVisible();
+    await expect(page.locator('.menu').getByRole('button', {name: 'Ajustes deste celular (gravando o caminho)'})).toBeVisible();
   });
 
   test('nada do caminho vai para a rede', async ({page, context}) => {

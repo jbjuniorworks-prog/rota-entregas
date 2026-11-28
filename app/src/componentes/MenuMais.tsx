@@ -22,27 +22,29 @@ export function MenuMais() {
       </div>
       {duvidas > 0 && <button className="item-menu" data-conferir onClick={() => A.fecharMenuE(() => { ui.soDuvidas = true; A.abrir({tela: 'conferir'}); })}>
         {duvidas} para conferir</button>}
+      {/* Em grupos (dono, 28/11: "é bom organizar esse Mais, cheio de coisa"): eram 14 itens soltos. */}
+      <div className="grupo-menu">Rota de hoje</div>
       {/* sem rota, a mesma tela serve para achar uma entrega de outro dia (B.O.) */}
       {item(comParadas ? 'Conferir endereços' : 'Procurar uma entrega', () => { ui.soDuvidas = false; A.abrir({tela: 'conferir'}); })}
       {comParadas && item(e.rota ? 'Refazer a rota' : 'Montar a rota', A.montarRota)}
-      {item('Ponto de chegada', () => A.abrir({tela: 'saida'}))}
-      {item('Áreas e horários', () => A.abrir({tela: 'areas'}))}
-      {/* na hora de pegar a rota: os pacotes em gaiola longe do bairro, para os analistas (dono, 16/11) */}
-      {item('Conferir romaneio', () => A.abrir({tela: 'romaneio'}))}
-      {/* a lista do Admin, só com as rotas dele (Luan, pelo dono, 15/11) */}
-      {nuvem.sessao && item('Minhas portas verificadas', () => { A.contar('minhas-portas'); A.abrir({tela: 'verificadas'}); })}
-      {item(A.somLigado() ? 'Desligar o som perto do pino' : 'Ligar o som perto do pino', A.trocarSom)}
-      {item(A.guiaLigado() ? 'Esconder o guia das curvas' : 'Mostrar o guia das curvas', A.trocarGuia)}
-      {/* o teste de 24/11: gravando, o nome diz, para ninguém esquecer ligado */}
-      {item(A.gravandoCaminho() ? 'Teste do caminho (gravando)' : 'Teste do caminho', () => A.abrir({tela: 'caminho'}))}
       {e.rota && item('Copiar a rota para o WhatsApp', A.copiarRota)}
+      {comParadas && item('Ler mais uma planilha ou endereços', () => A.abrir({tela: 'inicio'}))}
       {/* com a ocorrência ainda na sequência, o cartão de fim não chega: daqui encerra a qualquer hora */}
       {e.rota && item('Encerrar a rota', () => { A.contar('encerrar-mais'); A.encerrarComSobras(); })}
-      {comParadas && item('Ler mais uma planilha ou endereços', () => A.abrir({tela: 'inicio'}))}
-      {comParadas && item('Resetar a rota', A.resetar, 'perigo')}
-      {!comParadas && backupRecente(guarda) && item('Desfazer o último reset', A.desfazerReset)}
+      <div className="grupo-menu">Antes de sair</div>
+      {/* na hora de pegar a rota: os pacotes em gaiola longe do bairro, para os analistas (dono, 16/11) */}
+      {item('Conferir romaneio', () => A.abrir({tela: 'romaneio'}))}
+      {item('Ponto de chegada', () => A.abrir({tela: 'saida'}))}
+      {item('Áreas e horários', () => A.abrir({tela: 'areas'}))}
+      <div className="grupo-menu">Meu</div>
+      {/* a lista do Admin, só com as rotas dele (Luan, pelo dono, 15/11) */}
+      {nuvem.sessao && item('Minhas portas verificadas', () => { A.contar('minhas-portas'); A.abrir({tela: 'verificadas'}); })}
+      {/* som, guia das curvas e teste do caminho; gravando, o nome diz, para ninguém esquecer ligado (24/11) */}
+      {item(A.gravandoCaminho() ? 'Ajustes deste celular (gravando o caminho)' : 'Ajustes deste celular', () => A.abrir({tela: 'celular'}))}
       {admin && <button className="item-menu" onClick={() => A.fecharMenuE(() => A.abrir({tela: 'admin'}))}>Admin
         {ui.esperandoAdmin > 0 && <span className="selo" data-selo aria-label={`${ui.esperandoAdmin} esperando você`}>{ui.esperandoAdmin}</span>}</button>}
+      {comParadas && item('Resetar a rota', A.resetar, 'perigo separado')}
+      {!comParadas && backupRecente(guarda) && item('Desfazer o último reset', A.desfazerReset, 'separado')}
       <div className="rodape-menu">
         <Conta />
         {/* para saber, pelo print de um motorista, se o celular dele já está com a versão nova */}
