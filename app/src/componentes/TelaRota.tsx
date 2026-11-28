@@ -82,7 +82,7 @@ export function TopoRota() {
 export function FaixaDaCurva() {
   const {e, ui} = useLoja();
   const m = ui.manobras, eu = ui.euAqui;
-  if (!m || !eu || !e.rota || caminhoDaProxima(e.rota, loja.parada)?.id !== m.para) return null;
+  if (!A.guiaLigado() || !m || !eu || !e.rota || caminhoDaProxima(e.rota, loja.parada)?.id !== m.para) return null;
   const v = manobraDaVez(m.lista, m.passadas, eu);
   if (!v) return null;
   const t = textoDaManobra(v.agora);
