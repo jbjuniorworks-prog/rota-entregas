@@ -263,10 +263,9 @@ code{font-size:13px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
    Com o id: a regra do Leaflet tem o mesmo peso de duas classes e chega depois, no pedaço do mapa, e
    ganhava. No celular do Luan o dedo não desenhava nada; com o mouse, funcionava. */
 #map.circulando{touch-action:none;cursor:crosshair}
-/* o mapa girado (Mapa.tsx, aplicarGiro): gira devagar, os pinos de volta em pé, sem os balões */
-#map.girando{transition:transform .6s ease-out}
+/* o mapa girado (Mapa.tsx, aplicarGiro): a animação é quadro a quadro, no código; os pinos de volta em pé, sem os balões */
 .em-pe{width:30px;height:30px}
-#map.girando .em-pe{transform:rotate(var(--desgiro));transform-origin:50% 100%;transition:transform .6s ease-out}
+#map.girando .em-pe{transform:rotate(var(--desgiro));transform-origin:50% 100%}
 #map.girando .leaflet-tooltip.balao{display:none}
 /* o + e o − e o crédito, fora do elemento que gira */
 /* .leaflet-container dá a fonte e o tamanho do + e −, mas também um fundo cinza: o CSS do Leaflet chega depois.

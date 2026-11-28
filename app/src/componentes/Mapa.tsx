@@ -12,7 +12,8 @@ import {DUVIDA, QUASE} from '../logica/rotulos';
 import {ehComercial} from '../logica/comerciais';
 import {longeDoProprioCep} from '../logica/longeDoCep';
 import {numerosDaShopee} from '../logica/paradasDaShopee';
-import {anguloLegivel, proximoGiro} from '../logica/giro';
+import {haversine} from '../logica/geo';
+import {anguloLegivel, inicioDoGiro, proximoGiro, suavizarGiro} from '../logica/giro';
 import {A_FRENTE_ALTURA, olharAFrente, passoDoSeguir, SEGUIR_ATE_M, type Leitura} from '../logica/seguir';
 import {loja, useLoja} from '../loja';
 
@@ -50,6 +51,12 @@ const POR_BAIXO = -500;
 const ZOOM_DO_FOCO = 17;
 // a distância de quando o mapa começa a segui-lo: a do "onde estou" de antes, que o Pedro usava
 const ZOOM_DE_MIM = 17;
+// O GPS do celular manda uma leitura por segundo, mais ou menos. Entre uma e a seguinte, o mapa, a
+// bolinha e o corte da linha deslizam juntos nesse tempo (dono, 28/11: "tanto a rotação quanto as
+// linhas sumindo, quanto mais suave melhor"); antes, tudo pulava a cada leitura.
+const DESLIZAR_MS = 900;
+// salto maior que isto (o GPS se acertando, a primeira leitura boa) não desliza: vai direto
+const DESLIZAR_ATE_M = 150;
 
 // Seguindo (pedidos de 02/10 e 03/10): ele fica no meio do mapa, de perto, e o mapa vai junto
 // quando ele anda. Mostrar ele e a próxima juntos afastava o mapa a cidade inteira enquanto a
@@ -119,24 +126,46 @@ function meioDoSeguir(m: L.Map, eu: {lat: number; lng: number; rumo: number | nu
 // Por isso só gira no modo de navegar (seguindo, sem cartão de pino, sem tocar no mapa para marcar),
 // e arrastar com um dedo fica desligado: o arrasto andaria torto. A pinça é em volta do meio, e o
 // meio não muda com o giro.
+// O giro na tela anda atrás do destino quadro a quadro (suavizarGiro); `naTela` é o desenhado agora.
+const animacao = {naTela: null as number | null, alvo: null as number | null, quadro: 0, antes: 0};
+
+function pintarGiro(el: HTMLElement, angulo: number) {
+  el.style.transform = `rotate(${-angulo}deg)`;
+  el.style.setProperty('--desgiro', angulo + 'deg');
+}
+
 function aplicarGiro(m: L.Map, giro: number | null) {
   const el = m.getContainer(), pai = el.parentElement!;
   if (giro == null) {
+    // sair do giro é na hora: quem tocou num pino precisa do mapa certo para o próximo toque
+    cancelAnimationFrame(animacao.quadro);
+    Object.assign(animacao, {naTela: null, alvo: null, quadro: 0});
     if (!el.classList.contains('girando')) return;
     el.classList.remove('girando');
     for (const k of ['width', 'height', 'left', 'top', 'right', 'bottom', 'transform', '--desgiro']) el.style.removeProperty(k);
     m.dragging.enable();
-  } else {
-    const w = pai.clientWidth, h = pai.clientHeight, d = Math.ceil(Math.hypot(w, h));
-    el.classList.add('girando');
-    Object.assign(el.style, {width: d + 'px', height: d + 'px', left: (w - d) / 2 + 'px', top: (h - d) / 2 + 'px', right: 'auto', bottom: 'auto', transform: `rotate(${-giro}deg)`});
-    el.style.setProperty('--desgiro', giro + 'deg');
-    m.dragging.disable();
+    if (giroDosNomes !== 0) { giroDosNomes = 0; m.fire('moveend'); }
+    return;
   }
-  if (giroDosNomes !== (giro ?? 0)) {
-    giroDosNomes = giro ?? 0;
-    m.fire('moveend');
-  }
+  const w = pai.clientWidth, h = pai.clientHeight, d = Math.ceil(Math.hypot(w, h));
+  el.classList.add('girando');
+  Object.assign(el.style, {width: d + 'px', height: d + 'px', left: (w - d) / 2 + 'px', top: (h - d) / 2 + 'px', right: 'auto', bottom: 'auto'});
+  m.dragging.disable();
+  animacao.alvo = giro;
+  if (animacao.naTela == null) { animacao.naTela = inicioDoGiro(giro); pintarGiro(el, animacao.naTela); }
+  if (animacao.quadro) return;
+  animacao.antes = performance.now();
+  const passo = (t: number) => {
+    if (animacao.alvo == null || animacao.naTela == null) { animacao.quadro = 0; return; }
+    animacao.naTela = suavizarGiro(animacao.naTela, animacao.alvo, t - animacao.antes);
+    animacao.antes = t;
+    pintarGiro(el, animacao.naTela);
+    if (animacao.naTela !== animacao.alvo) { animacao.quadro = requestAnimationFrame(passo); return; }
+    animacao.quadro = 0;
+    // os nomes das ruas, que custam para desenhar, só quando o giro assentou
+    if (giroDosNomes !== animacao.naTela) { giroDosNomes = animacao.naTela; m.fire('moveend'); }
+  };
+  animacao.quadro = requestAnimationFrame(passo);
 }
 
 // A bolinha de "você está aqui", com a seta do rumo quando ele está andando.
@@ -181,6 +210,14 @@ export default function Mapa() {
   const fundoFeito = useRef('');
   const linhaFeita = useRef('');
   const giro = useRef<number | null>(null);
+  // a bolinha dele, um marcador só, e onde ela está desenhada agora (desliza entre as leituras)
+  const marcadorEu = useRef<L.Marker | null>(null);
+  const rumoDoMarcador = useRef<number | null | undefined>(undefined);
+  const euNaTela = useRef<{lat: number; lng: number} | null>(null);
+  const deslize = useRef(0);
+  // o trecho até a próxima, inteiro, e o traço desenhado dele, cortado onde a bolinha está
+  const linhaBase = useRef<{trecho: [number, number][]; traco: L.Polyline} | null>(null);
+  const linhaComGps = useRef(false);
   const enquadrado = useRef(0);
   const focado = useRef(0);
   const marcado = useRef(0);
@@ -192,6 +229,13 @@ export default function Mapa() {
   const irMim = useRef(0);
   const [, setZoom] = useState(0);
   const circulando = ui.tela === 'rota' && ui.folha === 'circular';
+  // a linha até a próxima começa onde a bolinha está desenhada (aPartirDeMim), a cada quadro do deslize
+  const cortarLinha = () => {
+    const b = linhaBase.current;
+    if (!b) return;
+    const [t] = aPartirDeMim([b.trecho], linhaComGps.current ? euNaTela.current : null);
+    b.traco.setLatLngs(t);
+  };
 
   useEffect(() => {
     const m = L.map(div.current!, {markerZoomAnimation: false}).setView([-15.8, -47.9], 4);
@@ -453,7 +497,7 @@ export default function Mapa() {
 
     // A linha vai só até a próxima. Na Rota, com GPS bom, ela começa no entregador (aPartirDeMim) e
     // anda com ele, numa camada só dela, para não redesenhar o resto do fundo a cada leitura.
-    const euNaLinha = ui.tela === 'rota' && ui.euAqui && ui.euAqui.precisao <= LINHA_COM_GPS_ATE_M ? ui.euAqui : null;
+    linhaComGps.current = ui.tela === 'rota' && !!ui.euAqui && ui.euAqui.precisao <= LINHA_COM_GPS_ATE_M;
     const sigLinha = [
       e.rota && e.rota.areas.map(ra => ra.id + ':' + (ra.linha ? ra.linha.length : 0) + ':' + (ra.linhaDesde ?? 0)).join('|'),
       // a linha some trecho a trecho, a cada entrega
@@ -461,7 +505,6 @@ export default function Mapa() {
       e.areas.map(a => a.id + a.cor).join(','),
       alvo ? alvo.id : '',
       ui.desvio ? ui.desvio.para + ':' + ui.desvio.linha.length + ':' + ui.desvio.linha[0].join(',') : '',
-      euNaLinha ? euNaLinha.lat.toFixed(5) + ',' + euNaLinha.lng.toFixed(5) : '',
     ].join('#');
     if (sigLinha !== linhaFeita.current) {
       linhaFeita.current = sigLinha;
@@ -470,10 +513,9 @@ export default function Mapa() {
       // só até a próxima (a do cartão); se ele saiu da linha, o caminho refeito de onde ele está
       const c = e.rota && alvo ? caminhoDaProxima(e.rota, loja.parada) : null;
       const trecho = c && (ui.desvio?.para === c.id ? ui.desvio.linha : c.trecho);
-      if (c && trecho) for (const t of aPartirDeMim([trecho], euNaLinha)) {
-        L.polyline(t, {color: loja.area(c.area).cor, weight: 4, opacity: .75, className: 'linha-da-rota'}).addTo(camadaR);
-      }
+      linhaBase.current = c && trecho ? {trecho, traco: L.polyline([], {color: loja.area(c.area).cor, weight: 4, opacity: .75, className: 'linha-da-rota'}).addTo(camadaR)} : null;
     }
+    cortarLinha();
 
     const nomes = ui.tela === 'rota' ? ui.nomesNoMapa : null;
     if (nomesFeitos.current !== nomes) {
@@ -504,6 +546,13 @@ export default function Mapa() {
     const giroAntes = giro.current;
     giro.current = girar ? proximoGiro(giro.current, eu!.rumo) : null;
     if (giro.current !== giroAntes) aplicarGiro(m, giro.current);
+    // Tocou num pino com o mapa girado (dono, 28/11: "ao clicar em outro pino buga"): o norte voltava
+    // girando em volta do meio da tela, e o pino tocado ia parar fora dela. Volta já no pino.
+    if (giroAntes != null && giro.current == null && ui.pino) {
+      const p = loja.parada(ui.pino[0]);
+      m.invalidateSize({pan: true});
+      if (p?.lat != null && p.lng != null) m.setView([p.lat, p.lng], m.getZoom(), {animate: false});
+    }
     const voltou = seguir && !seguia.current;
     seguia.current = seguir;
     const pediuEu = ui.irParaMim !== irMim.current;
@@ -549,7 +598,9 @@ export default function Mapa() {
       suspeita.current = null;
       if (!ancora) { const z = Math.max(m.getZoom(), ZOOM_DE_MIM); m.setView(meioDoSeguir(m, eu!, z, giro.current), z, {animate: false}); }
       else if (voltou) m.setView(meioDoSeguir(m, eu!, m.getZoom(), giro.current), m.getZoom());
-      else m.panTo(meioDoSeguir(m, eu!, m.getZoom(), giro.current), {animate: false});
+      // O andar é animado, no tempo de uma leitura do GPS à seguinte, junto com a bolinha (DESLIZAR_MS):
+      // o pulo a cada leitura era um tranco, e no mapa girado mais ainda (28/11).
+      else m.panTo(meioDoSeguir(m, eu!, m.getZoom(), giro.current), {animate: true, duration: DESLIZAR_MS / 1000, easeLinearity: 1});
     } else if (pediuEu && eu) m.setView([eu.lat, eu.lng], Math.max(m.getZoom(), ZOOM_DE_MIM));
   });
 
@@ -612,14 +663,37 @@ export default function Mapa() {
     if (!m) return;
     if (!camadaEu.current) camadaEu.current = L.layerGroup().addTo(m);
     const c = camadaEu.current;
-    c.clearLayers();
+    // o círculo da margem de erro é redesenhado a cada leitura; a bolinha, não: ela desliza
+    c.eachLayer(l => { if (l !== marcadorEu.current) c.removeLayer(l); });
+    cancelAnimationFrame(deslize.current);
     const eu = ui.euAqui;
-    if (!eu || ui.tela !== 'rota') return;
+    if (!eu || ui.tela !== 'rota') {
+      if (marcadorEu.current) { c.removeLayer(marcadorEu.current); marcadorEu.current = null; }
+      euNaTela.current = null;
+      cortarLinha();
+      return;
+    }
     // o círculo é a margem de erro do GPS: some quando ele é bom, para não virar mancha na tela
     if (eu.precisao > 25) {
       L.circle([eu.lat, eu.lng], {radius: Math.min(300, eu.precisao), color: '#2563eb', weight: 1, fillOpacity: 0.1, interactive: false}).addTo(c);
     }
-    L.marker([eu.lat, eu.lng], {icon: iconeDeMim(eu.rumo), interactive: false, zIndexOffset: 2000}).addTo(c);
+    if (!marcadorEu.current) {
+      marcadorEu.current = L.marker([eu.lat, eu.lng], {icon: iconeDeMim(eu.rumo), interactive: false, zIndexOffset: 2000}).addTo(c);
+      rumoDoMarcador.current = eu.rumo;
+    } else if (rumoDoMarcador.current !== eu.rumo) {
+      marcadorEu.current.setIcon(iconeDeMim(eu.rumo));
+      rumoDoMarcador.current = eu.rumo;
+    }
+    const de = euNaTela.current, para = {lat: eu.lat, lng: eu.lng};
+    const pousar = (p: {lat: number; lng: number}) => { euNaTela.current = p; marcadorEu.current!.setLatLng([p.lat, p.lng]); cortarLinha(); };
+    if (!de || haversine(de, para) > DESLIZAR_ATE_M) { pousar(para); return; }
+    const inicio = performance.now();
+    const quadro = (t: number) => {
+      const f = Math.min(1, (t - inicio) / DESLIZAR_MS);
+      pousar({lat: de.lat + (para.lat - de.lat) * f, lng: de.lng + (para.lng - de.lng) * f});
+      if (f < 1) deslize.current = requestAnimationFrame(quadro);
+    };
+    deslize.current = requestAnimationFrame(quadro);
   }, [ui.euAqui, ui.tela]);
 
   return <div id="map" ref={div} />;

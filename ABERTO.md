@@ -154,7 +154,29 @@ Fora da lista:
 - as medições sem data (Barra dos Coqueiros, regras por tipo de rota, rua de nome genérico no
   mapa) estão nas seções de 09/10.
 
-## O mapa gira com o caminho (28/11, dono: "e se ao invés do mapa se movimentar, nossa visão que se adaptasse ao caminho?", com a foto da faixa "↖ vire levemente à esquerda" e a linha descendo na tela): na branch `mapa-gira`
+## O giro suave (28/11, dono, depois de ver na rua: "ficou bom, só não está suave, parece que vira dando umas pancadas"): na branch `giro-suave`
+
+- Causas, pelo código: o giro mudava de 10 em 10 graus; cada leitura do GPS reiniciava uma animação de CSS de
+  0,6 s; e o mapa pulava de lugar a cada leitura, sem animação, o que no mapa girado parecia mais um tranco.
+- Agora o giro na tela persegue o destino quadro a quadro (`suavizarGiro`, 220 ms de constante, assenta em ~1,3 s),
+  sem recomeçar quando o destino muda; o limite caiu para 4°; e, girando, o mapa anda animado em 0,9 s, o tempo
+  de uma leitura do GPS à seguinte. Os nomes das ruas só se redesenham quando o giro assenta.
+- Testado: 4 de unidade da suavização e 2 e2e (uma virada de 6° gira; o andar não pula). Sem o limite novo e
+  sem a animação do andar, cada um quebra. Tipos, 841 de unidade e 445 e2e. Se ficou suave, só na rua.
+- Depois (dono: "tanto a rotação quanto as linhas sumindo, quanto mais suave melhor"): a bolinha virou um
+  marcador só, que desliza até a leitura nova em 0,9 s (salto de mais de 150 m vai direto); a linha é desenhada
+  uma vez por trecho e cortada a cada quadro onde a bolinha está; o mapa anda animado também com o norte para
+  cima. Bolinha, corte e mapa andam juntos: ela fica parada no lugar dela na tela.
+- E, na rua, com foto: "ao clicar em outro pino buga". Reproduzido: com o mapa girado (160°), o toque abria o
+  cartão do pino certo, mas o norte voltava girando em volta do meio e o pino tocado ia para fora da tela. Agora
+  o norte volta já centrado no pino tocado.
+- Fica como está: os nomes que vêm desenhados no mapa (OpenStreetMap, em imagem) giram junto e podem ficar de
+  cabeça para baixo; só os nossos (os brancos, das ruas das entregas) se viram. Consertar pediria outro mapa.
+- Testado depois: 1 e2e do corte deslizando e 1 do toque no pino girado; sem o deslize e sem centrar no pino,
+  cada um quebra (o do pino só quebrou com o giro de 160° da reprodução; com 90°, passava sem o conserto).
+  Tipos, 841 de unidade e 447 e2e.
+
+## O mapa gira com o caminho (28/11, dono: "e se ao invés do mapa se movimentar, nossa visão que se adaptasse ao caminho?", com a foto da faixa "↖ vire levemente à esquerda" e a linha descendo na tela): publicado em 28/11 (#63)
 
 - O dono escolheu "o caminho sempre para cima" (no lugar de só enquadrar o caminho com o zoom) e fazer o giro
   no próprio app (no lugar do leaflet-rotate, que é GPL-3.0).
